@@ -1,0 +1,28 @@
+ ; moves start address of generated object code
+
+                      .org 0x1000                                 
+
+ ; include binary data
+
+                      .incbin "specsample.dasm16"      
+
+; supported label syntax (labels are case-sensitive)
+
+:alabel
+anotherlabel:
+.yetAnotherLabel
+
+; support for complex expressions
+                      
+                      SET a , 1*2+3/4
+                      SET I, crash2+( (10+alabel)*2 + 37 ) >> 8
+
+; support for hexadecimal, decimal and binary literals
+
+                      SET [27+crash2+a], 0x12+10+b1011111 
+
+.crash2               .byte 1,0x02,b11  ; output bytes                           
+                      .bss 1024  ; reserves 1024 bytes of memory
+                      reserve 1024 ; also reserves 1024 bytes of memory
+
+:text                 .dat "Hello world" ; outputs words

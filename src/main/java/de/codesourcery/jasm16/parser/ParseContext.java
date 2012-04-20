@@ -1,0 +1,259 @@
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.codesourcery.jasm16.parser;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.IMarker;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.EOFException;
+import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
+import de.codesourcery.jasm16.lexer.ILexer;
+import de.codesourcery.jasm16.lexer.IToken;
+import de.codesourcery.jasm16.lexer.TokenType;
+import de.codesourcery.jasm16.parser.IParser.ParserOption;
+import de.codesourcery.jasm16.utils.ITextRange;
+
+/**
+ * Default {@link IParseContext} implementation.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
+public class ParseContext implements IParseContext 
+{
+	private final ICompilationUnit unit;
+	private final ISymbolTable symbolTable;
+	private final ILexer lexer;
+	private final IResourceResolver resourceResolver;
+	private final Set<ParserOption> options = new HashSet<ParserOption>(); 
+	
+	private boolean recoveringFromParseError;
+	
+	
+	public ParseContext(ICompilationUnit unit , ISymbolTable symbolTable, ILexer lexer, IResourceResolver resourceResolver,Set<ParserOption> options) 
+	{
+		if (lexer == null) {
+			throw new IllegalArgumentException("lexer must not be NULL");
+		}
+		if ( unit == null ) {
+			throw new IllegalArgumentException("unit must not be NULL");
+		}
+		if ( symbolTable == null ) {
+            throw new IllegalArgumentException("symbolTable must not be NULL.");
+        }
+		if ( resourceResolver == null ) {
+            throw new IllegalArgumentException("resourceResolver must not be NULL.");
+        }
+		if ( options == null ) {
+            throw new IllegalArgumentException("options must not be NULL.");
+        }
+		this.options.addAll( options );
+		this.resourceResolver = resourceResolver;
+		this.symbolTable = symbolTable;
+		this.unit = unit;
+		this.lexer = lexer;
+	}
+	
+	@Override
+	public List<IToken> advanceTo(TokenType[] expectedTypes,
+			boolean advancePastMatchedToken) {
+		return lexer.advanceTo(expectedTypes, advancePastMatchedToken);
+	}
+
+	@Override
+	public void clearMark() {
+		lexer.clearMark();
+	}
+
+	@Override
+	public int currentParseIndex() {
+		return lexer.currentParseIndex();
+	}
+
+	@Override
+	public boolean eof() {
+		return lexer.eof();
+	}
+
+	@Override
+	public void mark() {
+		lexer.mark();
+	}
+
+	@Override
+	public IToken peek() throws EOFException {
+		return lexer.peek();
+	}
+
+	@Override
+	public IToken read() throws EOFException {
+		return lexer.read();
+	}
+
+	@Override
+	public IToken read(TokenType expectedType) throws ParseException,
+			EOFException {
+		return lexer.read(expectedType);
+	}
+
+	@Override
+	public void reset() {
+		lexer.reset();
+	}
+
+	@Override
+	public ICompilationUnit getCompilationUnit() {
+		return unit;
+	}
+
+	@Override
+	public ISymbolTable getSymbolTable() {
+		return symbolTable;
+	}
+
+	@Override
+	public int getCurrentLineNumber() {
+		return lexer.getCurrentLineNumber();
+	}
+
+	@Override
+	public int getCurrentLineStartOffset() {
+		return lexer.getCurrentLineStartOffset();
+	}
+	
+    @Override
+    public String toString()
+    {
+        return eof() ? "Parser is at EOF" : peek().toString()+" ( offset "+currentParseIndex()+" )";
+    }	
+
+    public Identifier parseIdentifier(ITextRange range) throws EOFException, ParseException  
+    {
+    	if ( eof() ) {
+    		throw new ParseException("Label lacks identifier" , currentParseIndex() ,0 );
+    	}
+    	
+        int startOffset = currentParseIndex();    	
+        
+        final IToken token = read( TokenType.CHARACTERS  );
+        if ( range != null ) {
+        	range.merge( token );
+        }
+        
+        final String chars = token.getContents();
+        int i = 0;
+        for ( char c : chars.toCharArray() ) {
+            if ( ! Identifier.isValidIdentifierChar( c ) ) {
+                throw new ParseException("Character '"+c+"' is not allowed within an identifier", 
+                		startOffset+i , 1 );
+            }
+            i++;
+        }
+        return new Identifier( chars );
+    }
+
+	@Override
+	public ITextRange parseWhitespace() throws EOFException, ParseException {
+		return read( TokenType.WHITESPACE );
+	}
+
+	@Override
+    public boolean isRecoveringFromParseError()
+    {
+        return recoveringFromParseError;
+    }
+
+    @Override
+    public void setRecoveringFromParseError(boolean recoveringFromParseError)
+    {
+        this.recoveringFromParseError = recoveringFromParseError;
+    }
+
+    @Override
+    public IResource resolve(String identifier) throws ResourceNotFoundException
+    {
+        return this.resourceResolver.resolve( identifier );
+    }
+
+    @Override
+    public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+    {
+        return this.resourceResolver.resolveRelative( identifier , parent );        
+    }
+
+    @Override
+    public void addMarker(IMarker marker)
+    {
+        getCompilationUnit().addMarker( marker );
+    }
+
+    @Override
+    public void addCompilationError(String message, ASTNode node)
+    {
+        final CompilationError error = new CompilationError( message , getCompilationUnit() , node );
+        error.setLineNumber( getCurrentLineNumber() );
+        error.setLineStartOffset( getCurrentLineStartOffset() );
+        addMarker( error );
+    }
+
+    @Override
+    public IToken read(String errorMessage, TokenType expectedType) throws ParseException, EOFException
+    {
+        return lexer.read(errorMessage, expectedType);
+    }
+
+    public void setParserOption(ParserOption option, boolean onOff)
+    {
+        if ( option == null ) {
+            throw new IllegalArgumentException("option must not be NULL.");
+        }
+        
+        if ( onOff ) {
+            options.add( option );
+        } else {
+            options.remove(option);
+        }
+    }
+
+    @Override
+    public boolean hasParserOption(ParserOption option)
+    {
+        if (option == null) {
+            throw new IllegalArgumentException("option must not be NULL.");
+        }
+        return options.contains( option );
+    }
+
+    @Override
+    public void setLexerOption(LexerOption option, boolean onOff)
+    {
+        lexer.setLexerOption( option, onOff);
+    }
+
+    @Override
+    public boolean hasLexerOption(LexerOption option)
+    {
+        return lexer.hasLexerOption( option );
+    }
+}
