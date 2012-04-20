@@ -12,11 +12,11 @@ Features
 
 - this assembler is intended to be embedded in an editor/IDE so it contains all the necessary hooks along with support for navigating from source code to AST nodes and vice versa
   
-  Run de.codesourcery.dcpu16.utils.DEditor for a simple proof-of-concept.
+  Run de.codesourcery.jasm16.utils.ASTInstructor for a simple proof-of-concept.
 
-- Full-featured expression support
+- Expression support
 
-  Supported operators are + - * / % << >> 
+  Currently supported operators are () + - * / % << >> 
 
 ```
                       SET A , (((0xff+0b1011)*2+label1+label2)) << 4
@@ -25,13 +25,19 @@ label1:
 label2:
 ```
 
-- Uses two-pass compilation for operand inlining ( operand <= 0x1f ) 
+- Two-pass compilation with operand inlining for both literal values and addresses
 
-- Supports setting up uninitialized memory of a specific size using '.bss <size in bytes>'
+- Supports hexadecimal (0xdeadbeef) , binary (b101111) and decimal number literals
 
-- Supports setting up initialized memory with byte or word size (using '.byte' , '.word' or 'dat')
+- Supports setting up uninitialized memory of a specific size using '.bss <size in bytes>' or "reserve <size in bytes" keywords
+
+- Supports setting up initialized memory with byte or word size (using '.byte' or 'dat')
 
 - Supports 16-bit character literals
+
+- Supports setting the origin of generated assembly via '.org' or '.origin' 
+
+- Supports including data from binary files using '.incbin "pic.jpg"
 
 Building 
 --------
@@ -47,7 +53,15 @@ Simply running
 mvn install
 ```
 
-will create a self-executable JAR (dasm.jar) in /target
+will create a self-executable JAR (jasm16.jar) inside the /target folder.
+
+Do
+
+```
+java -jar jasm16.jar <compiler options>
+```
+
+to actually run the compiler.
 
 Running the compiler from the command-line
 ------------------------------------------
@@ -55,24 +69,37 @@ Running the compiler from the command-line
 ```
 Usage: [options] [-o <output file>] source1 source2 ...
 
--d or --debug   => print debug output
---print         => print formatted source code along with hex dump of generated assembly
---print-symbols => print symbol table
--v or --verbose => print slightly more verbose output during compilation
--h or --help    => prints this help
+ -o              => output file to write generated assembly code to, otherwise code will be written to source.o
+ -d or --debug   => print debug output
+ --print         => print formatted source code along with hex dump of generated assembly
+ --print-symbols => print symbol table
+ --dump          => dump hex dump of object code to std out INSTEAD of writing to a file
+ --relaxed       => relaxed parsing (instructions are parsed case-insensitive)
+ -v or --verbose => print slightly more verbose output during compilation
 ```
 
-Running the demo editor from the command line
----------------------------------------------
+AST inspector
+-------------
+
+For debugging purposes this assembler comes with crude text editor for
+inspecting the generated AST.
+
+Run  
 
 ```
-java -classpath target/dasm.jar de.codesourcery.dcpu16.utils.DEditor
+java -classpath target/jasm16.jar de.codesourcery.jasm16.utils.ASTInspector
 ```
 
 Assembler syntax reference
 --------------------------
 
 - everything except label identifiers is treated case-insensitive
+
+- supported label styles are:
+
+.label
+:label
+label:
 
 - Supported number literals:
 
@@ -118,3 +145,6 @@ Assembler syntax reference
 ```
   .bss 1024 ; 1k of memory initialized to 0
 ```
+- to set the origin of generated code, use '.org <address>' or '.origin <address>'
+
+- to include binary data from a file, use '.incbin "filename"'
