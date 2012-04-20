@@ -57,7 +57,8 @@ public class CompilationUnit implements ICompilationUnit {
     public void beforeCompilationStart() {
         this.lines.clear();
         this.ast = null;
-        this.markers.clear();
+        this.markers.remove( IMarker.TYPE_COMPILATION_ERROR );
+        this.markers.remove( IMarker.TYPE_GENERIC_COMPILATION_ERROR );
         this.objectCodeStartAddress=Address.ZERO;
     }
     
@@ -267,8 +268,8 @@ public class CompilationUnit implements ICompilationUnit {
         return internalGetMarkers( types );
     }
     
-    @SuppressWarnings("rawtypes")
-    private List internalGetMarkers(String... types)
+    @SuppressWarnings("unchecked")
+	private List internalGetMarkers(String... types)
     {
         final List<IMarker>  result = new ArrayList<IMarker>();
         
