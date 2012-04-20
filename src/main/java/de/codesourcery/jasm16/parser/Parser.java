@@ -25,13 +25,12 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
-import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
+import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.Misc;
 

@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.lexer;
 import java.io.InputStream;
 import java.util.List;
 
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.scanner.IScanner;
