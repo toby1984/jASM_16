@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * {@link IResource} implementation that wraps a string.
@@ -52,7 +52,7 @@ public class StringResource implements IResource
     }
 
     @Override
-    public String readText(ITextRange range) throws IOException
+    public String readText(ITextRegion range) throws IOException
     {
         if (range == null) {
             throw new IllegalArgumentException("text range must not be NULL.");

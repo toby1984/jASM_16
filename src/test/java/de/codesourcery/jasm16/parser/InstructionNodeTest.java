@@ -130,7 +130,7 @@ public class InstructionNodeTest extends TestHelper
 		return (InstructionNode) node;
 	}
 	
-	public void testTextRange() throws Exception {
+	public void testTextRegion() throws Exception {
 		final String source = "SET [0x2000+I], [A]";
 		
 		ICompilationUnit unit = compile( source );

@@ -23,8 +23,8 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * AST node representing a statement.
@@ -40,7 +40,7 @@ public class StatementNode extends ASTNode
          *               <LABEL> <WS>
          */
         if ( ! context.eof() && context.peek().isWhitespace() ) {
-            mergeWithAllTokensTextRange( context.parseWhitespace() );
+            mergeWithAllTokensTextRegion( context.parseWhitespace() );
         }
         
         if ( ! context.eof() ) {
@@ -53,7 +53,7 @@ public class StatementNode extends ASTNode
                 } 
                 catch(Exception e) 
                 {
-                    final ITextRange range = new TextRange( offset , context.currentParseIndex()-offset );
+                    final ITextRegion range = new TextRegion( offset , context.currentParseIndex()-offset );
                     addCompilationErrorAndAdvanceParser( new CompilationError( 
                             "Failed to parse label: "+e.getMessage() ,
                             context.getCompilationUnit(),
@@ -65,7 +65,7 @@ public class StatementNode extends ASTNode
         }
         
         if ( ! context.eof() && context.peek().isWhitespace() ) {
-        	mergeWithAllTokensTextRange( context.parseWhitespace() );
+        	mergeWithAllTokensTextRegion( context.parseWhitespace() );
         }    
         return ! context.eof() && ! context.peek().isEOL();
     }
@@ -112,7 +112,7 @@ public class StatementNode extends ASTNode
          */
         if ( ! context.eof() && context.peek().hasType( TokenType.WHITESPACE ) ) 
         {
-        	mergeWithAllTokensTextRange( context.read() );
+        	mergeWithAllTokensTextRegion( context.read() );
         }
         
         if ( context.eof() ) {
@@ -120,7 +120,7 @@ public class StatementNode extends ASTNode
         } 
         
         if ( context.peek().isEOL() ) {
-        	mergeWithAllTokensTextRange( context.read() );
+        	mergeWithAllTokensTextRegion( context.read() );
             return;
         }
         

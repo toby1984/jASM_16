@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -72,7 +72,7 @@ public class FileResource implements IResource
     }
     
     @Override
-    public String readText(ITextRange range) throws IOException
+    public String readText(ITextRegion range) throws IOException
     {
         loadContents();
         return range.apply( contents );

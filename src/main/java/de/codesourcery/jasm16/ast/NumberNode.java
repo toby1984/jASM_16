@@ -21,8 +21,8 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.NumberToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * An AST node that represents a number literal.
@@ -36,9 +36,9 @@ public class NumberNode extends ConstantValueNode
     public NumberNode() {
     }
     
-    public NumberNode(long value,ITextRange range) 
+    public NumberNode(long value,ITextRegion range) 
     {
-    	super( new TextRange( range ) );
+    	super( new TextRegion( range ) );
     	this.value = value;
     }
     
@@ -47,7 +47,7 @@ public class NumberNode extends ConstantValueNode
     {
     	final NumberToken token = (NumberToken) context.read( "Expected a number",TokenType.NUMBER_LITERAL );
    		this.value = token.getValue();
-   		mergeWithAllTokensTextRange( token );
+   		mergeWithAllTokensTextRegion( token );
     	return this;
     }
     
@@ -66,7 +66,7 @@ public class NumberNode extends ConstantValueNode
 	public int getAsByte() throws ParseException 
 	{
 		if ( value < 0 | value > 255 ) {
-			throw new ParseException("8-bit value expected but found: "+value,getTextRange() );
+			throw new ParseException("8-bit value expected but found: "+value,getTextRegion() );
 		}
 		return (int) value;
 	}
@@ -78,7 +78,7 @@ public class NumberNode extends ConstantValueNode
     public int getAsWord() throws ParseException 
     {
 		if ( value < 0 | value > 65535 ) {
-			throw new ParseException("16-bit value expected but found: "+value,getTextRange());
+			throw new ParseException("16-bit value expected but found: "+value,getTextRegion());
 		}
         return (int) value;
     }

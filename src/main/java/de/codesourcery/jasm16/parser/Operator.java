@@ -205,9 +205,9 @@ public enum Operator
 			} catch (ParseException e) {
 				throw new RuntimeException("Should not happen...",e);
 			}
-			return new NumberNode( calculated , node.getTextRange() );
+			return new NumberNode( calculated , node.getTextRegion() );
 		}
-		return new OperatorNode( node.getOperator() , term1 , term2 , node.getTextRange() );		
+		return new OperatorNode( node.getOperator() , term1 , term2 , node.getTextRegion() );		
 	}
 	
 	private Operator(String literal,int precedence, OperatorPosition... positions) {

@@ -39,7 +39,7 @@ public class CharacterLiteralNode extends ASTNode {
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
-	    mergeWithAllTokensTextRange( context.read("Expected a character literal but string delimiter is missing",TokenType.STRING_DELIMITER) );
+	    mergeWithAllTokensTextRegion( context.read("Expected a character literal but string delimiter is missing",TokenType.STRING_DELIMITER) );
 	    
         final StringBuilder contents = new StringBuilder();
         while ( ! context.eof() ) 
@@ -47,18 +47,18 @@ public class CharacterLiteralNode extends ASTNode {
             IToken tok = context.peek();
             
             if ( tok.hasType( TokenType.EOL ) ) {
-                throw new ParseException("Character literal lacks closing delimiter",getTextRange());                
+                throw new ParseException("Character literal lacks closing delimiter",getTextRegion());                
             } 
             else if ( tok.hasType( TokenType.STRING_DELIMITER ) ) 
             {
-            	mergeWithAllTokensTextRange( context.read() );
+            	mergeWithAllTokensTextRegion( context.read() );
                 value = contents.toString();
                 return this;
             } 
-            mergeWithAllTokensTextRange( context.read() );
+            mergeWithAllTokensTextRegion( context.read() );
             contents.append( tok.getContents() );
         }
-        throw new ParseException("Premature end of input, character literal lacks closing delimiter",getTextRange());            
+        throw new ParseException("Premature end of input, character literal lacks closing delimiter",getTextRegion());            
 	}
 	
 	public List<Integer> getBytes() throws ParseException 

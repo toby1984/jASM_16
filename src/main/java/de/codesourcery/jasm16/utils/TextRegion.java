@@ -22,12 +22,12 @@ import java.util.List;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class TextRange implements ITextRange
+public class TextRegion implements ITextRegion
 {
     private int startingOffset;
     private int length;
     
-    public TextRange(List<? extends ITextRange> ranges) 
+    public TextRegion(List<? extends ITextRegion> ranges) 
     {
     	if (ranges == null) {
 			throw new IllegalArgumentException("ranges must not be NULL");
@@ -35,7 +35,7 @@ public class TextRange implements ITextRange
     	if ( ranges.isEmpty() ) {
     		throw new IllegalArgumentException("ranges cannot be empty");
     	}
-    	ITextRange first = ranges.get(0);
+    	ITextRegion first = ranges.get(0);
     	this.startingOffset = first.getStartingOffset();
     	this.length = first.getLength();
     	
@@ -44,7 +44,7 @@ public class TextRange implements ITextRange
     	}
     }
     
-    public static int hashCode(ITextRange range) 
+    public static int hashCode(ITextRegion range) 
     {
     	if ( range == null ) {
     		return 0;
@@ -52,11 +52,11 @@ public class TextRange implements ITextRange
     	return range.getStartingOffset()*13 + range.getLength();
     }
     
-    public TextRange(ITextRange range) {
+    public TextRegion(ITextRegion range) {
     	this( range.getStartingOffset() , range.getLength() );
     }
     
-    public TextRange(int startingOffset, int length)
+    public TextRegion(int startingOffset, int length)
     {
         if ( startingOffset < 0 ) {
             throw new IllegalArgumentException("startingOffset must not be >= 0");
@@ -81,7 +81,7 @@ public class TextRange implements ITextRange
     }
 
     @Override
-    public void merge(ITextRange other)
+    public void merge(ITextRegion other)
     {
     	// order of calculations is IMPORTANT here, otherwise it's yielding wrong results!
         final int newEnd = this.getEndOffset() > other.getEndOffset() ? this.getEndOffset() : other.getEndOffset();
@@ -90,7 +90,7 @@ public class TextRange implements ITextRange
     }
     
     @Override
-    public void subtract(ITextRange other)
+    public void subtract(ITextRegion other)
     {
         if ( isSame( other ) ) 
         {
@@ -124,20 +124,20 @@ public class TextRange implements ITextRange
     }
     
     @Override
-    public boolean contains(ITextRange other)
+    public boolean contains(ITextRegion other)
     {
         return other.getStartingOffset() >= this.getStartingOffset() && other.getEndOffset() <= this.getEndOffset();
     }
     
     @Override
-    public boolean overlaps(ITextRange other)
+    public boolean overlaps(ITextRegion other)
     {
         return this.contains( other ) || other.contains( this ) || 
            ( ! this.contains( other.getStartingOffset() ) && this.contains( other.getEndOffset() ) ) ||
            ( this.contains( other.getStartingOffset() ) && ! this.contains( other.getEndOffset() ) );
     }
     
-    public void intersect(ITextRange other) {
+    public void intersect(ITextRegion other) {
     	
     	/*    |-- this --|
     	 * |-other-|
@@ -190,7 +190,7 @@ public class TextRange implements ITextRange
     }
 
     @Override
-    public boolean isSame(ITextRange other)
+    public boolean isSame(ITextRegion other)
     {
         return this == other || ( this.getStartingOffset() == other.getStartingOffset() && this.getLength() == other.getLength() );
     }
@@ -201,7 +201,7 @@ public class TextRange implements ITextRange
     	try {
     		return string.substring( getStartingOffset() , getEndOffset() );
     	} catch(StringIndexOutOfBoundsException e) {
-    		throw new StringIndexOutOfBoundsException("TextRange out of bounds, cannot apply "+this+" to "+
+    		throw new StringIndexOutOfBoundsException("TextRegion out of bounds, cannot apply "+this+" to "+
     				" string of length "+string.length());
     	}
     }    
@@ -214,12 +214,12 @@ public class TextRange implements ITextRange
     }
 
 	@Override
-	public void merge(List<? extends ITextRange> ranges) 
+	public void merge(List<? extends ITextRegion> ranges) 
 	{
 		if ( ranges.isEmpty() ) {
 			return;
 		}
-		for ( ITextRange r : ranges ) {
+		for ( ITextRegion r : ranges ) {
 			merge( r );
 		}
 	}

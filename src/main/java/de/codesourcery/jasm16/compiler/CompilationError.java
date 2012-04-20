@@ -16,8 +16,8 @@
 package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * A compilation error that includes a source-code reference.
@@ -32,23 +32,23 @@ public class CompilationError extends GenericCompilationError
 		setNodeAndLocation(node,null);
 	}
 	
-	private void setNodeAndLocation(ASTNode node,ITextRange range) 
+	private void setNodeAndLocation(ASTNode node,ITextRegion range) 
 	{
 	    if ( node != null ) 
 	    {
 	        setAttribute(IMarker.ATTR_AST_NODE , node );
-	        if ( range == null && node.getTextRange() != null ) 
+	        if ( range == null && node.getTextRegion() != null ) 
 	        {
-	            setLocation( new TextRange( node.getTextRange() ) );
+	            setLocation( new TextRegion( node.getTextRegion() ) );
 	            if ( ! hasAttribute( IMarker.ATTR_SRC_OFFSET ) ) {
-	                setErrorOffset( node.getTextRange().getStartingOffset() );
+	                setErrorOffset( node.getTextRegion().getStartingOffset() );
 	            }	            
 	        }
 	    } 
 	    
 	    if ( range != null ) 
 	    {
-	        setLocation( new TextRange( range ) );
+	        setLocation( new TextRegion( range ) );
             if ( ! hasAttribute( IMarker.ATTR_SRC_OFFSET ) ) {
                 setErrorOffset( range.getStartingOffset() );
             }   	        
@@ -61,13 +61,13 @@ public class CompilationError extends GenericCompilationError
         setNodeAndLocation(node,null);	    
 	}	
 	
-	public CompilationError(String message, ICompilationUnit unit ,ITextRange location) 
+	public CompilationError(String message, ICompilationUnit unit ,ITextRegion location) 
 	{
         super(IMarker.TYPE_COMPILATION_ERROR, message,unit);
         setNodeAndLocation(null,location);
 	}
 	
-	public CompilationError(String message, ICompilationUnit unit , ITextRange location,Throwable cause) 
+	public CompilationError(String message, ICompilationUnit unit , ITextRegion location,Throwable cause) 
 	{
         super(IMarker.TYPE_COMPILATION_ERROR, message,unit,cause);
         setNodeAndLocation(null,location);

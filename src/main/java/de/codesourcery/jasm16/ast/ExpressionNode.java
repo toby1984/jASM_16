@@ -80,18 +80,18 @@ public class ExpressionNode extends TermNode
             throw new ParseException("Incomplete or empty expression",offset,0);
         }
         
-        if ( this.getTextRange() != null ) { // merge leading whitespace etc.
-            result.mergeWithAllTokensTextRange( this.getTextRange() );
+        if ( this.getTextRegion() != null ) { // merge leading whitespace etc.
+            result.mergeWithAllTokensTextRegion( this.getTextRegion() );
         }
 
         if ( getRegisterReferenceCount( result ) > 1 ) {
-            throw new ParseException("Expression must not reference more than one register" , result.getTextRange() );
+            throw new ParseException("Expression must not reference more than one register" , result.getTextRegion() );
         }		
 
         if ( result.getChildCount() == 1 ) 
         {
             if ( ! hasAllRequiredArguments( result ) ) {
-                throw new ParseException("Incomplete expression, add missing argument to complete it.", result.getTextRange().getEndOffset() ,0 );
+                throw new ParseException("Incomplete expression, add missing argument to complete it.", result.getTextRegion().getEndOffset() ,0 );
             }
         }        
         return result;
@@ -107,9 +107,9 @@ public class ExpressionNode extends TermNode
             {
                 if ( termStack.isEmpty() ) 
                 {
-                    mergeWithAllTokensTextRange( context.parseWhitespace() );
+                    mergeWithAllTokensTextRegion( context.parseWhitespace() );
                 } else {
-                    termStack.peek().mergeWithAllTokensTextRange( context.parseWhitespace() );
+                    termStack.peek().mergeWithAllTokensTextRegion( context.parseWhitespace() );
                 }
 
                 if ( ! isEmptyExpression(this) && context.eof() ) {
@@ -127,7 +127,7 @@ public class ExpressionNode extends TermNode
                     final OperatorNode op1 = (OperatorNode) n1;
                     if ( ! op1.getOperator().isInfixOperator() ) // + - * /
                     {
-                        throw new ParseException("Not implemented: Cannot handle operator "+op1.getOperator(), op1.getTextRange() );
+                        throw new ParseException("Not implemented: Cannot handle operator "+op1.getOperator(), op1.getTextRegion() );
                     }
                 } 
                 previousNode = handleStack( termStack , n1 , offset ,previousNode , context);
@@ -150,8 +150,8 @@ public class ExpressionNode extends TermNode
                     throw new ParseException("Missing closing ')' ",context.currentParseIndex() ,0 );
                 }
                 final OperatorNode op = new OperatorNode(Operator.PARENS , node , context );
-                op.mergeWithAllTokensTextRange( tok );				
-                op.mergeWithAllTokensTextRange( context.read(TokenType.PARENS_CLOSE ) );
+                op.mergeWithAllTokensTextRegion( tok );				
+                op.mergeWithAllTokensTextRegion( context.read(TokenType.PARENS_CLOSE ) );
                 previousNode = handleStack( termStack , op , index ,previousNode , context );
             } 
             else if ( context.peek().hasType( TokenType.CHARACTERS ) ) {
@@ -171,9 +171,9 @@ public class ExpressionNode extends TermNode
             if ( ! context.eof() && context.peek().isWhitespace() ) 
             {
                 if ( termStack.isEmpty() ) {
-                    mergeWithAllTokensTextRange( context.parseWhitespace() );
+                    mergeWithAllTokensTextRegion( context.parseWhitespace() );
                 } else {
-                    termStack.peek().mergeWithAllTokensTextRange( context.parseWhitespace() );
+                    termStack.peek().mergeWithAllTokensTextRegion( context.parseWhitespace() );
                 }
 
                 if ( ! isEmptyExpression(this) && context.eof() ) {
@@ -280,7 +280,7 @@ public class ExpressionNode extends TermNode
              */
             OperatorNode operator = (OperatorNode) operatorStack.pop();
             if ( argumentStack.isEmpty() ) {
-                throw new ParseException("Operator '"+operator.getOperator().getLiteral()+"' requires an operand",operator.getTextRange().getEndOffset() , 0 );
+                throw new ParseException("Operator '"+operator.getOperator().getLiteral()+"' requires an operand",operator.getTextRegion().getEndOffset() , 0 );
             }
             ASTNode argument1 = argumentStack.pop();
             ASTNode argument2 = argumentStack.isEmpty() ? null : argumentStack.pop();
@@ -304,7 +304,7 @@ public class ExpressionNode extends TermNode
                 lastNode = arg;
             }
         } else if ( argumentStack.size() > 1 ) {
-            throw new ParseException("Expression has no operators?",argumentStack.pop().getTextRange() );
+            throw new ParseException("Expression has no operators?",argumentStack.pop().getTextRegion() );
         }
         
         if ( ! operatorStack.isEmpty() || ! argumentStack.isEmpty() ) {
@@ -335,7 +335,7 @@ public class ExpressionNode extends TermNode
         if ( ((OperatorNode) node).getOperator() == Operator.PARENS ) 
         {
             ASTNode result = node.child(0);
-            result.setTextRangeIncludingAllTokens( node.getTextRange() ); // include '(' and ')'
+            result.setTextRegionIncludingAllTokens( node.getTextRegion() ); // include '(' and ')'
             return result;
         }
         return node;
@@ -392,7 +392,7 @@ public class ExpressionNode extends TermNode
     public TermNode reduce(ICompilationContext context) 
     {
         ExpressionNode result = new ExpressionNode();
-        result.setTextRangeIncludingAllTokens( getTextRange() );
+        result.setTextRegionIncludingAllTokens( getTextRegion() );
 
         for ( ASTNode child : getChildren() ) 
         {
@@ -401,7 +401,7 @@ public class ExpressionNode extends TermNode
                 final ASTNode reduced = ((TermNode) child).reduce( context );
                 result.addChild( reduced , null );
             } else {
-                result.mergeTextRange( child.getTextRange() );
+                result.mergeTextRegion( child.getTextRegion() );
             }
         }
 
@@ -409,7 +409,7 @@ public class ExpressionNode extends TermNode
         if ( result.isLiteralExpression(context) ) 
         {
             try {
-                return result.getLiteralValueNode( context ).toNumberNode( context , result.getTextRange() );
+                return result.getLiteralValueNode( context ).toNumberNode( context , result.getTextRegion() );
             } catch (ParseException e) {
                 context.getCurrentCompilationUnit().addMarker(  new GenericCompilationError( e.getMessage() , context.getCurrentCompilationUnit() , e ) );
             }
@@ -430,14 +430,14 @@ public class ExpressionNode extends TermNode
             if ( tryAgain ) 
             {
                 ExpressionNode result2 = new ExpressionNode();
-                result.setTextRangeIncludingAllTokens( result.getTextRange() );
+                result.setTextRegionIncludingAllTokens( result.getTextRegion() );
                 for ( ASTNode child : result.getChildren() ) 
                 {
                     if ( child instanceof TermNode) 
                     {
                         result2.addChild( ((TermNode) child).reduce( context ) , null );
                     } else {
-                        result2.mergeTextRange( child.getTextRange() );
+                        result2.mergeTextRegion( child.getTextRegion() );
                     }
                 }                
                 result=result2;
@@ -447,7 +447,7 @@ public class ExpressionNode extends TermNode
         if ( result.getChildCount() == 1 && result.child(0) instanceof TermNode) 
         {
             final TermNode realResult = (TermNode) result.child(0);
-            realResult.mergeWithAllTokensTextRange( result );
+            realResult.mergeWithAllTokensTextRegion( result );
             return realResult;
         }
         return result;

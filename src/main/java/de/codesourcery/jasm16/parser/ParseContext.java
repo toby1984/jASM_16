@@ -33,7 +33,7 @@ import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Default {@link IParseContext} implementation.
@@ -148,7 +148,7 @@ public class ParseContext implements IParseContext
         return eof() ? "Parser is at EOF" : peek().toString()+" ( offset "+currentParseIndex()+" )";
     }	
 
-    public Identifier parseIdentifier(ITextRange range) throws EOFException, ParseException  
+    public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException  
     {
     	if ( eof() ) {
     		throw new ParseException("Label lacks identifier" , currentParseIndex() ,0 );
@@ -174,7 +174,7 @@ public class ParseContext implements IParseContext
     }
 
 	@Override
-	public ITextRange parseWhitespace() throws EOFException, ParseException {
+	public ITextRegion parseWhitespace() throws EOFException, ParseException {
 		return read( TokenType.WHITESPACE );
 	}
 

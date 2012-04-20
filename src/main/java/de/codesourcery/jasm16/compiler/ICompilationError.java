@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * A compilation error.
@@ -79,9 +79,9 @@ public interface ICompilationError extends IMarker {
     
     public ASTNode getNode();
     
-    public void setLocation(ITextRange location);
+    public void setLocation(ITextRegion location);
     
-    public ITextRange getLocation();
+    public ITextRegion getLocation();
 
     public int getLineStartOffset();
 

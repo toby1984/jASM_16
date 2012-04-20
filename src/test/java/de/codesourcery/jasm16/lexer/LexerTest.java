@@ -28,7 +28,7 @@ import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.scanner.Scanner;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class LexerTest extends TestHelper {
 
@@ -135,7 +135,7 @@ public class LexerTest extends TestHelper {
         IToken tok = lexer.read();
         assertEquals( TokenType.OPERATOR , tok.getType() );
         assertEquals("*" , tok.getContents());
-        assertTrue( new TextRange( 3,1 ).isSame( tok ) );
+        assertTrue( new TextRegion( 3,1 ).isSame( tok ) );
         assertTrue( lexer.eof() );
     }
     

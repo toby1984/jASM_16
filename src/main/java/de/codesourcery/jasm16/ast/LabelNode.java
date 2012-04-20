@@ -23,8 +23,8 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * An AST node that represents a label definition.
@@ -50,16 +50,16 @@ public class LabelNode extends ASTNode
     {
         final int startIndex = context.currentParseIndex();
         
-    	ITextRange range = null;
+    	ITextRegion range = null;
     	boolean leadingCharacterFound = false;
     	if ( context.peek().hasType( TokenType.COLON ) || context.peek().hasType( TokenType.DOT ) ) {
-    	    range = new TextRange( context.read() );
+    	    range = new TextRegion( context.read() );
     	    leadingCharacterFound = true;
     	} 
         
         final Identifier identifier = context.parseIdentifier( range );
         if ( range == null ) {
-            range = new TextRange( startIndex , context.currentParseIndex() - startIndex );
+            range = new TextRegion( startIndex , context.currentParseIndex() - startIndex );
         }
         
         this.label = new Label( context.getCompilationUnit() , range , identifier );
@@ -68,17 +68,17 @@ public class LabelNode extends ASTNode
         {
             if ( context.peek().hasType( TokenType.COLON ) ) {
                 range.merge( context.read( TokenType.COLON ) );   
-                mergeWithAllTokensTextRange( range );                 
+                mergeWithAllTokensTextRegion( range );                 
             } else {
-                mergeWithAllTokensTextRange( range );                 
+                mergeWithAllTokensTextRegion( range );                 
                 context.addCompilationError( "Label lacks trailing colon", this );
             }
         } else {
-            mergeWithAllTokensTextRange( range );              
+            mergeWithAllTokensTextRegion( range );              
         }
         
         if ( Register.isRegisterIdentifier( label.getIdentifier().getRawValue() ) ) {
-            throw new ParseException("Label name clashes with register identifier, not allowed",getTextRange());
+            throw new ParseException("Label name clashes with register identifier, not allowed",getTextRegion());
         }
         
         try {

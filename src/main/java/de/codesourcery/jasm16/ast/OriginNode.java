@@ -46,8 +46,8 @@ public class OriginNode extends ObjectCodeOutputNode
     @Override
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
-        mergeWithAllTokensTextRange( context.read( TokenType.ORIGIN ) );
-        mergeWithAllTokensTextRange( context.parseWhitespace() );
+        mergeWithAllTokensTextRegion( context.read( TokenType.ORIGIN ) );
+        mergeWithAllTokensTextRegion( context.parseWhitespace() );
         
         final NumberNode number;
         try {

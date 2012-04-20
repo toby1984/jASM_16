@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Generic compilation error that is not related to a specific source-code location.
@@ -129,13 +129,13 @@ public class GenericCompilationError extends AbstractMarker implements ICompilat
     }
 
     @Override
-    public ITextRange getLocation()
+    public ITextRegion getLocation()
     {
-        return getAttribute(IMarker.ATTR_SRC_REGION, (ITextRange) null);
+        return getAttribute(IMarker.ATTR_SRC_REGION, (ITextRegion) null);
     }
     
     @Override
-    public void setLocation(ITextRange location)
+    public void setLocation(ITextRegion location)
     {
         if (location == null) {
             throw new IllegalArgumentException("location must not be NULL.");

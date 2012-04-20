@@ -55,12 +55,12 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     @Override
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
-        mergeWithAllTokensTextRange( context.read( TokenType.INCLUDE_BINARY ) );
-        mergeWithAllTokensTextRange( context.read( TokenType.WHITESPACE) );
-        mergeWithAllTokensTextRange( context.read( "Expected a filename enclosed in string delimiters but no delimiter found" , TokenType.STRING_DELIMITER) );
+        mergeWithAllTokensTextRegion( context.read( TokenType.INCLUDE_BINARY ) );
+        mergeWithAllTokensTextRegion( context.read( TokenType.WHITESPACE) );
+        mergeWithAllTokensTextRegion( context.read( "Expected a filename enclosed in string delimiters but no delimiter found" , TokenType.STRING_DELIMITER) );
         
         final IToken tok = context.read( TokenType.CHARACTERS );
-        mergeWithAllTokensTextRange( tok );
+        mergeWithAllTokensTextRegion( tok );
         resourceIdentifier = tok.getContents();
         try {
             this.resource = context.resolveRelative( resourceIdentifier , context.getCompilationUnit().getResource() );
@@ -76,7 +76,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
             throw new ParseException("File \""+tok.getContents()+"\" does not exist" , tok );
         }
         
-        mergeWithAllTokensTextRange(context.read( "Missing string delimiter at end of filename" , TokenType.STRING_DELIMITER) );
+        mergeWithAllTokensTextRegion(context.read( "Missing string delimiter at end of filename" , TokenType.STRING_DELIMITER) );
         return this;
     }
 

@@ -24,7 +24,7 @@ import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * An AST node that represents a reference to a label.
@@ -45,7 +45,7 @@ public class LabelReferenceNode extends ConstantValueNode
 	{
 		final int startOffset = context.currentParseIndex();
 		this.identifier = context.parseIdentifier( null );
-		mergeWithAllTokensTextRange( new TextRange( startOffset , identifier.getRawValue().length() ) );
+		mergeWithAllTokensTextRegion( new TextRegion( startOffset , identifier.getRawValue().length() ) );
 		return this;
 	}
 

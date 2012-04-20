@@ -88,9 +88,9 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
             throw new ParseException("Unexpected token type "+tok.getType(), tok );
         }
 
-        mergeWithAllTokensTextRange( context.read(acceptedType) );
+        mergeWithAllTokensTextRegion( context.read(acceptedType) );
         
-        mergeWithAllTokensTextRange( context.parseWhitespace() );
+        mergeWithAllTokensTextRegion( context.parseWhitespace() );
         
         boolean expectingData = true;
 outer:        
@@ -99,7 +99,7 @@ outer:
             IToken token = context.peek();
             if ( token.isWhitespace() ) 
             {
-            	mergeWithAllTokensTextRange( context.parseWhitespace() );
+            	mergeWithAllTokensTextRegion( context.parseWhitespace() );
                 continue;
             }
             
@@ -116,7 +116,7 @@ outer:
             		    final int value = ((NumberNode) number).getAsWord();
             		    if (  value < 0 || value > allowedSize.getMaxSupportedValue() ) {
                             throw new ParseException("Number literal "+value+" is out of range, must be >= 0 and <= "+allowedSize.getMaxSupportedValue(), 
-                                    number.getTextRange() );
+                                    number.getTextRegion() );
             		    }
             		}
                     addChild( number , context );
@@ -141,9 +141,9 @@ outer:
             {
             	token = context.peek();
             	if ( token.isWhitespace() ) {
-            		mergeWithAllTokensTextRange( context.parseWhitespace() );
+            		mergeWithAllTokensTextRegion( context.parseWhitespace() );
             	} else if ( token.hasType( TokenType.COMMA ) ) {
-            		mergeWithAllTokensTextRange( context.read( TokenType.COMMA ) );
+            		mergeWithAllTokensTextRegion( context.read( TokenType.COMMA ) );
             		expectingData = true;
             		continue outer;
             	} else {

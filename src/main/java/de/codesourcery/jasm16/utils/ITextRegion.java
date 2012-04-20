@@ -26,7 +26,7 @@ import java.util.List;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface ITextRange
+public interface ITextRegion
 {
 	/**
 	 * Returns the starting offset of this text block.
@@ -53,13 +53,13 @@ public interface ITextRange
      * 
      * @param other
      */
-    public void merge(ITextRange other); 
+    public void merge(ITextRegion other); 
     
     /**
      * Calculates the union of this text block with several others.
      * @param ranges
      */
-    public void merge(List<? extends ITextRange> ranges);
+    public void merge(List<? extends ITextRegion> ranges);
     
     /**
      * Calculates the intersection of this text block with another.
@@ -68,7 +68,7 @@ public interface ITextRange
      * @throws IllegalArgumentException if <code>other</code> is <code>null</code>
      * or does not overlap with this text range at all.
      */
-    public void intersect(ITextRange other) throws IllegalArgumentException;
+    public void intersect(ITextRegion other) throws IllegalArgumentException;
     
     /**
      * Subtracts another text range from this one.
@@ -80,7 +80,7 @@ public interface ITextRange
      * @param other
      * @throws UnsupportedOperationException
      */
-    public void subtract(ITextRange other) throws UnsupportedOperationException;  
+    public void subtract(ITextRegion other) throws UnsupportedOperationException;  
     
     /**
      * Check whether this text block is the same as another.
@@ -89,14 +89,14 @@ public interface ITextRange
      * @return <code>true</code> if this block as the same length and starting offset
      * as the argument
      */
-    public boolean isSame(ITextRange other); 
+    public boolean isSame(ITextRegion other); 
     
     /**
      * Check whether this text block fully contains another region.
      * @param other
      * @return
      */
-    public boolean contains(ITextRange other); 
+    public boolean contains(ITextRegion other); 
     
     /**
      * Check whether this text block overlaps with another.
@@ -104,7 +104,7 @@ public interface ITextRange
      * @param other
      * @return
      */
-    public boolean overlaps(ITextRange other);
+    public boolean overlaps(ITextRegion other);
     
     /**
      * Check whether this text block covers a given offset.

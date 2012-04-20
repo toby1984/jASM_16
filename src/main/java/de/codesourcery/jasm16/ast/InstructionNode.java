@@ -113,9 +113,9 @@ public class InstructionNode extends ObjectCodeOutputNode
         final OpCode opCode = OpCode.fromIdentifier( token.getContents().toUpperCase() );
         this.opCode = opCode;
 
-        mergeWithAllTokensTextRange( token );
+        mergeWithAllTokensTextRegion( token );
 
-        mergeWithAllTokensTextRange( context.parseWhitespace() );
+        mergeWithAllTokensTextRegion( context.parseWhitespace() );
         
         errorRecoveryTokenTypes = new TokenType[] {TokenType.COMMA };
         for ( int i = 0 ; i < opCode.getOperandCount() ; i++ ) 
@@ -143,7 +143,7 @@ public class InstructionNode extends ObjectCodeOutputNode
             final OperandNode op = (OperandNode) node;
             if ( ! opcode.isValidAddressingMode( index , op.getAddressingMode() ) ) {
                 throw new ParseException("Opcode "+opcode+" does not support addressing mode "+
-                        op.getAddressingMode()+" for parameter "+(index+1) , op.getTextRange() );
+                        op.getAddressingMode()+" for parameter "+(index+1) , op.getTextRegion() );
             }
 
             final OperandPosition position;
@@ -157,7 +157,7 @@ public class InstructionNode extends ObjectCodeOutputNode
 
             if ( ! getOpCode().isOperandValidInPosition( position , op.getAddressingMode(), op.getRegister() ) ) 
             {
-                throw new ParseException("Operand cannot be used as "+position,op.getTextRange());
+                throw new ParseException("Operand cannot be used as "+position,op.getTextRegion());
             }
         }
         addChild( node , context );
@@ -166,14 +166,14 @@ public class InstructionNode extends ObjectCodeOutputNode
     protected void parseArgumentSeparator(IParseContext context) throws ParseException {
 
         if ( ! context.eof() && context.peek().isWhitespace() ) {
-            mergeWithAllTokensTextRange( context.parseWhitespace() );
+            mergeWithAllTokensTextRegion( context.parseWhitespace() );
         }
 
-        mergeWithAllTokensTextRange( context.read(TokenType.COMMA ) );
+        mergeWithAllTokensTextRegion( context.read(TokenType.COMMA ) );
 
         if ( context.peek().isWhitespace() ) 
         {
-            mergeWithAllTokensTextRange( context.parseWhitespace() );
+            mergeWithAllTokensTextRegion( context.parseWhitespace() );
         }
     }
 

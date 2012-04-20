@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * A generic resource that one can read from / write to (e.g. a file). 
@@ -56,7 +56,7 @@ public interface IResource
      * @return
      * @throws IOException
      */
-    public String readText(ITextRange range) throws IOException;    
+    public String readText(ITextRegion range) throws IOException;    
     
     /**
      * Returns an estimate of the number of bytes that can be read 

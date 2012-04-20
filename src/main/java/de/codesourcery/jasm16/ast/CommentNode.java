@@ -31,14 +31,14 @@ public class CommentNode extends ASTNode
     @Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
-    	mergeWithAllTokensTextRange( context.read( TokenType.SINGLE_LINE_COMMENT) );
+    	mergeWithAllTokensTextRegion( context.read( TokenType.SINGLE_LINE_COMMENT) );
 
         while( ! context.eof() && ! context.peek().isEOL() ) 
         {
-        	mergeWithAllTokensTextRange( context.read() );
+        	mergeWithAllTokensTextRegion( context.read() );
         }
         if ( ! context.eof() ) {
-        	mergeWithAllTokensTextRange( context.read( TokenType.EOL ) );
+        	mergeWithAllTokensTextRegion( context.read( TokenType.EOL ) );
         }
         return this;
     }

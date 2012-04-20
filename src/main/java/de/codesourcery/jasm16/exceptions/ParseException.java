@@ -15,43 +15,43 @@
  */
 package de.codesourcery.jasm16.exceptions;
 
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class ParseException extends java.text.ParseException
 {
-    private final ITextRange range;
+    private final ITextRegion range;
     private final Throwable cause;
     
     public ParseException(String s, int offset,int length)
     {
         super(s, offset );
-        this.range = new TextRange( offset , length );
+        this.range = new TextRegion( offset , length );
         this.cause = null;
     }
     
     public ParseException(String s, int offset,int length,Throwable cause)
     {
         super(s, offset );
-        this.range = new TextRange( offset , length );
+        this.range = new TextRegion( offset , length );
         this.cause = cause;
     }    
     
-    public ParseException(String s, ITextRange range)
+    public ParseException(String s, ITextRegion range)
     {
         super(s, range.getStartingOffset() );
-        this.range = new TextRange( range );
+        this.range = new TextRegion( range );
         this.cause = null;
     }
     
-    public ParseException(String s, ITextRange range,Throwable cause)
+    public ParseException(String s, ITextRegion range,Throwable cause)
     {
         super(s, range.getStartingOffset() );
-        this.range = new TextRange( range );
+        this.range = new TextRegion( range );
         this.cause = cause;
     }
     
-    public ITextRange getRange()
+    public ITextRegion getRange()
     {
         return range;
     }

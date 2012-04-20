@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Immutable symbol.
@@ -39,5 +39,5 @@ public interface ISymbol {
 	 */
 	public ICompilationUnit getCompilationUnit();
 	
-	public ITextRange getLocation();
+	public ITextRegion getLocation();
 }

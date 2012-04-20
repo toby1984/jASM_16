@@ -23,7 +23,7 @@ import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Operator;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * AST node that represents an operator along with it's operands.
@@ -64,9 +64,9 @@ public class OperatorNode extends TermNode
         return false; 
     }    
     
-    public OperatorNode(Operator operator, ASTNode term1,ASTNode term2,ITextRange foldedTextRange) 
+    public OperatorNode(Operator operator, ASTNode term1,ASTNode term2,ITextRegion foldedTextRegion) 
     {
-        super( foldedTextRange );
+        super( foldedTextRegion );
     	if ( operator == null ) {
 			throw new IllegalArgumentException("operator must not be NULL");
 		}
@@ -83,7 +83,7 @@ public class OperatorNode extends TermNode
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         final IToken tok = context.read("expected an operator",TokenType.OPERATOR);
-        mergeWithAllTokensTextRange( tok  );
+        mergeWithAllTokensTextRegion( tok  );
         
         if ( ! Operator.isValidOperator( tok.getContents() ) ) 
         {

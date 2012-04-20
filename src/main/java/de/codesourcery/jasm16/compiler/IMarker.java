@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Generic marker that may be added to a {@link ICompilationUnit}.
@@ -37,7 +37,7 @@ public interface IMarker
     public static final String ATTR_SRC_OFFSET = "location";
     
     /**
-     * {@link ITextRange} instance describing source location.
+     * {@link ITextRegion} instance describing source location.
      */
     public static final String ATTR_SRC_REGION = "region"; 
     

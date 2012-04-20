@@ -21,7 +21,7 @@ import java.util.List;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * AST node that covers a source code region that failed to parse correctly.
@@ -43,9 +43,9 @@ public class UnparsedContentNode extends ASTNode
         this.error = error;
         this.errorOffset = errorOffset;
         if ( ! tokens.isEmpty() ) {
-            setTextRangeIncludingAllTokens( new TextRange( tokens ) );
+            setTextRegionIncludingAllTokens( new TextRegion( tokens ) );
         } else {
-            setTextRangeIncludingAllTokens( new TextRange( errorOffset , 0 ) );
+            setTextRegionIncludingAllTokens( new TextRegion( errorOffset , 0 ) );
         }
     }
     
@@ -79,6 +79,6 @@ public class UnparsedContentNode extends ASTNode
     @Override
     public String toString()
     {
-        return "UnparsedContentNode[ errorOffset = "+errorOffset+" , region = "+getTextRange()+"]";
+        return "UnparsedContentNode[ errorOffset = "+errorOffset+" , region = "+getTextRegion()+"]";
     }
 }

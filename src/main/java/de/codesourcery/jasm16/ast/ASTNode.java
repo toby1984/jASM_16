@@ -35,25 +35,25 @@ import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.scanner.IScanner;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Abstract base-class of all AST nodes.
  * 
  * <p>AST nodes are created for one or more tokens in the input stream.</p>
- * <p>Each AST node keeps track of the source code location ({@link ITextRange} it
+ * <p>Each AST node keeps track of the source code location ({@link ITextRegion} it
  * was created from so editors etc. have an easy time associating source code
  * with the AST.</p>
  * 
  * <p>Keeping track of the source code locations is slightly complicated
  * because not all tokens (e.g. whitespace,EOL) become part of the AST, so this
- * class actually uses two {@link ITextRange} fields to keep track of the
+ * class actually uses two {@link ITextRegion} fields to keep track of the
  * source code range covered by the AST node (or it's children) and
  * the input that was actually traversed while this subtree was constructed.</p>.   
  * 
- * <p>Make sure you understand how {@link #getTextRange()} , {@link #recalculateTextRange(boolean)}, 
- * {@link #setTextRangeIncludingAllTokens(ITextRange)} and {@link #mergeWithAllTokensTextRange(ASTNode)}
+ * <p>Make sure you understand how {@link #getTextRegion()} , {@link #recalculateTextRegion(boolean)}, 
+ * {@link #setTextRegionIncludingAllTokens(ITextRegion)} and {@link #mergeWithAllTokensTextRegion(ASTNode)}
  * work.</p>
  * 
  * <p>This class also implements the parse error recovery mechanism, check out {@link #parse(IParseContext)} to
@@ -81,19 +81,19 @@ public abstract class ASTNode
      *  This text range covers <b>all</b> tokens that were consumed while
      *  parsing this node (including whitespace, EOL etc.).
      */
-    private ITextRange textRangeIncludingAllTokens;
+    private ITextRegion textRegionIncludingAllTokens;
 
     /** 
-     * Cached value of {@link #textRangeIncludingAllTokens} plus {@link #getTextRange()} of all
+     * Cached value of {@link #textRegionIncludingAllTokens} plus {@link #getTextRegion()} of all
      * child nodes.
      */
-    private ITextRange actualTextRange;
+    private ITextRegion actualTextRegion;
 
     /**
      * Creates a new instance.
      * 
      * <p>This instance will have no parent
-     * and {@link #textRangeIncludingAllTokens} and {@link #actualTextRange}
+     * and {@link #textRegionIncludingAllTokens} and {@link #actualTextRegion}
      * will be <code>null</code>.</p>
      */
     public ASTNode() {
@@ -102,14 +102,14 @@ public abstract class ASTNode
     /**
      * Creates a new AST node for a given source code location.
      * 
-     * @param baseTextRange base text range covered by this node, never <code>null</code>
+     * @param allTokensRegion text range covered by <b>this</b> node, never <code>null</code>
      */
-    protected ASTNode(ITextRange baseTextRange) 
+    protected ASTNode(ITextRegion allTokensRegion) 
     {
-        if (baseTextRange == null) {
-            throw new IllegalArgumentException("textRange must not be NULL.");
+        if (allTokensRegion == null) {
+            throw new IllegalArgumentException("allTokensRegion must not be NULL.");
         }
-        this.textRangeIncludingAllTokens = new TextRange( baseTextRange );        
+        this.textRegionIncludingAllTokens = new TextRegion( allTokensRegion );        
     }	
 
     /**
@@ -122,27 +122,27 @@ public abstract class ASTNode
      * <p>
      * The actual source code region covered by <b>this</b> node is composed
      * of the actual source code regions of all child nodes (=invoking
-     * {@link #getTextRange()} on each child) <b>PLUS</b> 
+     * {@link #getTextRegion()} on each child) <b>PLUS</b> 
      * this node's <i>'all-tokens' text range</i> (see .
      * </p>
      * 
      * @return
-     * @see #mergeTextRange(ITextRange)
-     * @see #mergeWithAllTokensTextRange(ASTNode)
+     * @see #mergeTextRegion(ITextRegion)
+     * @see #mergeWithAllTokensTextRegion(ASTNode)
      */
-    public final ITextRange getTextRange() 
+    public final ITextRegion getTextRegion() 
     {
-        if ( actualTextRange == null ) 
+        if ( actualTextRegion == null ) 
         {
-            recalculateTextRange(true);
-            return actualTextRange;
+            recalculateTextRegion(true);
+            return actualTextRegion;
         }
-        return actualTextRange;
+        return actualTextRegion;
     }
 
     /**
      * Merges the actual source code region covered by a node with
-     * this node's {@link #textRangeIncludingAllTokens}.
+     * this node's {@link #textRegionIncludingAllTokens}.
      * 
      * <p>This method is used during expression folding/evaluation to
      * preserve the text range covered by an AST node when an AST node
@@ -153,15 +153,15 @@ public abstract class ASTNode
      * to be permanently lost.</p>
      * 
      * @param node
-     * @see ITextRange#merge(ITextRange)     
+     * @see ITextRegion#merge(ITextRegion)     
      */
-    protected final void mergeWithAllTokensTextRange(ASTNode node) 
+    protected final void mergeWithAllTokensTextRegion(ASTNode node) 
     {
-        mergeWithAllTokensTextRange( node.getTextRange() );
+        mergeWithAllTokensTextRegion( node.getTextRegion() );
     }
 
     /**
-     * Merges the  source code region with this node's {@link #textRangeIncludingAllTokens}.
+     * Merges the  source code region with this node's {@link #textRegionIncludingAllTokens}.
      * 
      * <p>This method is used during expression folding/evaluation to
      * preserve the text range covered by an AST node when an AST node
@@ -172,78 +172,78 @@ public abstract class ASTNode
      * to be permanently lost.</p>
      * 
      * @param range
-     * @see ITextRange#merge(ITextRange)
+     * @see ITextRegion#merge(ITextRegion)
      */    
-    protected final void mergeWithAllTokensTextRange(ITextRange range) 
+    protected final void mergeWithAllTokensTextRegion(ITextRegion range) 
     {
-        if ( this.textRangeIncludingAllTokens == null && this.actualTextRange != null ) {
-            this.textRangeIncludingAllTokens = this.actualTextRange;
+        if ( this.textRegionIncludingAllTokens == null && this.actualTextRegion != null ) {
+            this.textRegionIncludingAllTokens = this.actualTextRegion;
         }
 
-        if ( this.textRangeIncludingAllTokens == null ) 
+        if ( this.textRegionIncludingAllTokens == null ) 
         {
-            this.textRangeIncludingAllTokens = new TextRange( range );
+            this.textRegionIncludingAllTokens = new TextRegion( range );
         } else {
-            this.textRangeIncludingAllTokens.merge( range );
+            this.textRegionIncludingAllTokens.merge( range );
         }
 
-        if ( this.actualTextRange != null ) {
-            this.actualTextRange = null;
-            if ( getParent() != null ) { // maybe a parent node already called getTextRange() on this child...
-                getParent().recalculateTextRange(true);
+        if ( this.actualTextRegion != null ) {
+            this.actualTextRegion = null;
+            if ( getParent() != null ) { // maybe a parent node already called getTextRegion() on this child...
+                getParent().recalculateTextRegion(true);
             }
         }
     }
 
-    protected final void mergeTextRange(ITextRange range) 
+    protected final void mergeTextRegion(ITextRegion range) 
     {
-        final int oldValue = TextRange.hashCode( this.actualTextRange );
+        final int oldValue = TextRegion.hashCode( this.actualTextRegion );
 
-        if ( this.actualTextRange == null && textRangeIncludingAllTokens != null) 
+        if ( this.actualTextRegion == null && textRegionIncludingAllTokens != null) 
         {
-            this.actualTextRange = new TextRange( textRangeIncludingAllTokens );
+            this.actualTextRegion = new TextRegion( textRegionIncludingAllTokens );
         }
 
-        if ( this.actualTextRange != null ) {
-            this.actualTextRange.merge( range );
+        if ( this.actualTextRegion != null ) {
+            this.actualTextRegion.merge( range );
         } else {
-            this.actualTextRange  = new TextRange( range );	    	
+            this.actualTextRegion  = new TextRegion( range );	    	
         }
 
-        if ( oldValue != TextRange.hashCode( this.actualTextRange ) && getParent() != null ) {
-            getParent().mergeTextRange( this.actualTextRange );
+        if ( oldValue != TextRegion.hashCode( this.actualTextRegion ) && getParent() != null ) {
+            getParent().mergeTextRegion( this.actualTextRegion );
         }
     }
 
-    protected void setTextRangeIncludingAllTokens( ITextRange textRange ) 
+    protected void setTextRegionIncludingAllTokens( ITextRegion textRegion ) 
     {
-        this.textRangeIncludingAllTokens = new TextRange( textRange );
-        this.actualTextRange = null;
-        recalculateTextRange(true);
+        this.textRegionIncludingAllTokens = new TextRegion( textRegion );
+        this.actualTextRegion = null;
+        recalculateTextRegion(true);
     }
 
-    private void recalculateTextRange(boolean recalculateParents) 
+    private void recalculateTextRegion(boolean recalculateParents) 
     {
-        final int oldValue = TextRange.hashCode( this.actualTextRange );
+        final int oldValue = TextRegion.hashCode( this.actualTextRegion );
 
-        ITextRange range = textRangeIncludingAllTokens != null ? new TextRange( textRangeIncludingAllTokens ) : null;
+        ITextRegion range = textRegionIncludingAllTokens != null ? new TextRegion( textRegionIncludingAllTokens ) : null;
 
         for ( ASTNode child : this.children) 
         {
             if ( range == null ) {
-                range = new TextRange( child.getTextRange() );
+                range = new TextRegion( child.getTextRegion() );
             } else {
-                range.merge( child.getTextRange() );
+                range.merge( child.getTextRegion() );
             }
         }
 
-        this.actualTextRange = range;
+        this.actualTextRegion = range;
 
         if ( recalculateParents &&
-                oldValue != TextRange.hashCode( this.actualTextRange ) && 
+                oldValue != TextRegion.hashCode( this.actualTextRegion ) && 
                 getParent() != null ) 
         {
-            getParent().recalculateTextRange(true);
+            getParent().recalculateTextRegion(true);
         }
     }
 
@@ -258,11 +258,11 @@ public abstract class ASTNode
     public final ASTNode createCopy(boolean shallow) {
 
         ASTNode result = copySingleNode();
-        if ( actualTextRange != null ) {
-            result.actualTextRange = new TextRange( actualTextRange );
+        if ( actualTextRegion != null ) {
+            result.actualTextRegion = new TextRegion( actualTextRegion );
         }
-        if ( textRangeIncludingAllTokens != null ) {
-            result.textRangeIncludingAllTokens = new TextRange( textRangeIncludingAllTokens );
+        if ( textRegionIncludingAllTokens != null ) {
+            result.textRegionIncludingAllTokens = new TextRegion( textRegionIncludingAllTokens );
         }
         if ( ! shallow ) {
             for ( ASTNode child : children ) {
@@ -335,8 +335,8 @@ public abstract class ASTNode
         final int otherIdx = otherParent.indexOf( otherNode );
         setChild( idx , otherNode );
         otherParent.setChild( otherIdx , childToSwap );
-        recalculateTextRange(true);
-        otherParent.recalculateTextRange( true );
+        recalculateTextRegion(true);
+        otherParent.recalculateTextRegion( true );
     }
 
     /**
@@ -489,15 +489,15 @@ public abstract class ASTNode
         } else {
             throw new IndexOutOfBoundsException("Child index "+index+" is out of range, node "+this+" only has "+getChildCount()+" children.");		    
         }
-        if ( node.textRangeIncludingAllTokens != null ) 
+        if ( node.textRegionIncludingAllTokens != null ) 
         {
-            if ( this.textRangeIncludingAllTokens == null ) {
-                this.textRangeIncludingAllTokens = new TextRange( node.textRangeIncludingAllTokens );
+            if ( this.textRegionIncludingAllTokens == null ) {
+                this.textRegionIncludingAllTokens = new TextRegion( node.textRegionIncludingAllTokens );
             } else {
-                this.textRangeIncludingAllTokens.merge( node.textRangeIncludingAllTokens );
+                this.textRegionIncludingAllTokens.merge( node.textRegionIncludingAllTokens );
             }
         } 
-        mergeTextRange( node.getTextRange() );
+        mergeTextRegion( node.getTextRegion() );
         node.setParent( this );
         return node;
     }
@@ -631,7 +631,7 @@ public abstract class ASTNode
     private final ICompilationError wrapException(Exception e, IParseContext context)
     {
         final int errorOffset;        
-        final ITextRange errorRange;
+        final ITextRegion errorRange;
         if ( e instanceof ParseException ) 
         {
             errorRange = ((ParseException) e).getRange();
@@ -641,13 +641,13 @@ public abstract class ASTNode
             errorRange = ((ICompilationError) e).getLocation();
         } else if ( e instanceof java.text.ParseException ) {
             errorOffset = ((java.text.ParseException) e).getErrorOffset();    
-            errorRange = new TextRange(errorOffset,0);
+            errorRange = new TextRegion(errorOffset,0);
         } else if ( e instanceof EOFException) {
             errorOffset = ((EOFException) e).getErrorOffset();
-            errorRange = new TextRange(errorOffset,0);
+            errorRange = new TextRegion(errorOffset,0);
         } else {
             errorOffset = context.currentParseIndex();
-            errorRange = new TextRange(errorOffset,0);
+            errorRange = new TextRegion(errorOffset,0);
         } 
 
         final ICompilationError result;
@@ -794,7 +794,7 @@ public abstract class ASTNode
             throw new IllegalArgumentException("Node "+child+" is not a child of "+this);
         }
         setChild( idx , newNode );
-        recalculateTextRange(true);
+        recalculateTextRegion(true);
     }
 
     /**
@@ -817,17 +817,17 @@ public abstract class ASTNode
 
     /**
      * Returns all AST nodes <b>below</b> this AST node
-     * that overlap with a specific {@link ITextRange}.
+     * that overlap with a specific {@link ITextRegion}.
      * 
      * @param visible
      * @return
      */
-    public final List<ASTNode> getNodesInRange(ITextRange visible)
+    public final List<ASTNode> getNodesInRange(ITextRegion visible)
     {
         final List<ASTNode> result = new ArrayList<ASTNode>();
         for ( ASTNode child : children ) 
         {
-            if ( child.getTextRange().overlaps( visible ) ) {
+            if ( child.getTextRegion().overlaps( visible ) ) {
                 result.add( child );
             }
         }
@@ -844,7 +844,7 @@ public abstract class ASTNode
      */
     public final ASTNode getNodeInRange(int offset) 
     {
-        if ( ! getTextRange().contains( offset ) ) 
+        if ( ! getTextRegion().contains( offset ) ) 
         {
             return null;
         }
@@ -853,8 +853,8 @@ public abstract class ASTNode
             ASTNode tmp = child.getNodeInRange( offset );
             if ( tmp != null ) 
             {
-                final int delta1 = Math.abs( offset - result.getTextRange().getStartingOffset() );
-                final int delta2 = Math.abs( offset - tmp.getTextRange().getStartingOffset() );
+                final int delta1 = Math.abs( offset - result.getTextRegion().getStartingOffset() );
+                final int delta2 = Math.abs( offset - tmp.getTextRegion().getStartingOffset() );
                 if ( delta2 < delta1 || ! child.hasChildren() ) {
                     result = tmp;
                 } 

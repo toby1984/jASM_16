@@ -21,14 +21,14 @@ import java.util.List;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.scanner.IScanner;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Lexer that tokenizes an input stream returned by {@link IScanner}.
  * 
  * <p>Each token returned by this lexer provides access
  * to the string contents that make up the token and
- * the {@link ITextRange} in the input stream where the 
+ * the {@link ITextRegion} in the input stream where the 
  * token was parsed from.</p>
  * 
  * <p>Note that this lexer provides a way of creating

@@ -79,7 +79,7 @@ public class RegisterReferenceNode extends TermNode
     	    default: 
     	    	throw new RuntimeException("Unreachable code reached");
     	    }
-            mergeWithAllTokensTextRange( token );
+            mergeWithAllTokensTextRegion( token );
     	    return this; 
     	}  
     	
@@ -92,7 +92,7 @@ public class RegisterReferenceNode extends TermNode
     		{
     			throw new ParseException("Operator "+op+" not supported with register", token );
     		}
-   			mergeWithAllTokensTextRange( context.read() );
+   			mergeWithAllTokensTextRegion( context.read() );
    			hasPreDecrement = true;
     	}
     	
@@ -103,14 +103,14 @@ public class RegisterReferenceNode extends TermNode
     	}
 
     	register = Register.fromString( token.getContents() );
-   		mergeWithAllTokensTextRange( token );
+   		mergeWithAllTokensTextRegion( token );
     	
     	if ( ! context.eof() && context.peek().hasType( TokenType.OPERATOR ) ) 
     	{
     		final Operator op = Operator.fromString( context.peek().getContents() );
     		if ( op == Operator.INCREMENT ) 
     		{
-    			mergeWithAllTokensTextRange( context.read() );
+    			mergeWithAllTokensTextRegion( context.read() );
     			hasPostIncrement = true;
     		} 
     	}

@@ -37,7 +37,7 @@ import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.phases.FoldExpressionsPhase;
 import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.parser.TestHelper;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class FoldExpressionsPhaseTest extends TestHelper
 {
@@ -92,12 +92,12 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertEquals(OperandNode.class ,               ast.child(0).child(0).child(1).getClass() );
         OperandNode op = (OperandNode) ast.child(0).child(0).child(1);
         
-        assertTextRange( new TextRange(8,15), op.getTextRange() , source );
+        assertTextRegion( new TextRegion(8,15), op.getTextRegion() , source );
         
         assertEquals(OperatorNode.class   ,          ast.child(0).child(0).child(1).child(0).getClass() );  
         
         OperatorNode expr = (OperatorNode) ast.child(0).child(0).child(1).child(0);
-        assertTextRange( new TextRange(9,13) , expr.getTextRange() , source );
+        assertTextRegion( new TextRegion(9,13) , expr.getTextRegion() , source );
         
         assertEquals(NumberNode.class   ,              ast.child(0).child(0).child(1).child(0).child(0).getClass() );           
         final NumberNode numberNode = (NumberNode) ast.child(0).child(0).child(1).child(0).child(0);
@@ -130,12 +130,12 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertEquals(OperandNode.class ,               ast.child(0).child(0).child(1).getClass() );
         OperandNode op = (OperandNode) ast.child(0).child(0).child(1);
         
-        assertTextRange( new TextRange(8,17), op.getTextRange() , source );
+        assertTextRegion( new TextRegion(8,17), op.getTextRegion() , source );
         
         assertEquals(OperatorNode.class   ,          ast.child(0).child(0).child(1).child(0).getClass() );  
         
         OperatorNode expr = (OperatorNode) ast.child(0).child(0).child(1).child(0);
-        assertTextRange( new TextRange(9,15) , expr.getTextRange() , source );
+        assertTextRegion( new TextRegion(9,15) , expr.getTextRegion() , source );
         
         assertEquals(NumberNode.class   ,              ast.child(0).child(0).child(1).child(0).child(0).getClass() );           
         final NumberNode numberNode = (NumberNode) ast.child(0).child(0).child(1).child(0).child(0);

@@ -15,14 +15,14 @@
  */
 package de.codesourcery.jasm16.lexer;
 
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Generic {@link IToken} implementation.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class Token extends TextRange implements IToken {
+public class Token extends TextRegion implements IToken {
 
 	private final TokenType type;
 	private final String contents;

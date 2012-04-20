@@ -261,7 +261,7 @@ public class ASTUtils {
     public static final void printAST(ASTNode n,int depth,String source) 
     {
         final String indent = StringUtils.repeat(" " , depth*2 );
-        System.out.println( indent + n.toString()+" >"+n.getTextRange().apply( source )+"<" );
+        System.out.println( indent + n.toString()+" >"+n.getTextRegion().apply( source )+"<" );
 
         for ( ASTNode child  : n.getChildren() ) {
             printAST(child,depth+1 , source );
@@ -295,7 +295,7 @@ public class ASTUtils {
     {
     	final String indent = StringUtils.repeat(" " , currentDepth *2);
     	
-    	final String contents = unit.getSource( currentNode.getTextRange() );
+    	final String contents = unit.getSource( currentNode.getTextRegion() );
     	final String src = ">"+contents+"<";
   		result.append( indent + " "+currentNode.getClass().getSimpleName()+" ("+src+")").append("\n");    		
     	for ( ASTNode child : currentNode.getChildren() ) {

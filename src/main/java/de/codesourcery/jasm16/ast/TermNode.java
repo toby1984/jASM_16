@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.ast;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Abstract base-class for AST nodes that may be used in 
@@ -30,7 +30,7 @@ public abstract class TermNode  extends ASTNode
     public TermNode() {
     }
     
-    public TermNode(ITextRange range) {
+    public TermNode(ITextRegion range) {
         super( range );
     }
     

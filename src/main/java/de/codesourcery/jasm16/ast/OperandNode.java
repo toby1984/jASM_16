@@ -90,10 +90,10 @@ public class OperandNode extends ASTNode
         } 
         else if ( tok.hasType( TokenType.ANGLE_BRACKET_OPEN) ) { // INDIRECT ADDRESSING
             this.addressingMode = AddressingMode.INTERNAL_EXPRESSION;
-            mergeWithAllTokensTextRange( context.read( TokenType.ANGLE_BRACKET_OPEN ) );
+            mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_OPEN ) );
             final ASTNode expr = wrapExpression( new ExpressionNode().parseInternal( context ) , context );
             addChild( expr , context );
-			mergeWithAllTokensTextRange( context.read( TokenType.ANGLE_BRACKET_CLOSE ) );
+			mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_CLOSE ) );
             return this;
         } else if ( tok.hasType( TokenType.CHARACTERS ) ) { // REGISTER or IMMEDIATE (label reference)
 

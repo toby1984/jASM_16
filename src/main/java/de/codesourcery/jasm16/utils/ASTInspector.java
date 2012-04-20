@@ -161,7 +161,7 @@ public class ASTInspector {
     protected  static final class StatusMessage 
     {
         private final Severity severity;
-        private final ITextRange location;
+        private final ITextRegion location;
         private final String message;
         @SuppressWarnings("unused")
         private final Throwable cause;
@@ -172,7 +172,7 @@ public class ASTInspector {
             this( severity , null , message , null ,null );
         }	    
 
-        public StatusMessage(Severity severity, ITextRange location, String message)
+        public StatusMessage(Severity severity, ITextRegion location, String message)
         {
             this( severity , location , message , null ,null);
         }
@@ -182,7 +182,7 @@ public class ASTInspector {
             this(severity,error.getLocation(),error.getMessage(),error,error.getCause());
         }
 
-        public StatusMessage(Severity severity, ITextRange location, String message, ICompilationError error,Throwable cause)
+        public StatusMessage(Severity severity, ITextRegion location, String message, ICompilationError error,Throwable cause)
         {
             if ( severity == null ) {
                 throw new IllegalArgumentException("severity must not be NULL.");
@@ -213,7 +213,7 @@ public class ASTInspector {
             return severity;
         }
 
-        public ITextRange getLocation()
+        public ITextRegion getLocation()
         {
             return location;
         }
@@ -274,12 +274,6 @@ public class ASTInspector {
         @Override
         public int getColumnCount()
         {
-            /*
-        private final Severity severity;
-        private final ITextRange location;
-        private final String message;
-        private final ICompilationError error;             
-             */
             return 3;
         }
 
@@ -462,7 +456,7 @@ public class ASTInspector {
         @Override
         public void caretUpdate(CaretEvent e) 
         {
-            if ( currentUnit != null && currentUnit.getAST() != null && currentUnit.getAST().getTextRange() != null ) 
+            if ( currentUnit != null && currentUnit.getAST() != null && currentUnit.getAST().getTextRegion() != null ) 
             {
                 try {
                     final SourceLocation location = getSourceLocation( e.getDot() );
@@ -530,13 +524,13 @@ public class ASTInspector {
         frame.setVisible( true );
     }
 
-    private SourceLocation getSourceLocation(ITextRange range) {
+    private SourceLocation getSourceLocation(ITextRegion range) {
         return getSourceLocation( range.getStartingOffset() );
     }
 
     private SourceLocation getSourceLocation(int offset) {
         final Line line = currentUnit.getLineForOffset( offset);
-        return new SourceLocation( currentUnit , line , new TextRange( offset , 0 ) );
+        return new SourceLocation( currentUnit , line , new TextRegion( offset , 0 ) );
     }
 
     private void setupUI() throws MalformedURLException 
@@ -874,13 +868,13 @@ public class ASTInspector {
         private String getLabelFor(ASTNode n) throws IOException 
         {
             String name = n.getClass().getSimpleName();
-            ITextRange range = n.getTextRange();
+            ITextRegion range = n.getTextRegion();
             String source = range == null ? "<no source location>" : currentUnit.getSource( range );
-            String txt = name+" "+source+" ( "+n.getTextRange()+" )";  
+            String txt = name+" "+source+" ( "+n.getTextRegion()+" )";  
 
             if ( n instanceof StatementNode ) 
             {
-                final List<Line> linesForRange = currentUnit.getLinesForRange( n.getTextRange() );
+                final List<Line> linesForRange = currentUnit.getLinesForRange( n.getTextRegion() );
                 return "Statement "+StringUtils.join( linesForRange , ",");
             } else if ( n instanceof AST ) {
                 return "AST";
@@ -913,7 +907,7 @@ public class ASTInspector {
         final IResource resource = new IResource() {
 
             @Override
-            public String readText(ITextRange range) throws IOException
+            public String readText(ITextRegion range) throws IOException
             {
                 return range.apply( getSourceFromEditor() );
             }
@@ -1013,7 +1007,7 @@ public class ASTInspector {
         disableDocumentListener();
         
         try {
-            final ITextRange visible = getVisibleTextRange();
+            final ITextRegion visible = getVisibleTextRegion();
             if ( visible != null ) {
                 long time = -System.currentTimeMillis();
                 final List<ASTNode> nodes = unit.getAST().getNodesInRange( visible );
@@ -1041,16 +1035,16 @@ public class ASTInspector {
     {
         if ( node instanceof InstructionNode ) 
         {
-            ITextRange children = null;
+            ITextRegion children = null;
             for ( ASTNode child : node.getChildren() ) 
             {
                 if ( children == null ) {
-                    children = child.getTextRange();
+                    children = child.getTextRegion();
                 } else {
-                    children.merge( child.getTextRange() );
+                    children.merge( child.getTextRegion() );
                 }
             }
-            ITextRange whole = new TextRange( node.getTextRange() );
+            ITextRegion whole = new TextRegion( node.getTextRegion() );
             whole.subtract( children );
             highlight( whole , instructionStyle );
         } else  if ( node instanceof LabelNode) {
@@ -1066,15 +1060,15 @@ public class ASTInspector {
 
     private void highlight(ASTNode node, AttributeSet attributes) 
     {
-        highlight( node.getTextRange() , attributes );
+        highlight( node.getTextRegion() , attributes );
     }
 
-    private void highlight(ITextRange range, AttributeSet attributes) 
+    private void highlight(ITextRegion range, AttributeSet attributes) 
     {
         editorPane.getStyledDocument().setCharacterAttributes( range.getStartingOffset() , range.getLength() , attributes , true );
     }
 
-    private void moveCursorTo(ITextRange location) 
+    private void moveCursorTo(ITextRegion location) 
     {
         if ( currentUnit == null || currentUnit.getAST() == null ) {
             return;
@@ -1107,7 +1101,7 @@ public class ASTInspector {
         }
     }
 
-    private ITextRange getVisibleTextRange() 
+    private ITextRegion getVisibleTextRegion() 
     {
         final Point startPoint = editorScrollPane.getViewport().getViewPosition();
         final Dimension size = editorScrollPane.getViewport().getExtentSize();
@@ -1116,7 +1110,7 @@ public class ASTInspector {
         try {
             final int start = editorPane.viewToModel( startPoint );
             final int end = editorPane.viewToModel( endPoint );
-            return new TextRange( start , end-start );
+            return new TextRegion( start , end-start );
         } 
         catch(NullPointerException e) 
         {
@@ -1153,14 +1147,14 @@ public class ASTInspector {
         {
             for ( ICompilationError error : unit.getErrors() ) 
             {
-                final ITextRange location;
+                final ITextRegion location;
                 if ( error.getLocation() != null ) {
                     location = error.getLocation();
                 } 
                 else 
                 {
                     if ( error.getErrorOffset() != -1 ) {
-                        location = new TextRange( error.getErrorOffset(), 1 );
+                        location = new TextRegion( error.getErrorOffset(), 1 );
                     } else {
                         location = null;
                     }

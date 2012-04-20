@@ -139,7 +139,7 @@ public class Misc {
 		return toPrettyString( errorMessage , errorOffset , null , input );
 	}
 
-	public static String toPrettyString(String errorMessage, int errorOffset , ITextRange location , IScanner input) 
+	public static String toPrettyString(String errorMessage, int errorOffset , ITextRegion location , IScanner input) 
 	{
 		int oldOffset = input.currentParseIndex();
 		try {
@@ -203,7 +203,7 @@ public class Misc {
 			{
 			    final  ICompilationError error=it.next(); 
 			    final int errorOffset;
-                ITextRange range;
+                ITextRegion range;
                 if ( error.getLocation() != null ) {
                     range = error.getLocation();
                     errorOffset= range.getStartingOffset();
@@ -212,7 +212,7 @@ public class Misc {
                 {
                     errorOffset=error.getErrorOffset();
                     if ( errorOffset != -1 ) {
-                        range = new TextRange( errorOffset , 1 );
+                        range = new TextRegion( errorOffset , 1 );
                     } else {
                         range = null;
                     }
@@ -270,7 +270,7 @@ public class Misc {
     			            // can't help it
     			        }
                         if ( thisLine != null && nextLine != null ) {
-                            sourceLine = new TextRange( thisLine.getLineStartingOffset() , nextLine.getLineStartingOffset() - thisLine.getLineStartingOffset() ).apply( source );
+                            sourceLine = new TextRegion( thisLine.getLineStartingOffset() , nextLine.getLineStartingOffset() - thisLine.getLineStartingOffset() ).apply( source );
                         } else {
                             sourceLine = range.apply( source );
                             column=1;      

@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 
 /**
@@ -74,12 +74,12 @@ public interface ICompilationUnit {
 	
     /**
      * Returns the source code line locations that intersect with a given
-     * {@link ITextRange}.
+     * {@link ITextRegion}.
      * 
-     * @param range
+     * @param region
      * @return lines ordered ascending by line number
      */
-    public List<Line> getLinesForRange(ITextRange range);
+    public List<Line> getLinesForRange(ITextRegion region);
     
     /**
      * Returns the source code line location for a given absolute offset.
@@ -118,11 +118,11 @@ public interface ICompilationUnit {
     /**
      * Returns the source code for a given source code location.
      * 
-     * @param range
+     * @param region
      * @return
      * @throws IOException
      */
-	public String getSource(ITextRange range) throws IOException;
+	public String getSource(ITextRegion region) throws IOException;
 	
 	/**
 	 * Registers a source-code line with this compilation unit.
@@ -133,16 +133,16 @@ public interface ICompilationUnit {
     public void setLine(Line l);
 
     /**
-     * Converts a {@link ITextRange} to a {@link SourceLocation} instance
+     * Converts a {@link ITextRegion} to a {@link SourceLocation} instance
      * referring to this compilation unit.
      * 
-     * @param textRange
+     * @param textRegion
      * @return
      * @throws NoSuchElementException if the source location (line number) for this 
-     * text range could not be determined from the AST (maybe because the AST failed to parse
+     * text region could not be determined from the AST (maybe because the AST failed to parse
      * or wasn't parsed yet).
      */
-	public SourceLocation getSourceLocation(ITextRange textRange) throws NoSuchElementException;
+	public SourceLocation getSourceLocation(ITextRegion textRegion) throws NoSuchElementException;
 
 	/**
 	 * Deletes a specific marker.

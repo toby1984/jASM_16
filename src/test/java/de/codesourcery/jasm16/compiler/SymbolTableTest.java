@@ -22,7 +22,7 @@ import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class SymbolTableTest extends TestCase {
 
@@ -31,7 +31,7 @@ public class SymbolTableTest extends TestCase {
 		SymbolTable table = new SymbolTable();
 		
 		ICompilationUnit unit = CompilationUnit.createInstance("id" , "test" );
-		Label label = new Label(  unit , new TextRange(0,4) , new Identifier( "test" ) );
+		Label label = new Label(  unit , new TextRegion(0,4) , new Identifier( "test" ) );
 		table.defineSymbol( label );
 		
 		assertTrue( table.containsSymbol( label.getIdentifier() ) );

@@ -50,7 +50,7 @@ import de.codesourcery.jasm16.parser.ParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 public abstract class TestHelper extends TestCase
@@ -76,7 +76,7 @@ public abstract class TestHelper extends TestCase
     
     protected static final IObjectCodeWriterFactory NOP_WRITER = new NullObjectCodeWriterFactory();
     
-    protected void assertTextRange(ITextRange expected,ITextRange actual,String source) {
+    protected void assertTextRegion(ITextRegion expected,ITextRegion actual,String source) {
 
         if ( ! expected.isSame( actual ) ) {
             System.out.println("Expected: >"+expected.apply( source )+"< ("+expected+")");
@@ -218,10 +218,10 @@ public abstract class TestHelper extends TestCase
     
     protected final String toSourceCode(ASTNode node,String source) 
     {
-        if ( node.getTextRange() == null ) {
+        if ( node.getTextRegion() == null ) {
             return "<no text range available>";
         }
-        return node.getTextRange().apply( source );
+        return node.getTextRegion().apply( source );
     }
     
     protected void resolveSymbols( ASTNode node ) 

@@ -81,11 +81,11 @@ public class FormattingVisitor extends ASTVisitor {
     
     private String getSource(ASTNode node) 
     {
-    	if ( node.getTextRange() == null ) {
+    	if ( node.getTextRegion() == null ) {
     		return "<no text range on node "+node.getClass().getSimpleName()+">";
     	}
     	try {
-			return context.getCurrentCompilationUnit().getSource( node.getTextRange() ).replace("\t", " ").replace("\r","").replace("\n","").trim();
+			return context.getCurrentCompilationUnit().getSource( node.getTextRegion() ).replace("\t", " ").replace("\r","").replace("\n","").trim();
 		} catch (IOException e) {
 			return "<IO exception when reading text from node "+node.getClass().getSimpleName();
 		}
@@ -137,7 +137,7 @@ public class FormattingVisitor extends ASTVisitor {
             final OperandNode operandNode = it.next();
             String sourceCode;
             try {
-                final ITextRange range = operandNode.getTextRange();
+                final ITextRegion range = operandNode.getTextRegion();
                 if ( range != null ) {
                     sourceCode = this.context.getCurrentCompilationUnit().getSource( range ).replaceAll("\t" , " " ).trim();
                 } else {

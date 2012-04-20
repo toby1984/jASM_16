@@ -33,7 +33,7 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.StringResource;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 
 /**
@@ -87,14 +87,14 @@ public class CompilationUnit implements ICompilationUnit {
     }
     
     @Override
-    public SourceLocation getSourceLocation(ITextRange textRange)
+    public SourceLocation getSourceLocation(ITextRegion textRegion)
     {
-        final List<Line> lines = getLinesForRange( textRange );
+        final List<Line> lines = getLinesForRange( textRegion );
         if ( lines.isEmpty() ) {
-            throw new NoSuchElementException("No line for range "+textRange);
+            throw new NoSuchElementException("No line for range "+textRegion);
         }
         
-        return new SourceLocation(this,lines.get(0),textRange);
+        return new SourceLocation(this,lines.get(0),textRegion);
     }
 
     @Override
@@ -126,7 +126,7 @@ public class CompilationUnit implements ICompilationUnit {
      * @return lines ordered ascending by line number
      */
     @Override
-    public List<Line> getLinesForRange(ITextRange range) 
+    public List<Line> getLinesForRange(ITextRegion range) 
     {
         if (range == null) {
             throw new IllegalArgumentException("range must not be NULL.");
@@ -228,7 +228,7 @@ public class CompilationUnit implements ICompilationUnit {
     }
 
     @Override
-    public String getSource(ITextRange range) throws IOException
+    public String getSource(ITextRegion range) throws IOException
     {
         return getResource().readText(range);
     }

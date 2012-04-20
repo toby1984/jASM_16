@@ -18,7 +18,7 @@ package de.codesourcery.jasm16.ast;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Abstract base-class for AST nodes that may evaluate to
@@ -31,13 +31,13 @@ public abstract class ConstantValueNode extends TermNode
     public ConstantValueNode() {
     }
     
-    public ConstantValueNode(ITextRange range) {
+    public ConstantValueNode(ITextRegion range) {
         super( range );
     }
     
     public abstract Long getNumericValue(ISymbolTable symbolTable);
     
-    public final NumberNode toNumberNode(ICompilationContext context,ITextRange range) throws ParseException
+    public final NumberNode toNumberNode(ICompilationContext context,ITextRegion range) throws ParseException
     {
         final Long value = getNumericValue( context.getSymbolTable() );
         if ( value != null ) 

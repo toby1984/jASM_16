@@ -17,18 +17,17 @@ package de.codesourcery.jasm16.compiler;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
- * A human-readable source code location identified by line number and column number
- * instead of just the absolute offset from the start of the source.
+ * A source code location identified by line number and column number.
  *   
  * @author tobias.gierke@code-sourcery.de
- * @see ITextRange
+ * @see ITextRegion
  */
-public class SourceLocation extends TextRange implements Comparable<SourceLocation>{
+public class SourceLocation extends TextRegion implements Comparable<SourceLocation>{
 
 	private static final Logger LOG = Logger.getLogger( SourceLocation.class );
 	
@@ -41,7 +40,7 @@ public class SourceLocation extends TextRange implements Comparable<SourceLocati
 		this( loc.getCompilationUnit() , loc.getOffset() , loc.getLineNumber() , loc.getLineStartOffset() , length );
 	}
 	
-	public SourceLocation(ICompilationUnit unit,Line line, ITextRange range) 
+	public SourceLocation(ICompilationUnit unit,Line line, ITextRegion range) 
 	{
 	    this( unit , range.getStartingOffset() , line.getLineNumber() , line.getLineStartingOffset() , range.getLength() );
 	}

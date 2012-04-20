@@ -19,8 +19,8 @@ import junit.framework.TestCase;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class ASTNodeTest extends TestCase
 {
@@ -34,7 +34,7 @@ public class ASTNodeTest extends TestCase
             return true;
         }    	
     	
-    	public TestNode(ITextRange range) {
+    	public TestNode(ITextRegion range) {
     		super(range);
     	}
     	
@@ -45,8 +45,8 @@ public class ASTNodeTest extends TestCase
         }
         
         @Override
-        protected void setTextRangeIncludingAllTokens(ITextRange textRange) {
-        	super.setTextRangeIncludingAllTokens(textRange);
+        protected void setTextRegionIncludingAllTokens(ITextRegion textRegion) {
+        	super.setTextRegionIncludingAllTokens(textRegion);
         }
 
         @Override
@@ -56,31 +56,20 @@ public class ASTNodeTest extends TestCase
         }
     }
     
-//    public void testSetFixedTextRangeIsHonored() {
-//    	
-//    	final TestNode n = new TestNode();
-//    	
-//    	final TextRange range = new TextRange( 5 , 7 );
-//    	n.setFixedTextRange( range );
-//    	assertTrue( range.isSame( n.getTextRange() ) );
-//    	n.addChild( new TestNode( new TextRange( 0 , 10 ) ) );
-//    	assertTrue( range.isSame( n.getTextRange() ) );
-//    }
-//    
     public void testAddChild() {
         
         final TestNode parent = new TestNode();
-        assertEquals( null , parent.getTextRange() );
+        assertEquals( null , parent.getTextRegion() );
         assertFalse( parent.hasChildren() );
         assertEquals(0,parent.getChildCount() );
         
-        final TestNode child = new TestNode(new TextRange(5,7) );
+        final TestNode child = new TestNode(new TextRegion(5,7) );
         parent.addChild( child , null );
         
         assertNull( parent.getParent() );
         assertSame( parent ,child.getParent() );
         
-        assertTrue( new TextRange( 5 , 7 ).isSame( parent.getTextRange() ) );
+        assertTrue( new TextRegion( 5 , 7 ).isSame( parent.getTextRegion() ) );
         assertEquals( 1 , parent.getChildCount() );
         assertTrue( parent.hasChildren() );
         assertNotNull( parent.getChildren() );

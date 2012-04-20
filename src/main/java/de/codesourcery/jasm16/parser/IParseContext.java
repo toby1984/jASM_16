@@ -26,7 +26,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Provides context information used during the parsing process.
@@ -71,11 +71,11 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @throws ParseException if no (valid) identifier could be found at the current
      * parse position.
      * 
-     * @see ASTNode#getTextRange()
+     * @see ASTNode#getTextRegion()
      * @see LabelNode
      * @see Identifier
      */
-    public Identifier parseIdentifier(ITextRange range) throws EOFException, ParseException;
+    public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException;
 
     /**
      * Parse whitespace at the current parse position.
@@ -85,7 +85,7 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @throws ParseException If no whitespace could be read at the current parse position.
      * @see TokenType#WHITESPACE
      */
-    public ITextRange parseWhitespace() throws EOFException,ParseException;	
+    public ITextRegion parseWhitespace() throws EOFException,ParseException;	
 
     /**
      * Set whether the parser is currently trying to recover from a parse error.

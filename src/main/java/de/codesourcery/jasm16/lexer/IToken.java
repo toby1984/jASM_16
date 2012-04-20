@@ -15,14 +15,14 @@
  */
 package de.codesourcery.jasm16.lexer;
 
-import de.codesourcery.jasm16.utils.ITextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * A token in the input stream.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface IToken extends ITextRange {
+public interface IToken extends ITextRegion {
 
 	/**
 	 * Returns the string contents of this token.

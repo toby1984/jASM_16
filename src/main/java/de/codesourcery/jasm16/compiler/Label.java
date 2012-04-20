@@ -17,8 +17,8 @@ package de.codesourcery.jasm16.compiler;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.ITextRange;
-import de.codesourcery.jasm16.utils.TextRange;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * A label that identifies a specific location in the
@@ -30,18 +30,18 @@ public class Label implements ISymbol {
 
 	private final ICompilationUnit unit;
 	private final Identifier identifier;
-	private final ITextRange location;
+	private final ITextRegion location;
 	
 	private Address address;
 	
-	public Label(ICompilationUnit unit , ITextRange location , Identifier identifier) {
+	public Label(ICompilationUnit unit , ITextRegion location , Identifier identifier) {
 		if (identifier == null) {
 			throw new IllegalArgumentException("identifier must not be NULL");
 		}
 		if ( location == null ) {
             throw new IllegalArgumentException("location must not be NULL.");
         }
-		this.location = new TextRange( location );
+		this.location = new TextRegion( location );
 		this.unit = unit;
 		this.identifier = identifier;
 	}
@@ -86,7 +86,7 @@ public class Label implements ISymbol {
 	}
 
     @Override
-    public ITextRange getLocation()
+    public ITextRegion getLocation()
     {
         return location;
     }
