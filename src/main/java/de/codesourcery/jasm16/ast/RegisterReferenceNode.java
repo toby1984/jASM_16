@@ -19,6 +19,7 @@ import org.apache.commons.lang.ObjectUtils;
 
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -178,5 +179,10 @@ public class RegisterReferenceNode extends TermNode
     @Override
     public boolean supportsChildNodes() {
         return false;
-    }    
+    }
+
+	@Override
+	public Long calculate(ISymbolTable symbolTable) {
+		return Long.valueOf( 0 );
+	}    
 }

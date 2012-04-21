@@ -29,10 +29,22 @@ import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.IParseContext;
 
 public class ExpressionNodeTest extends TestHelper {
 
+	public void testCalculateValue() throws IOException {
+		
+		final String source = " (1 + 3)*5 -7 ";
+
+		final IParseContext context = createParseContext( source );
+		ASTNode result = new ExpressionNode().parse( context );
+		assertFalse( result.hasErrors() );
+		assertTrue( result instanceof TermNode );
+		TermNode  expr = (TermNode) result;
+		ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+		assertEquals( Long.valueOf( 13 ) , expr.calculate( compContext.getSymbolTable() ) );
+	}
+	
 	public void testParseNumberLiteral() {
 		
 		final String expression = "0x1234";

@@ -26,6 +26,7 @@ import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 
 /**
@@ -43,7 +44,7 @@ public enum Operator
 {
 	INCREMENT("++",2,OperatorPosition.POSTFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) {
+		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
 		}
 		
@@ -55,7 +56,7 @@ public enum Operator
 	},
 	DECREMENT("--",2,OperatorPosition.PREFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) {
+		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
 		}
         @Override
@@ -66,53 +67,52 @@ public enum Operator
 	},		
 	LEFT_SHIFT("<<",3,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException 
+		public long calculate(Long n1, Long n2)
 		{
-			return n1.getNumericValue(context.getSymbolTable()) << n2.getNumericValue(context.getSymbolTable());
+			return n1 << n2;
 		}
 	},	
 	RIGHT_SHIFT(">>",3,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException 
+		public long calculate(Long n1,Long n2)
 		{
-			return n1.getNumericValue(context.getSymbolTable()) >> n2.getNumericValue(context.getSymbolTable());
+			return n1 >> n2;
 		}
 	},		
 	PLUS("+",4,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException {
-			return n1.getNumericValue(context.getSymbolTable())+n2.getNumericValue(context.getSymbolTable());
+		public long calculate(Long n1,Long n2) {
+			return n1+n2;
 		}
 	},
 	MINUS("-",4,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException {
-			return n1.getNumericValue(context.getSymbolTable()) - n2.getNumericValue(context.getSymbolTable());
+		public long calculate(Long n1,Long n2) {
+			return n1-n2;
 		}
 	},
 	MODULO("%",6,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException {
-			return n1.getNumericValue(context.getSymbolTable()) % n2.getNumericValue(context.getSymbolTable()) ;
+		public long calculate(Long n1,Long n2) {
+			return n1 % n2;
 		}
 	},	
 	TIMES("*",6,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException {
-			return n1.getNumericValue(context.getSymbolTable()) * n2.getNumericValue(context.getSymbolTable()) ;
+		public long calculate(Long n1,Long n2) {
+			return n1*n2;
 		}
 	},
 	DIVIDE("/",6,OperatorPosition.INFIX) {
 		@Override
-		public long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2) throws ParseException {
-			return n1.getNumericValue(context.getSymbolTable()) / n2.getNumericValue(context.getSymbolTable());
+		public long calculate(Long n1,Long n2) {
+			return n1 / n2;
 		}
 	},
 	PARENS("(",100,OperatorPosition.PREFIX) {
 
         @Override
-        protected long calculate(ICompilationContext context, ConstantValueNode n1, ConstantValueNode n2)
-                throws ParseException
+        protected long calculate(Long n1,Long n2)
         {
             throw new UnsupportedOperationException("Invoked on parens?");
         }
@@ -180,9 +180,22 @@ public enum Operator
 	 * @throws UnsupportedOperationException if this operator cannot be used for calculating 
 	 * literal values
 	 */
-	protected abstract long calculate(ICompilationContext context,ConstantValueNode n1, ConstantValueNode n2) 
-	throws ParseException,UnsupportedOperationException;
+	protected long calculate(ISymbolTable table,ConstantValueNode n1, ConstantValueNode n2) throws ParseException,UnsupportedOperationException {
+		return calculate( n1.getNumericValue( table ) , n2.getNumericValue( table ) );
+	}
 	
+	protected abstract long calculate(Long n1, Long n2) throws UnsupportedOperationException;
+	
+	public Long calculate(ISymbolTable table, OperatorNode node) 
+	{
+		final Long value1 = node.getTerm( 0 ).calculate( table );
+		final Long value2 = node.getTerm( 1 ).calculate( table );
+		if ( value1 != null && value2 != null )
+		{
+			return calculate( value1 , value2 );
+		}
+		return null;
+	}
 	/**
 	 * Try to fold an {@link OperatorNode} into the corresponding
 	 * literal value.
@@ -201,7 +214,7 @@ public enum Operator
 		{
 			long calculated;
 			try {
-				calculated = calculate( context , (ConstantValueNode) term1, (ConstantValueNode) term2 ); 
+				calculated = calculate( context.getSymbolTable() , (ConstantValueNode) term1, (ConstantValueNode) term2 ); 
 			} catch (ParseException e) {
 				throw new RuntimeException("Should not happen...",e);
 			}

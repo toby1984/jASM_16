@@ -23,6 +23,7 @@ import java.util.Stack;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.compiler.GenericCompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -61,13 +62,50 @@ public class ExpressionNode extends TermNode
 
     private static boolean isEmptyExpression(ASTNode node) 
     {
+        return getTermCount( node ) == 0;
+    }
+    
+    protected static int getTermCount(ASTNode node) 
+    {
+    	int termCount=0;
         for ( ASTNode child : node.getChildren() ) 
         {
             if ( isTermNode( child ) ) {
-                return false;
+                termCount++;
             }
         }
-        return true;
+        return termCount;
+    }
+    
+    @Override
+    public Long calculate(ISymbolTable symbolTable) 
+    {
+    	final List<TermNode> terms = new ArrayList<TermNode>();
+    	final List<ConstantValueNode> literalValues = new ArrayList<ConstantValueNode>();
+    	for ( ASTNode child : getChildren() ) {
+    		if ( child instanceof ConstantValueNode ) {
+    			literalValues.add( (ConstantValueNode) child );
+    		} 
+    		else if ( child instanceof OperatorNode || child instanceof ExpressionNode ) 
+    		{
+    			terms.add( (TermNode) child);
+    		} else if ( child instanceof RegisterReferenceNode ) {
+    			// ignore
+    		}
+    	}
+    	if ( terms.size() > 1 || literalValues.size() > 1 ) {
+    		return null;
+    	}
+    	if ( terms.isEmpty() && literalValues.isEmpty() ) {
+    		return null;
+    	}
+    	if ( terms.size() == 1 && literalValues.size() == 1 ) {
+    		return null;
+    	}
+    	if ( ! terms.isEmpty() ) {
+    		return terms.get(0).calculate( symbolTable );
+    	}
+    	return literalValues.get(0).calculate( symbolTable );
     }
 
     @Override

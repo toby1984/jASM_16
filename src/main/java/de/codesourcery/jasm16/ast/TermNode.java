@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.ast;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
@@ -43,6 +44,15 @@ public abstract class TermNode  extends ASTNode
 	 * the term could not be reduced
 	 */
 	public abstract TermNode reduce(ICompilationContext context);
+	
+	/**
+	 * Tries to calculate the literal value of this term.
+	 * 
+	 * @param symbolTable
+	 * @return literal value or <code>null</code> if this term could not
+	 * be calculated because one or more of its variables are unknown.
+	 */
+	public abstract Long calculate(ISymbolTable symbolTable);
 	
 	/**
 	 * Checks whether this term is actually a {@link NumberNode} instance.

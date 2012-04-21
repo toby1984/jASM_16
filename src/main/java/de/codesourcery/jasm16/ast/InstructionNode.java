@@ -36,7 +36,7 @@ import de.codesourcery.jasm16.parser.IParseContext;
 public class InstructionNode extends ObjectCodeOutputNode
 {
     private OpCode opCode;
-    private byte[] objectCode;
+    private int sizeInBytes = UNKNOWN_SIZE;
     
     private TokenType[] errorRecoveryTokenTypes = DEFAULT_ERROR_RECOVERY_TOKEN;
 
@@ -180,32 +180,33 @@ public class InstructionNode extends ObjectCodeOutputNode
     @Override
     public InstructionNode copySingleNode()
     {
-        InstructionNode result= new InstructionNode();
-        result.objectCode = objectCode;
+        final InstructionNode result= new InstructionNode();
         result.opCode = opCode;
+        result.sizeInBytes = sizeInBytes;
         return result;
     }
 
     @Override
     public int getSizeInBytes()
     {
-        return objectCode == null ? UNKNOWN_SIZE : objectCode.length;
+        return sizeInBytes;
     }
 
     @Override
     public void symbolsResolved(ISymbolTable symbolTable)
     {
-        objectCode = getOpCode().generateObjectCode( symbolTable , this );
+    	this.sizeInBytes = getOpCode().calculateSizeInBytes( symbolTable , this );
     }    
 
 	@Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {	
-        if ( this.objectCode == null ) {
-            throw new IllegalStateException("writeObjectCode() called although no object code generated?");
+        final byte[] objectCode = getOpCode().generateObjectCode( compContext.getSymbolTable() , this );		
+        if ( objectCode == null ) {
+            throw new IllegalStateException("writeObjectCode() called on "+this+" although no object code generated?");
         }
         
-        writer.writeObjectCode( this.objectCode ); 
+        writer.writeObjectCode( objectCode ); 
     }
 	
     public List<OperandNode> getOperands() 

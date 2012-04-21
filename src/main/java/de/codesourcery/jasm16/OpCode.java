@@ -18,7 +18,6 @@ package de.codesourcery.jasm16;
 import java.util.HashMap;
 import java.util.Map;
 
-import de.codesourcery.jasm16.ast.ConstantValueNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
@@ -81,11 +80,12 @@ public enum OpCode
     MOD("mod",2,0x06),	
 
     // control flow
-    JSR( "jsr",1,0x01) {
+    JSR( "jsr",1,0x01) 
+    {
         protected boolean isBasicOpCode() {
             return false;
         };
-
+        
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
             // operand no. 0 is always considered to TARGET operand
@@ -167,10 +167,6 @@ public enum OpCode
         return identifier.toUpperCase();
     }
 
-    public int getBaseSizeInBytes() {
-        return 2;
-    }
-
     public boolean isValidAddressingMode(int operandIndex , AddressingMode type) {
         return true;
     }
@@ -221,11 +217,26 @@ public enum OpCode
 
     public int calculateSizeInBytes(ISymbolTable symbolTable , InstructionNode instruction)
     {
-        final byte[] buffer = new byte[6];
-        return writeInstruction( symbolTable , instruction.getOperand(  0, false ) , instruction.getOperand(  1, false ) , buffer );
+        final OperandNode operandA = instruction.getOperand(  0, false );
+        final OperandNode operandB = instruction.getOperand(  1, false );
+		return getInstructionSizeInBytes( symbolTable , operandA , operandB );
     }	
 
-    public byte[] generateObjectCode(ISymbolTable symbolTable , InstructionNode instruction) 
+    private int getInstructionSizeInBytes(ISymbolTable symbolTable, OperandNode operandA, OperandNode operandB) 
+    {
+    	final byte[] buffer = new byte[6];
+    	final int calculatedSize = writeInstruction( symbolTable , operandA , operandB , buffer );
+    	if ( calculatedSize == InstructionNode.UNKNOWN_SIZE ) {
+    		return getMinimumInstructionSizeInBytes(); // assume worst-case scenario
+    	}
+		return calculatedSize;
+	}
+
+	protected int getMinimumInstructionSizeInBytes() {
+		return 2;
+	}
+
+	public byte[] generateObjectCode(ISymbolTable symbolTable , InstructionNode instruction) 
     {
         final byte[] buffer = new byte[6]; // max. instruction length: three words (3*2 bytes)
         final OperandNode operandA;
@@ -320,8 +331,7 @@ public enum OpCode
         // write operand A
         if ( descA != null && descA.appendAsWord ) 
         {
-            ConstantValueNode valueNode = a.getLiteralValueNode();
-			Long literalValue = valueNode != null ? valueNode.getNumericValue( symbolTable ) : null;
+			Long literalValue = a.getLiteralValue( symbolTable );
             if ( literalValue == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }
@@ -333,8 +343,7 @@ public enum OpCode
         // write operand B
         if ( descB != null && descB.appendAsWord ) 
         {
-            ConstantValueNode valueNode = b.getLiteralValueNode();
-			Long literalValue = valueNode != null ? valueNode.getNumericValue( symbolTable ) : null;
+			Long literalValue = b.getLiteralValue( symbolTable );
             if ( literalValue == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }            
@@ -347,7 +356,7 @@ public enum OpCode
     
     private OperandDesc getOperandBits(ISymbolTable symbolTable,int operandIndex,OperandNode a,OperandNode b) 
     {
-    	final OperandNode node=operandIndex == 0 ? a : b;
+    	final OperandNode operand=operandIndex == 0 ? a : b;
     	
         /*
          * Values: (6 bits)
@@ -370,16 +379,14 @@ public enum OpCode
          * All values that read a word (0x10-0x17, 0x1e, and 0x1f) take 1 cycle to look up. The rest take 0 cycles.
          * By using 0x18, 0x19, 0x1a as POP, PEEK and PUSH, there's a reverse stack starting at memory location 0xffff. Example: "SET PUSH, 10", "SET X, POP"        
          */
-        switch ( node.getAddressingMode() ) 
+        switch ( operand.getAddressingMode() ) 
         {
             case IMMEDIATE:
-                ConstantValueNode valueNode = node.getLiteralValueNode();
-                Long value2 = valueNode == null ? null : valueNode.getNumericValue(symbolTable);
+                Long value2 = operand.getLiteralValue( symbolTable );
                 if ( value2 == null ) {
                     return null; // => ObjectCodeOutputNode#UNKNOWN_SIZE
                 }
                 long value = value2;
-                
                 if ( value <= 0x1f ) 
                 {
                     return operandDesc( 0x20 + (int) value );
@@ -388,7 +395,7 @@ public enum OpCode
             case INDIRECT:
                 return operandDesc( 0x1e , true );
             case INDIRECT_REGISTER:
-                Register register = node.getRegister();
+                Register register = operand.getRegister();
                 if ( register == Register.SP ) 
                 {
                     return operandDesc( 0x19 );
@@ -397,29 +404,27 @@ public enum OpCode
                 }
                 return operandDesc( getRegisterBitmask( register , 0x08 ) );
             case INDIRECT_REGISTER_POSTINCREMENT:
-                register = node.getRegister();
+                register = operand.getRegister();
                 if ( register != Register.SP ) 
                 {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_POSTINCREMENT");                    
                 }
                 return operandDesc( 0x18 );
             case INDIRECT_REGISTER_PREDECREMENT:
-                register = node.getRegister();
+                register = operand.getRegister();
                 if ( register != Register.SP ) 
                 {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_PREDECREMENT");                    
                 }
                 return operandDesc( 0x1a );                 
             case INDIRECT_REGISTER_OFFSET:
-            	
-                valueNode = node.getLiteralValueNode();
-                value2 = valueNode == null ? null : valueNode.getNumericValue(symbolTable);
+                value2 = operand.getLiteralValue(symbolTable);
                 if ( value2 == null ) {
                     return null; // => ObjectCodeOutputNode#UNKNOWN_SIZE
                 }
                 value = value2;
                 
-                register = node.getRegister();
+                register = operand.getRegister();
                 if ( register == Register.SP || register == Register.PC || register == Register.O ) {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_OFFSET");
                 }
@@ -429,7 +434,7 @@ public enum OpCode
                 }
                 return operandDesc( getRegisterBitmask( register , 0x10 ) , true  );             
             case REGISTER:
-                register = node.getRegister();
+                register = operand.getRegister();
                 if ( register == Register.SP ) {
                     return operandDesc( 0x1b );
                 } else if ( register == Register.PC ) {
@@ -439,7 +444,7 @@ public enum OpCode
                 }
                 return operandDesc( getRegisterBitmask( register , 0x00 ) );                
         }
-        throw new RuntimeException("Unhandled addressing mode: "+node.getAddressingMode()+" , operand: "+node);     
+        throw new RuntimeException("Unhandled addressing mode: "+operand.getAddressingMode()+" , operand: "+operand);     
     }
 
     private int getRegisterBitmask(Register register , int offset) {

@@ -115,5 +115,10 @@ public class NumberNode extends ConstantValueNode
     @Override
     public boolean supportsChildNodes() {
         return false;
-    }    
+    }
+
+	@Override
+	public Long calculate(ISymbolTable symbolTable) {
+		return value;
+	}    
 }

@@ -32,6 +32,7 @@ import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.Compiler;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
@@ -113,13 +114,18 @@ public abstract class TestHelper extends TestCase
     }
     
     protected final ICompilationUnit compile(String source) throws Exception {
+    	return compile(source, new DebugCompilationListener(true) );
+    }
+    
+    protected final ICompilationUnit compile(String source,ICompilationListener listener) throws Exception {
 
 		final Compiler compiler = new Compiler();
+		compiler.setCompilerOption( CompilerOption.DEBUG_MODE  , true );
 		compiler.setObjectCodeWriterFactory( NOP_WRITER );
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
 		
-		compiler.compile( Collections.singletonList( unit ) , new DebugCompilationListener(true) );
+		compiler.compile( Collections.singletonList( unit ) , listener );
 		
 		Misc.printCompilationErrors( unit , source , true );
         assertSourceCode( source , unit.getAST() );  

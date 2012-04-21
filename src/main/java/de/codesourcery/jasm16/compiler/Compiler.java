@@ -115,15 +115,8 @@ public class Compiler implements ICompiler {
         phases.add( new ASTValidationPhase1() );
 
         // calculate size information and set addresses
-        phases.add( new CalculateAddressesPhase( ICompilerPhase.PHASE_RESOLVE_ADDRESSES1 , false ) );
+        phases.add( new CalculateAddressesPhase() );
 
-        // fold expressions into constants (requires that labels have already been resolved to addresses)
-        phases.add( new FoldExpressionsPhase() );
-
-        // re-calculate label addresses based on operand size information after expression folding    
-        // this is needed because some operands may be small enough to be inlined into the instruction byte
-        phases.add( new CalculateAddressesPhase( ICompilerPhase.PHASE_RESOLVE_ADDRESSES2 , true ) );
-        
         // validate before object code generation
         phases.add( new ASTValidationPhase2() );
         

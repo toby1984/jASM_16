@@ -52,16 +52,13 @@ public interface ICompilerPhase
     /**
      * Name of first address (label) resolution phase.
      */
-    public static final String PHASE_RESOLVE_ADDRESSES1 = "resolve-addresses1";
+    public static final String PHASE_RESOLVE_ADDRESSES = "resolve-addresses";
+    
     /**
      * Name of expression (constant) folding phase.
      */
     public static final String PHASE_FOLD_EXPRESSIONS = "fold-expressions";
-    /**
-     * Name of second address (label) resolution phase that is normally executed
-     * after constant folding took place.
-     */
-    public static final String PHASE_RESOLVE_ADDRESSES2 = "resolve-addresses2";
+    
     /**
      * Validation phase that gets run right before generating the object code.
      */

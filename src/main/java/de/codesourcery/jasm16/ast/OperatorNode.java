@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.ast;
 import org.apache.commons.lang.ObjectUtils;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -183,6 +184,11 @@ public class OperatorNode extends TermNode
     @Override
     public boolean supportsChildNodes() {
         return true; 
-    }    
+    }
+
+	@Override
+	public Long calculate(ISymbolTable symbolTable) {
+		return operator.calculate( symbolTable,  this );
+	}    
     
 }
