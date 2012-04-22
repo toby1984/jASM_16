@@ -306,7 +306,7 @@ public final class Lexer implements ILexer {
             return ;        	
         }
         
-        if ( ".incbin".equalsIgnoreCase( buffer ) ) {
+        if ( ".incbin".equalsIgnoreCase( buffer ) || "incbin".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.INCLUDE_BINARY , buffer , startIndex ) );
             return ;
         }

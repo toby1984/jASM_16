@@ -508,7 +508,7 @@ public enum OpCode
                 return OperandPosition.NOT_POSSIBLE;
             case INDIRECT_REGISTER_PREDECREMENT:
                 if ( register == Register.SP ) {
-                    return OperandPosition.TARGET_OPERAND; // PUSH / [--SP]  
+                    return OperandPosition.SOURCE_OR_TARGET; // PUSH / [--SP]  
                 }
                 return OperandPosition.NOT_POSSIBLE;
             case INDIRECT_REGISTER_OFFSET:

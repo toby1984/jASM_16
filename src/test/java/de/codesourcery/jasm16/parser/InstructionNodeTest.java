@@ -161,6 +161,8 @@ public class InstructionNodeTest extends TestHelper
 	
     public void testAddressingModesParsing() throws Exception {
     	
+        assertCompiles("SET [A] , [--SP]");     
+        
     	assertDoesNotCompile("SET a , 1+a " );
     	
     	assertCompiles("SET [10+A],10");    	
@@ -199,11 +201,12 @@ public class InstructionNodeTest extends TestHelper
     	
     	assertCompiles("SET [6+A] , [6+b] ");
         assertDoesNotCompile("SET [A++] , 1");   
-        assertDoesNotCompile("SET [--A] , 1");   
+        assertDoesNotCompile("SET [--A] , 1");
+        assertCompiles("SET [--SP] , 1");
         
     	assertCompiles("SET PUSH, [A]"); // PUSH      
-    	assertDoesNotCompile("SET [A] , PUSH "); // PUSH    	
-    	assertDoesNotCompile("SET [A] , [--SP] "); // PUSH
+    	assertCompiles("SET [A] , PUSH "); // PUSH    	
+    	assertCompiles("SET [A] , [--SP] "); // PUSH
     	
     	assertCompiles("SET [A], PEEK "); // PEEK   
     	assertCompiles("SET PEEK , [A] "); // PEEK    	

@@ -149,17 +149,26 @@ public class ExpressionNode extends TermNode
 
             if ( context.peek().hasType(TokenType.OPERATOR ) ) 
             { 
-                final int offset = context.currentParseIndex();
-                final ASTNode n1 = new OperatorNode().parse( context );
-                if ( n1 instanceof OperatorNode) 
-                {
-                    final OperatorNode op1 = (OperatorNode) n1;
-                    if ( ! op1.getOperator().isInfixOperator() ) // + - * /
-                    {
-                        throw new ParseException("Not implemented: Cannot handle operator "+op1.getOperator(), op1.getTextRegion() );
-                    }
-                } 
-                previousNode = handleStack( termStack , n1 , offset ,previousNode , context);
+            	if ( context.peek().getContents().equals( Operator.DECREMENT.getLiteral() ) ) 
+            	{
+                    final int index = context.currentParseIndex();
+                    final ASTNode parsed = new RegisterReferenceNode().parse( context );
+                    previousNode = handleStack(termStack , parsed , index ,previousNode , context );            		
+            	} 
+            	else 
+            	{
+	                final int offset = context.currentParseIndex();
+	                final ASTNode n1 = new OperatorNode().parse( context );
+	                if ( n1 instanceof OperatorNode) 
+	                {
+	                    final OperatorNode op1 = (OperatorNode) n1;
+	                    if ( ! op1.getOperator().isInfixOperator() ) // + - * /
+	                    {
+	                        throw new ParseException("Not implemented: Cannot handle operator "+op1.getOperator(), op1.getTextRegion() );
+	                    }
+	                } 
+	                previousNode = handleStack( termStack , n1 , offset ,previousNode , context);
+	            	}
             } 
             else if ( context.peek().hasType( TokenType.NUMBER_LITERAL ) ) 
             {
