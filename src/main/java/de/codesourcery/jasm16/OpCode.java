@@ -431,9 +431,9 @@ public enum OpCode
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_OFFSET");
                 }
                 
-                if ( value <= 0x1f ) {
-                    return operandDesc( (int) ( getRegisterBitmask( register , 0x10 ) | ( 0x20+value ) ) );                	
-                }
+//                if ( value <= 0x1f ) {
+//                    return operandDesc( (int) ( getRegisterBitmask( register , 0x10 ) | ( 0x20+value ) ) );                	
+//                }
                 return operandDesc( getRegisterBitmask( register , 0x10 ) , true  );             
             case REGISTER:
                 register = operand.getRegister();
