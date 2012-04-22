@@ -163,6 +163,8 @@ public class InstructionNodeTest extends TestHelper
 	
     public void testAddressingModesParsing() throws Exception {
     	
+    	assertDoesNotCompile("SET a , 1+a " );
+    	
     	assertCompiles("SET [10+A],10");    	
     	assertCompiles("SET [10+A+10],10");
     	
@@ -255,14 +257,15 @@ public class InstructionNodeTest extends TestHelper
 
         final String source = "SET [0x1000], 0x20";
 
-        final IParseContext context = createParseContext( source );
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
+        final IParseContext context = createParseContext( unit );
 
         final ASTNode result = new InstructionNode().parse( context );
         assertFalse( getErrors( source , result ) , result.hasErrors() );
         assertEquals( InstructionNode.class , result.getClass() );
         
         final InstructionNode instruction = (InstructionNode) result;
-        resolveSymbols( instruction );
+        resolveSymbols( unit , instruction );
         final int size = instruction.getSizeInBytes();
         assertEquals( 6 , size );
         assertSourceCode( "SET [0x1000], 0x20" , result );
@@ -272,7 +275,8 @@ public class InstructionNodeTest extends TestHelper
 
         final String source = "SET [0x1000], 0x1f";
 
-        final IParseContext context = createParseContext( source );
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
+        final IParseContext context = createParseContext( unit );
 
         final ASTNode result = new InstructionNode().parse( context );
         
@@ -280,7 +284,7 @@ public class InstructionNodeTest extends TestHelper
         assertEquals( InstructionNode.class , result.getClass() );
         
         final InstructionNode instruction = (InstructionNode) result;
-        resolveSymbols( instruction );
+        resolveSymbols( unit , instruction );
         
         final int size = instruction.getSizeInBytes();
         assertEquals( 4 , size );
@@ -291,7 +295,8 @@ public class InstructionNodeTest extends TestHelper
 
         final String source = "SET PC, 31";
 
-        final IParseContext context = createParseContext( source );
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
+        final IParseContext context = createParseContext( unit );
 
         final ASTNode result = new InstructionNode().parse( context );
         
@@ -299,7 +304,7 @@ public class InstructionNodeTest extends TestHelper
         assertEquals( InstructionNode.class , result.getClass() );
         
         final InstructionNode instruction = (InstructionNode) result;
-        resolveSymbols( instruction );
+        resolveSymbols( unit , instruction );
         
         final int size = instruction.getSizeInBytes();
         assertEquals( 2 , size );

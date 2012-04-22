@@ -30,19 +30,20 @@ import de.codesourcery.jasm16.parser.IParseContext;
 public class InitializedMemoryNodeTest extends TestHelper
 {
 
-    public void testParseInitializedMemory() throws ParseException 
+    public void testParseInitializedMemory() throws ParseException, IOException 
     {
         final String source = ".dat 0x01";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         
         assertFalse( getErrors( source , result ) , result.hasErrors() );
         assertEquals( InitializedMemoryNode.class , result.getClass() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit , node );
         final int size = node.getSizeInBytes();
         assertEquals( 2 , size );
         final byte[] data = node.getBytes();
@@ -52,18 +53,43 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".dat 0x01" , result );        
     }  
     
-    public void testParseInitializedMemory2() throws ParseException 
+    public void testParseInitializedMemory1() throws ParseException, IOException 
+    {
+        final String source = ".dat (1+2)";
+
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
+        final ASTNode result = new InitializedMemoryNode().parse( context );
+        
+        assertFalse( getErrors( source , result ) , result.hasErrors() );
+        assertEquals( InitializedMemoryNode.class , result.getClass() );
+        
+        final InitializedMemoryNode node = (InitializedMemoryNode) result;
+        resolveSymbols( unit, node );
+        final int size = node.getSizeInBytes();
+        assertEquals( 2 , size );
+        final byte[] data = node.getBytes();
+        assertEquals( 2 , data.length );
+        assertEquals( 0 , data[0] );
+        assertEquals( 3 , data[1] );
+        assertSourceCode( ".dat (1+2)" , result );        
+    }     
+    
+    public void testParseInitializedMemory2() throws ParseException, IOException 
     {
         final String source = ".dat 0x12,0x34";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         assertFalse( getErrors( source , result ) , result.hasErrors() );
         assertEquals( InitializedMemoryNode.class , result.getClass() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit , node );
+        
         final int size = node.getSizeInBytes();
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
@@ -75,18 +101,43 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".dat 0x12,0x34" , result );        
     }   
     
-    public void testParseInitializedMemory3() throws ParseException 
+    public void testParseInitializedMemoryWithExpressions() throws ParseException, IOException 
     {
-        final String source = ".dat \"a\"";
+        final String source = ".dat 0x10+2,0x34";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         assertFalse( getErrors( source , result ) , result.hasErrors() );
         assertEquals( InitializedMemoryNode.class , result.getClass() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit , node );
+        final int size = node.getSizeInBytes();
+        assertEquals( 4 , size );
+        final byte[] data = node.getBytes();
+        assertEquals( 4 , data.length );
+        assertEquals( 0x0 , data[0] );
+        assertEquals( 0x12 , data[1] );
+        assertEquals( 0 , data[2] );
+        assertEquals( 0x34 , data[3] );
+        assertSourceCode( ".dat 0x10+2,0x34" , result );        
+    }     
+    
+    public void testParseInitializedMemory3() throws ParseException, IOException 
+    {
+        final String source = ".dat \"a\"";
+
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
+        final ASTNode result = new InitializedMemoryNode().parse( context );
+        assertFalse( getErrors( source , result ) , result.hasErrors() );
+        assertEquals( InitializedMemoryNode.class , result.getClass() );
+        
+        final InitializedMemoryNode node = (InitializedMemoryNode) result;
+        resolveSymbols(unit, node );
         final int size = node.getSizeInBytes( );
         assertEquals( 2 , size );
         final byte[] data = node.getBytes();
@@ -96,18 +147,19 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".dat \"a\"" , result );        
     }   
     
-    public void testParseInitializedMemory4() throws ParseException 
+    public void testParseInitializedMemory4() throws ParseException, IOException 
     {
         final String source = ".dat \"ab\"";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         assertFalse( getErrors( source , result ) , result.hasErrors() );
         assertEquals( InitializedMemoryNode.class , result.getClass() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit , node );
         final int size = node.getSizeInBytes( );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
@@ -135,21 +187,22 @@ public class InitializedMemoryNodeTest extends TestHelper
 
         final IParseContext context = createParseContext( source );
 
-        final ASTNode result = new InitializedMemoryNode().parse( context );
-        assertTrue( result.hasErrors() );
+        new InitializedMemoryNode().parse( context );
+        assertTrue( context.getCompilationUnit().hasErrors() );
     }  
     
-    public void testParseInitializedMemory8() throws ParseException 
+    public void testParseInitializedMemory8() throws ParseException, IOException 
     {
         final String source = ".word 256,2";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         assertFalse( result.hasErrors() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit, node );
         final int size = node.getSizeInBytes( );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
@@ -160,17 +213,28 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".word 256,2" , result );         
     }  
     
-    public void testParseInitializedMemory9() throws ParseException 
+    public void testParseInitializedMemoryWithValueOutOfRange() throws Exception 
+    {
+        final String source = "label: .dat label+0xffff+1";
+
+        ICompilationUnit unit = compile( source );
+        assertTrue( unit.hasErrors() );
+        
+        assertSourceCode( source , unit.getAST() );         
+    }
+    
+    public void testParseInitializedMemory9() throws ParseException, IOException 
     {
         final String source = ".dat 256,2";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
         assertFalse( result.hasErrors() );
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        resolveSymbols( node );
+        resolveSymbols( unit , node );
         final int size = node.getSizeInBytes( );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
@@ -185,10 +249,11 @@ public class InitializedMemoryNodeTest extends TestHelper
     {
         final String source = ".dat 0x170, \"Hello \", 0x2e1";
 
-        final IParseContext context = createParseContext( source );
-
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
         final ASTNode result = new InitializedMemoryNode().parse( context );
-        resolveSymbols( result );
+        resolveSymbols(unit, result );
         assertFalse( result.hasErrors() );
         assertSourceCode( ".dat 0x170, \"Hello \", 0x2e1" , result ); 
         

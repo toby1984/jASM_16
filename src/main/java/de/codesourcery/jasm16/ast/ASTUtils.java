@@ -318,4 +318,9 @@ public class ASTUtils {
         }
         return true;
     }
+    
+    public static int getRegisterReferenceCount(ASTNode node) 
+    {
+        return ASTUtils.getNodesByType( node , RegisterReferenceNode.class , false ).size();
+    }    
 }

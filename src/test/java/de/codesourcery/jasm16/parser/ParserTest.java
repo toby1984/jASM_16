@@ -117,6 +117,9 @@ public class ParserTest extends TestHelper {
 		final Parser p = new Parser();
 		
 		String source = ".dat b1,b10";
+		
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        
         AST ast = p.parse( source );
 		assertFalse( ast.hasErrors() );
 		ASTNode root = ast.child(0);
@@ -125,7 +128,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( InitializedMemoryNode.class , root.child(0).getClass() );
 		final InitializedMemoryNode node = (InitializedMemoryNode) root.child(0);
-		resolveSymbols( node );
+		resolveSymbols( unit , node );
 		final byte[] data = node.getBytes();
 		assertEquals( 4 , data.length );
 		assertEquals( 0 , data[0] );
@@ -136,34 +139,16 @@ public class ParserTest extends TestHelper {
 		assertEquals( source , toSourceCode( root , source ) );		
 	}	
 	
-	public void testParseInitializedMemoryWithInvalidNumberLiteral() 
+	public void testParseInitializedMemoryWithInvalidNumberLiteral() throws Exception 
 	{
-		final Parser p = new Parser();
-		
-		String source = ".dat 65536";
-        AST ast = p.parse( source );
-		assertTrue( ast.hasErrors() );
-		ASTNode root = ast.child(0);
-		assertNotNull( root );
-		assertTrue( root instanceof StatementNode );
-		assertEquals( 1 , root.getChildCount() );
-		assertEquals( UnparsedContentNode.class , root.child(0).getClass() );
-		assertEquals( source , toSourceCode( root , source ) );
+		ICompilationUnit unit = compile( ".dat 65536" );
+		assertTrue( unit.hasErrors() );
 	}	
 	
-	public void testParseInitializedMemoryWithInvalidNumberLiteral2() 
+	public void testParseInitializedMemoryWithInvalidNumberLiteral2() throws Exception 
 	{
-		final Parser p = new Parser();
-		
-		String source = ".dat 0xfffff";
-        AST ast = p.parse( source );
-		assertTrue( ast.hasErrors() );
-		ASTNode root = ast.child(0);
-		assertNotNull( root );
-		assertTrue( root instanceof StatementNode );
-		assertEquals( 1 , root.getChildCount() );
-		assertEquals( UnparsedContentNode.class , root.child(0).getClass() );
-		assertEquals( source , toSourceCode( root , source ) );
+		ICompilationUnit unit = compile( ".dat 0xfffff" );
+		assertTrue( unit.hasErrors() );
 	}	
 	
 	public void testParseInitializedMemoryWithOneCharacterCharacterLiteral() throws ParseException 
@@ -171,6 +156,9 @@ public class ParserTest extends TestHelper {
 		final Parser p = new Parser();
 		
 		String source = ".dat \"a\"";
+		
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        
         AST ast = p.parse( source );
 		assertFalse( ast.hasErrors() );
 		ASTNode root = ast.child(0);
@@ -181,7 +169,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( source , toSourceCode( root , source ) );
 		
 		final InitializedMemoryNode node = (InitializedMemoryNode) root.child(0);
-	    resolveSymbols( node );
+	    resolveSymbols( unit , node );
 		final byte[] data = node.getBytes();
 		assertEquals( 2 , data.length );
 		assertEquals( 0 , data[0] );
@@ -207,7 +195,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( InitializedMemoryNode.class , root.child(0).getClass() );
 		
 		final InitializedMemoryNode node = (InitializedMemoryNode) root.child(0);
-        resolveSymbols( node );		
+        resolveSymbols( unit , node );		
 		final byte[] data = node.getBytes();
 		// a = 97
 		// b = 98

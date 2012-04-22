@@ -93,6 +93,12 @@ public abstract class TestHelper extends TestCase
         return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER , Collections.singleton( ParserOption.DEBUG_MODE ) );
     }
     
+    protected IParseContext createParseContext(ICompilationUnit unit) throws IOException 
+    {
+    	final String source = Misc.readSource( unit.getResource() );
+        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER , Collections.singleton( ParserOption.DEBUG_MODE ) );
+    }    
+    
     @Override
     protected void setUp() throws Exception
     {
@@ -231,7 +237,7 @@ public abstract class TestHelper extends TestCase
         return node.getTextRegion().apply( source );
     }
     
-    protected void resolveSymbols( ASTNode node ) 
+    protected void resolveSymbols( final ICompilationUnit unit , ASTNode node ) 
     {
     	ICompilationContext context = new ICompilationContext() {
 
@@ -242,7 +248,7 @@ public abstract class TestHelper extends TestCase
 
 			@Override
 			public ICompilationUnit getCurrentCompilationUnit() {
-				throw new UnsupportedOperationException("Not implemented");
+				return unit;
 			}
 
 			@Override

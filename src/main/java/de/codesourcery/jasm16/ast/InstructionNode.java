@@ -154,7 +154,13 @@ public class InstructionNode extends ObjectCodeOutputNode
                 throw new RuntimeException("Unreachable code reached");
             }
 
-            if ( ! getOpCode().isOperandValidInPosition( position , op.getAddressingMode(), op.getRegister() ) ) 
+            /*
+             * getRegister() chokes on 1+ register references but 
+             * this case is already flagged as an error by
+             * OperandNode#parseInternal()
+             */
+            if ( ASTUtils.getRegisterReferenceCount( op ) <= 1 && 
+            	  ! getOpCode().isOperandValidInPosition( position , op.getAddressingMode(), op.getRegister() ) ) 
             {
                 throw new ParseException("Operand cannot be used as "+position,op.getTextRegion());
             }

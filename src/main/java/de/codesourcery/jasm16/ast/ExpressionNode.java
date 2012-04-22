@@ -55,11 +55,6 @@ public class ExpressionNode extends TermNode
         return obj instanceof ExpressionNode;
     }
 
-    private static int getRegisterReferenceCount(ASTNode node) 
-    {
-        return ASTUtils.getNodesByType( node , RegisterReferenceNode.class , false ).size();
-    }
-
     private static boolean isEmptyExpression(ASTNode node) 
     {
         return getTermCount( node ) == 0;
@@ -113,7 +108,7 @@ public class ExpressionNode extends TermNode
     {
         final int offset = context.currentParseIndex();
 
-        ASTNode result = recursivelyParseTerm( context );
+        final ASTNode result = recursivelyParseTerm( context );
         if ( result == null ) {
             throw new ParseException("Incomplete or empty expression",offset,0);
         }
@@ -121,10 +116,6 @@ public class ExpressionNode extends TermNode
         if ( this.getTextRegion() != null ) { // merge leading whitespace etc.
             result.mergeWithAllTokensTextRegion( this.getTextRegion() );
         }
-
-        if ( getRegisterReferenceCount( result ) > 1 ) {
-            throw new ParseException("Expression must not reference more than one register" , result.getTextRegion() );
-        }		
 
         if ( result.getChildCount() == 1 ) 
         {
@@ -277,9 +268,6 @@ public class ExpressionNode extends TermNode
 
     private boolean hasAllRequiredArguments(ASTNode node) 
     {
-        if ( isParensOperator( node ) ) {
-            return ((OperatorNode) node.child(0)).hasAllRequiredArguments();
-        }
         if ( isOperator( node ) ) {
             return ((OperatorNode) node).hasAllRequiredArguments();
         }

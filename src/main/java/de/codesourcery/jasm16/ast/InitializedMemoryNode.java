@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -35,239 +37,282 @@ import de.codesourcery.jasm16.parser.IParseContext;
  */
 public class InitializedMemoryNode extends ObjectCodeOutputNode
 {
-    public enum AllowedSize 
-    {
-        BYTE {
-            public boolean supportsCharacterLiterals() {
-                return false;
-            }
-            public int getMaxSupportedValue() {
-                return 255;
-            }            
-        },
-        WORD,
-        BYTE_OR_WORD;
-        
-        public boolean supportsCharacterLiterals() {
-            return true;
-        }
-        
-        public int getMaxSupportedValue() {
-            return 65535;
-        }
-    }
-    
-    private transient byte[] parsedData;
-    private AllowedSize allowedSize;
+	public enum AllowedSize 
+	{
+		BYTE {
+			public boolean supportsCharacterLiterals() {
+				return false;
+			}
+			public int getMaxSupportedValue() {
+				return 255;
+			}            
+		},
+		WORD,
+		BYTE_OR_WORD;
 
-    public InitializedMemoryNode() {
-    }
-    
-    @Override
+		public boolean supportsCharacterLiterals() {
+			return true;
+		}
+
+		public int getMaxSupportedValue() {
+			return 65535;
+		}
+	}
+
+	private transient byte[] parsedData;
+	private AllowedSize allowedSize;
+
+	public InitializedMemoryNode() {
+	}
+
+	@Override
 	protected InitializedMemoryNode parseInternal(IParseContext context) throws ParseException
-    {
-        IToken tok = context.peek();
-        
-        final TokenType acceptedType;
-        if ( tok.hasType( TokenType.INITIALIZED_MEMORY_BYTE ) ) 
-        {
-            acceptedType = tok.getType(); 
-            allowedSize = AllowedSize.BYTE;
-        }
-        else if ( tok.hasType( TokenType.INITIALIZED_MEMORY_WORD ) ) 
-        {
-            acceptedType = tok.getType();
-            allowedSize = AllowedSize.WORD;
-//        }
-//        else if ( tok.hasType( TokenType.INITIALIZED_MEMORY ) ) 
-//        {
-//            acceptedType = tok.getType();
-//            allowedSize = AllowedSize.BYTE_OR_WORD;
-        }
-        else {
-            throw new ParseException("Unexpected token type "+tok.getType(), tok );
-        }
+	{
+		final ICompilationUnit unit = context.getCompilationUnit();
 
-        mergeWithAllTokensTextRegion( context.read(acceptedType) );
-        
-        mergeWithAllTokensTextRegion( context.parseWhitespace() );
-        
-        boolean expectingData = true;
-outer:        
-        while ( ! context.eof() ) 
-        {
-            IToken token = context.peek();
-            if ( token.isWhitespace() ) 
-            {
-            	mergeWithAllTokensTextRegion( context.parseWhitespace() );
-                continue;
-            }
-            
-            if ( expectingData ) 
-            {
-            	if ( token.hasType( TokenType.CHARACTERS ) ) 
-            	{
-            		addChild( new LabelReferenceNode().parse( context ) , context );
-            	} 
-            	else if ( token.hasType( TokenType.NUMBER_LITERAL ) ) 
-            	{
-            		ASTNode number = new NumberNode().parse( context );
-            		if ( number instanceof NumberNode) {
-            		    final int value = ((NumberNode) number).getAsWord();
-            		    if (  value < 0 || value > allowedSize.getMaxSupportedValue() ) {
-                            throw new ParseException("Number literal "+value+" is out of range, must be >= 0 and <= "+allowedSize.getMaxSupportedValue(), 
-                                    number.getTextRegion() );
-            		    }
-            		}
-                    addChild( number , context );
-            	} 
-            	else if ( token.hasType( TokenType.STRING_DELIMITER ) ) 
-            	{
-            	    if ( ! allowedSize.supportsCharacterLiterals() ) {
-            	        throw new ParseException("Characters are 16 bit each and thus not allowed here", token );
-            	    }
-            		addChild( new CharacterLiteralNode().parse( context ) , context );
-            	} else {
-            		throw new ParseException("Expected a number or character literal, got "+token.getType(),token);
-            	}
-            	expectingData = false;
-            }
-            
-            if ( context.eof() || context.peek().isEOL() ) {
-            	break outer;
-            }
-            
-            while ( ! context.eof() ) 
-            {
-            	token = context.peek();
-            	if ( token.isWhitespace() ) {
-            		mergeWithAllTokensTextRegion( context.parseWhitespace() );
-            	} else if ( token.hasType( TokenType.COMMA ) ) {
-            		mergeWithAllTokensTextRegion( context.read( TokenType.COMMA ) );
-            		expectingData = true;
-            		continue outer;
-            	} else {
-            		break outer;
-            	}
-            }
-        }
-        
-        if ( expectingData ) {
-        	throw new ParseException("Expected number or character literal",context.currentParseIndex() , 0 );
-        }
-        
-        return this;   
-    }
-    
-    private byte[] internalParseData(ICompilationContext context) throws ParseException 
-    {
-    	final List<ASTNode> children = new ArrayList<ASTNode>();
-    	for ( ASTNode node : getChildren() ) 
-    	{
-    		if ( node instanceof NumberNode ||
-    			 node instanceof CharacterLiteralNode ||
-    			 node instanceof LabelReferenceNode ) 
-    		{
-    			children.add( node );
-    		}
-    	}
-    	
-        final List<Integer> data = new ArrayList<Integer>();
-        for ( ASTNode node : children ) 
-        {
-        	if ( node instanceof ConstantValueNode) 
-        	{
-        		final boolean fromAddress = ( node instanceof LabelReferenceNode);
-        		final int value;
-    			final Long lValue = ((ConstantValueNode) node).getNumericValue( context.getSymbolTable() );
-    			if ( lValue == null ) {
-    				return null;
-    			}
-    			value = lValue.intValue();
-        		
-                if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ) 
-                {
-                    data.add( (value & 0xff00) >> 8 );
-                    data.add(  value & 0x00ff );
-                } else {
-                    data.add( value );
-                }
-            } 
-            else if ( node instanceof CharacterLiteralNode ) 
-            {
-                final List<Integer> bytes = ((CharacterLiteralNode) node).getBytes();
-                for ( int value : bytes ) 
-                {
-                    data.add( value );
-                }
-            } else {
-                throw new RuntimeException("Unreachable code reached");
-            }
-        }    	
-        
-        final int aligned = Address.alignTo16Bit( data.size() );
-        final byte[] result = new byte[ aligned ];
-    	for ( int i = 0 ; i < data.size() ; i++ ) 
-    	{
-    		result[i] = (byte) data.get(i).intValue();
-    	}
-        return result;
-    }
-    
-    @Override
-    public InitializedMemoryNode copySingleNode()
-    {
-        final InitializedMemoryNode  result = new InitializedMemoryNode();
-        result.allowedSize = allowedSize;
-        return result;
-    }
+		IToken tok = context.peek();
+
+		final TokenType acceptedType;
+		if ( tok.hasType( TokenType.INITIALIZED_MEMORY_BYTE ) ) 
+		{
+			acceptedType = tok.getType(); 
+			allowedSize = AllowedSize.BYTE;
+		}
+		else if ( tok.hasType( TokenType.INITIALIZED_MEMORY_WORD ) ) 
+		{
+			acceptedType = tok.getType();
+			allowedSize = AllowedSize.WORD;
+		}
+		else {
+			throw new ParseException("Unexpected token type "+tok.getType(), tok );
+		}
+
+		mergeWithAllTokensTextRegion( context.read(acceptedType) );
+
+		mergeWithAllTokensTextRegion( context.parseWhitespace() );
+
+		boolean expectingData = true;
+		outer:        
+			while ( ! context.eof() ) 
+			{
+				IToken token = context.peek();
+				if ( token.isWhitespace() ) 
+				{
+					mergeWithAllTokensTextRegion( context.parseWhitespace() );
+					continue;
+				}
+
+				if ( expectingData ) 
+				{
+					if ( token.hasType( TokenType.CHARACTERS ) || 
+							token.hasType( TokenType.NUMBER_LITERAL ) ||
+							token.hasType( TokenType.PARENS_OPEN ) ) 
+					{
+						try {
+							context.mark();
+							final ASTNode expr = new ExpressionNode().parseInternal( context );
+							if ( ASTUtils.getRegisterReferenceCount( expr ) > 0 ) {
+								unit.addMarker(
+										new CompilationError("Expression must not refer to a register",
+												unit,expr ) 
+								);
+							}
+							if ( ! isValueInRange( expr , context.getSymbolTable() ) ) 
+							{
+								unit.addMarker(
+										new CompilationError("Value "+getValue( expr , context.getSymbolTable() )+" is out-of-range",
+												unit,expr ) 
+								);            					
+							}
+							addChild( expr , context );
+						} 
+						catch(Exception e) {
+							addCompilationErrorAndAdvanceParser( e , new TokenType[] {
+									TokenType.COMMA , TokenType.EOL
+							} , context );
+						} finally {
+							context.clearMark();
+						}
+					} 
+					else if ( token.hasType( TokenType.STRING_DELIMITER ) ) 
+					{
+						if ( ! allowedSize.supportsCharacterLiterals() ) {
+							throw new ParseException("Characters are 16 bit each and thus not allowed here", token );
+						}
+						addChild( new CharacterLiteralNode().parse( context ) , context );
+					} else {
+						throw new ParseException("Expected a number or character literal, got "+token.getType(),token);
+					}
+					expectingData = false;
+				}
+
+				if ( context.eof() || context.peek().isEOL() ) {
+					break outer;
+				}
+
+				while ( ! context.eof() ) 
+				{
+					token = context.peek();
+					if ( token.isWhitespace() ) {
+						mergeWithAllTokensTextRegion( context.parseWhitespace() );
+					} else if ( token.hasType( TokenType.COMMA ) ) {
+						mergeWithAllTokensTextRegion( context.read( TokenType.COMMA ) );
+						expectingData = true;
+						continue outer;
+					} else {
+						break outer;
+					}
+				}
+			}
+
+		if ( expectingData ) {
+			throw new ParseException("Expected number or character literal",context.currentParseIndex() , 0 );
+		}
+
+		return this;   
+	}
+
+	private Long getValue(ASTNode node,ISymbolTable table) {
+		if ( !(node instanceof TermNode) ) {
+			return null;
+		}
+
+		return ((TermNode) node).calculate( table );
+	}
+
+	private boolean isValueInRange(ASTNode node,ISymbolTable table) 
+	{
+		final Long value = getValue( node , table );
+		if ( value != null && value.longValue() > allowedSize.getMaxSupportedValue() ) {
+			return false;
+		}
+		return true;
+	}
+
+	private byte[] internalParseData(ICompilationContext context) throws ParseException 
+	{
+		final ICompilationUnit unit = context.getCurrentCompilationUnit();
+		final ISymbolTable symbolTable = context.getSymbolTable();
+
+		final List<ASTNode> children = new ArrayList<ASTNode>();
+		for ( ASTNode node : getChildren() ) 
+		{
+			if ( node instanceof TermNode ||
+					node instanceof CharacterLiteralNode )
+			{
+				children.add( node );
+			}
+		}
+
+		final List<Integer> data = new ArrayList<Integer>();
+		for ( ASTNode node : children ) 
+		{
+			if ( node instanceof TermNode) 
+			{
+				final TermNode termNode = (TermNode) node;
+				final Long lValue = termNode.calculate( symbolTable );
+				if ( lValue == null ) {
+					return null;
+				}
+
+				if ( ! isValueInRange( termNode , symbolTable ) ) 
+				{
+					unit.addMarker(
+						new CompilationError("Value "+getValue( termNode , symbolTable )+" is out-of-range",
+								unit,termNode ) 
+					);  
+					data.add( 0xff );
+					data.add(  0xff );        				
+				}
+				else 
+				{
+					final int value = lValue.intValue();
+					final boolean fromAddress = ( node instanceof LabelReferenceNode);
+					if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ) 
+					{
+						data.add( (value & 0xff00) >> 8 );
+						data.add(  value & 0x00ff );
+					} else {
+						data.add( value );
+					}
+				}
+			} 
+			else if ( node instanceof CharacterLiteralNode ) 
+			{
+				final List<Integer> bytes = ((CharacterLiteralNode) node).getBytes();
+				for ( int value : bytes ) 
+				{
+					data.add( value );
+				}
+			} else {
+				throw new RuntimeException("Unreachable code reached");
+			}
+		}    	
+
+		final int aligned = Address.alignTo16Bit( data.size() );
+		final byte[] result = new byte[ aligned ];
+		for ( int i = 0 ; i < data.size() ; i++ ) 
+		{
+			result[i] = (byte) data.get(i).intValue();
+		}
+		return result;
+	}
+
+	@Override
+	public InitializedMemoryNode copySingleNode()
+	{
+		final InitializedMemoryNode  result = new InitializedMemoryNode();
+		result.allowedSize = allowedSize;
+		return result;
+	}
 
 
-    @Override
-    public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
-    {
-        writer.writeObjectCode( this.parsedData );
-    }
+	@Override
+	public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
+	{
+		writer.writeObjectCode( this.parsedData );
+	}
 
-    @Override
-    public void symbolsResolved(ICompilationContext context)
-    {
-        byte[] bytes;
-        try {
-            bytes = internalParseData( context );
-        } catch (ParseException e) {
-            throw new RuntimeException("Internal error, caught unexpected exception",e);
-        }
-        if ( bytes != null ) {
-            final int bytesToWrite = Address.alignTo16Bit( bytes.length );
-            final byte[] data = new byte[ bytesToWrite  ];
-            System.arraycopy( bytes , 0 , data , 0 , bytes.length );
-            this.parsedData = data;
-        } else {
-            this.parsedData = null;
-        }
-    }
-    
-    /** 
-     * UNIT-TESTING ONLY.
-     * 
-     * @return
-     */
-    public byte[] getBytes() {
-        return parsedData;
-    }
+	@Override
+	public void symbolsResolved(ICompilationContext context)
+	{
+		byte[] bytes;
+		try {
+			bytes = internalParseData( context );
+		} 
+		catch (ParseException e) {
+			throw new RuntimeException("Internal error, caught unexpected exception",e);
+		}
+		if ( bytes != null ) {
+			final int bytesToWrite = Address.alignTo16Bit( bytes.length );
+			final byte[] data = new byte[ bytesToWrite  ];
+			System.arraycopy( bytes , 0 , data , 0 , bytes.length );
+			this.parsedData = data;
+		} else {
+			this.parsedData = null;
+		}
+	}
 
-    @Override
-    public int getSizeInBytes()
-    {
-        if ( this.parsedData == null ) {
-            return UNKNOWN_SIZE;
-        }
-        return parsedData.length;
-    }
+	/** 
+	 * UNIT-TESTING ONLY.
+	 * 
+	 * @return
+	 */
+	public byte[] getBytes() {
+		return parsedData;
+	}
 
-    @Override
-    public boolean supportsChildNodes() {
-        return true;
-    }    
+	@Override
+	public int getSizeInBytes()
+	{
+		if ( this.parsedData == null ) {
+			return UNKNOWN_SIZE;
+		}
+		return parsedData.length;
+	}
+
+	@Override
+	public boolean supportsChildNodes() {
+		return true;
+	}    
 }

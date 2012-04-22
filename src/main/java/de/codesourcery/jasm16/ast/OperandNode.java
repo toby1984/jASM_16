@@ -22,6 +22,8 @@ import java.util.Set;
 
 import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -94,6 +96,7 @@ public class OperandNode extends ASTNode
 			this.addressingMode = AddressingMode.INTERNAL_EXPRESSION;
 			mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_OPEN ) );
 			final ASTNode expr = wrapExpression( new ExpressionNode().parseInternal( context ) , context );
+			validateRegisterRefCount( context, expr , 1 );
 			addChild( expr , context );
 			mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_CLOSE ) );
 			return this;
@@ -109,16 +112,39 @@ public class OperandNode extends ASTNode
 			{
 				// probably a label reference
 				this.addressingMode = AddressingMode.IMMEDIATE;            	
-				addChild( new ExpressionNode().parse( context ) , context );
+				ASTNode expr = new ExpressionNode().parse( context );
+				validateRegisterRefCount( context , expr , 0 );
+				addChild( expr , context );
 			}
-
 		} else if ( tok.hasType( TokenType.NUMBER_LITERAL ) || tok.hasType( TokenType.PARENS_OPEN )) {
 			this.addressingMode = AddressingMode.IMMEDIATE;
-			addChild( wrapExpression( new ExpressionNode().parse( context ) , context ), context  );            
+			final ASTNode expression = wrapExpression( new ExpressionNode().parse( context ) , context );
+			validateRegisterRefCount( context, expression , 0 );
+			addChild( expression, context  );            
 		} else {
 			throw new ParseException("Unexpected operand token: "+tok.getType() , tok );
 		}
 		return this;
+	}
+	
+	private void validateRegisterRefCount(IParseContext context,ASTNode node,int maxNum) throws ParseException 
+	{
+		final int count = ASTUtils.getRegisterReferenceCount( node );
+        if ( count > maxNum ) 
+        {
+        	final String cardinality;
+        	if ( maxNum == 0 ) {
+        		cardinality ="a";
+        	} else if ( maxNum == 1 ) {
+        		cardinality ="more than one";
+        	} else {
+         		cardinality = "more than "+Integer.toString( maxNum );
+        	}
+        	
+        	final ICompilationUnit unit = context.getCompilationUnit();
+        	final String error = "Expression must not contain "+cardinality+" register reference";
+        	unit.addMarker( new CompilationError(error,unit,node ) );
+        }		
 	}
 
 	private ASTNode wrapExpression(ASTNode input,IParseContext context) 
