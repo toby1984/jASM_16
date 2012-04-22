@@ -163,6 +163,9 @@ public class InstructionNodeTest extends TestHelper
 	
     public void testAddressingModesParsing() throws Exception {
     	
+    	assertCompiles("SET [10+A],10");    	
+    	assertCompiles("SET [10+A+10],10");
+    	
     	assertCompiles("SET [0x10],3");
     	
     	assertCompiles(":test SET A, 2+test");
@@ -179,7 +182,10 @@ public class InstructionNodeTest extends TestHelper
     	assertCompiles("SET [A] , 10 ");
     	assertCompiles("SET [A+10] , 10 ");
     	
-    	assertCompiles("SET [10+A] , 10 ");
+    	assertDoesNotCompile("SET [A+A],10)");
+    	assertDoesNotCompile("SET [1+A+2+A],10)");
+
+    	assertCompiles("SET [A+10],10");
     	
     	assertDoesNotCompile("SET 10,A");
     	assertDoesNotCompile("SET 10,[A]");
