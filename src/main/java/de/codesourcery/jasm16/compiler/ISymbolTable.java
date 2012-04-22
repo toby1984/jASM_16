@@ -21,7 +21,7 @@ import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
 import de.codesourcery.jasm16.parser.Identifier;
 
 /**
- * A symbol table.
+ * Symbol table.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

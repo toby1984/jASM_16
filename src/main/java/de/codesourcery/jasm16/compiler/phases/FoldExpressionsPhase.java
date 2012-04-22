@@ -27,11 +27,18 @@ import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 
 /**
- * Compiler phase that tries to reduce/fold expressions into literal values.
+ * (not enabled by default) Compiler phase that tries to replace expressions with their literal values.
  * 
+ * <p>
+ * This phase is currently not enabled by default and needs to be inserted manually using
+ * {@link ICompiler#insertCompilerPhaseAfter(ICompilerPhase, String)} , <b>must</b>
+ * be inserted AFTER {@link ICompilerPhase#PHASE_RESOLVE_ADDRESSES}.</p>
+ * 
+ * </p>
  * @author tobias.gierke@code-sourcery.de
  */
 public class FoldExpressionsPhase extends CompilerPhase {

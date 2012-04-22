@@ -46,10 +46,6 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 /**
  * This compiler phase calculates the addresses of labels defined in the source code.
  * 
- * <p>This phase needs to be executed twice (before and after expression folding)
- * because the actual size of some instructions depends on the size of their
- * operands and thus labels may addresses may "shift" after the constant folding took
- * place.</p>
  * @author tobias.gierke@code-sourcery.de
  */
 public class CalculateAddressesPhase extends CompilerPhase {

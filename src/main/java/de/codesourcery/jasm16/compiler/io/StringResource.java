@@ -25,7 +25,7 @@ import org.apache.commons.lang.StringUtils;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
- * {@link IResource} implementation that wraps a string.
+ * {@link IResource} implementation that wraps a plain string.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

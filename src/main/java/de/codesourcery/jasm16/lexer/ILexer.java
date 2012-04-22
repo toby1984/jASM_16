@@ -127,11 +127,12 @@ public interface ILexer {
     public IToken read(TokenType expectedType) throws ParseException,EOFException;
     
 	/**
-	 * Advanced parsing until either an a token with a specific type is found or EOL
+	 * Advance until either a token with a specific type is found or EOL
 	 * is encountered.
 	 * 
 	 * @param expectedType
-	 * @param advancePastMatchedToken
+	 * @param advancePastMatchedToken whether to include the matched token into the result
+	 * or stop lexing right in front of it
 	 * @return skipped tokens
 	 * @see TokenType#EOL
 	 */

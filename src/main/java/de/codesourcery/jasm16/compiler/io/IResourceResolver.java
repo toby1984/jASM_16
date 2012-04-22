@@ -28,6 +28,12 @@ public interface IResourceResolver
     /**
      * Look-up a resource by it's identifier.
      * 
+     * <p>
+     * The outcome of passing "relative" identifiers to this method is undefined.
+     * Use {@link #resolveRelative(String, IResource)} if you suspect the identifier
+     * may be a relative resource reference.
+     * </p>
+     * 
      * @param identifier
      * @return
      * @throws ResourceNotFoundException
@@ -36,6 +42,12 @@ public interface IResourceResolver
     
     /**
      * Look-up a resource while assuming that relative identifiers should be resolved relative to a specific parent resource. 
+     * 
+     * <p>
+     * If the identifier is an absolute reference, behaves exactly like {@link #resolve(String)}. 
+     * If the identifier is a relative reference, the reference is resolved relative to 
+     * the given parent resource.
+     * </p>
      * 
      * @param identifier
      * @param parent parent resource

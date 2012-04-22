@@ -16,7 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 /**
- * A symbol that refers to a numeric value.
+ * A symbol that resolves to a numeric value.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

@@ -26,6 +26,11 @@ import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 
+/**
+ * The '.include' AST node.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class IncludeSourceFileNode extends ASTNode {
 
 	private String resourceIdentifier; 

@@ -21,8 +21,10 @@ import java.io.OutputStream;
 import de.codesourcery.jasm16.Address;
 
 /**
- * {@link IObjectCodeWriter} that writes to a file in the local filesystem.
+ * Abstract base-class for implementing {@link IObjectCodeWriter}s.
  * 
+ * <p>This class takes care of properly handling {@link #advanceToWriteOffset(Address)}
+ * and should be subclasses whenever possible.</p>
  * @author tobias.gierke@code-sourcery.de
  */
 public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter 

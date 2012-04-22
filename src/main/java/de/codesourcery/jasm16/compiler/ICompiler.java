@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.compiler;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
@@ -38,8 +39,22 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 public interface ICompiler 
 {
 	public enum CompilerOption {
+		/**
+		 * Enables verbose debug output.
+		 */
 		DEBUG_MODE,
+		/**
+		 * When enabled , the parser parses mnemonics
+		 * case-insensitive (default is to require upper-case, "SET a,1" is ok but "set a,1" isn't). 
+		 */
 		RELAXED_PARSING,
+		/**
+		 * Whether to actually process source includes
+		 * (and thus include their AST into the AST of
+		 * the current compilation unit) or just acknowledge
+		 * that their is an include (by just adding a {@link IncludeSourceFileNode} without
+		 * an AST as child node).
+		 */
 		NO_SOURCE_INCLUDE_PROCESSING; // disable .include processing
 	}
 	

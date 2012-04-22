@@ -28,6 +28,11 @@ import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
+/**
+ * A variable assignment (.equ).
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class Equation extends AbstractSymbol implements IValueSymbol {
 
 	private static Logger LOG = Logger.getLogger(Equation.class);

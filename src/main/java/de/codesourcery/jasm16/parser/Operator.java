@@ -35,7 +35,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
  * <p>Note that the current expression parser only supports
  * left-associative infix operators ; the {@link #INCREMENT} 
  * and {@link #DECREMENT} operators are internally handled 
- * by {@link RegisterReferenceNode} so the expression parser
+ * by {@link RegisterReferenceNode} so the normally expression parser
  * never sees those.
  * </p>
  * @author tobias.gierke@code-sourcery.de

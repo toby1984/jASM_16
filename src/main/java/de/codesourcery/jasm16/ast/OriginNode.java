@@ -24,6 +24,11 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 
+/**
+ * '.org' AST node.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class OriginNode extends ObjectCodeOutputNode
 {
     private Address address;

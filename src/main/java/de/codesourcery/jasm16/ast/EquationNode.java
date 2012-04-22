@@ -27,6 +27,11 @@ import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.TextRegion;
 
+/**
+ * A '.equ' variable assignment.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class EquationNode extends ConstantValueNode {
 
 	private Identifier identifier;

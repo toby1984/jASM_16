@@ -19,7 +19,7 @@ import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
- * Immutable symbol.
+ * A symbol.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

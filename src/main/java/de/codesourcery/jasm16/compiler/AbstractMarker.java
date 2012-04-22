@@ -20,6 +20,11 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
+/**
+ * Base-class to help with implementing {@link IMarker}s.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public abstract class AbstractMarker implements IMarker
 {
     private final String type;

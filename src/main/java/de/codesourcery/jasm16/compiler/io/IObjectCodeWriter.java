@@ -29,7 +29,9 @@ import de.codesourcery.jasm16.Address;
 public interface IObjectCodeWriter extends Closeable
 {
 	/**
-	 * See {@link OutputStream#write(byte[])}.
+	 * Output object code.
+	 *      
+	 * Behaves like {@link OutputStream#write(byte[])}.
 	 * 
 	 * @param data
 	 * @throws IOException
@@ -37,7 +39,9 @@ public interface IObjectCodeWriter extends Closeable
     public void writeObjectCode(byte[] data) throws IOException;
     
     /**
-     * See {@link OutputStream#write(byte[], int, int)}.
+     * Output object code.
+     * 
+     * Behaves like {@link OutputStream#write(byte[], int, int)}.
      * 
      * @param data
      * @param offset
@@ -54,7 +58,7 @@ public interface IObjectCodeWriter extends Closeable
     public void deleteOutput() throws IOException;
     
     /**
-     * Returns the number of bytes written.
+     * Returns the next memory location where object code would be written.
      * 
      * @return
      */

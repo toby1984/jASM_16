@@ -17,6 +17,12 @@ package de.codesourcery.jasm16.exceptions;
 
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 
+/**
+ * Thrown when nested inclusion of source files turns out
+ * to be a circular dependency.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class CircularSourceIncludeException extends RuntimeException {
 
 	private final ICompilationUnit unit;

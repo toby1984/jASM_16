@@ -27,7 +27,7 @@ import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
- * {@link IResource} implementation that wraps a string.
+ * {@link IResource} implementation that wraps a {@link java.io.File}.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

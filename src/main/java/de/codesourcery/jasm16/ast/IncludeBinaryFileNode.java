@@ -29,6 +29,11 @@ import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 
+/**
+ * '.incbin' AST node.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class IncludeBinaryFileNode extends ObjectCodeOutputNode
 {
     private static final Logger LOG = Logger.getLogger(IncludeBinaryFileNode.class);

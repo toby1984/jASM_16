@@ -51,7 +51,8 @@ import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 
 /**
  * {@link IASTVisitor} implementation that outputs
- * formatted source code for an AST.
+ * formatted source code for an AST along with the generated
+ * object code as comments.
  * 
  * @author tobias.gierke@code-sourcery.de
  */

@@ -68,7 +68,7 @@ public interface IResource
      * Returns an estimate of the number of bytes that can be read 
      * from this resource without blocking.
      * 
-     * @return available bytes
+     * @return available bytes or 0 if the resource does not exist.
      * @throws IOException
      */
     public long getAvailableBytes() throws IOException;

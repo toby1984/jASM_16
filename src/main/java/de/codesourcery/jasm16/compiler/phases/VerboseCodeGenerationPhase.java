@@ -19,9 +19,15 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.Main;
 import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 
+/**
+ * Phase used by {@link Main} to generate verbose compilation output.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class VerboseCodeGenerationPhase extends CodeGenerationPhase {
 
     @Override

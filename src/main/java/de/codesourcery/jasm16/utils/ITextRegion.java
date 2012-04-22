@@ -29,42 +29,42 @@ import java.util.List;
 public interface ITextRegion
 {
 	/**
-	 * Returns the starting offset of this text block.
+	 * Returns the starting offset of this text region.
 	 * @return
 	 */
     public int getStartingOffset(); 
     
     /**
-     * Returns the end offset of this text block.
+     * Returns the end offset of this text region.
      * 
      * @return end offset ( starting offset + length )
      */
     public int getEndOffset(); 
     
     /**
-     * Returns the length of this text block in characters.
+     * Returns the length of this text region in characters.
      * 
      * @return
      */
     public int getLength(); 
     
     /**
-     * Calculates the union of this text block with another.
+     * Calculates the union of this text region with another.
      * 
      * @param other
      */
     public void merge(ITextRegion other); 
     
     /**
-     * Calculates the union of this text block with several others.
+     * Calculates the union of this text region with several others.
      * @param ranges
      */
     public void merge(List<? extends ITextRegion> ranges);
     
     /**
-     * Calculates the intersection of this text block with another.
+     * Calculates the intersection of this text region with another.
      * 
-     * @param other text block to calculate intersection with
+     * @param other text region to calculate intersection with
      * @throws IllegalArgumentException if <code>other</code> is <code>null</code>
      * or does not overlap with this text range at all.
      */
@@ -83,23 +83,23 @@ public interface ITextRegion
     public void subtract(ITextRegion other) throws UnsupportedOperationException;  
     
     /**
-     * Check whether this text block is the same as another.
+     * Check whether this text region is the same as another.
      * 
      * @param other
-     * @return <code>true</code> if this block as the same length and starting offset
+     * @return <code>true</code> if this region as the same length and starting offset
      * as the argument
      */
     public boolean isSame(ITextRegion other); 
     
     /**
-     * Check whether this text block fully contains another region.
+     * Check whether this text region fully contains another region.
      * @param other
      * @return
      */
     public boolean contains(ITextRegion other); 
     
     /**
-     * Check whether this text block overlaps with another.
+     * Check whether this text region overlaps with another.
      * 
      * @param other
      * @return
@@ -107,14 +107,14 @@ public interface ITextRegion
     public boolean overlaps(ITextRegion other);
     
     /**
-     * Check whether this text block covers a given offset.
+     * Check whether this text region covers a given offset.
      * @param offset
      * @return
      */
     public boolean contains(int offset);
     
     /**
-     * Extract the region denoted by this text block from a string.
+     * Extract the region denoted by this text region from a string.
      * 
      * @param string
      * @return

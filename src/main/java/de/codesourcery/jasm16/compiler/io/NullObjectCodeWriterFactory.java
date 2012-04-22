@@ -20,7 +20,6 @@ import java.io.OutputStream;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 
-
 /**
  * {@link IObjectCodeWriterFactory} that creates writers which silently discard
  * any data written to them.  

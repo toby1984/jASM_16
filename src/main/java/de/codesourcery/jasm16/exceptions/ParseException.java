@@ -18,6 +18,12 @@ package de.codesourcery.jasm16.exceptions;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.TextRegion;
 
+/**
+ * Extends <code>java.lang.ParseException</code> to also
+ * include the {@link ITextRegion} that's associated with a specific parse error.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class ParseException extends java.text.ParseException
 {
     private final ITextRegion range;
