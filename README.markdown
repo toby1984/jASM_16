@@ -25,7 +25,7 @@ label1:
 label2:
 ```
 
-- Two-pass compilation with operand inlining for both literal values and addresses
+- Generates short-form opcodes for both literal values and addresses
 
 - Equation support ( .equ identifier expression )
 
@@ -37,9 +37,10 @@ label2:
 
 - Supports 16-bit character literals
 
-- Supports setting the origin of generated assembly via '.org' or '.origin' 
+- Supports setting the origin of generated code via '.org' or '.origin' 
 
-- Supports including data from binary files using '.incbin "pic.jpg"
+- Supports source includes via '.include "somesource.dasm16" ' or ' .incsource "somesource.dasm16" '
+- Supports including data from binary files via '.incbin "pic.jpg"
 
 Building 
 --------
@@ -135,10 +136,15 @@ label:
   .dat "Hello world"
 ```
 
+- to define custom constants, use
+
+```
+.equ IDENTIFIER 1+2*3+37 << 3 ; arbitary expressions that may involve labels and other constants
+
 - to create memory initialized with byte-sized values, use
 
 ```
-  .byte 0x01,0x02
+  .byte 0x01,0x02, 1+2 , 3*label+0x27 , IDENTIFIER 
 ```
 
 - to create memory initialized with word-sized values, use either
@@ -158,3 +164,5 @@ label:
 - to set the origin of generated code, use '.org <address>' or '.origin <address>'
 
 - to include binary data from a file, use '.incbin "filename"'
+
+- to include another source file, use '.include "filename"' or '.incsource "filename"'

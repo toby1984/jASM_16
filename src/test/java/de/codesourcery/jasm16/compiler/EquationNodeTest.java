@@ -18,13 +18,31 @@ package de.codesourcery.jasm16.compiler;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.parser.TestHelper;
 
 public class EquationNodeTest extends TestHelper {
 
+	public void testCyclicExpression() throws Exception {
+		
+		final String source = ".equ value1 value2\n" +
+				".equ value2 value3\n" +
+				".equ value3 value1";
+
+		ICompilationUnit unit = compile( source );
+		assertTrue( unit.hasErrors() );
+	}
+	
+	public void testCyclicExpression2() throws Exception {
+		
+		final String source = ".equ value1 value2\n" +
+				".equ value2 value1\n";
+
+		ICompilationUnit unit = compile( source );
+		assertTrue( unit.hasErrors() );
+	}	
+	
 	public void testParseNumberLiteralExpression() throws Exception {
 		
 		final String source = ".equ value 10";

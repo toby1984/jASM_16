@@ -130,7 +130,9 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected final ICompilationUnit compile(String source,ICompilationListener listener) throws Exception {
 
 		final Compiler compiler = new Compiler();
+		
 		compiler.setCompilerOption( CompilerOption.DEBUG_MODE  , true );
+		
 		compiler.setObjectCodeWriterFactory( NOP_WRITER );
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
@@ -143,6 +145,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 				symbolTable = context.getSymbolTable();
 			}
 		} , ICompilerPhase.PHASE_GENERATE_CODE );
+		
 		compiler.compile( Collections.singletonList( unit ) , listener );
 		
 		Misc.printCompilationErrors( unit , source , true );

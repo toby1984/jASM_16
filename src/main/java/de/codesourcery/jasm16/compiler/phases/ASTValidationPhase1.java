@@ -23,6 +23,7 @@ import de.codesourcery.jasm16.ast.IIterationContext;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
@@ -50,17 +51,20 @@ public class ASTValidationPhase1 extends CompilerPhase {
             return;
         }
         
-        final ASTVisitor visitor = new ASTVisitor() {
+        final ASTVisitor visitor = new ASTVisitor() 
+        {
         	@Override
         	public void visit(SymbolReferenceNode node, IIterationContext context) 
         	{
                 final Identifier id = node.getIdentifier();
                 if ( ! compContext.getSymbolTable().containsSymbol( id ) ) {
                     unit.addMarker( new CompilationError("Unknown identifier "+id, unit, node ) );
-                }				
+                } 
+               	Equation.checkCyclicDependencies(id,compContext.getSymbolTable());
         	}
         	
         };
+        
         ASTUtils.visitInOrder( unit.getAST() , visitor );
     }
     

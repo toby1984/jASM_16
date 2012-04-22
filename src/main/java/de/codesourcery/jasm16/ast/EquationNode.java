@@ -101,7 +101,10 @@ public class EquationNode extends ConstantValueNode {
 					getTextRegion() ,
 					identifier,
 					termNode );
+			
 			context.getSymbolTable().defineSymbol( equation );
+			
+			Equation.checkCyclicDependencies( equation.getIdentifier() , context.getSymbolTable() );
 		}
 		return this;
 	}
