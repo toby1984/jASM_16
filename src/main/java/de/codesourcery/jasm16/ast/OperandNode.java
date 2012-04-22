@@ -282,7 +282,7 @@ public class OperandNode extends ASTNode
 
 			private NodeType getNodeType(ASTNode node) 
 			{
-				if ( node instanceof NumberNode || node instanceof LabelReferenceNode) {
+				if ( node instanceof NumberNode || node instanceof SymbolReferenceNode) {
 					return NodeType.CONSTANT;
 				} else if ( node instanceof RegisterReferenceNode) {
 					final RegisterReferenceNode r = (RegisterReferenceNode) node;

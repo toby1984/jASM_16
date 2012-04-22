@@ -15,34 +15,34 @@
  */
 package de.codesourcery.jasm16.compiler;
 
+import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
-/**
- * Immutable symbol.
- * 
- * @author tobias.gierke@code-sourcery.de
- */
-public interface ISymbol {
+public class Equation extends AbstractSymbol implements IValueSymbol {
 
-	/**
-	 * Returns this symbol's unique identifier.
-	 * 
-	 * @return identifier, never <code>null</code>
-	 */
-	public Identifier getIdentifier();
+	private final TermNode expression;
 	
-	/**
-	 * Returns the compilation unit where this symbol was defined.
-	 * 
-	 * @return
-	 */
-	public ICompilationUnit getCompilationUnit();
-	
-	/**
-	 * Returns the source location where this
-	 * label was defined within the compilation unit. 
-	 * @return
-	 */
-	public ITextRegion getLocation();
+	public Equation(ICompilationUnit unit, 
+			ITextRegion location,
+			Identifier identifier,
+			TermNode expression) 
+	{
+		super(unit, location, identifier);
+		if ( expression == null ) {
+			throw new IllegalArgumentException("expression must not be NULL");
+		}
+		this.expression = expression;
+	}
+
+	@Override
+	public Long getValue(ISymbolTable symbolTable) 
+	{
+		return expression.calculate( symbolTable );
+	}
+
+	@Override
+	public void setValue(Long value) {
+		throw new UnsupportedOperationException( "cannot set value of constant equation");
+	}
 }

@@ -20,7 +20,6 @@ import de.codesourcery.jasm16.ast.LabelNode;
 
 public class LabelNodeTest extends TestHelper
 {
-
     public void testParseNotchStyleLabel() throws Exception {
         
         String source = ":label";

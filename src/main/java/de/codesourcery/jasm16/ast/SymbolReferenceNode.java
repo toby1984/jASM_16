@@ -20,18 +20,18 @@ import org.apache.commons.lang.ObjectUtils;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
-import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.IValueSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
- * An AST node that represents a reference to a label.
+ * An AST node that represents a references to a symbol.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class LabelReferenceNode extends ConstantValueNode
+public class SymbolReferenceNode extends ConstantValueNode
 {
 	private Identifier identifier;
 
@@ -41,7 +41,7 @@ public class LabelReferenceNode extends ConstantValueNode
 	}
 
 	@Override
-	protected LabelReferenceNode parseInternal(IParseContext context) throws ParseException
+	protected SymbolReferenceNode parseInternal(IParseContext context) throws ParseException
 	{
 		final int startOffset = context.currentParseIndex();
 		this.identifier = context.parseIdentifier( null );
@@ -56,21 +56,21 @@ public class LabelReferenceNode extends ConstantValueNode
         if ( obj == this ) {
             return true;
         }
-        if ( obj instanceof LabelReferenceNode) {
-            return ObjectUtils.equals( this.identifier , ((LabelReferenceNode) obj).identifier );
+        if ( obj instanceof SymbolReferenceNode) {
+            return ObjectUtils.equals( this.identifier , ((SymbolReferenceNode) obj).identifier );
         }
         return false; 
     }
     
 	@Override
-	public LabelReferenceNode reduce(ICompilationContext context) {
-		return (LabelReferenceNode) createCopy(false);
+	public SymbolReferenceNode reduce(ICompilationContext context) {
+		return (SymbolReferenceNode) createCopy(false);
 	}
 
 	@Override
-	public LabelReferenceNode copySingleNode()
+	public SymbolReferenceNode copySingleNode()
 	{
-		final LabelReferenceNode result = new LabelReferenceNode();
+		final SymbolReferenceNode result = new SymbolReferenceNode();
 		result.identifier = identifier;
 		return result;
 	}
@@ -82,12 +82,10 @@ public class LabelReferenceNode extends ConstantValueNode
 		if ( symbol == null ) {
 		    return null;
 		}
-		if ( !( symbol instanceof Label ) ) {
-			throw new RuntimeException("Internal error, label reference does not refer to a label but to "+symbol);        	
+		if ( !( symbol instanceof IValueSymbol ) ) {
+			throw new RuntimeException("Internal error, symbol reference does not refer to a value symbol but to "+symbol);        	
 		}
-		
-		final Label label = (Label) symbol;
-		return label.getAddress() != null ? Long.valueOf( label.getAddress().getValue() ) : null;
+		return ((IValueSymbol) symbol).getValue( table );
 	}
 	
 	@Override

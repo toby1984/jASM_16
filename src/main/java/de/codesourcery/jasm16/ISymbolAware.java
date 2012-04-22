@@ -13,36 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.compiler;
+package de.codesourcery.jasm16;
 
-import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
 
 /**
- * Immutable symbol.
+ * Interface implemented by classes whose value/inner workings depend
+ * on symbols from the symbol table.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface ISymbol {
+public interface ISymbolAware {
 
-	/**
-	 * Returns this symbol's unique identifier.
-	 * 
-	 * @return identifier, never <code>null</code>
-	 */
-	public Identifier getIdentifier();
-	
-	/**
-	 * Returns the compilation unit where this symbol was defined.
-	 * 
-	 * @return
-	 */
-	public ICompilationUnit getCompilationUnit();
-	
-	/**
-	 * Returns the source location where this
-	 * label was defined within the compilation unit. 
-	 * @return
-	 */
-	public ITextRegion getLocation();
+    /**
+     * Invoked when symbols in the symbol table MAY have been assigned a value.
+     * 
+     * @param context
+     */
+    public abstract void symbolsResolved(ICompilationContext context);
 }

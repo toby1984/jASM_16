@@ -20,7 +20,7 @@ import java.io.IOException;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
 import de.codesourcery.jasm16.ast.IIterationContext;
-import de.codesourcery.jasm16.ast.LabelReferenceNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
@@ -52,7 +52,7 @@ public class ASTValidationPhase1 extends CompilerPhase {
         
         final ASTVisitor visitor = new ASTVisitor() {
         	@Override
-        	public void visit(LabelReferenceNode node, IIterationContext context) 
+        	public void visit(SymbolReferenceNode node, IIterationContext context) 
         	{
                 final Identifier id = node.getIdentifier();
                 if ( ! compContext.getSymbolTable().containsSymbol( id ) ) {

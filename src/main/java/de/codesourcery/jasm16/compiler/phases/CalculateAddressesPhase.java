@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.ISymbolAware;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.IASTNodeVisitor;
@@ -139,13 +140,17 @@ public class CalculateAddressesPhase extends CompilerPhase {
 				{
 					final ObjectCodeOutputNode outputNode = (ObjectCodeOutputNode) n;
 					
-					outputNode.symbolsResolved( compContext );
+					if ( n instanceof ISymbolAware ) {
+						outputNode.symbolsResolved( compContext );
+					}
 
 					final int sizeInBytes = outputNode.getSizeInBytes();
 					if ( sizeInBytes != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
 					{
 						currentSize[0] += sizeInBytes;
 					}
+				} else if ( n instanceof ISymbolAware ) {
+					((ISymbolAware) n).symbolsResolved( compContext );
 				}
 				context.continueTraversal();
 			}

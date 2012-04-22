@@ -32,9 +32,11 @@ import de.codesourcery.jasm16.compiler.CompilationContext;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.Compiler;
+import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
@@ -131,7 +133,15 @@ public abstract class TestHelper extends TestCase
 		compiler.setObjectCodeWriterFactory( NOP_WRITER );
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		
+
+		compiler.insertCompilerPhaseAfter( new CompilerPhase("pry-on-symbols") {
+
+			@Override
+			protected void run(ICompilationUnit unit, ICompilationContext context) throws IOException 
+			{
+				symbolTable = context.getSymbolTable();
+			}
+		} , ICompilerPhase.PHASE_GENERATE_CODE );
 		compiler.compile( Collections.singletonList( unit ) , listener );
 		
 		Misc.printCompilationErrors( unit , source , true );

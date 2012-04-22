@@ -150,12 +150,11 @@ public class ParseContext implements IParseContext
 
     public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException  
     {
-    	if ( eof() ) {
-    		throw new ParseException("Label lacks identifier" , currentParseIndex() ,0 );
+    	if ( eof() || ! peek().hasType( TokenType.CHARACTERS ) ) {
+    		throw new ParseException("Expected an identifier" , currentParseIndex() ,0 );
     	}
     	
-        int startOffset = currentParseIndex();    	
-        
+        int startOffset = currentParseIndex();  
         final IToken token = read( TokenType.CHARACTERS  );
         if ( range != null ) {
         	range.merge( token );

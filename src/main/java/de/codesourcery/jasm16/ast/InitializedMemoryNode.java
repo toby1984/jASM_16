@@ -227,7 +227,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 				else 
 				{
 					final int value = lValue.intValue();
-					final boolean fromAddress = ( node instanceof LabelReferenceNode);
+					final boolean fromAddress = ( node instanceof SymbolReferenceNode);
 					if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ) 
 					{
 						data.add( (value & 0xff00) >> 8 );

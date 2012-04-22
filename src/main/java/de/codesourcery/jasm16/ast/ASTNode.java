@@ -255,7 +255,7 @@ public abstract class ASTNode
      * 
      * @return
      */
-    public final ASTNode createCopy(boolean shallow) {
+    public ASTNode createCopy(boolean shallow) {
 
         ASTNode result = copySingleNode();
         if ( actualTextRegion != null ) {

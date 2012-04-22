@@ -305,6 +305,11 @@ public final class Lexer implements ILexer {
             currentTokens.add( new Token(TokenType.INCLUDE_BINARY , buffer , startIndex ) );
             return ;
         }
+        
+        if ( ".equ".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.EQUATION , buffer , startIndex ) );
+            return ;        	
+        }
 
         if ( ".".equals( buffer ) ) {
             currentTokens.add( new Token(TokenType.DOT, "." , startIndex ) );

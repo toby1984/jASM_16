@@ -27,8 +27,10 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 	{
 		if ( n instanceof AST ) {
 			visit( (AST) n , context );
+	     } else if ( n instanceof EquationNode) {
+	         visit( (EquationNode) n , context );			
 	     } else if ( n instanceof OriginNode) {
-	            visit( (OriginNode) n , context );
+	         visit( (OriginNode) n , context );
 		} else if ( n instanceof IncludeBinaryFileNode) {
 	        visit( (IncludeBinaryFileNode) n , context );
 		} else if ( n instanceof CharacterLiteralNode) {
@@ -43,8 +45,8 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 			visit( (InstructionNode) n , context );
 		} else if ( n instanceof LabelNode) {
 			visit( (LabelNode) n , context );
-		} else if ( n instanceof LabelReferenceNode) {
-			visit( (LabelReferenceNode) n , context );
+		} else if ( n instanceof SymbolReferenceNode) {
+			visit( (SymbolReferenceNode) n , context );
 		} else if ( n instanceof NumberNode) {
 			visit( (NumberNode) n , context );
 		} else if ( n instanceof OperandNode) {
@@ -66,6 +68,9 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 		}
 			
 	}
+	
+    @Override
+    public void visit(EquationNode node,IIterationContext context) { }	
 	
     @Override
     public void visit(OriginNode node,IIterationContext context) { }	
@@ -95,7 +100,7 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 	public void visit(LabelNode node, IIterationContext context) { }
 
 	@Override
-	public void visit(LabelReferenceNode node, IIterationContext context) {}
+	public void visit(SymbolReferenceNode node, IIterationContext context) {}
 
 	@Override
 	public void visit(NumberNode node, IIterationContext context) { }

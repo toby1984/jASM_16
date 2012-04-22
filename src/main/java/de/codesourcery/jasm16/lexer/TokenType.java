@@ -46,5 +46,6 @@ public enum TokenType
     INITIALIZED_MEMORY_BYTE, // .byte
     UNINITIALIZED_MEMORY, // .bss   	
     INCLUDE_BINARY, // .incbin
-    ORIGIN; // .org
+    ORIGIN, // .org
+    EQUATION; // .equ
 }

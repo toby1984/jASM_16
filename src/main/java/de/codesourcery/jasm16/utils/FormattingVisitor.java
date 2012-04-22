@@ -34,7 +34,7 @@ import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.LabelReferenceNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
@@ -243,7 +243,7 @@ public class FormattingVisitor extends ASTVisitor {
     }
 
     @Override
-    public void visit(LabelReferenceNode node, IIterationContext context) {
+    public void visit(SymbolReferenceNode node, IIterationContext context) {
     }
 
     @Override

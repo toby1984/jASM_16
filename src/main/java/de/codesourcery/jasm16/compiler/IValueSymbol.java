@@ -15,34 +15,19 @@
  */
 package de.codesourcery.jasm16.compiler;
 
-import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.utils.ITextRegion;
-
 /**
- * Immutable symbol.
+ * A symbol that refers to a numeric value.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface ISymbol {
+public interface IValueSymbol extends ISymbol {
 
 	/**
-	 * Returns this symbol's unique identifier.
-	 * 
-	 * @return identifier, never <code>null</code>
-	 */
-	public Identifier getIdentifier();
-	
-	/**
-	 * Returns the compilation unit where this symbol was defined.
-	 * 
+	 * Returns this symbol's value.
+	 * @param symbolTable
 	 * @return
 	 */
-	public ICompilationUnit getCompilationUnit();
+	public Long getValue(ISymbolTable symbolTable);
 	
-	/**
-	 * Returns the source location where this
-	 * label was defined within the compilation unit. 
-	 * @return
-	 */
-	public ITextRegion getLocation();
+	public void setValue(Long value);
 }

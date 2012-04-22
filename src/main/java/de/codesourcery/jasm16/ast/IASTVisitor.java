@@ -22,6 +22,8 @@ package de.codesourcery.jasm16.ast;
  */
 public interface IASTVisitor {
 
+    public void visit(EquationNode node,IIterationContext context);	
+    
 	public void visit(AST node,IIterationContext context);
 			
     public void visit(OriginNode node,IIterationContext context);
@@ -38,7 +40,7 @@ public interface IASTVisitor {
 	
 	public void visit(LabelNode node,IIterationContext context);
 	
-	public void visit(LabelReferenceNode node,IIterationContext context);
+	public void visit(SymbolReferenceNode node,IIterationContext context);
 	
 	public void visit(NumberNode node,IIterationContext context);
 	

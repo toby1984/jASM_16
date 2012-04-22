@@ -190,7 +190,7 @@ public class ExpressionNode extends TermNode
                 if ( Register.isRegisterIdentifier( context.peek().getContents() ) ) {
                     parsed = new RegisterReferenceNode().parse( context );
                 } else {
-                    parsed = new LabelReferenceNode().parse( context );
+                    parsed = new SymbolReferenceNode().parse( context );
                 }
                 previousNode = handleStack(termStack , parsed , index ,previousNode , context );
             } else {

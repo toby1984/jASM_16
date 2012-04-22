@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.compiler;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
-import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * A label that identifies a specific location in the
@@ -26,28 +25,12 @@ import de.codesourcery.jasm16.utils.TextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class Label implements ISymbol {
+public class Label extends AbstractSymbol implements IValueSymbol {
 
-	private final ICompilationUnit unit;
-	private final Identifier identifier;
-	private final ITextRegion location;
-	
 	private Address address;
 	
 	public Label(ICompilationUnit unit , ITextRegion location , Identifier identifier) {
-		if (identifier == null) {
-			throw new IllegalArgumentException("identifier must not be NULL");
-		}
-		if ( location == null ) {
-            throw new IllegalArgumentException("location must not be NULL.");
-        }
-		this.location = new TextRegion( location );
-		this.unit = unit;
-		this.identifier = identifier;
-	}
-	
-	public Identifier getIdentifier() {
-		return identifier;
+		super( unit , location , identifier );
 	}
 	
 	/**
@@ -72,23 +55,30 @@ public class Label implements ISymbol {
     }
 	
 	@Override
-	public ICompilationUnit getCompilationUnit() {
-		return unit;
-	}
-	
-	@Override
 	public String toString() 
 	{
 	    if ( address != null ) {
-	        return identifier+"("+address+" , "+unit+")";	        
+	        return getIdentifier()+"("+address+" , "+getCompilationUnit()+")";	        
 	    }
-		return identifier.toString();
+		return getIdentifier().toString();
 	}
 
-    @Override
-    public ITextRegion getLocation()
-    {
-        return location;
-    }
+	@Override
+	public Long getValue(ISymbolTable symbolTable) 
+	{
+		if ( this.address == null ) {
+			return null;
+		}
+		return Long.valueOf( this.address.getValue() );
+	}
+
+	@Override
+	public void setValue(Long value) {
+		if ( value == null ) {
+			this.address = null;
+		} else {
+			this.address = Address.valueOf( value );
+		}
+	}
 	
 }
