@@ -234,7 +234,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " 1 + 1 ";
 		
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext( unit );
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -252,7 +252,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " 1 + 4 + 5 * 3 ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext( unit );
         
         final IParseContext context = createParseContext( source );
         
@@ -271,7 +271,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " ( 3+3 ) *2 ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -289,7 +289,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " ( 3+(3*2)) ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -307,7 +307,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " ( (3+3)*2) ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -325,7 +325,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " 4-3 ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -343,7 +343,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " 13-(3*3) ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -361,7 +361,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " (13-3)*3 ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -379,7 +379,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " (3 + ((4 * 2) / ( 1 - 5 ) )) "; // 3 + ( 8 / -4 ) = 3 + -2 = 1 
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -398,7 +398,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " ( ( ( 3+3 ) *2 ) - 4 ) / ( 1 + 1)";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -416,7 +416,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = "( ( 3+3 ) *2 ) - 4";  // 
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -435,7 +435,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " 3 + a ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -452,7 +452,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " a + 3 ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -468,7 +468,7 @@ public class ExpressionNodeTest extends TestHelper {
         final String source = " 3+3 ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+        final ICompilationContext compilationContext = createCompilationContext(unit);
         
         final IParseContext context = createParseContext( source );
         
@@ -489,7 +489,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " a+3+3 ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -506,7 +506,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " 2*3 + a ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -522,7 +522,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " 3 + a + 3 ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS);
+		final ICompilationContext compilationContext = createCompilationContext(unit);
 		
 		final IParseContext context = createParseContext( source );
 		
@@ -538,7 +538,7 @@ public class ExpressionNodeTest extends TestHelper {
 		final String source = " 1 + 2 + 3 + a + 4 + 5 + 6 ";
 		
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		final ICompilationContext compilationContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER , OPTIONS );
+		final ICompilationContext compilationContext = createCompilationContext( unit );
 		
 		final IParseContext context = createParseContext( source );
 		

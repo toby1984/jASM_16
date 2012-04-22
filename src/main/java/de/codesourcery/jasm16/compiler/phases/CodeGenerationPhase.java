@@ -26,6 +26,7 @@ import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.IASTNodeVisitor;
 import de.codesourcery.jasm16.ast.IIterationContext;
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.GenericCompilationError;
@@ -124,7 +125,16 @@ public class CodeGenerationPhase extends CompilerPhase {
                             return;
                         }
                     }
-                    context.continueTraversal();
+                    
+                    if ( n instanceof IncludeSourceFileNode) 
+                    {
+                    	// already added as a separate compilation unit
+                    	// by IncludeSourceFileNode , do not process AST here
+                    	// otherwise we'll generate duplicate object code
+                    	context.dontGoDeeper();
+                    } else {
+                    	context.continueTraversal();
+                    }
                 }
             };
             ASTUtils.visitInOrder( ast , visitor );

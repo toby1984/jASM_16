@@ -22,6 +22,8 @@ package de.codesourcery.jasm16.ast;
  */
 public interface IASTVisitor {
 
+    public void visit(IncludeSourceFileNode node,IIterationContext context);	
+    
     public void visit(EquationNode node,IIterationContext context);	
     
 	public void visit(AST node,IIterationContext context);

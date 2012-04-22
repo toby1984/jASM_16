@@ -92,4 +92,9 @@ public class FileResource implements IResource
         return file;
     }
 
+	@Override
+	public String getIdentifier() {
+		return file.getAbsolutePath();
+	}
+
 }

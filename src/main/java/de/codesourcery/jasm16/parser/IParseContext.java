@@ -15,12 +15,16 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import java.io.IOException;
+
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.ILexer;
@@ -114,5 +118,24 @@ public interface IParseContext extends ILexer , IResourceResolver {
      */
     public void addMarker(IMarker marker);
 
+    /**
+     * Add a compilation error.
+     * 
+     * <p>Convenience method that uses {@link ICompilationUnit#addMarker(IMarker)} 
+     * to add an error that encompasses a specific AST node to the current compilation unit.</p>
+     * @param message
+     * @param node
+     * @see ICompilationUnit#addMarker(IMarker)
+     */
     public void addCompilationError(String message, ASTNode node); 
+    
+    /**
+     * Invoked to create a new <code>ParseContext</code> whenever a
+     * source include needs to be processed.
+     * 
+     * @param resource
+     * @return
+     * @throws IOException 
+     */
+    public IParseContext createParseContextForInclude(IResource resource) throws IOException,CircularSourceIncludeException;
 }

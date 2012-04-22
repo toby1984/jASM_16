@@ -31,10 +31,10 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
  */
 public interface IParser
 {
-    
     public enum ParserOption {
         DEBUG_MODE,
-        RELAXED_PARSING;
+        RELAXED_PARSING,
+		NO_SOURCE_INCLUDE_PROCESSING; 
     }
     
     /**

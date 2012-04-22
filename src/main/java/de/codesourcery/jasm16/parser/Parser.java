@@ -23,14 +23,15 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
-import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
 import de.codesourcery.jasm16.lexer.Lexer;
+import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -46,7 +47,13 @@ public class Parser implements IParser
 {
     private final Set<ParserOption> options = new HashSet<ParserOption>(); 
     
-    public Parser() {
+    private final ICompilationUnitResolver compilationUnitResolver;
+    
+    public Parser(ICompilationUnitResolver compilationUnitResolver) {
+    	if (compilationUnitResolver == null) {
+			throw new IllegalArgumentException("compilationUnitResolver must not be NULL");
+		}
+    	this.compilationUnitResolver= compilationUnitResolver;
     }
 
     @Override
@@ -76,14 +83,21 @@ public class Parser implements IParser
         return parse(  unit , new SymbolTable() , source , resolver );
     }
 
-    protected AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver) 
+    protected AST parse(final ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver) 
     {
         final Scanner scanner = new Scanner( source );
         final ILexer lexer = new Lexer( scanner );
         if ( hasParserOption( ParserOption.RELAXED_PARSING ) ) {
             lexer.setLexerOption( LexerOption.CASE_INSENSITIVE_OPCODES , true );
         }        
-        return (AST) new AST().parse( new ParseContext(  unit , symbolTable, lexer , resolver , this.options ) );
+        final ParseContext context = new ParseContext(  
+        		unit , 
+        		symbolTable, 
+        		lexer , 
+        		resolver , 
+        		compilationUnitResolver,
+        		this.options );
+		return (AST) new AST().parse( context );
     }
 
     @Override

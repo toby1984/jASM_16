@@ -71,12 +71,13 @@ public interface ICompilerPhase
     /**
      * Execute this compiler phase.
      * 
-     * @param units
+     * @param units list of compilation units to process. Note that this list actually gets MODIFIED when
+     * source includes are being processed (new compilation units will be added then).
      * @param symbolTable 
      * @param writerFactory Used to obtain a writer for outputting object code
      * @param listener
-     * @param resourceResolver TODO
-     * @param options TODO
+     * @param resourceResolver 
+     * @param options 
      * @return <code>true</code> if compilation should continue
      */
     public boolean execute(List<ICompilationUnit> units, ISymbolTable symbolTable , 

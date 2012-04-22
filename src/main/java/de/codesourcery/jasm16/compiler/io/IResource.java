@@ -31,6 +31,12 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public interface IResource
 {
+	/**
+	 * Returns this resource's identifier.
+	 * @return
+	 */
+	public String getIdentifier();
+	
     /**
      * Returns an input stream to read from.
      * 

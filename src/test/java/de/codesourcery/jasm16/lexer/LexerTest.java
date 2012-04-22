@@ -207,25 +207,6 @@ public class LexerTest extends TestHelper {
         assertTrue( lexer.eof() );
     }	
 
-//    public void testParseInitializedMemory() 
-//    {
-//        final String input = ".dat 1,0x2,b11,\"a\"";
-//        final Lexer lexer = new Lexer( new Scanner( input ) );
-//        assertFalse( lexer.eof() );
-//        assertToken( lexer , TokenType.INITIALIZED_MEMORY , ".dat");
-//        assertToken( lexer , TokenType.WHITESPACE, " ");        
-//        assertToken( lexer , TokenType.NUMBER_LITERAL, "1");
-//        assertToken( lexer , TokenType.COMMA, ",");      
-//        assertToken( lexer , TokenType.NUMBER_LITERAL, "0x2");
-//        assertToken( lexer , TokenType.COMMA, ",");    
-//        assertToken( lexer , TokenType.NUMBER_LITERAL, "b11");
-//        assertToken( lexer , TokenType.COMMA, ",");         
-//        assertToken( lexer , TokenType.STRING_DELIMITER, "\"");    
-//        assertToken( lexer , TokenType.CHARACTERS, "a");      
-//        assertToken( lexer , TokenType.STRING_DELIMITER, "\"");          
-//        assertTrue( lexer.eof() );
-//    }   
-
     public void testParseComment() {
 
         final String input = "        ; stuff\n";
@@ -621,6 +602,24 @@ public class LexerTest extends TestHelper {
         assertToken(lexer,TokenType.COMMA,"," , 0 );
         assertTrue( lexer.eof() );
     }
+    
+    public void testParseIncludeSource() {
+        final Lexer lexer = new Lexer( new Scanner(".include" ) );
+        assertToken(lexer,TokenType.INCLUDE_SOURCE,".include" , 0 );
+        assertTrue( lexer.eof() );
+    }   
+    
+    public void testParseOrigin1() {
+        final Lexer lexer = new Lexer( new Scanner(".org" ) );
+        assertToken(lexer,TokenType.ORIGIN,".org" , 0 );
+        assertTrue( lexer.eof() );
+    }   
+    
+    public void testParseOrigin2() {
+        final Lexer lexer = new Lexer( new Scanner(".origin" ) );
+        assertToken(lexer,TokenType.ORIGIN,".origin" , 0 );
+        assertTrue( lexer.eof() );
+    }         
     
     public void testParseDot() {
         final Lexer lexer = new Lexer( new Scanner("." ) );

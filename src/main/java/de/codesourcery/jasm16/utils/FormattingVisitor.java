@@ -18,12 +18,15 @@ package de.codesourcery.jasm16.utils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
 import de.codesourcery.jasm16.ast.CharacterLiteralNode;
 import de.codesourcery.jasm16.ast.CommentNode;
@@ -31,10 +34,10 @@ import de.codesourcery.jasm16.ast.ExpressionNode;
 import de.codesourcery.jasm16.ast.IASTVisitor;
 import de.codesourcery.jasm16.ast.IIterationContext;
 import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
@@ -42,10 +45,14 @@ import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
 import de.codesourcery.jasm16.ast.UnparsedContentNode;
+import de.codesourcery.jasm16.compiler.CompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 
 /**
@@ -67,7 +74,15 @@ public class FormattingVisitor extends ASTVisitor {
     protected void output(String s) {
         System.out.print( s );
     }
+    
 
+    @Override
+    public void visit(IncludeSourceFileNode node, IIterationContext itContext) 
+    {
+    	output( "include \""+node.getResourceIdentifier()+"\"" );
+    	itContext.dontGoDeeper();
+    }
+    
     @Override
     public void visit(CharacterLiteralNode node, IIterationContext context) 
     {

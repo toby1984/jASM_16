@@ -19,10 +19,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
@@ -33,6 +35,7 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.StringResource;
+import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 
@@ -50,6 +53,7 @@ public class CompilationUnit implements ICompilationUnit {
     private final IResource resource;
     private AST ast;
     private Address objectCodeStartAddress = Address.ZERO;
+    private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
@@ -60,6 +64,7 @@ public class CompilationUnit implements ICompilationUnit {
         this.markers.remove( IMarker.TYPE_COMPILATION_ERROR );
         this.markers.remove( IMarker.TYPE_GENERIC_COMPILATION_ERROR );
         this.objectCodeStartAddress=Address.ZERO;
+        this.dependencies.clear();
     }
     
     public static ICompilationUnit createInstance(final String identifier, final IResource resource) 
@@ -69,7 +74,7 @@ public class CompilationUnit implements ICompilationUnit {
     
     public static ICompilationUnit createInstance(final String identifier, final String source) 
     {
-        return new CompilationUnit( identifier  , new StringResource(source) );
+        return new CompilationUnit( identifier  , new StringResource( identifier , source) );
     }
 
     @Override
@@ -158,7 +163,8 @@ public class CompilationUnit implements ICompilationUnit {
     @Override
     public boolean hasErrors() 
     {
-        return this.markers.get( IMarker.TYPE_COMPILATION_ERROR) != null || this.markers.get( IMarker.TYPE_GENERIC_COMPILATION_ERROR ) != null;
+        return this.markers.get( IMarker.TYPE_COMPILATION_ERROR) != null ||
+        	   this.markers.get( IMarker.TYPE_GENERIC_COMPILATION_ERROR ) != null;
     }
 
     @Override
@@ -312,4 +318,43 @@ public class CompilationUnit implements ICompilationUnit {
         
         this.objectCodeStartAddress = address;
     }
+
+	@Override
+	public void addDependency(ICompilationUnit unit) 
+	{
+		if (unit == null) {
+			throw new IllegalArgumentException("unit must not be NULL");
+		}
+		checkForCircularDependencies( unit );
+		this.dependencies.add( unit );
+	}
+
+	private void checkForCircularDependencies(ICompilationUnit unit) 
+	{
+		final Set<String> resourceIdentifiers = new HashSet<String>();
+		
+		final List<ICompilationUnit> newSet = new ArrayList<ICompilationUnit>( this.dependencies );
+		newSet.add( unit );
+		
+		for ( ICompilationUnit current : newSet ) {
+			checkForCircularDependencies( current , resourceIdentifiers );
+		}
+	}
+
+	private void checkForCircularDependencies(ICompilationUnit current, Set<String> resourceIdentifiers) 
+	{
+		if ( resourceIdentifiers.contains( current.getResource().getIdentifier() ) ) {
+			LOG.error("createParseContextForInclude(): Circular dependency detected: resource '"+resource.getIdentifier()+"'");
+			throw new CircularSourceIncludeException( "Detected circular source inclusion" , current );
+		}
+		resourceIdentifiers.add( current.getResource().getIdentifier() );
+		for ( ICompilationUnit dep : current.getDependencies() ) {
+			checkForCircularDependencies( dep , resourceIdentifiers );
+		}
+	}
+
+	@Override
+	public List<ICompilationUnit> getDependencies() {
+		return new ArrayList<ICompilationUnit>( this.dependencies );
+	}
 }

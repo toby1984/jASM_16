@@ -174,6 +174,9 @@ public class StatementNode extends ASTNode
 			case INSTRUCTION: 
 				addChild( new InstructionNode().parseInternal( context ) , context );
 				break;
+			case INCLUDE_SOURCE:
+				addChild( new IncludeSourceFileNode().parseInternal( context ) , context );
+				break;				
 			case INCLUDE_BINARY: 
 				addChild( new IncludeBinaryFileNode().parseInternal( context ) , context );
 				break;

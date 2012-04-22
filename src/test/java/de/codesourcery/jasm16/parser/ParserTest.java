@@ -36,7 +36,7 @@ public class ParserTest extends TestHelper {
 
 	public void testParseEmptyFile() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		AST ast = p.parse( "" );
 		assertFalse( ast.hasErrors() );
@@ -45,7 +45,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseBlankFile() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		final String source = "    ";
 		
@@ -61,7 +61,7 @@ public class ParserTest extends TestHelper {
 		
 		final String source = "        :loop         SET [0x2000], [A]      ; 2161 2000\n";
 		
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
 		
 		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER);
@@ -79,7 +79,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseCommentLine() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		final String source = "        ; Try some basic stuff\n";
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
@@ -99,7 +99,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithOneByte() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		final String source = ".dat 1";
         AST ast = p.parse( source );
@@ -114,7 +114,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithBinaryValues() throws ParseException 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ".dat b1,b10";
 		
@@ -153,7 +153,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithOneCharacterCharacterLiteral() throws ParseException 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ".dat \"a\"";
 		
@@ -178,7 +178,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithCharacterLiteral() throws ParseException 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
         final String source = ".dat \"dead\"";
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
@@ -220,7 +220,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithTwoBytes() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ".dat 1,2";
         AST ast = p.parse( source );
@@ -235,7 +235,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseInitializedMemoryWithTwoBytesAndWhitespace() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = "  .dat 1  , 2  ";
         AST ast = p.parse( source );
@@ -250,7 +250,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseUninitializedMemory() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ".bss 100";
         AST ast = p.parse( source );
@@ -266,7 +266,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseUninitializedMemoryWithLabel() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ":label .bss 100";
         AST ast = p.parse( source );
@@ -283,7 +283,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseUninitializedMemoryWithLabelAndComment() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ":label .bss 100 ; do weird stuff   ";
         AST ast = p.parse( source );
@@ -300,7 +300,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithLabel() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ":label";
         AST ast = p.parse( source );
@@ -316,7 +316,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithWhitespaceBeforeLabel() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = "   :label";
         AST ast = p.parse( source );
@@ -331,7 +331,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithWhitespaceAfterLabel() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ":label   ";
         AST ast = p.parse( source );
@@ -346,7 +346,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithCommentAfterLabel() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ":label;comment";
         AST ast = p.parse( source );
@@ -362,7 +362,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithComment() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = ";comment";
         AST ast = p.parse( source );
@@ -377,7 +377,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithOpCode1() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = "SET a,10";
         AST ast = p.parse( source );
@@ -400,7 +400,7 @@ public class ParserTest extends TestHelper {
 	
 	public void testParseLineWithOpCode2() 
 	{
-		final Parser p = new Parser();
+		final Parser p = new Parser(this);
 		
 		String source = "SET 10,a";
         AST ast = p.parse( source ); // invalid addressing mode

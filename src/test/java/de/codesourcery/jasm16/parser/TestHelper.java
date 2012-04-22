@@ -36,6 +36,7 @@ import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
@@ -57,7 +58,7 @@ import de.codesourcery.jasm16.utils.DebugCompilationListener;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
-public abstract class TestHelper extends TestCase
+public abstract class TestHelper extends TestCase implements ICompilationUnitResolver
 {
     protected ISymbolTable symbolTable;
  
@@ -92,13 +93,13 @@ public abstract class TestHelper extends TestCase
     protected IParseContext createParseContext(String source) 
     {
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER , Collections.singleton( ParserOption.DEBUG_MODE ) );
+        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) );
     }
     
     protected IParseContext createParseContext(ICompilationUnit unit) throws IOException 
     {
     	final String source = Misc.readSource( unit.getResource() );
-        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER , Collections.singleton( ParserOption.DEBUG_MODE ) );
+        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) );
     }    
     
     @Override
@@ -194,7 +195,7 @@ public abstract class TestHelper extends TestCase
             {
                 throw new UnsupportedOperationException();
             }
-        } , OPTIONS );
+        } , this , OPTIONS );
     }
     
     protected final void assertToken(ILexer lexer , OpCode opCode , String contents , int parseOffset) 
@@ -285,10 +286,24 @@ public abstract class TestHelper extends TestCase
 			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
+
+			@Override
+			public ICompilationUnit getOrCreateCompilationUnit(
+					IResource resource) throws IOException 
+			{
+		    	return CompilationUnit.createInstance( resource.getIdentifier() , resource );				
+			}
 		};
         if ( node instanceof ObjectCodeOutputNode ) 
         {
             ((ObjectCodeOutputNode) node).symbolsResolved( context );
         }
+    }
+    
+    @Override
+    public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
+    		throws IOException 
+    {
+    	return CompilationUnit.createInstance( resource.getIdentifier() , resource );
     }
 }

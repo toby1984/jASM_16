@@ -20,6 +20,7 @@ import java.util.List;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
 /**
@@ -28,7 +29,7 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface ICompilationContext extends IResourceResolver {
+public interface ICompilationContext extends IResourceResolver , ICompilationUnitResolver {
 
     /**
      * Returns the compilation unit that is currently being processed.
@@ -69,4 +70,5 @@ public interface ICompilationContext extends IResourceResolver {
 	 * @return
 	 */
 	public boolean hasCompilerOption(CompilerOption option);    
+	
 }

@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
@@ -30,12 +32,18 @@ import de.codesourcery.jasm16.utils.ITextRegion;
 public class StringResource implements IResource
 {
     private final String data;
+    private final String identifier;
     
-    public StringResource(String data)
+    public StringResource(String identifier, String data)
     {
+		if (StringUtils.isBlank(identifier)) {
+			throw new IllegalArgumentException(
+					"identifier must not be NULL/blank");
+		}
         if (data == null) {
             throw new IllegalArgumentException("data must not be NULL.");
         }
+        this.identifier = identifier;
         this.data = data;
     }
 
@@ -71,4 +79,9 @@ public class StringResource implements IResource
     {
         return data.getBytes().length;
     }
+
+	@Override
+	public String getIdentifier() {
+		return identifier;
+	}
 }

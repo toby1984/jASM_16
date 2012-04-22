@@ -40,6 +40,7 @@ public class CompilationContext implements ICompilationContext {
 	private final ISymbolTable symbolTable;
 	private final IObjectCodeWriterFactory writerFactory;
     private final List<ICompilationUnit> allCompilationUnits;
+    private final ICompilationUnitResolver compilationUnitResolver;
     private final IResourceResolver resourceResolver;
     private final Set<CompilerOption> options= new HashSet<CompilerOption>();
     
@@ -47,17 +48,26 @@ public class CompilationContext implements ICompilationContext {
     		ISymbolTable symbolTable,
     		IObjectCodeWriterFactory writerFactory,
     		IResourceResolver resourceResolver,
+    		ICompilationUnitResolver compilationUnitResolver,
     		Set<CompilerOption> options) throws IOException
     {
-        this( unit, Collections.singletonList( unit ) , symbolTable , writerFactory , resourceResolver , options );
+        this( unit, Collections.singletonList( unit ) , symbolTable , writerFactory ,
+        		resourceResolver , 
+        		compilationUnitResolver,
+        		options );
     }
     
 	public CompilationContext(ICompilationUnit unit,List<ICompilationUnit> allCompilationUnits,
-			ISymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,IResourceResolver resourceResolver,
+			ISymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,
+			IResourceResolver resourceResolver,
+			ICompilationUnitResolver compilationUnitResolver,
 			Set<CompilerOption> options)
 	{
 		if (unit == null) {
 			throw new IllegalArgumentException("unit must not be NULL");
+		}
+		if ( compilationUnitResolver == null ) {
+			throw new IllegalArgumentException("compilationUnitResolver must not be NULL");
 		}
 		if ( writerFactory == null ) {
             throw new IllegalArgumentException("writerFactory must not be NULL.");
@@ -79,6 +89,7 @@ public class CompilationContext implements ICompilationContext {
 		this.symbolTable = symbolTable;
 		this.writerFactory = writerFactory;
 		this.currentUnit = unit;
+		this.compilationUnitResolver = compilationUnitResolver;
 		this.options.addAll( options );
 	}
 	
@@ -128,5 +139,10 @@ public class CompilationContext implements ICompilationContext {
 			throw new IllegalArgumentException("option must not be NULL");
 		}
 		return options.contains( option );
+	}
+
+	@Override
+	public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException {
+		return compilationUnitResolver.getOrCreateCompilationUnit( resource );
 	}
 }

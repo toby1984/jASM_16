@@ -39,7 +39,8 @@ public interface ICompiler
 {
 	public enum CompilerOption {
 		DEBUG_MODE,
-		RELAXED_PARSING;
+		RELAXED_PARSING,
+		NO_SOURCE_INCLUDE_PROCESSING; // disable .include processing
 	}
 	
 	/**
@@ -63,6 +64,8 @@ public interface ICompiler
 	 * 
 	 * @param units
 	 * @param listener
+	 * @return processed compilation units, this list may actually contain
+	 * more elements than the input list when include processing is enabled
 	 */
 	public void compile(List<ICompilationUnit> units,ICompilationListener listener);
 	

@@ -894,7 +894,7 @@ public class ASTInspector {
 		}
 	} 
 
-	private void openFile( File file ) throws IOException 
+	private void openFile( final File file ) throws IOException 
 	{
 
 		FileInputStream in = new FileInputStream( file );
@@ -944,6 +944,11 @@ public class ASTInspector {
 			public InputStream createInputStream() throws IOException
 			{
 				return new ByteArrayInputStream( getSourceFromEditor().getBytes() );
+			}
+
+			@Override
+			public String getIdentifier() {
+				return file.getAbsolutePath();
 			}
 		};
 

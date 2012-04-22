@@ -15,25 +15,35 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import java.io.IOException;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.IToken;
+import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
+import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Default {@link IParseContext} implementation.
@@ -42,16 +52,38 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public class ParseContext implements IParseContext 
 {
+	private static final Logger LOG = Logger.getLogger( ParseContext.class );
+	
 	private final ICompilationUnit unit;
 	private final ISymbolTable symbolTable;
 	private final ILexer lexer;
 	private final IResourceResolver resourceResolver;
-	private final Set<ParserOption> options = new HashSet<ParserOption>(); 
+	private final ICompilationUnitResolver compilationUnitResolver;
+	private final Set<ParserOption> options = new HashSet<ParserOption>();
+	
+	// values are IResource#getIdentifier() values
+	private final LinkedHashSet<String> includedSourceFiles;
 	
 	private boolean recoveringFromParseError;
 	
+	public ParseContext(ICompilationUnit unit , 
+			ISymbolTable symbolTable,
+			ILexer lexer, 
+			IResourceResolver resourceResolver,
+			ICompilationUnitResolver compilationUnitResolver,
+			Set<ParserOption> options) 
+	{
+		this( unit , symbolTable , lexer ,resourceResolver , compilationUnitResolver , options ,
+				new LinkedHashSet<String>() );
+	}
 	
-	public ParseContext(ICompilationUnit unit , ISymbolTable symbolTable, ILexer lexer, IResourceResolver resourceResolver,Set<ParserOption> options) 
+	protected ParseContext(ICompilationUnit unit , 
+			ISymbolTable symbolTable,
+			ILexer lexer, 
+			IResourceResolver resourceResolver,
+			ICompilationUnitResolver compilationUnitResolver,			
+			Set<ParserOption> options,
+			LinkedHashSet<String> includedSourceFiles) 
 	{
 		if (lexer == null) {
 			throw new IllegalArgumentException("lexer must not be NULL");
@@ -62,17 +94,22 @@ public class ParseContext implements IParseContext
 		if ( symbolTable == null ) {
             throw new IllegalArgumentException("symbolTable must not be NULL.");
         }
+		if ( compilationUnitResolver == null ) {
+			throw new IllegalArgumentException("compilationUnitResolver must not be NULL");
+		}
 		if ( resourceResolver == null ) {
             throw new IllegalArgumentException("resourceResolver must not be NULL.");
         }
 		if ( options == null ) {
             throw new IllegalArgumentException("options must not be NULL.");
         }
+		this.includedSourceFiles = includedSourceFiles;
 		this.options.addAll( options );
 		this.resourceResolver = resourceResolver;
 		this.symbolTable = symbolTable;
 		this.unit = unit;
 		this.lexer = lexer;
+		this.compilationUnitResolver = compilationUnitResolver;
 	}
 	
 	@Override
@@ -255,4 +292,34 @@ public class ParseContext implements IParseContext
     {
         return lexer.hasLexerOption( option );
     }
+
+	@Override
+	public IParseContext createParseContextForInclude(IResource resource) throws IOException 
+	{
+		final String source = Misc.readSource( resource );
+		final ICompilationUnit unit = compilationUnitResolver.getOrCreateCompilationUnit( resource );
+		
+		if ( includedSourceFiles.contains( resource.getIdentifier() ) ) 
+		{
+			final StringBuilder cycle = new StringBuilder();
+			for (Iterator<String> it = includedSourceFiles.iterator(); it.hasNext();) {
+				String id = it.next();
+				cycle.append( id );
+				if ( it.hasNext() ) {
+					cycle.append(" <-> ");
+				}
+			}
+			final String errorMsg ="Circular includes detected while parsing: "+getCompilationUnit().getResource()+" <-> "+
+			cycle;
+			LOG.error("createParseContextForInclude(): "+errorMsg);
+			throw new CircularSourceIncludeException( errorMsg , getCompilationUnit() );
+		}
+		includedSourceFiles.add( resource.getIdentifier() );
+		
+		getCompilationUnit().addDependency( unit );
+		
+		final ILexer lexer = new Lexer( new Scanner( source ) );
+		return new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
+	}
+	
 }

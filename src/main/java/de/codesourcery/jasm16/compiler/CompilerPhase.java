@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.compiler;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -24,6 +25,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
 /**
@@ -85,7 +87,16 @@ public abstract class CompilerPhase implements ICompilerPhase {
     		ICompilationListener listener, 
     		IResourceResolver resourceResolver, Set<CompilerOption> options)        
     {
-        for ( ICompilationUnit unit : units ) 
+    	/*
+    	 * NEED to create a copy for the for() loop here since
+    	 * createCompilationContext() instantiates an
+    	 * ICompilationUnitResolver that MODIFIES the
+    	 * input list (and thus the for() loop would otherwise
+    	 * fail with a ConcurrentModificationExcption) ...
+    	 */
+    	final List<ICompilationUnit> internalCopy = new ArrayList<ICompilationUnit>( units );
+    	
+        for ( ICompilationUnit unit : internalCopy ) 
         {
         	listener.start( this , unit );
             try {
@@ -114,12 +125,31 @@ public abstract class CompilerPhase implements ICompilerPhase {
         return true;
     }
 
-	protected ICompilationContext createCompilationContext(List<ICompilationUnit> units,
+	protected ICompilationContext createCompilationContext(final List<ICompilationUnit> units,
 			ISymbolTable symbolTable, IObjectCodeWriterFactory writerFactory,
 			IResourceResolver resourceResolver, Set<CompilerOption> options,
-			ICompilationUnit unit) {
+			ICompilationUnit unit) 
+	{
+		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() {
+			
+			@Override
+			public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
+					throws IOException 
+			{
+				for ( ICompilationUnit unit : units ) {
+					if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
+						return unit;
+					}
+				}
+				final ICompilationUnit result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
+				
+				// !!!! the next call actually modifies the method's input argument....
+				units.add( result );
+				return result;
+			}
+		};
 		final ICompilationContext context = new CompilationContext( unit , units , 
-				symbolTable, writerFactory , resourceResolver , options );
+				symbolTable, writerFactory , resourceResolver ,unitResolver ,options );
 		return context;
 	}
     

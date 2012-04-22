@@ -27,6 +27,8 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 	{
 		if ( n instanceof AST ) {
 			visit( (AST) n , context );
+	     } else if ( n instanceof IncludeSourceFileNode) {
+	         visit( (IncludeSourceFileNode) n , context );				
 	     } else if ( n instanceof EquationNode) {
 	         visit( (EquationNode) n , context );			
 	     } else if ( n instanceof OriginNode) {
@@ -68,6 +70,9 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 		}
 			
 	}
+	
+    @Override
+    public void visit(IncludeSourceFileNode node,IIterationContext context) { }		
 	
     @Override
     public void visit(EquationNode node,IIterationContext context) { }	

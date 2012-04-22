@@ -199,5 +199,19 @@ public interface ICompilationUnit {
      * 
      * @param address
      */
-    public void setObjectCodeStartOffset(Address address);    
+    public void setObjectCodeStartOffset(Address address);
+    
+    /**
+     * Registers a compilation units <b>this</b> unit depends on.
+     * 
+     * @param unit
+     */
+    public void addDependency(ICompilationUnit unit);
+
+    /**
+     * Returns all compilation units this unit depends on.
+     * 
+     * @return
+     */
+    public List<ICompilationUnit> getDependencies();
 }

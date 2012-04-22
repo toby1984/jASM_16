@@ -41,7 +41,6 @@ import de.codesourcery.jasm16.utils.TextRegion;
 
 public class FoldExpressionsPhaseTest extends TestHelper
 {
-
     public void testFoldSimpleExpression() throws IOException 
     {
         final String source ="SET I, 4+5*3";
@@ -71,9 +70,9 @@ public class FoldExpressionsPhaseTest extends TestHelper
         final String source =" SET I, [ 4 + 5 * 3+A ] ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
-        ICompilationContext compContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER, OPTIONS );
+        ICompilationContext compContext = createCompilationContext( unit ); 
         
-        AST ast = new Parser().parse( compContext );
+        AST ast = new Parser(this).parse( compContext );
         unit.setAST( ast );
         assertFalse( unit.getAST().hasErrors() );
         assertFalse( unit.hasErrors() );
@@ -109,9 +108,9 @@ public class FoldExpressionsPhaseTest extends TestHelper
         final String source =" SET I, [ A + 4 + 5 * 3 ] ";
         
         final ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
-        ICompilationContext compContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER, OPTIONS );
+        ICompilationContext compContext = createCompilationContext( unit );
         
-        AST ast = new Parser().parse( compContext );
+        AST ast = new Parser(this).parse( compContext );
         unit.setAST( ast );
         assertFalse( unit.getAST().hasErrors() );
         assertFalse( unit.hasErrors() );
@@ -147,9 +146,9 @@ public class FoldExpressionsPhaseTest extends TestHelper
         final String source ="SET I, [4+5*3+A]";
         
         ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
-        ICompilationContext compContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER, OPTIONS );
+        ICompilationContext compContext = createCompilationContext( unit ); // 
         
-        AST ast = new Parser().parse( compContext );
+        AST ast = new Parser(this).parse( compContext );
         unit.setAST( ast );
         assertFalse( unit.getAST().hasErrors() );
         assertFalse( unit.hasErrors() );
@@ -180,9 +179,9 @@ public class FoldExpressionsPhaseTest extends TestHelper
         // 4 + 15 + a + 19 = 4+15+19+A = 19+19+a = 38
         
         ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
-        ICompilationContext compContext = new CompilationContext( unit , symbolTable , NOP_WRITER , RESOURCE_RESOLVER, OPTIONS );
+        ICompilationContext compContext = createCompilationContext( unit ); 
         
-        AST ast = new Parser().parse( compContext );
+        AST ast = new Parser(this).parse( compContext );
         unit.setAST( ast );
         assertFalse( unit.getAST().hasErrors() );
         assertFalse( unit.hasErrors() );

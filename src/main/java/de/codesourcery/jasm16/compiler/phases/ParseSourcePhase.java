@@ -22,6 +22,7 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.parser.IParser;
 import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
@@ -40,7 +41,8 @@ public class ParseSourcePhase extends CompilerPhase {
 	@Override
     protected void run(ICompilationUnit unit , ICompilationContext context) throws IOException
     {
-	    final IParser parser = new Parser();
+	    final IParser parser = new Parser(context);
+	    
 	    if ( context.hasCompilerOption( CompilerOption.DEBUG_MODE ) ) {
 	        parser.setParserOption(ParserOption.DEBUG_MODE,true);
 	    }

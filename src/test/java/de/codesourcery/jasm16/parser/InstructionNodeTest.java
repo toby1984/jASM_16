@@ -389,8 +389,8 @@ public class InstructionNodeTest extends TestHelper
 		    }
 		};
 		
-		final CompilationContext compContext = new CompilationContext( unit , symbolTable ,
-				factory , RESOURCE_RESOLVER , OPTIONS );
+		final ICompilationContext compContext = createCompilationContext( unit );
+		
 		final OperandNode operand = instruction.getOperand( 1 );
 		final TermNode oldExpression = (TermNode) operand.child(0);
 		final TermNode newExpression = oldExpression.reduce( compContext );

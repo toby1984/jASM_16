@@ -33,7 +33,6 @@ import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase1;
 import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase2;
 import de.codesourcery.jasm16.compiler.phases.CalculateAddressesPhase;
 import de.codesourcery.jasm16.compiler.phases.CodeGenerationPhase;
-import de.codesourcery.jasm16.compiler.phases.FoldExpressionsPhase;
 import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
 
 /**
@@ -63,12 +62,20 @@ public class Compiler implements ICompiler {
         final ICompilerPhase firstPhase = compilerPhases.isEmpty() ? null : compilerPhases.get(0);
         listener.onCompileStart( firstPhase );
         
+        // make sure to pass-in a COPY of the input list into
+        // ICompilerPhase#execute() ... this method argument is actually MODIFIED by 
+        // the compilation phases.
+        // Whenever an - previously unseen - include is being processed
+        // , a new ICompilationUnit will be added to this copy
+        
+        final List<ICompilationUnit> copy = new ArrayList<ICompilationUnit>(units);
+        
+        final ISymbolTable symbolTable = createSymbolTable();
+        
         ICompilerPhase lastPhase = firstPhase;
         try 
         {
-            final ISymbolTable symbolTable = new SymbolTable();
-            
-        	for (ICompilationUnit unit : units) 
+        	for (ICompilationUnit unit : copy) 
         	{
     			unit.beforeCompilationStart();
     		}
@@ -81,7 +88,7 @@ public class Compiler implements ICompiler {
                 boolean success = false;
                 try {
                     success = phase.execute( 
-                    		units ,
+                    		copy ,
                     		symbolTable ,  
                     		writerFactory , 
                     		listener, 
@@ -109,6 +116,11 @@ public class Compiler implements ICompiler {
             listener.afterCompile( lastPhase );
         }
     }
+
+    // subclassing hook
+	protected ISymbolTable createSymbolTable() {
+		return new SymbolTable();
+	}
 
     protected List<ICompilerPhase> setupCompilerPhases()
     {

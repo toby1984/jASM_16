@@ -94,4 +94,9 @@ public class ClassPathResource implements IResource
         return this.contents.length;
     }
 
+	@Override
+	public String getIdentifier() {
+		return classpathLocation;
+	}
+
 }
