@@ -1,5 +1,4 @@
-(C) 2012 Tobias Gierke 
-licensed under Apache License 2.0, http://www.apache.org/licenses/LICENSE-2.0
+(C) 2012 Tobias Gierke / licensed under Apache License 2.0, http://www.apache.org/licenses/LICENSE-2.0
 
 
 Embeddable DCPU-16 assembler written in Java
@@ -25,22 +24,23 @@ label1:
 label2:
 ```
 
-- Generates short-form opcodes for both literal values and addresses
+- Generates short-form opcodes for both literal values and labels 
 
-- Equation support ( .equ identifier expression )
+- Equation support ( .equ <identifier> <expression> )
 
 - Supports hexadecimal (0xdeadbeef) , binary (b101111) and decimal number literals
 
-- Supports setting up uninitialized memory of a specific size using '.bss <size in bytes>' or "reserve <size in bytes" keywords
+- Supports setting up uninitialized memory of a specific size using '.bss <size in bytes>' or "reserve <size in bytes>" keywords
 
-- Supports setting up initialized memory with byte or word size (using '.byte' or 'dat')
+- Supports setting up initialized memory with byte / word size (using '.byte' or 'dat')
 
 - Supports 16-bit character literals
 
 - Supports setting the origin of generated code via '.org' or '.origin' 
 
 - Supports source includes via '.include "somesource.dasm16" ' or ' .incsource "somesource.dasm16" '
-- Supports including data from binary files via '.incbin "pic.jpg"
+
+- Supports including binary files via '.incbin "pic.jpg"
 
 Building 
 --------
