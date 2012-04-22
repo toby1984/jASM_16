@@ -50,8 +50,6 @@ import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.TokenType;
-import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.parser.ParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;

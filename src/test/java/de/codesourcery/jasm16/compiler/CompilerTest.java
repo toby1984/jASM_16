@@ -22,7 +22,6 @@ import java.util.Collections;
 
 import org.apache.commons.lang.ArrayUtils;
 
-import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
@@ -30,7 +29,6 @@ import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;
-import de.codesourcery.jasm16.utils.FormattingVisitor;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class CompilerTest extends TestHelper 

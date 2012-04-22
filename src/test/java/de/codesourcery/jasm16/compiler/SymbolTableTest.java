@@ -16,10 +16,6 @@
 package de.codesourcery.jasm16.compiler;
 
 import junit.framework.TestCase;
-import de.codesourcery.jasm16.compiler.CompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.Label;
-import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.TextRegion;

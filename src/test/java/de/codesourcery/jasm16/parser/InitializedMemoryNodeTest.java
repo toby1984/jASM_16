@@ -25,7 +25,6 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.IParseContext;
 
 public class InitializedMemoryNodeTest extends TestHelper
 {

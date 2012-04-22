@@ -15,8 +15,6 @@
  */
 package de.codesourcery.jasm16.utils;
 
-import de.codesourcery.jasm16.utils.ITextRegion;
-import de.codesourcery.jasm16.utils.TextRegion;
 import junit.framework.TestCase;
 
 public class TextRegionTest extends TestCase

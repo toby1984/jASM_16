@@ -30,7 +30,6 @@ import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.OperandNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.TermNode;
-import de.codesourcery.jasm16.compiler.CompilationContext;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -38,7 +37,6 @@ import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class InstructionNodeTest extends TestHelper

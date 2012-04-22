@@ -18,15 +18,12 @@ package de.codesourcery.jasm16.utils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
 import de.codesourcery.jasm16.ast.CharacterLiteralNode;
 import de.codesourcery.jasm16.ast.CommentNode;
@@ -48,11 +45,8 @@ import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
 import de.codesourcery.jasm16.ast.UnparsedContentNode;
-import de.codesourcery.jasm16.compiler.CompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.Label;
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 
 /**

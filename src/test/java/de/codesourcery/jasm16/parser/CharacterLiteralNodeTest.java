@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.parser;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.CharacterLiteralNode;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.IParseContext;
 
 public class CharacterLiteralNodeTest extends TestHelper
 {

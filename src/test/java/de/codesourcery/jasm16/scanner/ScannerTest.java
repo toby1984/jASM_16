@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.scanner;
 
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.exceptions.EOFException;
-import de.codesourcery.jasm16.scanner.Scanner;
 
 public class ScannerTest extends TestCase {
 

@@ -24,7 +24,6 @@ import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.TermNode;
-import de.codesourcery.jasm16.compiler.CompilationContext;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;

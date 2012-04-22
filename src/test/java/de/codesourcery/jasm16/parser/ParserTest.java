@@ -29,7 +29,6 @@ import de.codesourcery.jasm16.ast.UnparsedContentNode;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class ParserTest extends TestHelper {

@@ -19,14 +19,6 @@ import java.io.IOException;
 import java.util.Collections;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.compiler.CompilationUnit;
-import de.codesourcery.jasm16.compiler.Compiler;
-import de.codesourcery.jasm16.compiler.CompilerPhase;
-import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationListener;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompilerPhase;
-import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.Identifier;

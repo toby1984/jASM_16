@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.parser;
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.TextRegion;
 

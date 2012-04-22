@@ -16,13 +16,11 @@ package de.codesourcery.jasm16.compiler.io;
  * limitations under the License.
  */
 
-import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.utils.ITextRegion;

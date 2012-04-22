@@ -24,7 +24,6 @@ import junit.framework.TestCase;
 import org.apache.commons.lang.ArrayUtils;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class FileObjectCodeWriterTest extends TestCase

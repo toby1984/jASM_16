@@ -22,7 +22,6 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
-import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.parser.IParser;
 import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;

@@ -34,7 +34,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
  * @author tobias.gierke@code-sourcery.de
  * @see #getValue();
  */
-public class NumberToken extends Token {
+public final class NumberToken extends Token {
 
 	private static final Pattern HEX_NUMBER=Pattern.compile("^0x([0-9a-fA-F]+)$");
 	private final static char[] HEX_CHARS = "0123456789abcdef".toCharArray();

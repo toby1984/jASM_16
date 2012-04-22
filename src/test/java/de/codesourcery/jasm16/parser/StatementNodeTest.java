@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.parser;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.parser.IParseContext;
 
 public class StatementNodeTest extends TestHelper {
 

@@ -16,7 +16,6 @@
 package de.codesourcery.jasm16.compiler;
 
 import java.util.Collections;
-import java.util.List;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
