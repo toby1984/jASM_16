@@ -202,14 +202,18 @@ public interface ICompilationUnit {
     public void setObjectCodeStartOffset(Address address);
     
     /**
-     * Registers a compilation units <b>this</b> unit depends on.
+     * Registers a compilation unit <b>this</b> unit depends on.
      * 
+     * <p>This method gets invoked when parsing source code inclusion AST nodes.</p>
      * @param unit
      */
     public void addDependency(ICompilationUnit unit);
 
     /**
      * Returns all compilation units this unit depends on.
+     * 
+     * <p>To be more precise, this method currently returns all compilation units
+     * that are included using a '.include' preprocessor command by <b>this</b> unit.</p>
      * 
      * @return
      */

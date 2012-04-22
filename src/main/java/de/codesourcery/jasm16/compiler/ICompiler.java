@@ -78,9 +78,17 @@ public interface ICompiler
 	 * Compiles a set of compilation units.
 	 * 
 	 * @param units
+	 * @return processed compilation units
+	 */
+	public void compile(List<ICompilationUnit> units);	
+	
+	/**
+	 * Compiles a set of compilation units , notifying a {@link ICompilationListener}
+	 * instance while doing so.
+	 * 
+	 * @param units
 	 * @param listener
-	 * @return processed compilation units, this list may actually contain
-	 * more elements than the input list when include processing is enabled
+	 * @return processed compilation units
 	 */
 	public void compile(List<ICompilationUnit> units,ICompilationListener listener);
 	

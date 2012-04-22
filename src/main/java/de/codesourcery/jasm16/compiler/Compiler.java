@@ -45,7 +45,13 @@ import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
  */
 public class Compiler implements ICompiler {
 
-	public static final String VERSION ="jASM_16 "+getVersionNumber();
+	/**
+	 * Returned by {@link #getVersionNumber()} if reading
+	 * the version number failed.
+	 */
+	public static final String NO_VERSION_NUMBER = "<no version number>";
+
+	public static final String VERSION ="jASM_16 V"+getVersionNumber();
 	
 	private static final Logger LOG = Logger.getLogger(Compiler.class);
 
@@ -54,6 +60,12 @@ public class Compiler implements ICompiler {
     private IResourceResolver resourceResolver = new FileResourceResolver();
     private final Set<CompilerOption> options = new HashSet<CompilerOption>(); 
     
+    /**
+     * Reads the compiler's version number from the Maven2 pom.properties 
+     * file in the classpath.
+     * 
+     * @return version number or {@link #NO_VERSION_NUMBER}.
+     */
     public static final String getVersionNumber() {
     	
     	final String path = "META-INF/maven/de.codesourcery.dcpu16/jasm16/pom.properties";
@@ -65,7 +77,7 @@ public class Compiler implements ICompiler {
     				props.load( in);
     				final String version = props.getProperty("version");
     				if ( ! StringUtils.isBlank( version ) ) {
-    					return "V"+version;
+    					return version;
     				}
     			}
     		} finally {
@@ -73,11 +85,17 @@ public class Compiler implements ICompiler {
     		}
     	} catch(Exception e) {
     	}
-    	return "<unknown version>";    	
+    	return NO_VERSION_NUMBER;    	
     }
     public Compiler() 
     {
     	compilerPhases.addAll( setupCompilerPhases() );
+    }
+    
+    @Override
+    public void compile(List<ICompilationUnit> units) 
+    {
+    	compile( units , new CompilationListener() );
     }
     
     @Override
