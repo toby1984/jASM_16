@@ -42,7 +42,7 @@ import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
  */
 public class Compiler implements ICompiler {
 
-	public static final String VERSION ="jASM_16 V0.1";
+	public static final String VERSION ="jASM_16 V0.5.0";
 	
 	private static final Logger LOG = Logger.getLogger(Compiler.class);
 
