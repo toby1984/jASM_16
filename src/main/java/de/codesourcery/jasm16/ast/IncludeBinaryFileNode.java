@@ -86,7 +86,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public int getSizeInBytes()
+    public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
         return resourceSize;
     }

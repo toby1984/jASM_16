@@ -266,7 +266,7 @@ public class InstructionNodeTest extends TestHelper
         
         final InstructionNode instruction = (InstructionNode) result;
         resolveSymbols( unit , instruction );
-        final int size = instruction.getSizeInBytes();
+        final int size = instruction.getSizeInBytes(0);
         assertEquals( 6 , size );
         assertSourceCode( "SET [0x1000], 0x20" , result );
     }   
@@ -286,7 +286,7 @@ public class InstructionNodeTest extends TestHelper
         final InstructionNode instruction = (InstructionNode) result;
         resolveSymbols( unit , instruction );
         
-        final int size = instruction.getSizeInBytes();
+        final int size = instruction.getSizeInBytes(0);
         assertEquals( 4 , size );
         assertSourceCode( "SET [0x1000], 0x1f" , result );
     }   
@@ -306,7 +306,7 @@ public class InstructionNodeTest extends TestHelper
         final InstructionNode instruction = (InstructionNode) result;
         resolveSymbols( unit , instruction );
         
-        final int size = instruction.getSizeInBytes();
+        final int size = instruction.getSizeInBytes(0);
         assertEquals( 2 , size );
         assertSourceCode( "SET PC, 31" , result );
     }     

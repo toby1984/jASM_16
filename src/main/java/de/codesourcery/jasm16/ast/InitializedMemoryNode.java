@@ -303,7 +303,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	}
 
 	@Override
-	public int getSizeInBytes()
+	public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
 	{
 		if ( this.parsedData == null ) {
 			return UNKNOWN_SIZE;

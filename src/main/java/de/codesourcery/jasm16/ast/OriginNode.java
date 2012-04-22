@@ -74,9 +74,14 @@ public class OriginNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public int getSizeInBytes()
+    public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
-        return address.getValue();
+    	if ( address.getValue() < thisNodesObjectCodeOffsetInBytes ) {
+    		return UNKNOWN_SIZE;
+    	} else  if ( address.getValue() == thisNodesObjectCodeOffsetInBytes ) {
+    		return 0;
+    	}
+        return (int) (address.getValue() - thisNodesObjectCodeOffsetInBytes);
     }
 
     @Override

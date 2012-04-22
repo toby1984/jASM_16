@@ -44,7 +44,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit , node );
-        final int size = node.getSizeInBytes();
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 2 , size );
         final byte[] data = node.getBytes();
         assertEquals( 2 , data.length );
@@ -67,7 +67,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit, node );
-        final int size = node.getSizeInBytes();
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 2 , size );
         final byte[] data = node.getBytes();
         assertEquals( 2 , data.length );
@@ -90,7 +90,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit , node );
         
-        final int size = node.getSizeInBytes();
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
         assertEquals( 4 , data.length );
@@ -114,7 +114,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit , node );
-        final int size = node.getSizeInBytes();
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
         assertEquals( 4 , data.length );
@@ -138,7 +138,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols(unit, node );
-        final int size = node.getSizeInBytes( );
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 2 , size );
         final byte[] data = node.getBytes();
         assertEquals( 2 , data.length );
@@ -160,7 +160,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit , node );
-        final int size = node.getSizeInBytes( );
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
         assertEquals( 4 , data.length );
@@ -203,7 +203,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit, node );
-        final int size = node.getSizeInBytes( );
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
         assertEquals( 1 , data[0] );
@@ -235,7 +235,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
         resolveSymbols( unit , node );
-        final int size = node.getSizeInBytes( );
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 4 , size );
         final byte[] data = node.getBytes();
         assertEquals( 1 , data[0] );
@@ -258,7 +258,7 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".dat 0x170, \"Hello \", 0x2e1" , result ); 
         
         final InitializedMemoryNode node = (InitializedMemoryNode) result;
-        final int size = node.getSizeInBytes();
+        final int size = node.getSizeInBytes( 0 );
         assertEquals( 16 ,size );
 
         final byte[][] actual = new byte[1][];

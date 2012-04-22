@@ -144,7 +144,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
 						outputNode.symbolsResolved( compContext );
 					}
 
-					final int sizeInBytes = outputNode.getSizeInBytes();
+					final int sizeInBytes = outputNode.getSizeInBytes(currentSize[0]);
 					if ( sizeInBytes != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
 					{
 						currentSize[0] += sizeInBytes;

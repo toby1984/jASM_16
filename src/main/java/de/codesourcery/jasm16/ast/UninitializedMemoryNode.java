@@ -33,7 +33,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
 {
 	private int sizeInBytes;
 
-	public int getSizeInBytes()
+	public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
 	{
 		return Address.alignTo16Bit( sizeInBytes );
 	}
