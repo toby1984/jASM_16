@@ -4,7 +4,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
   <groupId>de.codesourcery.dcpu16</groupId>
   <artifactId>jasm16</artifactId>
   <packaging>jar</packaging>
-  <version>0.5.2-SNAPSHOT</version>
+  <version>0.5.1.1</version>
   <name>jASM_16</name>
   <description>An embeddable assembler for the DCPU-16</description>
   <licenses>
