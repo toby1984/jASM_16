@@ -15,14 +15,17 @@
  */
 package de.codesourcery.jasm16.compiler;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -42,7 +45,7 @@ import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
  */
 public class Compiler implements ICompiler {
 
-	public static final String VERSION ="jASM_16 V0.6.0-SNAPSHOT";
+	public static final String VERSION ="jASM_16 "+getVersionNumber();
 	
 	private static final Logger LOG = Logger.getLogger(Compiler.class);
 
@@ -51,6 +54,27 @@ public class Compiler implements ICompiler {
     private IResourceResolver resourceResolver = new FileResourceResolver();
     private final Set<CompilerOption> options = new HashSet<CompilerOption>(); 
     
+    public static final String getVersionNumber() {
+    	
+    	final String path = "META-INF/maven/de.codesourcery.dcpu16/jasm16/pom.properties";
+    	try {
+    		final InputStream in = Compiler.class.getClassLoader().getResourceAsStream( path );
+    		try {
+    			if ( in != null ) {
+    				final Properties props = new Properties();
+    				props.load( in);
+    				final String version = props.getProperty("version");
+    				if ( ! StringUtils.isBlank( version ) ) {
+    					return "V"+version;
+    				}
+    			}
+    		} finally {
+    			IOUtils.closeQuietly( in );
+    		}
+    	} catch(Exception e) {
+    	}
+    	return "<unknown version>";    	
+    }
     public Compiler() 
     {
     	compilerPhases.addAll( setupCompilerPhases() );
