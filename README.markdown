@@ -27,6 +27,8 @@ label2:
 
 - Two-pass compilation with operand inlining for both literal values and addresses
 
+- Equation support ( .equ identifier expression )
+
 - Supports hexadecimal (0xdeadbeef) , binary (b101111) and decimal number literals
 
 - Supports setting up uninitialized memory of a specific size using '.bss <size in bytes>' or "reserve <size in bytes" keywords
@@ -151,6 +153,7 @@ label:
 
 ```
   .bss 1024 ; 1k of memory initialized to 0
+  reserve 1024 ; 1k of memory initialized to 0
 ```
 - to set the origin of generated code, use '.org <address>' or '.origin <address>'
 

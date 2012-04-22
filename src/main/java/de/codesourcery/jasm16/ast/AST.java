@@ -15,6 +15,10 @@
  */
 package de.codesourcery.jasm16.ast;
 
+import java.util.List;
+
+import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.utils.Line;
@@ -42,9 +46,31 @@ public class AST extends ASTNode
             final ASTNode node = new StatementNode().parse( context );
             if ( node instanceof StatementNode) 
             {
-                context.getCompilationUnit().setLine( new Line( lineNumber , lineOffset ) );                
-            }
+                context.getCompilationUnit().setLine( new Line( lineNumber , lineOffset ) );
+            } 
             addChild( node , context );
+        }
+        
+        // make sure no .org $$$$ directive has a value
+        // equal to or less than it's predecessors
+        final List<OriginNode> origins = ASTUtils.getNodesByType( this , OriginNode.class , true );
+        Address lastValue=null;
+        for ( OriginNode n : origins ) 
+        {
+        	final Address value = n.getAddress();
+        	if ( value == null ) {
+        		continue; // parse error....
+        	}
+        	if ( lastValue == null ) {
+        		lastValue = n.getAddress();
+        	} else if ( n.getAddress().getValue() <= lastValue.getValue() ) {
+        		context.getCompilationUnit().addMarker( 
+       				new CompilationError("Invalid offset "+value+" , equal to or lower than the "+
+       						" preceeding .org ("+lastValue+")" , context.getCompilationUnit() , n )
+   				);
+        	} else {
+        		lastValue = n.getAddress();
+        	}
         }
         return this;	    
 	}

@@ -67,7 +67,7 @@ public class OriginNode extends ObjectCodeOutputNode
         return this;
     }
 
-    @Override
+	@Override
     public void symbolsResolved(ICompilationContext context)
     {
         // nothing to do here

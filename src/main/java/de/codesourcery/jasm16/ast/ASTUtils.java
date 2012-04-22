@@ -217,6 +217,9 @@ public class ASTUtils {
                 return true;
             }
         };
+        // do NOT change the order here, AST#parseInternal() checks
+        // .org directives for ascending values and relies
+        // on the fact that this method returns the nodes in-order !
         visitInOrder( root , visitor );
         return result;
     }
