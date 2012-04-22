@@ -386,7 +386,7 @@ public class InstructionNodeTest extends TestHelper
 		if ( newExpression != oldExpression ) {
 		    operand.setChild( 0 , newExpression );
 		}
-		instruction.symbolsResolved( symbolTable );
+		instruction.symbolsResolved( compContext );
 		instruction.writeObjectCode( writer, compContext );
         assertNotNull( objcode.get() );
         assertEquals( source , toSourceCode( result , source ) );

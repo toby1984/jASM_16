@@ -213,7 +213,8 @@ public class Main {
         setObjectCodeWriterFactory(units);
 
         if ( verboseOutput ) {
-            compiler.replaceCompilerPhase( new VerboseCodeGenerationPhase() , ICompilerPhase.PHASE_GENERATE_CODE );
+            compiler.replaceCompilerPhase( new VerboseCodeGenerationPhase() , 
+            		ICompilerPhase.PHASE_GENERATE_CODE );
         }
         
         if ( printStackTraces ) {
@@ -288,10 +289,10 @@ public class Main {
                 private String toObjectFileName(File sourceFile) {
                     final List<String> nameComponents = Arrays.asList( sourceFile.getName().split("\\.") );
                     if ( nameComponents.size() == 1 ) {
-                        return nameComponents.get(0)+".o";
+                        return nameComponents.get(0)+".dcpu16";
                     }
                     final String nameWithoutSuffix = StringUtils.join( nameComponents.subList( 0 , nameComponents.size() - 1  ) , "");
-                    return nameWithoutSuffix+".o";
+                    return nameWithoutSuffix+".dcpu16";
                 }
                 
             };
@@ -354,11 +355,11 @@ public class Main {
     	printVersionInfo();
     	
         final String usage="\nUsage: [options] [-o <output file>] source1 source2 ...\n\n"+
-                "-o              => output file to write generated assembly code to, otherwise code will be written to source.o\n"+
+                "-o              => output file to write generated assembly code to, otherwise code will be written to source.dcpu16\n"+
                 "-d or --debug   => print debug output\n"+
                 "--print         => print formatted source code along with hex dump of generated assembly\n"+
                 "--print-symbols => print symbol table\n"+
-                "--dump          => dump hex dump of object code to std out INSTEAD of writing to a file\n"+
+                "--dump          => instead of writing generated object code to a file, write a hexdump to std out\n"+
                 "--relaxed       => relaxed parsing (instructions are parsed case-insensitive)\n"+
                 "-v or --verbose => print slightly more verbose output during compilation\n\n";
         System.out.println( usage );		

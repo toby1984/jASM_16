@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.parser;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import junit.framework.TestCase;
@@ -232,8 +233,46 @@ public abstract class TestHelper extends TestCase
     
     protected void resolveSymbols( ASTNode node ) 
     {
-        if ( node instanceof ObjectCodeOutputNode ) {
-            ((ObjectCodeOutputNode) node).symbolsResolved( symbolTable );
+    	ICompilationContext context = new ICompilationContext() {
+
+			@Override
+			public List<ICompilationUnit> getAllCompilationUnits() {
+				throw new UnsupportedOperationException("Not implemented");
+			}
+
+			@Override
+			public ICompilationUnit getCurrentCompilationUnit() {
+				throw new UnsupportedOperationException("Not implemented");
+			}
+
+			@Override
+			public IObjectCodeWriterFactory getObjectCodeWriterFactory() {
+				throw new UnsupportedOperationException("Not implemented");
+			}
+
+			@Override
+			public ISymbolTable getSymbolTable() {
+				return symbolTable;
+			}
+
+			@Override
+			public boolean hasCompilerOption(CompilerOption option) {
+				return false;
+			}
+
+			@Override
+			public IResource resolve(String identifier) throws ResourceNotFoundException {
+				throw new UnsupportedOperationException("Not implemented");
+			}
+
+			@Override
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
+				throw new UnsupportedOperationException("Not implemented");
+			}
+		};
+        if ( node instanceof ObjectCodeOutputNode ) 
+        {
+            ((ObjectCodeOutputNode) node).symbolsResolved( context );
         }
     }
 }

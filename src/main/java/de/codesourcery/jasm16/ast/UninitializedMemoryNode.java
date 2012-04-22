@@ -19,7 +19,6 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -78,7 +77,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public void symbolsResolved(ISymbolTable symbolTable)
+    public void symbolsResolved(ICompilationContext context)
     {
         // nothing to see here...
     }

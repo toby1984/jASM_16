@@ -25,12 +25,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.SourceLocation;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.scanner.IScanner;
 import de.codesourcery.jasm16.scanner.Scanner;
 
@@ -97,8 +99,17 @@ public class Misc {
 		final int hi = ( val >> 4) & 0x0f;
 		return ""+HEX_CHARS[ hi ]+HEX_CHARS[ lo ];
 	}	
-
-	public static String readSource(InputStream in) throws IOException {
+	
+	public static byte[] readBytes(IResource resource) throws IOException {
+		final InputStream in = resource.createInputStream();
+		try {
+			return readBytes( in );
+		} finally {
+			IOUtils.closeQuietly( in );
+		}
+	}
+	
+	public static byte[] readBytes(InputStream in) throws IOException {
 
 		final ByteArrayOutputStream out = new ByteArrayOutputStream();
 		int len = 0 ;
@@ -107,21 +118,21 @@ public class Misc {
 			out.write( buffer ,0 , len );
 		}
 		out.flush();
-		return new String( out.toByteArray() );
+		return out.toByteArray();
+	}	
+	
+	public static String readSource(IResource resource) throws IOException 
+	{
+		return new String( readBytes( resource ) );
+	}	
+
+	public static String readSource(InputStream in) throws IOException {
+		return new String( readBytes( in ) );
 	}
 
 	public static String readSource(ICompilationUnit unit) throws IOException 
 	{
-		final InputStream inputStream = unit.getResource().createInputStream();
-		try {
-			return readSource( inputStream );
-		} finally {
-			try {
-				inputStream.close();
-			} catch(IOException e) {
-				/* ignored */
-			}
-		}
+		return readSource( unit.getResource().createInputStream() );
 	}	
 
 	public static String toPrettyString(String errorMessage, int errorOffset , String input) 

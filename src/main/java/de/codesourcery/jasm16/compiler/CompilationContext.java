@@ -54,7 +54,7 @@ public class CompilationContext implements ICompilationContext {
     
 	public CompilationContext(ICompilationUnit unit,List<ICompilationUnit> allCompilationUnits,
 			ISymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,IResourceResolver resourceResolver,
-			Set<CompilerOption> options) throws IOException
+			Set<CompilerOption> options)
 	{
 		if (unit == null) {
 			throw new IllegalArgumentException("unit must not be NULL");

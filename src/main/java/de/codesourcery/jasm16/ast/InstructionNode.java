@@ -21,7 +21,6 @@ import java.util.List;
 import de.codesourcery.jasm16.OpCode;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -193,15 +192,15 @@ public class InstructionNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public void symbolsResolved(ISymbolTable symbolTable)
+    public void symbolsResolved(ICompilationContext context)
     {
-    	this.sizeInBytes = getOpCode().calculateSizeInBytes( symbolTable , this );
+    	this.sizeInBytes = getOpCode().calculateSizeInBytes( context , this );
     }    
 
 	@Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {	
-        final byte[] objectCode = getOpCode().generateObjectCode( compContext.getSymbolTable() , this );		
+        final byte[] objectCode = getOpCode().generateObjectCode( compContext  , this );		
         if ( objectCode == null ) {
             throw new IllegalStateException("writeObjectCode() called on "+this+" although no object code generated?");
         }

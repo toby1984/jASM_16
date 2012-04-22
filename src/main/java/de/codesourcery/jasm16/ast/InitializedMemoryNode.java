@@ -159,7 +159,7 @@ outer:
         return this;   
     }
     
-    private byte[] internalParseData(ISymbolTable symbolTable) throws ParseException 
+    private byte[] internalParseData(ICompilationContext context) throws ParseException 
     {
     	final List<ASTNode> children = new ArrayList<ASTNode>();
     	for ( ASTNode node : getChildren() ) 
@@ -175,22 +175,15 @@ outer:
         final List<Integer> data = new ArrayList<Integer>();
         for ( ASTNode node : children ) 
         {
-        	if ( node instanceof LabelReferenceNode || node instanceof NumberNode) 
+        	if ( node instanceof ConstantValueNode) 
         	{
-        		final boolean fromAddress;
+        		final boolean fromAddress = ( node instanceof LabelReferenceNode);
         		final int value;
-        		if ( node instanceof LabelReferenceNode ) 
-        		{
-        			final Long lValue = ((LabelReferenceNode) node).getNumericValue( symbolTable );
-        			if ( lValue == null ) {
-        				return null;
-        			}
-        			fromAddress = true;
-        			value = lValue.intValue();
-        		} else {
-        			fromAddress = false;
-                    value = ((NumberNode) node).getAsWord();
-        		}
+    			final Long lValue = ((ConstantValueNode) node).getNumericValue( context.getSymbolTable() );
+    			if ( lValue == null ) {
+    				return null;
+    			}
+    			value = lValue.intValue();
         		
                 if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ) 
                 {
@@ -237,11 +230,11 @@ outer:
     }
 
     @Override
-    public void symbolsResolved(ISymbolTable symbolTable)
+    public void symbolsResolved(ICompilationContext context)
     {
         byte[] bytes;
         try {
-            bytes = internalParseData( symbolTable );
+            bytes = internalParseData( context );
         } catch (ParseException e) {
             throw new RuntimeException("Internal error, caught unexpected exception",e);
         }

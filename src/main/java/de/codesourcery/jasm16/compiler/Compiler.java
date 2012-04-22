@@ -80,7 +80,13 @@ public class Compiler implements ICompiler {
                 
                 boolean success = false;
                 try {
-                    success = phase.execute( units ,symbolTable ,  writerFactory , listener, resourceResolver, options );
+                    success = phase.execute( 
+                    		units ,
+                    		symbolTable ,  
+                    		writerFactory , 
+                    		listener, 
+                    		resourceResolver, 
+                    		options );
                 } 
                 catch(Exception e) {
                 	LOG.error("compile(): Internal compiler error during phase "+phase.getName(),e);

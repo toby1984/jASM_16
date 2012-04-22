@@ -69,7 +69,7 @@ Running the compiler from the command-line
 ```
 Usage: [options] [-o <output file>] source1 source2 ...
 
- -o              => output file to write generated assembly code to, otherwise code will be written to source.o
+ -o              => output file to write generated assembly code to, otherwise code will be written to source.dcpu16
  -d or --debug   => print debug output
  --print         => print formatted source code along with hex dump of generated assembly
  --print-symbols => print symbol table

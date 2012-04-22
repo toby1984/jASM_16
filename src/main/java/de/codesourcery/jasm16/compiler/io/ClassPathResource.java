@@ -1,3 +1,5 @@
+package de.codesourcery.jasm16.compiler.io;
+
 /**
  * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
@@ -13,57 +15,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.compiler.io;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
- * {@link IResource} implementation that wraps a string.
+ * {@link IResource} implementation that wraps a resource from 
+ * the classpath.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class FileResource implements IResource
+public class ClassPathResource implements IResource
 {
-    private final File file;
+    private final String classpathLocation;
     
-    private String contents;
+    private byte[] contents;
     
-    public FileResource(File file)
+    public ClassPathResource(String classpathLocation)
     {
-        if (file == null) {
-            throw new IllegalArgumentException("file must not be NULL.");
-        }
-        this.file = file;
+		if (StringUtils.isBlank(classpathLocation)) {
+			throw new IllegalArgumentException(
+					"classpathLocation must not be NULL/blank");
+		}
+        this.classpathLocation = classpathLocation;
     }
 
     @Override
     public InputStream createInputStream() throws IOException
     {
-        if ( contents == null ) {
-        	return new FileInputStream( file );
+        final InputStream stream = getClass().getClassLoader().getResourceAsStream( classpathLocation );
+        if ( stream == null ) {
+        	throw new FileNotFoundException("Unable to load classpath resource '"+classpathLocation+"'");
         }
-        return new ByteArrayInputStream( contents.getBytes() );
+        return stream;
     }
-
 
     @Override
     public OutputStream createOutputStream(boolean append) throws IOException
     {
-        return new FileOutputStream( file , append);
+        throw new IOException("Cannot write to classpath resource '"+classpathLocation+"'");
     }
 
-    private String loadContents() throws IOException {
-        if ( contents == null ) {
-           contents = Misc.readSource( this );
+    private byte[] loadContents() throws IOException 
+    {
+        if ( contents == null ) 
+        {
+       		contents = Misc.readBytes( this );
         }
         return contents;
     }
@@ -72,24 +78,20 @@ public class FileResource implements IResource
     public String readText(ITextRegion range) throws IOException
     {
         loadContents();
-        return range.apply( contents );
+        return range.apply( new String( contents ) );
     }
     
     @Override
     public String toString()
     {
-        return file.getAbsolutePath();
+        return classpathLocation;
     }
 
     @Override
     public long getAvailableBytes() throws IOException
     {
-        return file.length();
-    }
-
-    public File getFile()
-    {
-        return file;
+    	loadContents();
+        return this.contents.length;
     }
 
 }

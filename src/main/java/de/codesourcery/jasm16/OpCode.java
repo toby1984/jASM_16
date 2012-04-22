@@ -22,6 +22,7 @@ import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 
 /**
@@ -215,17 +216,17 @@ public enum OpCode
         return result;
     }
 
-    public int calculateSizeInBytes(ISymbolTable symbolTable , InstructionNode instruction)
+    public int calculateSizeInBytes(ICompilationContext context , InstructionNode instruction)
     {
         final OperandNode operandA = instruction.getOperand(  0, false );
         final OperandNode operandB = instruction.getOperand(  1, false );
-		return getInstructionSizeInBytes( symbolTable , operandA , operandB );
+		return getInstructionSizeInBytes( context , operandA , operandB );
     }	
 
-    private int getInstructionSizeInBytes(ISymbolTable symbolTable, OperandNode operandA, OperandNode operandB) 
+    private int getInstructionSizeInBytes(ICompilationContext context, OperandNode operandA, OperandNode operandB) 
     {
     	final byte[] buffer = new byte[6];
-    	final int calculatedSize = writeInstruction( symbolTable , operandA , operandB , buffer );
+    	final int calculatedSize = writeInstruction( context , operandA , operandB , buffer );
     	if ( calculatedSize == InstructionNode.UNKNOWN_SIZE ) {
     		return getMinimumInstructionSizeInBytes(); // assume worst-case scenario
     	}
@@ -236,7 +237,7 @@ public enum OpCode
 		return 2;
 	}
 
-	public byte[] generateObjectCode(ISymbolTable symbolTable , InstructionNode instruction) 
+	public byte[] generateObjectCode(ICompilationContext context , InstructionNode instruction) 
     {
         final byte[] buffer = new byte[6]; // max. instruction length: three words (3*2 bytes)
         final OperandNode operandA;
@@ -253,7 +254,7 @@ public enum OpCode
             operandB = null;
         }        
 
-        final int bytesToWrite = writeInstruction( symbolTable , operandA, operandB , buffer );
+        final int bytesToWrite = writeInstruction( context , operandA, operandB , buffer );
         if ( bytesToWrite != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
         {
             final byte[] result = new byte[ bytesToWrite ];
@@ -263,7 +264,7 @@ public enum OpCode
         return null;
     }
 
-    private int writeInstruction(ISymbolTable symbolTable,OperandNode a , OperandNode b, byte[] buffer) {
+    private int writeInstruction(ICompilationContext context,OperandNode a , OperandNode b, byte[] buffer) {
 
         /*
          * BASIC instructions are 1-3 words long and are fully defined by the first word.
@@ -283,6 +284,7 @@ public enum OpCode
          * The value (a) is in the same six bit format as defined earlier.
          *       
          */
+    	final ISymbolTable symbolTable = context.getSymbolTable();
         int opcode = 0;
         OperandDesc descA=null;
         OperandDesc descB=null;

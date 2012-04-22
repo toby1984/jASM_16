@@ -21,7 +21,6 @@ import java.io.InputStream;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -81,7 +80,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public void symbolsResolved(ISymbolTable symbolTable)
+    public void symbolsResolved(ICompilationContext context)
     {
         // nothing to do
     }

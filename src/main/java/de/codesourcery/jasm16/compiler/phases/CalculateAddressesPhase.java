@@ -64,8 +64,10 @@ public class CalculateAddressesPhase extends CompilerPhase {
 			final ISymbolTable symbolTable , 
 			IObjectCodeWriterFactory writerFactory , 
 			ICompilationListener listener, 
-			IResourceResolver resourceResolver, Set<CompilerOption> options)
+			IResourceResolver resourceResolver, 
+			Set<CompilerOption> options)
 	{
+		
 		/*
 		 * Since the size of an instruction depends on the
 		 * size of its operands and operands may include expressions
@@ -88,8 +90,11 @@ public class CalculateAddressesPhase extends CompilerPhase {
 				{
 					continue;
 				}
+		        final ICompilationContext context = createCompilationContext(units,
+		        		symbolTable, writerFactory, resourceResolver, options,
+						unit); 				
 				final Address startingOffset = unit.getObjectCodeStartOffset();            
-				final long newSizeInBytes = assignAddresses(symbolTable, unit, startingOffset);
+				final long newSizeInBytes = assignAddresses( context , startingOffset);
 				Long oldSizeInBytes = sizeByCompilationUnit.get( unit.getIdentifier() );
 				if ( oldSizeInBytes == null ) {
 					sizeByCompilationUnit.put( unit.getIdentifier() , newSizeInBytes );
@@ -105,9 +110,11 @@ public class CalculateAddressesPhase extends CompilerPhase {
 		return true;
 	}
 
-	private long assignAddresses(final ISymbolTable symbolTable, final ICompilationUnit unit,Address startingOffset) 
+	private long assignAddresses(final ICompilationContext compContext,Address startingOffset) 
 	{
 		final long[] currentSize = { startingOffset.getValue() };
+		
+		final ICompilationUnit unit = compContext.getCurrentCompilationUnit();
 		
 		final IASTNodeVisitor<ASTNode> visitor = new IASTNodeVisitor<ASTNode>() {
 
@@ -132,7 +139,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
 				{
 					final ObjectCodeOutputNode outputNode = (ObjectCodeOutputNode) n;
 					
-					outputNode.symbolsResolved( symbolTable );
+					outputNode.symbolsResolved( compContext );
 
 					final int sizeInBytes = outputNode.getSizeInBytes();
 					if ( sizeInBytes != ObjectCodeOutputNode.UNKNOWN_SIZE ) 

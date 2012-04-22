@@ -89,8 +89,9 @@ public abstract class CompilerPhase implements ICompilerPhase {
         {
         	listener.start( this , unit );
             try {
-                final ICompilationContext context = new CompilationContext( unit , units , 
-                		symbolTable, writerFactory , resourceResolver , options );                    
+                final ICompilationContext context = createCompilationContext(units,
+                		symbolTable, writerFactory, resourceResolver, options,
+						unit);                    
                 run( unit , context );
                 if ( hasErrors( units ) ) 
                 { 
@@ -112,6 +113,15 @@ public abstract class CompilerPhase implements ICompilerPhase {
         }
         return true;
     }
+
+	protected ICompilationContext createCompilationContext(List<ICompilationUnit> units,
+			ISymbolTable symbolTable, IObjectCodeWriterFactory writerFactory,
+			IResourceResolver resourceResolver, Set<CompilerOption> options,
+			ICompilationUnit unit) {
+		final ICompilationContext context = new CompilationContext( unit , units , 
+				symbolTable, writerFactory , resourceResolver , options );
+		return context;
+	}
     
     @Override
     public void setStopAfterExecution(boolean yesNo) {
