@@ -18,6 +18,8 @@ package de.codesourcery.jasm16.ast;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -29,12 +31,25 @@ import de.codesourcery.jasm16.parser.IParseContext;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class CharacterLiteralNode extends ASTNode {
+public class CharacterLiteralNode extends ConstantValueNode {
 
+	public static final int UNLIMITED_LENGTH = -1;
+	
+	private final int maxLength;
 	private String value;
+	private byte[] bytes;
 	
 	public CharacterLiteralNode() {
+		maxLength = UNLIMITED_LENGTH;
 	}
+	
+	public CharacterLiteralNode(int maxLength) 
+	{
+		if ( maxLength <= 0 && maxLength != UNLIMITED_LENGTH ) {
+			throw new IllegalArgumentException("Invalid max. length: "+maxLength);
+		}
+		this.maxLength = maxLength;
+	}	
 	
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
@@ -53,12 +68,25 @@ public class CharacterLiteralNode extends ASTNode {
             {
             	mergeWithAllTokensTextRegion( context.read() );
                 value = contents.toString();
+                if ( maxLength != UNLIMITED_LENGTH && value.length() > maxLength ) {
+                	context.addCompilationError( "String literal too long, expected at most "+maxLength+" characters",this);
+                }                
+                this.bytes = toByteArray( getBytes() );
                 return this;
             } 
             mergeWithAllTokensTextRegion( context.read() );
             contents.append( tok.getContents() );
         }
         throw new ParseException("Premature end of input, character literal lacks closing delimiter",getTextRegion());            
+	}
+	
+	private byte[] toByteArray(List<Integer> data) {
+		final byte[] result = new byte[data.size()];
+		int index = 0;
+		for ( Integer value : data ) {
+			result[index++] = (byte) ( value & 0xff);
+		}
+		return result;
 	}
 	
 	public List<Integer> getBytes() throws ParseException 
@@ -70,7 +98,9 @@ public class CharacterLiteralNode extends ASTNode {
 	        if ( value < 0 ) {
 	            value += 256;
 	        }
-	        if ( value < 0 || value > 255 ) {
+	        if ( value < 0 || value > 255 ) 
+	        {
+	        	
 	            throw new ParseException("Invalid character '"+c+"' at index "+offset,offset,1);
 	        }
 	        /*
@@ -92,13 +122,38 @@ public class CharacterLiteralNode extends ASTNode {
     @Override
     public CharacterLiteralNode copySingleNode()
     {
-    	final CharacterLiteralNode result=new CharacterLiteralNode();
+    	final CharacterLiteralNode result=new CharacterLiteralNode(this.maxLength);
     	result.value = value;
+    	if ( this.bytes != null ) {
+    		result.bytes = new byte[ this.bytes.length ];
+    		System.arraycopy( this.bytes , 0 , result.bytes , 0 , this.bytes.length );
+    	}
     	return result;
     }
 
     @Override
     public boolean supportsChildNodes() {
         return false;
-    }    
+    }
+
+	@Override
+	public Long getNumericValue(ISymbolTable symbolTable) 
+	{
+		return calculate( symbolTable );
+	}
+
+	@Override
+	public Long calculate(ISymbolTable symbolTable) {
+		if ( this.bytes == null || this.bytes.length > 2 ) {
+			return null;
+		}
+		final int hi = bytes[0] & 0xff;
+		final int lo = bytes[1] & 0xff;
+		return (long) (hi << 8 ) | lo;
+	}
+
+	@Override
+	public TermNode reduce(ICompilationContext context) {
+		return (TermNode) createCopy( true );
+	}    
 }

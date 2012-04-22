@@ -142,7 +142,7 @@ public class ASTInspector {
 
 	// compiler
 	private ICompiler compiler;
-	private File lastOpenDirectory = new File("/home/tgierke/workspace/dcpu16-assembler/samples");
+	private File lastOpenDirectory = new File("/home/tobi/schulungs_workspace/jASM_16");
 	private File file;
 	private ICompilationUnit currentUnit;
 

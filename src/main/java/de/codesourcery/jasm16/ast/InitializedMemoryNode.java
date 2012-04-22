@@ -59,7 +59,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		}
 	}
 
-	private transient byte[] parsedData;
+	private byte[] parsedData;
 	private AllowedSize allowedSize;
 
 	public InitializedMemoryNode() {
@@ -198,7 +198,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		for ( ASTNode node : getChildren() ) 
 		{
 			if ( node instanceof TermNode ||
-					node instanceof CharacterLiteralNode )
+				 node instanceof CharacterLiteralNode )
 			{
 				children.add( node );
 			}
@@ -207,7 +207,15 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		final List<Integer> data = new ArrayList<Integer>();
 		for ( ASTNode node : children ) 
 		{
-			if ( node instanceof TermNode) 
+			if ( node instanceof CharacterLiteralNode ) 
+			{
+				final List<Integer> bytes = ((CharacterLiteralNode) node).getBytes();
+				for ( int value : bytes ) 
+				{
+					data.add( value );
+				}
+			} 
+			else if ( node instanceof TermNode) 
 			{
 				final TermNode termNode = (TermNode) node;
 				final Long lValue = termNode.calculate( symbolTable );
@@ -237,14 +245,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 					}
 				}
 			} 
-			else if ( node instanceof CharacterLiteralNode ) 
-			{
-				final List<Integer> bytes = ((CharacterLiteralNode) node).getBytes();
-				for ( int value : bytes ) 
-				{
-					data.add( value );
-				}
-			} else {
+			else {
 				throw new RuntimeException("Unreachable code reached");
 			}
 		}    	

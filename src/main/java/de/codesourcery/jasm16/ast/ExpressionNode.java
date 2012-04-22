@@ -147,7 +147,12 @@ public class ExpressionNode extends TermNode
                 }				
             }
 
-            if ( context.peek().hasType(TokenType.OPERATOR ) ) 
+            if ( context.peek().hasType( TokenType.STRING_DELIMITER ) ) 
+            {
+                final int index = context.currentParseIndex();
+                final ASTNode newNode = new CharacterLiteralNode(1).parse( context );
+                previousNode = handleStack( termStack , newNode , index ,previousNode , context);            	
+            } else  if ( context.peek().hasType(TokenType.OPERATOR ) ) 
             { 
             	if ( context.peek().getContents().equals( Operator.DECREMENT.getLiteral() ) ) 
             	{

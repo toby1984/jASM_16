@@ -18,6 +18,8 @@ package de.codesourcery.jasm16.compiler;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -94,12 +96,8 @@ public class CompilationUnit implements ICompilationUnit {
     @Override
     public SourceLocation getSourceLocation(ITextRegion textRegion)
     {
-        final List<Line> lines = getLinesForRange( textRegion );
-        if ( lines.isEmpty() ) {
-            throw new NoSuchElementException("No line for range "+textRegion);
-        }
-        
-        return new SourceLocation(this,lines.get(0),textRegion);
+    	final Line l = getLineForOffset( textRegion.getStartingOffset() );
+        return new SourceLocation(this,l,textRegion);
     }
 
     @Override
@@ -138,13 +136,20 @@ public class CompilationUnit implements ICompilationUnit {
         }
         
         final List<Line> result = new ArrayList<Line>();
-        // note that lines must be returned ordered ascending by line number here !!!
         for ( Line l : lines.values() ) 
         {
             if ( range.contains( l.getLineStartingOffset() ) ) {
                 result.add( l );
             }
         }
+        Comparator<Line> comparator = new Comparator<Line>() {
+			
+			@Override
+			public int compare(Line o1, Line o2) {
+				return Integer.valueOf( o1.getLineNumber() ).compareTo( Integer.valueOf( o2.getLineNumber() ) );
+			}
+		}; 
+		Collections.sort( result , comparator );
         return result;
     }
 

@@ -161,6 +161,7 @@ public class InstructionNodeTest extends TestHelper
 	
     public void testAddressingModesParsing() throws Exception {
     	
+    	assertCompiles("ifn A, \"=\"");
         assertCompiles("SET [A] , [--SP]");     
         
     	assertDoesNotCompile("SET a , 1+a " );
@@ -215,7 +216,7 @@ public class InstructionNodeTest extends TestHelper
     	assertCompiles("SET PC,POP");    	
     	assertCompiles("SET [A] , POP"); // POP        	
     	assertCompiles("SET POP , [A] "); // POP    	
-    	assertCompiles("SET [SP++] , [A] "); // POP    	
+    	assertCompiles("SET [SP++] , [A] "); // POP    
     }
     
     public void testPush() throws Exception {

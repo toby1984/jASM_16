@@ -516,6 +516,42 @@ public class ExpressionNodeTest extends TestHelper {
 		assertEquals( source , toSourceCode( foldingResult , source ) );
 	}	
 	
+	public void testExpressionWithCharacterLiteral1() throws ParseException, IOException {
+
+		final String source = " 3 + \"a\" ";
+		
+		final IParseContext context = createParseContext( source );
+		
+		final ASTNode result = new ExpressionNode().parse( context );
+		
+		ASTUtils.printAST( result );
+		
+		assertFalse( result.hasErrors() );
+		
+		final Long value = ((TermNode) result).calculate( symbolTable );
+		assertEquals( source , toSourceCode( result , source ) );
+		final int expected = 'a'+3;
+		assertEquals( expected , value.intValue() );
+	}	
+	
+	public void testExpressionWithCharacterLiteral2() throws ParseException, IOException {
+
+		final String source = " \"a\" + 3 ";
+		
+		final IParseContext context = createParseContext( source );
+		
+		final ASTNode result = new ExpressionNode().parse( context );
+		
+		ASTUtils.printAST( result );
+		
+		assertFalse( result.hasErrors() );
+		
+		final Long value = ((TermNode) result).calculate( symbolTable );
+		assertEquals( source , toSourceCode( result , source ) );
+		final int expected = 'a'+3;
+		assertEquals( expected , value.intValue() );
+	}		
+	
 	public void testFoldRegisterExpression5() throws ParseException, IOException {
 
 		final String source = " 3 + a + 3 ";

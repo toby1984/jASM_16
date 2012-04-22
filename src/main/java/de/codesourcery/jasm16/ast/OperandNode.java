@@ -100,9 +100,9 @@ public class OperandNode extends ASTNode
 			addChild( expr , context );
 			mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_CLOSE ) );
 			return this;
-		} else if ( tok.hasType( TokenType.CHARACTERS ) ) { // REGISTER or IMMEDIATE (label reference)
+		} else if ( tok.hasType( TokenType.CHARACTERS ) || tok.hasType(TokenType.STRING_DELIMITER) ) { // REGISTER or IMMEDIATE (label reference)
 
-			if ( nextTokenIsRegisterIdentifier( context ) )
+			if ( tok.hasType( TokenType.CHARACTERS ) && nextTokenIsRegisterIdentifier( context ) )
 			{ 
 				this.addressingMode = AddressingMode.REGISTER;
 				final ASTNode node = new RegisterReferenceNode().parse( context );
@@ -110,7 +110,7 @@ public class OperandNode extends ASTNode
 			} 
 			else 
 			{
-				// probably a label reference
+				// symbol reference or character literal
 				this.addressingMode = AddressingMode.IMMEDIATE;            	
 				ASTNode expr = new ExpressionNode().parse( context );
 				validateRegisterRefCount( context , expr , 0 );
