@@ -161,8 +161,9 @@ label:
   .bss 1024 ; 1k of memory initialized to 0
   reserve 1024 ; 1k of memory initialized to 0
 ```
+
 - to set the origin of generated code, use '.org <address>' or '.origin <address>'
 
 - to include binary data from a file, use '.incbin "filename"'
 
-- to include another source file, use '.include "filename"' or '.incsource "filename"'
+- to include another source file, use '.include "filename"' or 'include "filename"'
