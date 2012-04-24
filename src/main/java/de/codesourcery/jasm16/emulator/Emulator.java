@@ -4,20 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressingMode;
-import de.codesourcery.jasm16.OpCode;
+import de.codesourcery.jasm16.utils.Misc;
 
 public final class Emulator {
 
-	public static final int REG_A = 0;
-	public static final int REG_B = 1;
-	public static final int REG_C = 2;
-	public static final int REG_X = 3;
-	public static final int REG_Y = 4;
-	public static final int REG_Z = 5;
-	public static final int REG_I = 6;
-	public static final int REG_J = 7;
-	
+    private static final boolean DEBUG = false;
+    
 	private final Simulation simulation = new Simulation();
 	private final Thread simulationThread;
 	
@@ -66,7 +58,8 @@ Non-basic opcodes: (6 bits)
 		t.start();
 	}
 	
-	protected final class Simulation implements Runnable {
+	protected final class Simulation implements Runnable 
+	{
 		
 		private final Object LOCK = new Object();
 		private boolean isRunnable = false;
@@ -79,6 +72,50 @@ Non-basic opcodes: (6 bits)
 		
 		private final List<WorkItem> items = new ArrayList<WorkItem>();
 		
+		private long lastStart;
+		private long lastStop;
+		
+		public Simulation() {
+		    reset();
+		}
+		
+        public double getRuntimeInSeconds() {
+            if ( lastStart != 0 && lastStop != 0 ) 
+            {
+                if ( lastStop >= lastStart ) {
+                    return (lastStop - lastStart)/1000.0f;
+                }
+            } else if ( lastStart != 0 ) {
+                return ( System.currentTimeMillis() - lastStart) / 1000.0f;
+            }
+            return -1; 
+        }		
+		
+		public double getCyclesPerSecond() 
+		{
+		    if ( lastStart != 0 )
+		    {
+		        return currentCycle / getRuntimeInSeconds();
+		    }
+		    return -1.0d;
+		}
+		
+		public String getEstimatedClockSpeed() 
+		{
+		    final double clockRate = getCyclesPerSecond();
+            if ( clockRate == -1.0d ) {
+		        return "<cannot calculate clock rate>";
+		    }
+		    if ( clockRate < 1000 ) {
+		        return clockRate+" Hz";
+		    } else if ( clockRate < 100000) {
+		        return (clockRate/1000)+" kHz";
+		    } else if ( clockRate < 1000000000 ) {
+                return (clockRate/1000000)+" MHz";
+		    }
+            return (clockRate/1000000000)+" GHz";		    
+		}
+		
 		@Override
 		public void run() {
 		
@@ -89,107 +126,67 @@ Non-basic opcodes: (6 bits)
 					while ( isRunnable == false ) 
 					{
 						try {
+						    lastStop = System.currentTimeMillis();
+						    System.out.println("*** Emulation stopped after "+getRuntimeInSeconds()+" seconds ( " +
+						    		"cycle: "+currentCycle+" , "+getCyclesPerSecond()+" cycles/sec = ~ "+getEstimatedClockSpeed());
 							LOCK.wait();
+							lastStart = System.currentTimeMillis();
 						} 
 						catch (InterruptedException e) { /* can't help it */ }
 					}
 				}
-				
-				// TICK
-				currentCycle++; 
-				while ( ! items.isEmpty() ) 
-				{
-					WorkItem item = items.get(0);
-					if ( item.executionTime == currentCycle ) 
-					{
-						items.remove( 0 );
-						item.action.execute( cpu  , memory , nextAvailableCycle );
-					} else {
-						break;
-					}
-				}
+				advanceOneStep();
 			}
 		}
 		
-		public void schedule(Action action,int onCycle) 
+		protected void advanceOneStep() 
 		{
-			addWorkItem( new WorkItem( onCycle, action ) );
+            // TICK
+            currentCycle++; 
+            
+            if ( DEBUG ) {
+                System.out.println("=== current cycle: "+currentCycle+" ===");
+            }
+            
+            if ( items.isEmpty() ) {
+                scheduleFetchInstruction();
+            }
+            
+            while ( ! items.isEmpty() ) 
+            {
+                WorkItem item = items.get(0);
+                if ( item.executionTime == currentCycle ) 
+                {
+                    if ( DEBUG ) {
+                        System.out.println("Executing "+item);
+                    }
+                    items.remove( 0 );
+                    item.action.execute( this  , cpu , memory, nextAvailableCycle );
+                } else 
+                {
+                    if ( DEBUG ) {
+                        System.out.println("Waiting for cycle "+item.executionTime);
+                    }
+                    break;
+                }
+            }
 		}
 		
-		public void advanceOneStep() 
+		public void schedule(Action action,int duration) 
 		{
-			// fetch instruction word
-			final int instruction = cpu.fetchInstruction();
-			
-			
-			// decode operand bits
-			final int opCode = instruction & 0x0f; // lowest 4 bits
-			final Action op;
-			switch( opCode ) 
-			{
-				case 0: // => extended instruction ?
-					switch( (instruction >> 4) & 0x3f ) 
-					{
-						case 1: // JSR a - pushes the address of the next instruction to the stack, then sets PC to a
-							op= OpCode.JSR;
-							break;
-							default:
-								op = null;
-								// RESERVED OPCODE
-					}
-					break;
-				case 1: // 0x1: SET a, b - sets a to b
-					op= OpCode.SET;
-					break;
-				case 2: // 0x2: ADD a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
-					op= OpCode.ADD;
-					break;
-				case 3: // 0x3: SUB a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
-					op= OpCode.SUB;
-					break;
-				case 4: // 0x4: MUL a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
-					op= OpCode.MUL;
-					break;
-				case 5: // 0x5: DIV a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
-					op= OpCode.DIV;
-					break;
-				case 6: // 0x6: MOD a, b - sets a to a%b. if b==0, sets a to 0 instead.
-					op= OpCode.MOD;
-					break;
-				case 7: // 0x7: SHL a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
-					op= OpCode.SHL;
-					break;
-				case 8: // 0x8: SHR a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
-					op= OpCode.SHR;
-					break;
-				case 9: // 0x9: AND a, b - sets a to a&b
-					op= OpCode.AND;
-					break;
-				case 10: // 0xa: BOR a, b - sets a to a|b
-					op= OpCode.OR;
-					break;
-				case 11: // 0xb: XOR a, b - sets a to a^b
-					op= OpCode.XOR;
-					break;
-				case 12: // 0xc: IFE a, b - performs next instruction only if a==b
-					op= OpCode.IFE;
-					break;
-				case 13: // 0xd: IFN a, b - performs next instruction only if a!=b
-					op= OpCode.IFN;
-					break;
-				case 14: // 0xe: IFG a, b - performs next instruction only if a>b
-					op= OpCode.IFG;
-					break;
-				case 15: // 0xf: IFB a, b - performs next instruction only if (a&b)!=0
-					op= OpCode.IFB;
-					break;
-			}
-			
+		    if ( nextAvailableCycle < currentCycle ) {
+		        nextAvailableCycle = currentCycle;
+		    }
+		    if ( DEBUG ) {
+		        System.out.println("Scheduling action: "+action+" [ duration: "+duration+"] on cycle "+nextAvailableCycle);
+		    }
+			addWorkItem( new WorkItem( nextAvailableCycle, action ) );
+			nextAvailableCycle += duration;
 		}
 		
 		private void crash() 
 		{
-			System.out.println("Reserved/unknown opcode at "+(cpu.pc-1));
+		    System.out.println("Reserved/unknown opcode at "+(cpu.pc-1));
 			stop();
 		}
 		
@@ -217,16 +214,25 @@ Non-basic opcodes: (6 bits)
 		public void reset() 
 		{
 			stop();
+			lastStart = 0;
+			lastStop = 0;
+			items.clear();
 			currentCycle = 0;
-			nextAvailableCycle = 0;			
+			nextAvailableCycle = 1;			
 			cpu.reset();
 			memory.reset();
 		}		
 		
-		public void stop() 
+		private void scheduleFetchInstruction()
+        {
+		    schedule( FETCH_AND_DECODE , 0);
+        }
+
+        public void stop() 
 		{
 			synchronized(LOCK) {
 				isRunnable = false;
+				LOCK.notifyAll();
 			}
 		}
 		
@@ -244,120 +250,585 @@ Non-basic opcodes: (6 bits)
 		STORE;
 	}
 	
+	public static class LoadCommonRegisterAction extends Action {
+
+	    private final int registerIndex;
+	    
+	    public LoadCommonRegisterAction(int registerIndex) 
+	    {
+	        super("acc:= register #"+registerIndex);
+	        this.registerIndex= registerIndex;
+	    }
+	    
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            cpu.accumulator = cpu.registers[registerIndex];
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            sim.schedule( this , 0 );
+        }
+	}
+	
+    public static class StoreCommonRegisterAction extends Action {
+
+        private final int registerIndex;
+        
+        public StoreCommonRegisterAction(int registerIndex) {
+            super("register #"+registerIndex+" := acc");            
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            cpu.registers[registerIndex] = cpu.accumulator;
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            sim.schedule( this , 0 );
+        }
+    }	
+    
+    public static class LoadCommonRegisterIndirectAction extends Action {
+
+        private final int registerIndex;
+        
+        public LoadCommonRegisterIndirectAction(int registerIndex) 
+        {
+            super("acc := [ register #"+registerIndex+" ]");              
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            cpu.accumulator = memory.memory[ cpu.registers[registerIndex] ];
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            sim.schedule( this , 1 );
+        }
+    }	
+    
+    public static class StoreCommonRegisterIndirectAction extends Action {
+
+        private final int registerIndex;
+        
+        public StoreCommonRegisterIndirectAction(int registerIndex) 
+        {
+            super("[ register #"+registerIndex+" ] := acc");              
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            memory.memory[ cpu.registers[registerIndex] ] = cpu.accumulator;
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            sim.schedule( this , 1 );
+        }
+    }       
+    
+    public static class LoadOperandBRegisterIndirectWithOffsetAction extends Action {
+
+        private final int registerIndex;
+        
+        public LoadOperandBRegisterIndirectWithOffsetAction(int registerIndex) 
+        {
+            super("acc = [ register #"+registerIndex+" + offset ]");             
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            cpu.accumulator = memory.memory[ cpu.registers[registerIndex] ];
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            new Action("offsetB = [ pc++ ]") {
+
+                @Override
+                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                {
+                    cpu.offsetB = memory.memory[ cpu.pc++ ];
+                }
+
+                @Override
+                public void schedule(Simulation sim)
+                {
+                    sim.schedule( this , 1 );
+                }
+            }.schedule( sim );
+            
+            new Action("acc := memory[ memory[ PC++ ] ]") {
+
+                @Override
+                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                {
+                    cpu.accumulator = memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetB ];
+                }
+
+                @Override
+                public void schedule(Simulation sim)
+                {
+                    sim.schedule( this , 0 );
+                }
+            }.schedule( sim );            
+        }
+    }  
+    
+    public static class StoreOperandARegisterIndirectWithOffsetAction extends Action {
+
+        private final int registerIndex;
+        
+        public StoreOperandARegisterIndirectWithOffsetAction(int registerIndex) {
+            super("memory[ register #"+registerIndex+" +offsetA ] := acc");
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            memory.memory[ cpu.registers[registerIndex] ] = cpu.accumulator;
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            new Action("cpu.offsetA := [ PC++ ]") {
+
+                @Override
+                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                {
+                    cpu.offsetA = memory.memory[ cpu.pc++ ];
+                }
+
+                @Override
+                public void schedule(Simulation sim)
+                {
+                    sim.schedule( this , 1 );
+                }
+            }.schedule( sim );
+            
+            new Action("memory[ register #"+registerIndex+" + offset ] := acc") {
+
+                @Override
+                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                {
+                    memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetA ] = cpu.accumulator;
+                }
+
+                @Override
+                public void schedule(Simulation sim)
+                {
+                    sim.schedule( this , 0 );
+                }
+            }.schedule( sim );            
+        }
+    }    
+    
+    public static class StoreRegisterIndirectWithOffsetAction extends Action {
+
+        private final int registerIndex;
+        
+        public StoreRegisterIndirectWithOffsetAction(int registerIndex) 
+        {
+            super("[ register #"+registerIndex+" + offsetB ] := acc");
+            this.registerIndex= registerIndex;
+        }
+        
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            cpu.accumulator = memory.memory[ cpu.registers[registerIndex] ];
+        }
+
+        @Override
+        public void schedule(Simulation sim)
+        {
+            new Action("memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetB ] = cpu.accumulator") {
+
+                @Override
+                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                {
+                    memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetB ] = cpu.accumulator;
+                }
+
+                @Override
+                public void schedule(Simulation sim)
+                {
+                    sim.schedule( this , 1 );
+                }
+            }.schedule( sim );
+        }
+    }     
+	
 	public static abstract class Action 
 	{
-		public abstract void execute(CPU cpu,Memory memory,int nextAvailableCycle);
+	    private final String name;
+	    
+	    public Action(String name) {
+	        this.name = name;
+	    }
+	    
+	    @Override
+	    public String toString() {
+	        return name;
+	    }
+	    
+		public abstract void execute(Simulation sim,CPU cpu,Memory memory, int nextAvailableCycle);
 		
 		public abstract void schedule(Simulation sim);
 		
-		public void scheduleOperandA(Simulation sim , int instruction,Mode mode) {
-			final int op  = (instruction >> 4) & 0x3f; // 6 bits
-			final int operandBits = op & (1+2+4+8+16+32);
-			scheduleOperands( sim , instruction , operandBits , mode );
+		protected  void loadAccumulator(Simulation sim,int operandBits) 
+		{
+		    switch( operandBits ) 
+		    {
+		        case 0x18: // POP / [SP++]
+		            new Action("acc:=POP") 
+		            {
+
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = memory.memory[ cpu.sp++ ];
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );
+		            return;
+		        case 0x19: // PEEK / [SP]
+                    new Action("acc:=PEEK") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = memory.memory[ cpu.sp ];
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );		            
+		            return;
+		        case 0x1a: // PUSH / [--SP]
+                    new Action("acc:=PUSH") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = memory.memory[ --cpu.sp ];
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;
+		        case 0x1b: // SP
+                    new Action("acc:=SP") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = cpu.sp;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;		
+                case 0x1c: // PC
+                    new Action("acc:=PC") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = cpu.pc;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;     
+                case 0x1d: // O
+                    new Action("acc:=O") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = cpu.o;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;    
+                case 0x1e: // [next word]
+                    new Action("acc:=[next word]") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            final int adr = memory.memory[ cpu.pc++ ];
+                            cpu.accumulator = memory.memory[ adr ];
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;          
+                case 0x1f: // next word (literal)
+                    new Action("acc:=next word (literal)") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.accumulator = memory.memory[ cpu.pc++ ];
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;                     
+		    }
+		    
+		    //  0x20-0x3f: literal value 0x00-0x1f (literal)     
+		    if ( operandBits >= 0x20 ) {
+		        sim.cpu.accumulator = operandBits - 0x20;
+		        return;
+		    }
+		    
+            // register immediate ?
+            int value = operandBits & 0x07; // bits 0-2
+            if ( value <= 0x07) 
+            {
+                new LoadCommonRegisterAction( value ).schedule( sim );
+                return;
+            }
+            
+            // register indirect?
+            value = (operandBits >> 3) & 0x07; // bits 3-5
+            if ( value <= 0x07) 
+            {
+                new LoadCommonRegisterIndirectAction( value ).schedule( sim );
+                return;
+            }
+            
+            // register indirect with offset?
+            value = (operandBits >> 6) & 0x07; // bits 6-8
+            if ( value <= 0x07) 
+            {
+                new LoadOperandBRegisterIndirectWithOffsetAction( value ).schedule( sim );
+                return;                
+            }               
 		}
 		
-		public void scheduleOperandB(Simulation sim , int instruction,Mode mode) 
-		{
-			final int op= (instruction >> 10) & 0x3f; // 6 bits
-			final int operandBits = op & (1+2+4+8+16+32);	
-			scheduleOperands( sim , instruction , operandBits , mode );
-		}		
-		
-		public void scheduleOperands(Simulation sim , int instruction, int operandBits , Mode mode) 
-		{
-			// register immediate ?
-			int value = operandBits & 0x07; // bits 0-2
-			if ( value <= 0x07) 
-			{
-				switch( value ) 
-				{
-					case 0:
-						if ( mode == Mode.LOAD ) {
-							LOAD_A.schedule( sim );
-						} else {
-							STORE_A.schedule( sim );
-						}
-						return;
-					case 1:
-						if ( mode == Mode.LOAD ) {
-							LOAD_B.schedule( sim );
-						} else {
-							STORE_B.schedule( sim );
-						}
-						return;					
-					case 2:
-						if ( mode == Mode.LOAD ) {
-							LOAD_C.schedule( sim );
-						} else {
-							STORE_C.schedule( sim );
-						}
-						return;					
-					case 3:
-						if ( mode == Mode.LOAD ) {
-							LOAD_X.schedule( sim );
-						} else {
-							STORE_X.schedule( sim );
-						}
-						return;					
-					case 4:
-						if ( mode == Mode.LOAD ) {
-							LOAD_Y.schedule( sim );
-						} else {
-							STORE_Y.schedule( sim );
-						}
-						return;							
-					case 5:
-						if ( mode == Mode.LOAD ) {
-							LOAD_Z.schedule( sim );
-						} else {
-							STORE_Z.schedule( sim );
-						}
-						return;						
-					case 6:
-						if ( mode == Mode.LOAD ) {
-							LOAD_I.schedule( sim );
-						} else {
-							STORE_I.schedule( sim );
-						}
-						return;						
-					case 7:				
-						if ( mode == Mode.LOAD ) {
-							LOAD_J.schedule( sim );
-						} else {
-							STORE_J.schedule( sim );
-						}
-						return;	
-				}
-			}
-			
-			/*
+		protected  void storeAccumulator(Simulation sim,int operandBits) 
+        {
+            switch( operandBits ) 
+            {
+                case 0x18: // POP / [SP++]
+                    new Action("POP := acc") 
+                    {
 
-Values: (6 bits)
-    0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order)
-    0x08-0x0f: [register]
-    0x10-0x17: [next word + register]
-         0x18: POP / [SP++]
-         0x19: PEEK / [SP]
-         0x1a: PUSH / [--SP]
-         0x1b: SP
-         0x1c: PC
-         0x1d: O
-         0x1e: [next word]
-         0x1f: next word (literal)
-    0x20-0x3f: literal value 0x00-0x1f (literal)
-    
-* "next word" really means "[PC++]". These increase the word length of the instruction by 1. 
-* If any instruction tries to assign a literal value, the assignment fails silently. Other than that, the instruction behaves as normal.
-* All values that read a word (0x10-0x17, 0x1e, and 0x1f) take 1 cycle to look up. The rest take 0 cycles.
-* By using 0x18, 0x19, 0x1a as POP, PEEK and PUSH, there's a reverse stack starting at memory location 0xffff. Example: "SET PUSH, 10", "SET X, POP"
-			 */			
-			
-			value = (operandBits >> 3) & 0x07; // bits 3-5 ( 8+16+32)
-			if ( value <= 0x07) 
-			{			
-				
-			}
-		}		
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            memory.memory[ cpu.sp++ ] = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );
+                    return;
+                case 0x19: // PEEK / [SP]
+                    new Action("PEEK := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            memory.memory[ cpu.sp ] = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;
+                case 0x1a: // PUSH / [--SP]
+                    new Action("PUSH := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            memory.memory[ --cpu.sp ] = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;
+                case 0x1b: // SP
+                    new Action("SP := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.sp = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;     
+                case 0x1c: // PC
+                    new Action("pc := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            cpu.pc = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;     
+                case 0x1d: // O
+                    new Action("O := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            // cpu.accumulator = cpu.o;
+                            throw new RuntimeException("Assigning register O is not possible");
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 0 );
+                        }
+                     }.schedule( sim );                 
+                    return;    
+                case 0x1e: // [next word]
+                    new Action("[ next word ] := acc") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            final int adr = memory.memory[ cpu.pc++ ];
+                            memory.memory[ adr ] = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;          
+                case 0x1f: // next word (literal)
+                    new Action("next word (literal)") 
+                    {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            memory.memory[ cpu.pc++ ] = cpu.accumulator;
+                        }
+
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            sim.schedule( this , 1 );
+                        }
+                     }.schedule( sim );                 
+                    return;                     
+            }
+            
+            //  0x20-0x3f: literal value 0x00-0x1f (literal)     
+            if ( operandBits >= 0x20 ) {
+                throw new RuntimeException("Trying to assign a literal value?");
+            }
+            
+            // register immediate ?
+            int value = operandBits & 0x07; // bits 0-2
+            if ( value <= 0x07) 
+            {
+                new StoreCommonRegisterAction( value ).schedule( sim );
+                return;
+            }
+            
+            // register indirect?
+            value = (operandBits >> 3) & 0x07; // bits 3-5
+            if ( value <= 0x07) 
+            {
+                new LoadCommonRegisterIndirectAction( value ).schedule( sim );
+                return;
+            }
+            
+            // register indirect with offset?
+            value = (operandBits >> 6) & 0x07; // bits 6-8
+            if ( value <= 0x07) 
+            {
+                new StoreOperandARegisterIndirectWithOffsetAction( value ).schedule( sim );
+                return;                
+            }               
+            
+        }		
 	}
 	
 	public static final class WorkItem 
@@ -370,28 +841,24 @@ Values: (6 bits)
 			this.executionTime = executionTime;
 			this.action = action;
 		}
+		
+		@Override
+		public String toString()
+		{
+		    return "executionOnCycle="+executionTime+", action = "+action;
+		}
 	}
 	
 	public static final class CPU 
 	{
-		
-		/*
-		 *     0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order)
-A, B, C, X, Y, Z, I or J		 
-		 */
-		public int a;
-		public int b;
-		public int c;
-		public int x;
-		public int y;
-		public int z;
-		public int i;
-		public int j;
+		public final int[] registers=new int[8];
 		
 		public int pc;
 		public int sp;
 		public int o;
 		
+		public int offsetA; // SET [ register + offset ] , ...
+		public int offsetB; // SET x , [ register + offset ]
 		public int accumulator;
 		
 		private final Memory mem;
@@ -402,12 +869,20 @@ A, B, C, X, Y, Z, I or J
 		
 		public void reset() 
 		{
-			a=b=c=x=y=z=i=j=0;
+		    System.out.println("*** CPU reset ***");
+		    for ( int i = 0 ; i < registers.length ;i++) {
+		        registers[i]=0;
+		    }
 			pc=sp=o=0;
 		}
 		
-		public int fetchInstruction() {
-			return mem.memory[ pc++ ];
+		public int fetchInstruction() 
+		{
+			final int instruction = mem.memory[ pc++ ];
+			if ( DEBUG ) {
+			    System.out.println( "next instruction => "+Misc.toHexString( pc-1 )+": "+Misc.toHexString( instruction ) );
+			}
+			return instruction;
 		}
 	}
 	
@@ -417,10 +892,14 @@ A, B, C, X, Y, Z, I or J
 		
 		public int read(int address) 
 		{
-			return memory[address];
+			final int result = memory[address];
+	        System.out.println("MEM: Read value 0x"+Misc.toHexString( result)+" from 0x"+Misc.toHexString( address ));
+	        return result;
 		}
 		
-		public void write(int address,int value) {
+		public void write(int address,int value) 
+		{
+	        System.out.println("MEM: Writing value 0x"+Misc.toHexString( value )+" to 0x"+Misc.toHexString( address ));
 			memory[address]= value;
 		}
 		
@@ -433,14 +912,16 @@ A, B, C, X, Y, Z, I or J
 			{
 				value= data[pointer++];
 				if ( pointer < data.length ) {
-					value = (value << 8) | data[pointer++];
+					value = (value << 8) | (0xff & data[pointer++]);
 				}
 				memory[ current++ ] = value;
 			}
+			System.out.println("BULK-LOAD: \n\n"+Misc.toHexDumpWithAddresses( startingOffset , data , 8 ) );
 		}
 		
 		public void reset() 
 		{
+		    System.out.println("*** Memory reset ***");		    
 			for ( int i = 0 ; i < memory.length ; i++ ) {
 				memory[i]=0;
 			}
@@ -471,256 +952,111 @@ A, B, C, X, Y, Z, I or J
 	 */
 	
 	
-	/* ============
-	 * === LOAD ===
-	 * ============
-	 */
-	
-	// LOAD register
-	public static final Action LOAD_A = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.a;
-		}
+    public static final Action FETCH_AND_DECODE = new Action("fetch_and_decode") {
 
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action LOAD_B = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.b;
-		}
+        @Override
+        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+        {
+            // fetch instruction word
+            final int instruction = cpu.fetchInstruction();
+            
+            // decode operand bits
+            final int opCode = instruction & 0x0f; // lowest 4 bits
+            switch( opCode ) 
+            {
+                case 0: // => extended instruction ?
+                    switch( (instruction >> 4) & 0x3f ) 
+                    {
+                        case 1: // JSR a - pushes the address of the next instruction to the stack, then sets PC to a
+                            new Action("JSR") {
+                                @Override
+                                public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                                {
+                                    loadAccumulator( sim , (instruction >> 4) & (1+2+4+8+16+32) );
+                                    storeAccumulator( sim , (instruction >> 10) & (1+2+4+8+16+32) );
+                                }
 
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action LOAD_C = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.c;
-		}
+                                @Override
+                                public void schedule(Simulation sim)
+                                {
+                                    int operandBits = (instruction >> 4) & (1+2+4+8+16+32);
+                                    loadAccumulator(sim , operandBits );
+                                    sim.schedule( this  , 0 );
+                                }
+                             }.schedule( sim );                            
+                            return;
+                        default:
+                            throw new RuntimeException("Cannot handle reserved opcode "+Misc.toHexString( opCode ));
+                                // RESERVED OPCODE
+                    }
+                case 1: // 0x1: SET a, b - sets a to b
+                    new Action("SET") {
+                        @Override
+                        public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
+                        {
+                            storeAccumulator( sim , (instruction >> 4) & (1+2+4+8+16+32) );
+                        }
 
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	public static final Action LOAD_I = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.i;			
-		}
+                        @Override
+                        public void schedule(Simulation sim)
+                        {
+                            int operandBits = (instruction >> 10) & (1+2+4+8+16+32);
+                            loadAccumulator(sim , operandBits );
+                            sim.schedule( this  , 1 );
+                        }
+                     }.schedule( sim );
+                    break;
+//                case 2: // 0x2: ADD a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
+//                    op= OpCode.ADD;
+//                    break;
+//                case 3: // 0x3: SUB a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
+//                    op= OpCode.SUB;
+//                    break;
+//                case 4: // 0x4: MUL a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
+//                    op= OpCode.MUL;
+//                    break;
+//                case 5: // 0x5: DIV a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
+//                    op= OpCode.DIV;
+//                    break;
+//                case 6: // 0x6: MOD a, b - sets a to a%b. if b==0, sets a to 0 instead.
+//                    op= OpCode.MOD;
+//                    break;
+//                case 7: // 0x7: SHL a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
+//                    op= OpCode.SHL;
+//                    break;
+//                case 8: // 0x8: SHR a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
+//                    op= OpCode.SHR;
+//                    break;
+//                case 9: // 0x9: AND a, b - sets a to a&b
+//                    op= OpCode.AND;
+//                    break;
+//                case 10: // 0xa: BOR a, b - sets a to a|b
+//                    op= OpCode.OR;
+//                    break;
+//                case 11: // 0xb: XOR a, b - sets a to a^b
+//                    op= OpCode.XOR;
+//                    break;
+//                case 12: // 0xc: IFE a, b - performs next instruction only if a==b
+//                    op= OpCode.IFE;
+//                    break;
+//                case 13: // 0xd: IFN a, b - performs next instruction only if a!=b
+//                    op= OpCode.IFN;
+//                    break;
+//                case 14: // 0xe: IFG a, b - performs next instruction only if a>b
+//                    op= OpCode.IFG;
+//                    break;
+//                case 15: // 0xf: IFB a, b - performs next instruction only if (a&b)!=0
+//                    op= OpCode.IFB;
+//                    break;
+            }
+        }
 
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
+        @Override
+        public void schedule(Simulation sim)
+        {
+            sim.schedule(this,0);
+        }
+        
+    };	
 	
-	public static final Action LOAD_J = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.j;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	public static final Action LOAD_X = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.x;
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	public static final Action LOAD_Y = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.y;
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	public static final Action LOAD_Z = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.z;
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	// ============= LOAD INDIRECT =====================
-	
-	public static final Action LOAD_INDIRECT_A = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.accumulator = cpu.mem.read( cpu.a );
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	/* ======================================
-	 * =============== STORE ================
-	 * ======================================
-	 */
-	
-	// ====================== Store register ====================
-	
-	public static final Action STORE_A = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.a = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action STORE_B = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.b = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};		
-	
-	public static final Action STORE_C = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.c = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action STORE_X = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.x = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};		
-	
-	public static final Action STORE_Y = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.y = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action STORE_Z = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.z = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};
-	
-	public static final Action STORE_I = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.i = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};	
-	
-	public static final Action STORE_J = new Action() 
-	{
-		@Override
-		public void execute(CPU cpu, Memory memory, int nextAvailableCycle) 
-		{
-			cpu.j = cpu.accumulator;			
-		}
-
-		@Override
-		public void schedule(Simulation sim) {
-			sim.schedule( this , sim.currentCycle );
-		}
-	};		
 }
