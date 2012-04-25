@@ -68,6 +68,8 @@ Non-basic opcodes: (6 bits)
 		
 		private volatile boolean isRunnable = false;
 		
+		private boolean stopQuietly = false;
+		
 		private final Memory memory = new Memory();
 		private final CPU cpu = new CPU( memory );
 		
@@ -81,7 +83,7 @@ Non-basic opcodes: (6 bits)
 		
 		private int delay = -1;
 		
-		public int dummy;
+		public int dummy=1;
 		
 		public Simulation() {
 		}
@@ -110,17 +112,22 @@ Non-basic opcodes: (6 bits)
 		public String getEstimatedClockSpeed() 
 		{
 		    final double clockRate = getCyclesPerSecond();
+		    
+		    final double delta = clockRate-100000.0;
+		    final double deviationPercentage = 100.0d*( delta / 100000.0 );
+		    final String deviation = " ( "+deviationPercentage+" % )";
+		    
             if ( clockRate == -1.0d ) {
 		        return "<cannot calculate clock rate>";
 		    }
 		    if ( clockRate < 1000 ) {
-		        return clockRate+" Hz";
+		        return clockRate+" Hz"+deviation;
 		    } else if ( clockRate < 100000) {
-		        return (clockRate/1000)+" kHz";
+		        return (clockRate/1000)+" kHz"+deviation;
 		    } else if ( clockRate < 1000000000 ) {
-                return (clockRate/1000000)+" MHz";
+                return (clockRate/1000000)+" MHz"+deviation;
 		    }
-            return (clockRate/1000000000)+" GHz";		    
+            return (clockRate/1000000000)+" GHz"+deviation;		    
 		}
 		
 		@Override
@@ -148,11 +155,11 @@ Non-basic opcodes: (6 bits)
 				{
 					lastStop = System.currentTimeMillis();
 					
-				    System.out.println("*** Emulation stopped after "+getRuntimeInSeconds()+" seconds ( " +
+					if ( ! stopQuietly ) {
+					    System.out.println("*** Emulation stopped after "+getRuntimeInSeconds()+" seconds ( " +
 				    		"cycle: "+currentCycle+" , "+getCyclesPerSecond()+" cycles/sec = ~ "+getEstimatedClockSpeed());
+					}
 
-				    System.out.println( Thread.currentThread().getName()+" waiting on STOP_LATCH");
-				    
 					try {
 						STOP_LATCH.await();
 					} catch (Exception e1) { e1.printStackTrace(); }
@@ -162,35 +169,46 @@ Non-basic opcodes: (6 bits)
 						try 
 						{
 							synchronized( SLEEP_LOCK ) {
-								System.out.println( Thread.currentThread().getName()+" is now sleeping");							
 								SLEEP_LOCK.wait();
 							}
 						} 
 						catch (Exception e) { /* can't help it */ } 
 					}
-					System.out.println( Thread.currentThread().getName()+" woke up,waiting on START_LATCH");
 					
 					try {
 						START_LATCH.await();
 					} catch (Exception e) { e.printStackTrace(); }
 					
 					lastStart = System.currentTimeMillis();					
-					System.out.println( Thread.currentThread().getName()+" is now running");
 				}
 				
+				/* 1 second = 1000 millis = 1.000.000.000 nanos
+				 *  
+				 * 100 kHz = 100.000 cycles / second = 1000 nanos / cycle
+				 */
 				int i = 1000;
-				int dummy = 1;
 				while ( i-- > 0 ) 
 				{
 					advanceOneStep();
 					for ( int j = delay ; j > 0 ; j-- ) {
-						dummy = (int) ( dummy*2.0d+( dummy/3.0d ) );
+		                dummy = ((dummy*2+j*2)/3)/(dummy*7+j);					    
 					}
 				}
 			}
 		}
 		
-		protected final double measureDelayLoopInNanos() 
+        protected final double measureDelayLoopInNanos() 
+        {
+            double averages = 0.0d;
+            int count = 0;
+            for ( int i = 0 ; i < 10 ; i++ ) {
+                averages += measureDelayLoop();
+                count++;
+            }
+            return (averages / count);
+        }
+		
+		protected final double measureDelayLoop() 
 		{
 			final int oldValue = delay;
 			
@@ -200,16 +218,16 @@ Non-basic opcodes: (6 bits)
 			final long nanoStart = System.nanoTime();
 			
 			for ( int j = delay ; j > 0 ; j-- ) {
-				dummy = (int) ( dummy*2.0d+( dummy/3.0d ) );
+			    dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
 			}
 			
-			final long nanosPerLoopExecution = System.nanoTime() - nanoStart;
-			if ( nanosPerLoopExecution < 0) {
-				return nanoStart - System.nanoTime();
+			long durationNanos = ( System.nanoTime() - nanoStart );
+			if ( durationNanos < 0) {
+			    durationNanos = -durationNanos;
 			}
 			
 			delay = oldValue;
-			return nanosPerLoopExecution / LOOP_COUNT;
+			return ( (double) durationNanos / (double) LOOP_COUNT);
 		}
 		
 		protected void advanceOneStep() 
@@ -312,9 +330,7 @@ Non-basic opcodes: (6 bits)
 	        	try {
 					STOP_LATCH.reset();
 					isRunnable = false;
-					System.out.println( Thread.currentThread().getName()+" waiting on STOP_LATCH");
 					STOP_LATCH.await();
-					System.out.println( Thread.currentThread().getName()+" is now continuing.");
 				} catch (Exception e) {
 					e.printStackTrace();
 				}        	
@@ -331,7 +347,6 @@ Non-basic opcodes: (6 bits)
 					synchronized( SLEEP_LOCK ) {
 						SLEEP_LOCK.notifyAll();
 					}
-					System.out.println( Thread.currentThread().getName()+" waiting on START_LATCH");					
 					START_LATCH.await();
 				} 
 				catch (Exception e) {
@@ -965,7 +980,6 @@ Non-basic opcodes: (6 bits)
 		
 		public void reset() 
 		{
-		    System.out.println("*** CPU reset ***");
 		    for ( int i = 0 ; i < registers.length ;i++) {
 		        registers[i]=0;
 		    }
@@ -1012,12 +1026,11 @@ Non-basic opcodes: (6 bits)
 				}
 				memory[ current++ ] = value;
 			}
-			System.out.println("BULK-LOAD: \n\n"+Misc.toHexDumpWithAddresses( startingOffset , data , 8 ) );
+//			System.out.println("BULK-LOAD: \n\n"+Misc.toHexDumpWithAddresses( startingOffset , data , 8 ) );
 		}
 		
 		public void reset() 
 		{
-		    System.out.println("*** Memory reset ***");		    
 			for ( int i = 0 ; i < memory.length ; i++ ) {
 				memory[i]=0;
 			}
@@ -1157,43 +1170,106 @@ Non-basic opcodes: (6 bits)
 
     public void calibrate() 
     {
-    	System.out.println("Calibrating...");
-    	
-    	final double nanosPerDelayLoopExecution = simulation.measureDelayLoopInNanos();
+        final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
+        final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;    	
 
-    	System.out.println("Nanoseconds per delay loop execution: "+nanosPerDelayLoopExecution);
+        System.out.println("Calibration started...");
+        
+    	/*
+    	 * Warm-up JVM / JIT.
+    	 */
+        System.out.println(" *** warm-up ***");
+        double sum =0.0d;
+        for ( int i = 0 ; i < 5 ; i++ ) {
+            final double tmp = simulation.measureDelayLoopInNanos();
+            sum+= tmp;
+            System.out.println("Nanoseconds per delay loop execution: "+tmp);               
+        }
+
+        /*
+         * Repeatedly measure the execution time
+         * for a single delay-loop iteration.
+         */
+    	final int LOOP_COUNT=5;
+    	sum =0.0d;
     	
-    	final byte[] program = new byte[] {(byte) 0x84,0x01,(byte) 0x81,(byte) 0xc1};
-    	
-    	load(  Address.ZERO  , program );
-    	
-    	start();
-    	
-    	try {
-    		Thread.sleep( 2 * 1000 );
-    	} catch(InterruptedException e) {
-    		Thread.currentThread().interrupt();
-    	} finally {
-    		stop();
+        System.out.println(" *** measurement start ***");    	
+    	for ( int i = 0 ; i < LOOP_COUNT ; i++ ) {
+    	    final double tmp = simulation.measureDelayLoopInNanos();
+    	    sum+= tmp;
+            System.out.println("Nanoseconds per delay loop execution: "+tmp);    	    
     	}
     	
-    	final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz
-    	final double actualCyclesPerSecond = simulation.getCyclesPerSecond();
+    	final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
+    	
+        System.out.println("Avg. nanoseconds per delay loop execution: "+nanosPerDelayLoopExecution);
+        
+        /*
+         * Measure max. cycles/sec on this machine... 
+         */
+        simulation.stopQuietly=true;
+        double actualCyclesPerSecond = measureActualCyclesPerSecond();
+        
+        /*
+         * Setup initial delay loop iteration count 
+         * that we'll be adjusting later
+         */
+        final double actualNanosPerCycle =   (1000.0d * 1000000.0d) / actualCyclesPerSecond;
+        final double delayNanosAccurate= expectedNanosPerCycle - actualNanosPerCycle;
+        
+        double adjustmentFactor = 1.0d;
+        double adjustedNanosPerDelayLoopExecution = nanosPerDelayLoopExecution * adjustmentFactor;        
+        simulation.delay = (int) Math.round( delayNanosAccurate / adjustedNanosPerDelayLoopExecution );
+        
+        System.out.println("Using initial delay of "+delayNanosAccurate+" nanos per cycle ( delay loop iterations: "+simulation.delay+")");
+        
+        /*
+         * Incrementally adjust the delay loop iteration count until
+         * we reach clock rate (deviation).
+         */
+        double increment = 30;
+        do 
+        {
+            actualCyclesPerSecond = measureActualCyclesPerSecond();
+    
+            final double deltaPercentage = 100.0d* ( ( actualCyclesPerSecond - EXPECTED_CYCLES_PER_SECOND ) / EXPECTED_CYCLES_PER_SECOND );
+            
+        	if (deltaPercentage < 0.0d || deltaPercentage > 0.9d )
+        	{
+        	    System.out.println("Deviation: "+deltaPercentage+" % (delay loop iterations: "+simulation.delay+")");
+        	    if ( increment < 1 ) {
+        	        increment = 1;
+        	    }
+        	    if ( deltaPercentage > 0 ) {
+        	        simulation.delay += increment;
+        	    } else {
+        	        simulation.delay -= increment;
+        	    }
+        	    increment = increment*0.7;
+        	} else {
+        	    break;
+        	}
+        } while ( true );
+        
+        System.out.println("Calibration complete.");
+        simulation.stopQuietly=false;        
+    }
 
-    	if ( actualCyclesPerSecond > EXPECTED_CYCLES_PER_SECOND ) 
-    	{
-    		final double actualMillisPerCycle = 1000.0d / actualCyclesPerSecond;
-    		final double actualNanosPerCycle = 1000000.0d * actualMillisPerCycle;
-    		
-    		final double expectedMillisPerCycle = 1000.0d / EXPECTED_CYCLES_PER_SECOND;
-    		final double expectedNanosPerCycle = 1000000.0d * expectedMillisPerCycle;    		
-    		
-    		final double delayNanosAccurate= 0.1*(expectedNanosPerCycle - actualNanosPerCycle);
-    		
-    		simulation.delay = (int) Math.round( delayNanosAccurate / nanosPerDelayLoopExecution );
-    		System.out.println("Delay per cycle: "+delayNanosAccurate+" nanoseconds ( delay: "+simulation.delay+")");
-    	} else {
-    		System.out.println("No delay , host machine too slow already ( "+simulation.getEstimatedClockSpeed()+")");
-    	}
+    private double measureActualCyclesPerSecond() 
+    {
+        final byte[] program = new byte[] {(byte) 0x84,0x01,(byte) 0x81,(byte) 0xc1};
+        
+        load(  Address.ZERO  , program );
+        
+        start();
+        
+        try {
+            Thread.sleep( 1 * 1000 );
+        } catch(InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            stop();
+        }
+        return simulation.getCyclesPerSecond();
     }
 }
