@@ -1,7 +1,7 @@
 package de.codesourcery.jasm16.emulator;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedList;
+import java.util.concurrent.CyclicBarrier;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.utils.Misc;
@@ -11,6 +11,8 @@ public final class Emulator {
     private static final boolean DEBUG = false;
     
 	private final Simulation simulation = new Simulation();
+	
+	@SuppressWarnings("unused")
 	private final Thread simulationThread;
 	
 	/*
@@ -51,7 +53,7 @@ Non-basic opcodes: (6 bits)
 	
 	public Emulator() 
 	{
-		Thread t = new Thread( simulation );
+		final Thread t = new Thread( simulation );
 		t.setDaemon(true);
 		t.setName("simulation-thread");
 		this.simulationThread = t;
@@ -60,23 +62,28 @@ Non-basic opcodes: (6 bits)
 	
 	protected final class Simulation implements Runnable 
 	{
+		private final Object SLEEP_LOCK = new Object();
+		private final CyclicBarrier START_LATCH = new CyclicBarrier(2);		
+		private final CyclicBarrier STOP_LATCH = new CyclicBarrier(2);	
 		
-		private final Object LOCK = new Object();
-		private boolean isRunnable = false;
+		private volatile boolean isRunnable = false;
 		
 		private final Memory memory = new Memory();
 		private final CPU cpu = new CPU( memory );
 		
-		private int currentCycle;
-		private int nextAvailableCycle;
+		private int currentCycle=0;
+		private int nextAvailableCycle=1;
 		
-		private final List<WorkItem> items = new ArrayList<WorkItem>();
+		private final LinkedList<WorkItem> items = new LinkedList<WorkItem>();
 		
 		private long lastStart;
 		private long lastStop;
 		
+		private int delay = -1;
+		
+		public int dummy;
+		
 		public Simulation() {
-		    reset();
 		}
 		
         public double getRuntimeInSeconds() {
@@ -119,24 +126,90 @@ Non-basic opcodes: (6 bits)
 		@Override
 		public void run() {
 		
+			System.out.println("Simulation thread running.");
+
+			while( isRunnable == false ) 
+			{
+				try {
+					synchronized( SLEEP_LOCK ) {
+						SLEEP_LOCK.wait();
+					}
+					START_LATCH.await();
+				} 
+				catch (Exception e) 
+				{
+					e.printStackTrace();
+				}
+			}
+			lastStart = System.currentTimeMillis();
 			while( true ) 
 			{
-				synchronized( LOCK ) 
+				if ( isRunnable == false ) 
 				{
+					lastStop = System.currentTimeMillis();
+					
+				    System.out.println("*** Emulation stopped after "+getRuntimeInSeconds()+" seconds ( " +
+				    		"cycle: "+currentCycle+" , "+getCyclesPerSecond()+" cycles/sec = ~ "+getEstimatedClockSpeed());
+
+				    System.out.println( Thread.currentThread().getName()+" waiting on STOP_LATCH");
+				    
+					try {
+						STOP_LATCH.await();
+					} catch (Exception e1) { e1.printStackTrace(); }
+					
 					while ( isRunnable == false ) 
 					{
-						try {
-						    lastStop = System.currentTimeMillis();
-						    System.out.println("*** Emulation stopped after "+getRuntimeInSeconds()+" seconds ( " +
-						    		"cycle: "+currentCycle+" , "+getCyclesPerSecond()+" cycles/sec = ~ "+getEstimatedClockSpeed());
-							LOCK.wait();
-							lastStart = System.currentTimeMillis();
+						try 
+						{
+							synchronized( SLEEP_LOCK ) {
+								System.out.println( Thread.currentThread().getName()+" is now sleeping");							
+								SLEEP_LOCK.wait();
+							}
 						} 
-						catch (InterruptedException e) { /* can't help it */ }
+						catch (Exception e) { /* can't help it */ } 
+					}
+					System.out.println( Thread.currentThread().getName()+" woke up,waiting on START_LATCH");
+					
+					try {
+						START_LATCH.await();
+					} catch (Exception e) { e.printStackTrace(); }
+					
+					lastStart = System.currentTimeMillis();					
+					System.out.println( Thread.currentThread().getName()+" is now running");
+				}
+				
+				int i = 1000;
+				int dummy = 1;
+				while ( i-- > 0 ) 
+				{
+					advanceOneStep();
+					for ( int j = delay ; j > 0 ; j-- ) {
+						dummy = (int) ( dummy*2.0d+( dummy/3.0d ) );
 					}
 				}
-				advanceOneStep();
 			}
+		}
+		
+		protected final double measureDelayLoopInNanos() 
+		{
+			final int oldValue = delay;
+			
+			final int LOOP_COUNT = 1000000;
+			delay = LOOP_COUNT;
+			
+			final long nanoStart = System.nanoTime();
+			
+			for ( int j = delay ; j > 0 ; j-- ) {
+				dummy = (int) ( dummy*2.0d+( dummy/3.0d ) );
+			}
+			
+			final long nanosPerLoopExecution = System.nanoTime() - nanoStart;
+			if ( nanosPerLoopExecution < 0) {
+				return nanoStart - System.nanoTime();
+			}
+			
+			delay = oldValue;
+			return nanosPerLoopExecution / LOOP_COUNT;
 		}
 		
 		protected void advanceOneStep() 
@@ -152,17 +225,19 @@ Non-basic opcodes: (6 bits)
                 scheduleFetchInstruction();
             }
             
+            WorkItem item=null; 
             while ( ! items.isEmpty() ) 
             {
-                WorkItem item = items.get(0);
+                item = items.getFirst();
                 if ( item.executionTime == currentCycle ) 
                 {
                     if ( DEBUG ) {
                         System.out.println("Executing "+item);
                     }
-                    items.remove( 0 );
+                    items.removeFirst();
                     item.action.execute( this  , cpu , memory, nextAvailableCycle );
-                } else 
+                } 
+                else 
                 {
                     if ( DEBUG ) {
                         System.out.println("Waiting for cycle "+item.executionTime);
@@ -172,7 +247,7 @@ Non-basic opcodes: (6 bits)
             }
 		}
 		
-		public void schedule(Action action,int duration) 
+		public void schedule(MicroOp action,int duration) 
 		{
 		    if ( nextAvailableCycle < currentCycle ) {
 		        nextAvailableCycle = currentCycle;
@@ -190,9 +265,13 @@ Non-basic opcodes: (6 bits)
 			stop();
 		}
 		
-		public void addWorkItem(WorkItem item) 
+		public final void addWorkItem(WorkItem item) 
 		{
 			final int len = items.size();
+			if ( len == 0 ) {
+				items.add( item );
+				return;
+			}
 			final int newTime = item.executionTime;
 			for ( int i = 0 ; i < len ; i++ ) 
 			{
@@ -214,8 +293,6 @@ Non-basic opcodes: (6 bits)
 		public void reset() 
 		{
 			stop();
-			lastStart = 0;
-			lastStop = 0;
 			items.clear();
 			currentCycle = 0;
 			nextAvailableCycle = 1;			
@@ -228,19 +305,38 @@ Non-basic opcodes: (6 bits)
 		    schedule( FETCH_AND_DECODE , 0);
         }
 
-        public void stop() 
+        public synchronized void stop() 
 		{
-			synchronized(LOCK) {
-				isRunnable = false;
-				LOCK.notifyAll();
-			}
+        	if ( isRunnable == true ) 
+        	{
+	        	try {
+					STOP_LATCH.reset();
+					isRunnable = false;
+					System.out.println( Thread.currentThread().getName()+" waiting on STOP_LATCH");
+					STOP_LATCH.await();
+					System.out.println( Thread.currentThread().getName()+" is now continuing.");
+				} catch (Exception e) {
+					e.printStackTrace();
+				}        	
+        	}
 		}
 		
-		public void start() 
+		public synchronized void start() 
 		{
-			synchronized(LOCK) {
-				isRunnable = true;
-				LOCK.notifyAll();
+			if ( isRunnable == false ) 
+			{
+				try {
+					START_LATCH.reset();
+					isRunnable = true;
+					synchronized( SLEEP_LOCK ) {
+						SLEEP_LOCK.notifyAll();
+					}
+					System.out.println( Thread.currentThread().getName()+" waiting on START_LATCH");					
+					START_LATCH.await();
+				} 
+				catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
@@ -250,7 +346,7 @@ Non-basic opcodes: (6 bits)
 		STORE;
 	}
 	
-	public static class LoadCommonRegisterAction extends Action {
+	public static class LoadCommonRegisterAction extends MicroOp {
 
 	    private final int registerIndex;
 	    
@@ -273,7 +369,7 @@ Non-basic opcodes: (6 bits)
         }
 	}
 	
-    public static class StoreCommonRegisterAction extends Action {
+    public static class StoreCommonRegisterAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -295,7 +391,7 @@ Non-basic opcodes: (6 bits)
         }
     }	
     
-    public static class LoadCommonRegisterIndirectAction extends Action {
+    public static class LoadCommonRegisterIndirectAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -318,7 +414,7 @@ Non-basic opcodes: (6 bits)
         }
     }	
     
-    public static class StoreCommonRegisterIndirectAction extends Action {
+    public static class StoreCommonRegisterIndirectAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -341,7 +437,7 @@ Non-basic opcodes: (6 bits)
         }
     }       
     
-    public static class LoadOperandBRegisterIndirectWithOffsetAction extends Action {
+    public static class LoadOperandBRegisterIndirectWithOffsetAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -360,7 +456,7 @@ Non-basic opcodes: (6 bits)
         @Override
         public void schedule(Simulation sim)
         {
-            new Action("offsetB = [ pc++ ]") {
+            new MicroOp("offsetB = [ pc++ ]") {
 
                 @Override
                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -375,7 +471,7 @@ Non-basic opcodes: (6 bits)
                 }
             }.schedule( sim );
             
-            new Action("acc := memory[ memory[ PC++ ] ]") {
+            new MicroOp("acc := memory[ memory[ PC++ ] ]") {
 
                 @Override
                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -392,7 +488,7 @@ Non-basic opcodes: (6 bits)
         }
     }  
     
-    public static class StoreOperandARegisterIndirectWithOffsetAction extends Action {
+    public static class StoreOperandARegisterIndirectWithOffsetAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -410,7 +506,7 @@ Non-basic opcodes: (6 bits)
         @Override
         public void schedule(Simulation sim)
         {
-            new Action("cpu.offsetA := [ PC++ ]") {
+            new MicroOp("cpu.offsetA := [ PC++ ]") {
 
                 @Override
                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -425,7 +521,7 @@ Non-basic opcodes: (6 bits)
                 }
             }.schedule( sim );
             
-            new Action("memory[ register #"+registerIndex+" + offset ] := acc") {
+            new MicroOp("memory[ register #"+registerIndex+" + offset ] := acc") {
 
                 @Override
                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -442,7 +538,7 @@ Non-basic opcodes: (6 bits)
         }
     }    
     
-    public static class StoreRegisterIndirectWithOffsetAction extends Action {
+    public static class StoreRegisterIndirectWithOffsetAction extends MicroOp {
 
         private final int registerIndex;
         
@@ -461,7 +557,7 @@ Non-basic opcodes: (6 bits)
         @Override
         public void schedule(Simulation sim)
         {
-            new Action("memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetB ] = cpu.accumulator") {
+            new MicroOp("memory.memory[ cpu.registers[ registerIndex ] + cpu.offsetB ] = cpu.accumulator") {
 
                 @Override
                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -478,11 +574,11 @@ Non-basic opcodes: (6 bits)
         }
     }     
 	
-	public static abstract class Action 
+	public static abstract class MicroOp 
 	{
 	    private final String name;
 	    
-	    public Action(String name) {
+	    public MicroOp(String name) {
 	        this.name = name;
 	    }
 	    
@@ -500,7 +596,7 @@ Non-basic opcodes: (6 bits)
 		    switch( operandBits ) 
 		    {
 		        case 0x18: // POP / [SP++]
-		            new Action("acc:=POP") 
+		            new MicroOp("acc:=POP") 
 		            {
 
                         @Override
@@ -517,7 +613,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );
 		            return;
 		        case 0x19: // PEEK / [SP]
-                    new Action("acc:=PEEK") 
+                    new MicroOp("acc:=PEEK") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -533,7 +629,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );		            
 		            return;
 		        case 0x1a: // PUSH / [--SP]
-                    new Action("acc:=PUSH") 
+                    new MicroOp("acc:=PUSH") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -549,7 +645,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;
 		        case 0x1b: // SP
-                    new Action("acc:=SP") 
+                    new MicroOp("acc:=SP") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -565,7 +661,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;		
                 case 0x1c: // PC
-                    new Action("acc:=PC") 
+                    new MicroOp("acc:=PC") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -581,7 +677,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;     
                 case 0x1d: // O
-                    new Action("acc:=O") 
+                    new MicroOp("acc:=O") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -597,7 +693,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;    
                 case 0x1e: // [next word]
-                    new Action("acc:=[next word]") 
+                    new MicroOp("acc:=[next word]") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -614,7 +710,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;          
                 case 0x1f: // next word (literal)
-                    new Action("acc:=next word (literal)") 
+                    new MicroOp("acc:=next word (literal)") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -667,7 +763,7 @@ Non-basic opcodes: (6 bits)
             switch( operandBits ) 
             {
                 case 0x18: // POP / [SP++]
-                    new Action("POP := acc") 
+                    new MicroOp("POP := acc") 
                     {
 
                         @Override
@@ -684,7 +780,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );
                     return;
                 case 0x19: // PEEK / [SP]
-                    new Action("PEEK := acc") 
+                    new MicroOp("PEEK := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -700,7 +796,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;
                 case 0x1a: // PUSH / [--SP]
-                    new Action("PUSH := acc") 
+                    new MicroOp("PUSH := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -716,7 +812,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;
                 case 0x1b: // SP
-                    new Action("SP := acc") 
+                    new MicroOp("SP := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -732,7 +828,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;     
                 case 0x1c: // PC
-                    new Action("pc := acc") 
+                    new MicroOp("pc := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -748,7 +844,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;     
                 case 0x1d: // O
-                    new Action("O := acc") 
+                    new MicroOp("O := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -765,7 +861,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;    
                 case 0x1e: // [next word]
-                    new Action("[ next word ] := acc") 
+                    new MicroOp("[ next word ] := acc") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -782,7 +878,7 @@ Non-basic opcodes: (6 bits)
                      }.schedule( sim );                 
                     return;          
                 case 0x1f: // next word (literal)
-                    new Action("next word (literal)") 
+                    new MicroOp("next word (literal)") 
                     {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -834,9 +930,9 @@ Non-basic opcodes: (6 bits)
 	public static final class WorkItem 
 	{
 		public final int executionTime;
-		public final Action action;
+		public final MicroOp action;
 		
-		public WorkItem(int executionTime, Action action) 
+		public WorkItem(int executionTime, MicroOp action) 
 		{
 			this.executionTime = executionTime;
 			this.action = action;
@@ -952,7 +1048,7 @@ Non-basic opcodes: (6 bits)
 	 */
 	
 	
-    public static final Action FETCH_AND_DECODE = new Action("fetch_and_decode") {
+    public static final MicroOp FETCH_AND_DECODE = new MicroOp("fetch_and_decode") {
 
         @Override
         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
@@ -968,7 +1064,7 @@ Non-basic opcodes: (6 bits)
                     switch( (instruction >> 4) & 0x3f ) 
                     {
                         case 1: // JSR a - pushes the address of the next instruction to the stack, then sets PC to a
-                            new Action("JSR") {
+                            new MicroOp("JSR") {
                                 @Override
                                 public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
                                 {
@@ -990,7 +1086,7 @@ Non-basic opcodes: (6 bits)
                                 // RESERVED OPCODE
                     }
                 case 1: // 0x1: SET a, b - sets a to b
-                    new Action("SET") {
+                    new MicroOp("SET") {
                         @Override
                         public void execute(Simulation sim, CPU cpu, Memory memory, int nextAvailableCycle)
                         {
@@ -1058,5 +1154,46 @@ Non-basic opcodes: (6 bits)
         }
         
     };	
-	
+
+    public void calibrate() 
+    {
+    	System.out.println("Calibrating...");
+    	
+    	final double nanosPerDelayLoopExecution = simulation.measureDelayLoopInNanos();
+
+    	System.out.println("Nanoseconds per delay loop execution: "+nanosPerDelayLoopExecution);
+    	
+    	final byte[] program = new byte[] {(byte) 0x84,0x01,(byte) 0x81,(byte) 0xc1};
+    	
+    	load(  Address.ZERO  , program );
+    	
+    	start();
+    	
+    	try {
+    		Thread.sleep( 2 * 1000 );
+    	} catch(InterruptedException e) {
+    		Thread.currentThread().interrupt();
+    	} finally {
+    		stop();
+    	}
+    	
+    	final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz
+    	final double actualCyclesPerSecond = simulation.getCyclesPerSecond();
+
+    	if ( actualCyclesPerSecond > EXPECTED_CYCLES_PER_SECOND ) 
+    	{
+    		final double actualMillisPerCycle = 1000.0d / actualCyclesPerSecond;
+    		final double actualNanosPerCycle = 1000000.0d * actualMillisPerCycle;
+    		
+    		final double expectedMillisPerCycle = 1000.0d / EXPECTED_CYCLES_PER_SECOND;
+    		final double expectedNanosPerCycle = 1000000.0d * expectedMillisPerCycle;    		
+    		
+    		final double delayNanosAccurate= 0.1*(expectedNanosPerCycle - actualNanosPerCycle);
+    		
+    		simulation.delay = (int) Math.round( delayNanosAccurate / nanosPerDelayLoopExecution );
+    		System.out.println("Delay per cycle: "+delayNanosAccurate+" nanoseconds ( delay: "+simulation.delay+")");
+    	} else {
+    		System.out.println("No delay , host machine too slow already ( "+simulation.getEstimatedClockSpeed()+")");
+    	}
+    }
 }

@@ -30,10 +30,13 @@ public class EmulatorTest extends TestCase
         assertTrue( "bad size: "+objectCode.length , objectCode.length > 0 );
         
         final Emulator emu = new Emulator();
+        
+        emu.calibrate();
+        
         emu.load(unit.getObjectCodeStartOffset() , objectCode);
         
         emu.start();
-        Thread.sleep( 3 * 1000 );
+        Thread.sleep( 5 * 1000 );
         emu.stop();
     }
 }
