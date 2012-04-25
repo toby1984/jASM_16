@@ -10,6 +10,11 @@ import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 
 public class EmulatorTest extends TestCase
 {
+    public static void main(String[] args) throws InterruptedException
+    {
+        new EmulatorTest().testEmulator();
+    }
+    
     public void testEmulator() throws InterruptedException {
         
         final String source = ":label SET a,1\n"+
@@ -31,12 +36,12 @@ public class EmulatorTest extends TestCase
         
         final Emulator emu = new Emulator();
         
-        emu.calibrate();
+//        emu.calibrate();
         
         emu.load(unit.getObjectCodeStartOffset() , objectCode);
         
         emu.start();
-        Thread.sleep( 5 * 1000 );
+        Thread.sleep( 10 * 1000 );
         emu.stop();
     }
 }
