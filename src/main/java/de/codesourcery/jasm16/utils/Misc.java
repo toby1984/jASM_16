@@ -61,24 +61,29 @@ public class Misc {
     
     public static String toHexDumpWithAddresses(int startingAddress , byte[] data, int wordsPerLine) 
     {
+    	return toHexDumpWithAddresses( startingAddress , data , data.length , wordsPerLine );
+    }
+    
+    public static String toHexDumpWithAddresses(int startingAddress , byte[] data, int length , int wordsPerLine) 
+    {
         final StringBuilder builder = new StringBuilder();
         int current = 0;
-        while( current < data.length )
+		while( current < length )
         {
             final int wordAddress = (startingAddress+current) >> 1;
             builder.append( toHexString( wordAddress ) ).append(": ");
             
-            for ( int i = 0 ; current < data.length && i < wordsPerLine  ; i++)
+            for ( int i = 0 ; current < length && i < wordsPerLine  ; i++)
             {
                 byte b1 = data[current++];
                 builder.append( toHexString( b1 ) );
-                if ( current >= data.length ) {
+                if ( current >= length ) {
                     break;
                 }
                 
                 b1 = data[current++];
                 builder.append( toHexString( b1 ) );   
-                if ( current >= data.length ) {
+                if ( current >= length ) {
                     break;
                 } 
                 builder.append(" ");
@@ -381,4 +386,5 @@ public class Misc {
         }
         return s;
     }	
+
 }

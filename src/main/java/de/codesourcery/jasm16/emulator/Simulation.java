@@ -42,7 +42,7 @@ public final class Simulation implements Runnable
     
     public int pc;
     public int sp;
-    public int o;
+    public int ex;
     
     public int offsetA; // SET [ register + offset ] , ...
     public int offsetB; // SET x , [ register + offset ]
@@ -260,7 +260,7 @@ public final class Simulation implements Runnable
             final int instruction = sim.fetchInstruction();
             
             // decode operand bits
-            final int opCode = instruction & 0x0f; // lowest 4 bits
+            final int opCode = instruction & 0x1f; // lowest 5 bits
             switch( opCode ) 
             {
                 case 0: // => extended instruction ?
@@ -368,7 +368,7 @@ public final class Simulation implements Runnable
         for ( int i = 0 ; i < registers.length ;i++) {
             registers[i]=0;
         }
-        pc=sp=o=0;
+        pc=sp=ex=0;
     }
     
     public int fetchInstruction() 

@@ -40,6 +40,12 @@ public abstract class MicroOp
     
     public abstract void schedule(Simulation sim);
     
+    /**
+     * Loads accumulator from target.
+     * 
+     * @param sim
+     * @param operandBits
+     */
     protected  void loadAccumulator(final Simulation sim , int operandBits) 
     {
         switch( operandBits ) 
@@ -126,12 +132,12 @@ public abstract class MicroOp
                  }.schedule(sim );                 
                 return;     
             case 0x1d: // O
-                new MicroOp("acc:=O") 
+                new MicroOp("acc:=ex") 
                 {
                     @Override
                     public void execute(Simulation sim)
                     {
-                        sim.accumulator = sim.o;
+                        sim.accumulator = sim.ex;
                     }
 
                     @Override
@@ -207,6 +213,12 @@ public abstract class MicroOp
         }               
     }
     
+    /**
+     * Stores accumulator to target.
+     *  
+     * @param sim
+     * @param operandBits
+     */
     protected  void storeAccumulator(final Simulation sim , int operandBits) 
     {
         switch( operandBits ) 
