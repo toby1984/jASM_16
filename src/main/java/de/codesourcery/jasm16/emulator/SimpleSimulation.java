@@ -402,8 +402,8 @@ public class SimpleSimulation {
 	private int handleSBX(int instructionWord) 
 	{
 		// sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0 otherwise
-		OperandDesc target = loadTargetOperand( instructionWord , false );
 		OperandDesc source = loadSourceOperand( instructionWord );
+		OperandDesc target = loadTargetOperand( instructionWord , false );
 
 		final int acc = target.value - source.value + ex;
 		if ( acc < 0 ) {
@@ -416,8 +416,8 @@ public class SimpleSimulation {
 
 	private int handleADX(int instructionWord) {
 		// sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value + source.value + ex;
 		if ( acc > 0xffff) {
@@ -435,8 +435,8 @@ public class SimpleSimulation {
 
 	private int handleIFU(int instructionWord) {
 		// performs next instruction only if b<a (signed)
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty = 0;
 		if ( signed( target.value ) >= signed( source.value ) ) 
@@ -456,9 +456,9 @@ public class SimpleSimulation {
 	}
 
 	private int handleIFL(int instructionWord) {
-		// performs next instruction only if b<a 
+		// performs next instruction only if b<a
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty = 0;
 		if ( target.value >= source.value ) {
@@ -470,8 +470,8 @@ public class SimpleSimulation {
 
 	private int handleIFA(int instructionWord) {
 		// performs next instruction only if b>a (signed)
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty = 0;
 		if ( signed( target.value ) <= signed( source.value ) ) {
@@ -482,9 +482,9 @@ public class SimpleSimulation {
 	}
 
 	private int handleIFG(int instructionWord) {
-		// performs next instruction only if b>a 
+		// performs next instruction only if b>a
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty=0;
 		if ( target.value <= source.value ) {
@@ -496,8 +496,8 @@ public class SimpleSimulation {
 
 	private int handleIFN(int instructionWord) {
 		// performs next instruction only if b!=a
-		OperandDesc target = loadTargetOperand( instructionWord , false );
 		OperandDesc source = loadSourceOperand( instructionWord );
+		OperandDesc target = loadTargetOperand( instructionWord , false );
 
 		int penalty = 0;
 		if ( target.value == source.value ) {
@@ -509,8 +509,8 @@ public class SimpleSimulation {
 
 	private int handleIFE(int instructionWord) {
 		// performs next instruction only if b==a
-		OperandDesc target = loadTargetOperand( instructionWord , false );
 		OperandDesc source = loadSourceOperand( instructionWord );
+		OperandDesc target = loadTargetOperand( instructionWord , false );
 
 		int penalty=0;
 		if ( target.value != source.value ) {
@@ -522,8 +522,8 @@ public class SimpleSimulation {
 
 	private int handleIFC(int instructionWord) {
 		// performs next instruction only if (b&a)==0
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty = 0;
 		if ( (target.value & source.value) != 0 ) {
@@ -535,8 +535,8 @@ public class SimpleSimulation {
 
 	private int handleIFB(int instructionWord) {
 		// performs next instruction only if (b&a)!=0
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		int penalty=0;
 		if ( (target.value & source.value) == 0 ) {
@@ -548,8 +548,8 @@ public class SimpleSimulation {
 
 	private int handleSHL(int instructionWord) {
 		// sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value << source.value;
 		ex = (( target.value << source.value)>>16 ) & 0xffff;
@@ -558,8 +558,8 @@ public class SimpleSimulation {
 
 	private int handleASR(int instructionWord) {
 		// sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value >> source.value;
 		ex = (( target.value << 16)>>>source.value ) & 0xffff;
@@ -568,8 +568,9 @@ public class SimpleSimulation {
 
 	private int handleSHR(int instructionWord) {
 		//  sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
+
 
 		final int acc = target.value >>> source.value;
 		ex = (( target.value << 16)>>source.value ) & 0xffff;
@@ -579,8 +580,8 @@ public class SimpleSimulation {
 	private int handleXOR(int instructionWord) 
 	{
 		//  sets b to b^a
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value ^ source.value;
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
@@ -589,8 +590,8 @@ public class SimpleSimulation {
 	private int handleBOR(int instructionWord) 
 	{
 		//  sets b to b|a
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value | source.value;
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;		
@@ -598,8 +599,8 @@ public class SimpleSimulation {
 
 	private int handleAND(int instructionWord) {
 		// sets b to b&a
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value & source.value;
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
@@ -607,8 +608,8 @@ public class SimpleSimulation {
 
 	private int handleMDI(int instructionWord) {
 		// like MOD, but treat b, a as signed. Rounds towards 0
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc;
 		if ( source.value == 0 ) {
@@ -621,8 +622,8 @@ public class SimpleSimulation {
 
 	private int handleMOD(int instructionWord) {
 		// sets b to b%a. if a==0, sets b to 0 instead.
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc;
 		if ( source.value == 0 ) {
@@ -634,9 +635,9 @@ public class SimpleSimulation {
 	}
 
 	private int handleDVI(int instructionWord) {
-		// e DIV, but treat b, a as signed. Rounds towards 0 
+		// e DIV, but treat b, a as signed. Rounds towards 0
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc;
 		if ( source.value == 0 ) {
@@ -653,8 +654,8 @@ public class SimpleSimulation {
 		/*set b (TARGET) ,a (SOURCE) 
 		 * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
 		 */
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc;
 		if ( source.value == 0 ) {
@@ -669,8 +670,8 @@ public class SimpleSimulation {
 
 	private int handleMLI(int instructionWord) {
 		//  like MUL, but treat b, a as signed
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = signed( target.value ) * signed( source.value );
 		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
@@ -687,8 +688,8 @@ public class SimpleSimulation {
 	private int handleMUL(int instructionWord) 
 	{
 		// sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value * source.value;
 		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
@@ -696,8 +697,8 @@ public class SimpleSimulation {
 
 	private int handleSUB(int instructionWord) {
 		// sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
+		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false );
-		OperandDesc source = loadSourceOperand( instructionWord );
 
 		final int acc = target.value - source.value;
 		if ( acc < 0 ) {
