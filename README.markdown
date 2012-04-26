@@ -9,6 +9,8 @@ Everyone and his dog is writing assemblers for the upcoming game 0x10c game by M
 Features
 --------
 
+- Supports signed numbers along with all opcodes from DCPU-16 specification update 1.5
+
 - this assembler is intended to be embedded in an editor/IDE so it contains all the necessary hooks along with support for navigating from source code to AST nodes and vice versa
   
   Run de.codesourcery.jasm16.utils.ASTInstructor for a simple proof-of-concept.
