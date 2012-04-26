@@ -57,7 +57,7 @@ public class ParseException extends java.text.ParseException
         this.cause = cause;
     }
     
-    public ITextRegion getRange()
+    public ITextRegion getTextRegion()
     {
         return range;
     }

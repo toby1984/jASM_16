@@ -53,7 +53,12 @@ public class StatementNode extends ASTNode
 				} 
 				catch(Exception e) 
 				{
-					final ITextRegion range = new TextRegion( offset , context.currentParseIndex()-offset );
+					final ITextRegion range;
+					if ( e instanceof ParseException) {
+					    range = ((ParseException) e).getTextRegion();
+					} else {
+					    range = new TextRegion( offset , context.currentParseIndex()-offset );
+					}
 					addCompilationErrorAndAdvanceParser( new CompilationError( 
 							"Failed to parse label: "+e.getMessage() ,
 							context.getCompilationUnit(),

@@ -172,7 +172,7 @@ public class FormattingVisitor extends ASTVisitor {
         	output( txt );
         }
 
-        final HexStringWriter writer = new HexStringWriter();
+        final HexStringWriter writer = new HexStringWriter(true);
         for (ObjectCodeOutputNode out : getStatementNode(node).getObjectOutputNodes()) 
         {
             try {
@@ -186,7 +186,14 @@ public class FormattingVisitor extends ASTVisitor {
 
         private final StringBuilder builder = new StringBuilder();
         private final List<Byte> buffer = new ArrayList<Byte>();
-
+        private final boolean printFirstWordAsBinaryLiteral;
+        
+        private boolean firstWord = true;
+        
+        public HexStringWriter(boolean printFirstWordAsBinaryLiteral) {
+            this.printFirstWordAsBinaryLiteral = printFirstWordAsBinaryLiteral;
+        }
+        
         private void flushBuffer(boolean force) 
         {
             while ( ( force && ! buffer.isEmpty() ) || buffer.size() >= 2 ) 
@@ -194,11 +201,27 @@ public class FormattingVisitor extends ASTVisitor {
                 byte val1 = buffer.remove(0);
                 if ( ! buffer.isEmpty() ) {
                     byte val2 = buffer.remove(0);
+                    if ( firstWord && printFirstWordAsBinaryLiteral ) {
+                        final int word = ( val1 << 8 ) | toUnsignedInt( val2 );
+                        builder.append( "(").append( Misc.toBinaryString( word , 16 ) ).append(") ");
+                    }
                     builder.append( Misc.toHexString( val1 ) ).append( Misc.toHexString( val2 ) ).append(" ");
-                } else {
-                    builder.append( Misc.toHexString( val1 ) );					
+                    firstWord = false;
+                }
+                else 
+                {
+                    if ( firstWord && printFirstWordAsBinaryLiteral ) {
+                        final int word = toUnsignedInt( val1 ); 
+                        builder.append( "(").append( Misc.toBinaryString( word , 16 ) ).append(") ");                        
+                    } 
+                    builder.append( Misc.toHexString( val1 ) );
+                    firstWord = false;                    
                 }
             }
+        }
+        
+        private int toUnsignedInt(byte b) {
+            return b >= 0 ? b : b+256;
         }
 
         @Override
@@ -292,7 +315,7 @@ public class FormattingVisitor extends ASTVisitor {
     @Override
     public void visit(InitializedMemoryNode node , IIterationContext context) {
 
-        final HexStringWriter writer = new HexStringWriter();
+        final HexStringWriter writer = new HexStringWriter(false);
 
         try {
             node.writeObjectCode( writer, this.context );

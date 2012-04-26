@@ -136,6 +136,17 @@ public class LexerTest extends TestHelper {
         assertTrue( lexer.eof() );
     }
     
+    public void testParseExpressionWithNegativeNumber() throws ParseException 
+    {
+        String source ="1+-2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, "+" );
+        assertToken( lexer , TokenType.OPERATOR, "-" );        
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }    
+    
     public void testParseShiftOperators () 
     {
         String source =" << >> ";

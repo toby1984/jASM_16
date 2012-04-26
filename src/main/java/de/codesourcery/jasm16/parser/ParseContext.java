@@ -187,7 +187,11 @@ public class ParseContext implements IParseContext
 
     public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException  
     {
-    	if ( eof() || ! peek().hasType( TokenType.CHARACTERS ) ) {
+    	if ( eof() || ! peek().hasType( TokenType.CHARACTERS ) ) 
+    	{
+    	    if ( ! eof() && peek().hasType( TokenType.INSTRUCTION ) ) {
+    	           throw new ParseException("Not a valid identifier (instructions cannot be used as identifiers)" , peek() );
+    	    }
     		throw new ParseException("Expected an identifier" , currentParseIndex() ,0 );
     	}
     	
@@ -206,6 +210,7 @@ public class ParseContext implements IParseContext
             }
             i++;
         }
+        Identifier.assertValidIdentifier( chars , token );
         return new Identifier( chars );
     }
 

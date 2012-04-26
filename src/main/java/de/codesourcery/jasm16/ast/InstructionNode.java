@@ -134,24 +134,28 @@ public class InstructionNode extends ObjectCodeOutputNode
         return this;
     }
 
-    protected void parseOperand(OpCode opcode, int index , IParseContext context) throws ParseException {
-
+    protected void parseOperand(OpCode opcode, int index , IParseContext context) throws ParseException 
+    {
+        final OperandPosition position;
+        switch( index ) {
+            case 0:
+                position = OperandPosition.TARGET_OPERAND;
+                break;
+            case 1:
+                position = OperandPosition.SOURCE_OPERAND;
+                break;
+            default:
+                throw new RuntimeException("Unreachable code reached");
+        }
+        
         final ASTNode node = new OperandNode().parseInternal( context );
+        
         if ( node instanceof OperandNode) // parsing might've failed and thus the actual returned type may be UnparsedContentNode...
         {
             final OperandNode op = (OperandNode) node;
-            if ( ! opcode.isValidAddressingMode( index , op.getAddressingMode() ) ) {
+            if ( ! opcode.isValidAddressingMode( position , op.getAddressingMode() ) ) {
                 throw new ParseException("Opcode "+opcode+" does not support addressing mode "+
                         op.getAddressingMode()+" for parameter "+(index+1) , op.getTextRegion() );
-            }
-
-            final OperandPosition position;
-            if ( index == 0 ) {
-                position = OperandPosition.TARGET_OPERAND;
-            } else if ( index == 1 ) {
-                position = OperandPosition.SOURCE_OPERAND;
-            } else {
-                throw new RuntimeException("Unreachable code reached");
             }
 
             /*

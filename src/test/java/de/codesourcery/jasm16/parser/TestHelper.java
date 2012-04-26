@@ -106,8 +106,8 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         symbolTable = new SymbolTable();
     }
     
-    protected final void assertToken(ILexer lexer , TokenType type , String contents ) {
-        assertToken( lexer , type , contents , -1 );
+    protected final IToken assertToken(ILexer lexer , TokenType type , String contents ) {
+        return assertToken( lexer , type , contents , -1 );
     }
     
     protected final ICompilationUnit assertCompiles(String source) throws Exception {
@@ -163,7 +163,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         assertSourceCode( source , result );    	
     }    
     
-    protected final void assertToken(ILexer lexer , TokenType type , String contents , int parseOffset) 
+    protected final IToken assertToken(ILexer lexer , TokenType type , String contents , int parseOffset) 
     {
         assertFalse( lexer.eof() );
         IToken tok = lexer.read();
@@ -173,11 +173,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         if ( parseOffset != -1 ) {
             assertEquals( parseOffset , tok.getStartingOffset() );
         }
+        return tok;
     }
     
-    protected final void assertToken(ILexer lexer , OpCode opCode , String contents) 
+    protected final IToken assertToken(ILexer lexer , OpCode opCode , String contents) 
     {
-        assertToken(lexer,opCode,contents,-1);
+        return assertToken(lexer,opCode,contents,-1);
     }
     
     protected final ICompilationContext createCompilationContext(ICompilationUnit unit) throws IOException 
@@ -199,7 +200,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         } , this , OPTIONS );
     }
     
-    protected final void assertToken(ILexer lexer , OpCode opCode , String contents , int parseOffset) 
+    protected final IToken assertToken(ILexer lexer , OpCode opCode , String contents , int parseOffset) 
     {
         assertFalse( lexer.eof() );
         IToken tok = lexer.read();
@@ -212,6 +213,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         if ( parseOffset != -1 ) {
             assertEquals( parseOffset , tok.getStartingOffset() );
         }
+        return tok;
     }
     
     protected final String getErrors(final String source,ASTNode node) {

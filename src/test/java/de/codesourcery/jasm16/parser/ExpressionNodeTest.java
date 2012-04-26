@@ -31,6 +31,67 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 
 public class ExpressionNodeTest extends TestHelper {
 
+    public void testParseNegativeNumberOnly() throws IOException {
+        
+        final String source = "-7";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        assertEquals( Long.valueOf( -7 ) , expr.calculate( compContext.getSymbolTable() ) );
+    }    
+    
+    public void testCalculateValueWithNegativeNumber() throws IOException {
+        
+        final String source = " (1 + 3)*5 - - 7 ";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        assertEquals( Long.valueOf( 27 ) , expr.calculate( compContext.getSymbolTable() ) );
+    }
+    
+    public void testCalculateValueWithNegativeNumber2() throws IOException {
+        
+        final String source = " (1 + 3)*5 + - 7 ";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        assertEquals( Long.valueOf( 13 ) , expr.calculate( compContext.getSymbolTable() ) );
+    }   
+    
+    public void testCalculateValueWithNegativeNumber3() throws IOException {
+        
+        final String source = " (1 + -3)*5 + - 7 ";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        assertEquals( Long.valueOf( -17 ) , expr.calculate( compContext.getSymbolTable() ) );
+    }    
+    
+    public void testTooManyMinusOperators() throws IOException {
+        
+        final String source = " (1 + 3)*5 - - - 7 ";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertTrue( result.hasErrors() );
+    }    
+    
 	public void testCalculateValue() throws IOException {
 		
 		final String source = " (1 + 3)*5 -7 ";

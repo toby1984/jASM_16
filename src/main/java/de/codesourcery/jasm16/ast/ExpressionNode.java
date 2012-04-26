@@ -30,6 +30,8 @@ import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Operator;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Represents an expression in the AST.
@@ -59,10 +61,10 @@ public class ExpressionNode extends TermNode
     {
         return getTermCount( node ) == 0;
     }
-    
+
     protected static int getTermCount(ASTNode node) 
     {
-    	int termCount=0;
+        int termCount=0;
         for ( ASTNode child : node.getChildren() ) 
         {
             if ( isTermNode( child ) ) {
@@ -71,36 +73,36 @@ public class ExpressionNode extends TermNode
         }
         return termCount;
     }
-    
+
     @Override
     public Long calculate(ISymbolTable symbolTable) 
     {
-    	final List<TermNode> terms = new ArrayList<TermNode>();
-    	final List<ConstantValueNode> literalValues = new ArrayList<ConstantValueNode>();
-    	for ( ASTNode child : getChildren() ) {
-    		if ( child instanceof ConstantValueNode ) {
-    			literalValues.add( (ConstantValueNode) child );
-    		} 
-    		else if ( child instanceof OperatorNode || child instanceof ExpressionNode ) 
-    		{
-    			terms.add( (TermNode) child);
-    		} else if ( child instanceof RegisterReferenceNode ) {
-    			// ignore
-    		}
-    	}
-    	if ( terms.size() > 1 || literalValues.size() > 1 ) {
-    		return null;
-    	}
-    	if ( terms.isEmpty() && literalValues.isEmpty() ) {
-    		return null;
-    	}
-    	if ( terms.size() == 1 && literalValues.size() == 1 ) {
-    		return null;
-    	}
-    	if ( ! terms.isEmpty() ) {
-    		return terms.get(0).calculate( symbolTable );
-    	}
-    	return literalValues.get(0).calculate( symbolTable );
+        final List<TermNode> terms = new ArrayList<TermNode>();
+        final List<ConstantValueNode> literalValues = new ArrayList<ConstantValueNode>();
+        for ( ASTNode child : getChildren() ) {
+            if ( child instanceof ConstantValueNode ) {
+                literalValues.add( (ConstantValueNode) child );
+            } 
+            else if ( child instanceof OperatorNode || child instanceof ExpressionNode ) 
+            {
+                terms.add( (TermNode) child);
+            } else if ( child instanceof RegisterReferenceNode ) {
+                // ignore
+            }
+        }
+        if ( terms.size() > 1 || literalValues.size() > 1 ) {
+            return null;
+        }
+        if ( terms.isEmpty() && literalValues.isEmpty() ) {
+            return null;
+        }
+        if ( terms.size() == 1 && literalValues.size() == 1 ) {
+            return null;
+        }
+        if ( ! terms.isEmpty() ) {
+            return terms.get(0).calculate( symbolTable );
+        }
+        return literalValues.get(0).calculate( symbolTable );
     }
 
     @Override
@@ -112,7 +114,7 @@ public class ExpressionNode extends TermNode
         if ( result == null ) {
             throw new ParseException("Incomplete or empty expression",offset,0);
         }
-        
+
         if ( this.getTextRegion() != null ) { // merge leading whitespace etc.
             result.mergeWithAllTokensTextRegion( this.getTextRegion() );
         }
@@ -124,6 +126,68 @@ public class ExpressionNode extends TermNode
             }
         }        
         return result;
+    }
+
+    private static enum ExpectedType {
+        NOTHING {
+            @Override
+            public boolean isTreatMinusAsOperator() { return true; }
+        },
+        LITERAL_OR_EXPRESSION {
+            @Override
+            public boolean isTreatMinusAsOperator() { return false; }
+        },
+        INFIX_OR_POSTFIX_OPERATOR {
+            @Override
+            public boolean isTreatMinusAsOperator() { return true; }
+        },
+        ANY_OPERATOR {
+            @Override
+            public boolean isTreatMinusAsOperator() { return true; }
+        }, 
+        INFIX_OP_OR_LITERAL_OR_EXPRESSION {
+            @Override
+            public boolean isTreatMinusAsOperator() { return true; }
+        };
+        
+        public abstract boolean isTreatMinusAsOperator();
+    }
+
+    private ExpectedType getExpectedType(Stack<ASTNode> termStack,ASTNode previousNode) 
+    {
+        final ASTNode lastSeen;
+        if ( termStack.isEmpty() ) 
+        {
+            if ( previousNode == null ) 
+            {
+                // may accept either an INFIX operator
+                // or Operator.MINUS that indicates we're about
+                // to parse a negative number
+                return ExpectedType.INFIX_OP_OR_LITERAL_OR_EXPRESSION; 
+            }
+            lastSeen = previousNode;
+        } 
+        else {
+            lastSeen = termStack.peek();
+        }
+
+        if ( isOperator( lastSeen ) ) 
+        {
+            if ( isParensOperator( lastSeen ) ) { // saw an parens expr. , now look for an operator
+                return ExpectedType.INFIX_OR_POSTFIX_OPERATOR;
+            }
+            final Operator op = ((OperatorNode) lastSeen).getOperator();
+            if ( op.isPrefixOperator() ) {
+                return ExpectedType.LITERAL_OR_EXPRESSION; // => PREFIX operator , we're expecting a value (or an expression) now
+            } 
+            if ( op.isPostfixOperator() ) {
+                return ExpectedType.NOTHING; // POSTFIX operator , we're expecting NOTHING now
+            }     
+            // INFIX operator
+            return ExpectedType.LITERAL_OR_EXPRESSION;
+        }
+        // last seen was something else than an operator
+        return ExpectedType.ANY_OPERATOR; 
     }
 
     private ASTNode recursivelyParseTerm(IParseContext context) throws EOFException, ParseException 
@@ -147,33 +211,69 @@ public class ExpressionNode extends TermNode
                 }				
             }
 
-            if ( context.peek().hasType( TokenType.STRING_DELIMITER ) ) 
+            if ( context.peek().hasType( TokenType.STRING_DELIMITER) ) 
             {
                 final int index = context.currentParseIndex();
                 final ASTNode newNode = new CharacterLiteralNode(1).parse( context );
                 previousNode = handleStack( termStack , newNode , index ,previousNode , context);            	
-            } else  if ( context.peek().hasType(TokenType.OPERATOR ) ) 
+            }
+            else  if ( context.peek().hasType(TokenType.OPERATOR ) ) 
             { 
-            	if ( context.peek().getContents().equals( Operator.DECREMENT.getLiteral() ) ) 
-            	{
+                if ( context.peek().getContents().equals( Operator.DECREMENT.getLiteral() ) ) 
+                {
                     final int index = context.currentParseIndex();
                     final ASTNode parsed = new RegisterReferenceNode().parse( context );
                     previousNode = handleStack(termStack , parsed , index ,previousNode , context );            		
-            	} 
-            	else 
-            	{
-	                final int offset = context.currentParseIndex();
-	                final ASTNode n1 = new OperatorNode().parse( context );
-	                if ( n1 instanceof OperatorNode) 
-	                {
-	                    final OperatorNode op1 = (OperatorNode) n1;
-	                    if ( ! op1.getOperator().isInfixOperator() ) // + - * /
-	                    {
-	                        throw new ParseException("Not implemented: Cannot handle operator "+op1.getOperator(), op1.getTextRegion() );
-	                    }
-	                } 
-	                previousNode = handleStack( termStack , n1 , offset ,previousNode , context);
-	            	}
+                } 
+                else 
+                {
+                    final int offset = context.currentParseIndex();
+                    
+                    final ASTNode node = new OperatorNode().parse( context );
+
+                    if ( node instanceof OperatorNode) 
+                    {
+                        final OperatorNode operator = (OperatorNode) node;
+                        if ( ! operator.getOperator().isInfixOperator() ) // + - * /
+                        {
+                            throw new ParseException("Not implemented: Cannot handle operator "+operator.getOperator(), operator.getTextRegion() );
+                        }
+                        
+                        boolean treatAsNegativeNumber = false;
+                        if ( Operator.MINUS == operator.getOperator() ) {
+                            if ( termStack.isEmpty() && previousNode == null ) {
+                                treatAsNegativeNumber = true;
+                            } else {
+                                treatAsNegativeNumber = ! getExpectedType(termStack, previousNode).isTreatMinusAsOperator();                                 
+                            }
+                        }
+                        
+                        if ( treatAsNegativeNumber ) 
+                        {
+                            // consume any whitespace
+                            ITextRegion whitespace =null;
+                            if ( ! context.eof() && context.peek().isWhitespace() ) {
+                                whitespace = new TextRegion( context.read( TokenType.WHITESPACE ) );
+                            }
+                            
+                            final ASTNode number = new NumberNode().parse( context );
+                            if ( whitespace != null) {
+                                number.mergeWithAllTokensTextRegion( whitespace );
+                            }
+                            number.mergeWithAllTokensTextRegion( node );
+                            
+                            if ( number instanceof NumberNode) {
+                                ((NumberNode) number).convertToNegativeNumber();
+                            }
+                            previousNode = handleStack( termStack , number , offset ,previousNode , context);
+                        } 
+                        else {
+                            previousNode = handleStack( termStack , node , offset ,previousNode , context);
+                        }
+                    } else {
+                        previousNode = handleStack( termStack , node , offset ,previousNode , context);
+                    }
+                }
             } 
             else if ( context.peek().hasType( TokenType.NUMBER_LITERAL ) ) 
             {
@@ -293,7 +393,7 @@ public class ExpressionNode extends TermNode
         if ( stack.isEmpty() ) {
             return previousNode;
         }
-        
+
         final Stack<ASTNode> operatorStack = new Stack<ASTNode>();
         final Stack<ASTNode> argumentStack = new Stack<ASTNode>();
         while ( ! stack.isEmpty() ) 
@@ -306,10 +406,10 @@ public class ExpressionNode extends TermNode
                 argumentStack.push( unwrapParens( n ) ); // Operator.PARENS has only one argument that is in fact an already evaluated expression
             }
         }
-        
+
         Collections.reverse( operatorStack );
         Collections.reverse( argumentStack );
-        
+
         ASTNode rootNode = null;
         ASTNode lastNode = null;
         while( ! operatorStack.isEmpty() ) 
@@ -334,7 +434,7 @@ public class ExpressionNode extends TermNode
             lastNode = operator;
             argumentStack.push( operator );
         }
-        
+
         if ( argumentStack.size() == 1 ) 
         {
             if ( lastNode == null ) {
@@ -346,19 +446,19 @@ public class ExpressionNode extends TermNode
         } else if ( argumentStack.size() > 1 ) {
             throw new ParseException("Expression has no operators?",argumentStack.pop().getTextRegion() );
         }
-        
+
         if ( ! operatorStack.isEmpty() || ! argumentStack.isEmpty() ) {
             throw new RuntimeException("Post-condition failure");
         }
-        
+
         if ( previousNode == null ) {
             return lastNode;
         }
-        
+
         if ( ! isOperator( previousNode ) ) {
             throw new RuntimeException("Internal error");
         }
-        
+
         if ( hasAllRequiredArguments( previousNode ) ) {
             lastNode.insertChild(  0 , previousNode , context );
         }  else {
@@ -428,7 +528,7 @@ public class ExpressionNode extends TermNode
         ASTUtils.visitNodesByType( root , visitor , OperatorNode.class );
         return result[0];
     }
-    
+
     public TermNode reduce(ICompilationContext context) 
     {
         ExpressionNode result = new ExpressionNode();

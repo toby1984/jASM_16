@@ -77,10 +77,6 @@ public class LabelNode extends ASTNode
             mergeWithAllTokensTextRegion( range );              
         }
         
-        if ( Register.isRegisterIdentifier( label.getIdentifier().getRawValue() ) ) {
-            throw new ParseException("Label name clashes with register identifier, not allowed",getTextRegion());
-        }
-        
         try {
             context.getSymbolTable().defineSymbol( this.label );
         } 

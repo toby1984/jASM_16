@@ -360,6 +360,25 @@ public class Misc {
             result = StringUtils.repeat(" ",delta)+input;
         }
         return result;
-    }		
-	
+    }
+    
+    public static String toBinaryString(int value,int padToLength) {
+        
+        final StringBuilder result = new StringBuilder();
+        
+        for ( int i = 15 ; i >= 0 ; i-- ) {
+            if ( ( value & ( 1 << i ) ) != 0 ) {
+                result.append("1");
+            } else {
+                result.append("0");
+            }
+        }
+        
+        final String s = result.toString();
+        if ( s.length() < padToLength ) {
+            final int delta = padToLength - s.length();
+            return StringUtils.repeat("0" , delta )+s;
+        }
+        return s;
+    }	
 }

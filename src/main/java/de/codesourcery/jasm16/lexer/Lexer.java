@@ -28,6 +28,7 @@ import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.Operator;
 import de.codesourcery.jasm16.scanner.IScanner;
+import de.codesourcery.jasm16.utils.NumberLiteralHelper;
 
 /**
  * Default {@link ILexer} implementation.
@@ -198,8 +199,9 @@ public final class Lexer implements ILexer {
                     return;
             }			
 
-            if ( Operator.isOperatorPrefix( currentChar ) ) {
-                parseOperator( currentChar  , startIndex );
+            if ( Operator.isOperatorPrefix( currentChar ) ) 
+            {
+                parseOperator( startIndex );
                 return;
             }
 
@@ -210,7 +212,7 @@ public final class Lexer implements ILexer {
         handleString( buffer.toString() , startIndex );
     }
 
-    private void parseOperator(char currentChar , int lastStartIndex) 
+    private void parseOperator(int lastStartIndex) 
     {
         handleString( buffer.toString() , lastStartIndex );
         buffer.setLength( 0 );
@@ -261,8 +263,8 @@ public final class Lexer implements ILexer {
             return;
         } 
         
-        if ( NumberToken.isNumberLiteral( buffer ) ) {
-            currentTokens.add( new NumberToken(buffer,startIndex ) );
+        if ( NumberLiteralHelper.isNumberLiteral( buffer ) ) {
+            currentTokens.add( new Token(TokenType.NUMBER_LITERAL , buffer , startIndex ) );
             return;
         }        
 

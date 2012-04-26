@@ -1,0 +1,83 @@
+
+; =========== basic instructions ===========
+
+                SET a,2 ; a = 2
+                ADD a,2 ; a = 4
+                SUB a,1 ; a = 3
+                MUL a,3 ; a = 9
+                MLI a,-1 ; a = -9
+                DVI a,3 ; a = -3
+                MDI a,2 ; a= -1
+                
+                SET b,12 ; b = 12
+                DIV b,2 ; b = 6
+                MOD b, 5 ; b = 1
+                
+                SET c , 5 ; c=5
+                AND c , 1 ; c=1
+                BOR c , 4 ; c=5
+                XOR c , 7 ; c=2
+                SHR c , 1 ; c=1
+                SHL c , 1 ; c=2
+                ASR c , 1 ; c=1
+                
+                SET x , 1 ; x=1
+                SET y , 2 ; y=3
+                
+                IFB x,y ; skip next ins if x & y != 0
+                SET PC , crash1
+                IFC x,0 ; skip next ins if x & 0 == 0
+                SET PC , crash2
+                IFE y,3 ; skip next ins if y == 3
+                SET pc, crash3
+                IFN x,2 ; skip next ins if x != 2
+                SET pc , crash4
+                IFG y,x ; skip next ins if y > x
+                SET pc, crash5
+                IFA y,x ; skip next ins if y > x (SIGNED)
+                SET pc, crash6
+                IFL x,y ; skip next ins if x < y
+                SET pc, crash7
+                IFU x,y ; skip next ins if x < y (SIGNED)
+                SET pc, crash8
+                
+                SET z,0 ; z=0
+                ADX z,0 ; clears EX
+                ADX z,1 ; z = 1
+                SBX z,1 ; z = 0
+                
+                SET i,0 ; i = 0
+                SET j,0 ; j = 0
+                STI a , 0 ; a = 0 ; i=j=1
+                STD a , 0 ; a = 0 ; i=j=0
+
+
+; =========== non-basic instructions ============
+
+                JSR sub_program
+                SET PC , skipsub
+
+:sub_program    SET a,1
+                SET PC , POP
+
+:skipsub
+
+                HCF a
+                INT 1
+                IAG a
+                IAS 0
+                IAP 3
+                IAQ 0
+                HWN 1
+                HWQ 1
+                HWI 2
+
+:crash1
+:crash2
+:crash3
+:crash4
+:crash5
+:crash6
+:crash7
+:crash8
+                .dat 0

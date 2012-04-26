@@ -160,18 +160,21 @@ public class InstructionNodeTest extends TestHelper
 	}
 	
     public void testAddressingModesParsing() throws Exception {
-    	
-    	assertCompiles("ifn A, \"=\"");
-        assertCompiles("SET [A] , [--SP]");     
+
+        assertCompiles(":test SET A, 2+test");
         
+        assertDoesNotCompile(":sub SET a,1") ; // sub is an opcode !
+        assertDoesNotCompile(":x SET a,1") ; // x is a register !        
+        
+        assertDoesNotCompile("SET [A] , [--SP]");    
+        
+    	assertCompiles("ifn A, \"=\"");
     	assertDoesNotCompile("SET a , 1+a " );
     	
     	assertCompiles("SET [10+A],10");    	
     	assertCompiles("SET [10+A+10],10");
     	
     	assertCompiles("SET [0x10],3");
-    	
-    	assertCompiles(":test SET A, 2+test");
     	
     	assertCompiles("SET A , 10 ");
     	assertDoesNotCompile("SET [A++] , 10 ");
@@ -206,8 +209,8 @@ public class InstructionNodeTest extends TestHelper
         assertCompiles("SET [--SP] , 1");
         
     	assertCompiles("SET PUSH, [A]"); // PUSH      
-    	assertCompiles("SET [A] , PUSH "); // PUSH    	
-    	assertCompiles("SET [A] , [--SP] "); // PUSH
+    	assertDoesNotCompile("SET [A] , PUSH "); // PUSH    	
+    	assertDoesNotCompile("SET [A] , [--SP] "); // PUSH
     	
     	assertCompiles("SET [A], PEEK "); // PEEK   
     	assertCompiles("SET PEEK , [A] "); // PEEK    	
@@ -215,8 +218,8 @@ public class InstructionNodeTest extends TestHelper
     	
     	assertCompiles("SET PC,POP");    	
     	assertCompiles("SET [A] , POP"); // POP        	
-    	assertCompiles("SET POP , [A] "); // POP    	
-    	assertCompiles("SET [SP++] , [A] "); // POP    
+    	assertDoesNotCompile("SET POP , [A] "); // POP    	
+    	assertDoesNotCompile("SET [SP++] , [A] "); // POP    
     }
     
     public void testPush() throws Exception {
@@ -275,7 +278,7 @@ public class InstructionNodeTest extends TestHelper
     
     public void testOperandInlining1() throws Exception {
 
-        final String source = "SET [0x1000], 0x1f";
+        final String source = "SET [0x1000], 0x1e";
 
         ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
         final IParseContext context = createParseContext( unit );
@@ -295,7 +298,7 @@ public class InstructionNodeTest extends TestHelper
     
     public void testOperandInlining2() throws Exception {
 
-        final String source = "SET PC, 31";
+        final String source = "SET PC, 30";
 
         ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
         final IParseContext context = createParseContext( unit );
@@ -310,7 +313,47 @@ public class InstructionNodeTest extends TestHelper
         
         final int size = instruction.getSizeInBytes(0);
         assertEquals( 2 , size );
-        assertSourceCode( "SET PC, 31" , result );
+        assertSourceCode( "SET PC, 30" , result );
+    }  
+    
+    public void testOperandInlining3() throws Exception {
+
+        final String source = "SET PC, -1";
+
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
+        final IParseContext context = createParseContext( unit );
+
+        final ASTNode result = new InstructionNode().parse( context );
+        
+        assertFalse( getErrors( source , result ) , result.hasErrors() );
+        assertEquals( InstructionNode.class , result.getClass() );
+        
+        final InstructionNode instruction = (InstructionNode) result;
+        resolveSymbols( unit , instruction );
+        
+        final int size = instruction.getSizeInBytes(0);
+        assertEquals( 2 , size );
+        assertSourceCode( "SET PC, -1" , result );
+    } 
+    
+    public void testExtendedInstructionParsing() throws Exception {
+
+        final String source = "JSR 0x1000";
+
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);        
+        final IParseContext context = createParseContext( unit );
+
+        final ASTNode result = new InstructionNode().parse( context );
+        
+        assertFalse( getErrors( source , result ) , result.hasErrors() );
+        assertEquals( InstructionNode.class , result.getClass() );
+        
+        final InstructionNode instruction = (InstructionNode) result;
+        resolveSymbols( unit , instruction );
+        
+        final int size = instruction.getSizeInBytes(0);
+        assertEquals( 4 , size );
+        assertSourceCode( "JSR 0x1000" , result );
     }     
     
     public void testPeek() throws Exception {

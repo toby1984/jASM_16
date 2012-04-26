@@ -27,6 +27,7 @@ public enum Register
 * program counter (PC)
 * stack pointer (SP)
 * overflow (O)     
+* extra/excess (EX)
      */
     A("a"),
     B("b"),
@@ -46,7 +47,7 @@ public enum Register
         }    	
     },
     PC("PC"),
-    O("O");
+    EX("O");
     
     private final String identifier;
     
@@ -67,18 +68,17 @@ public enum Register
      * Resolves a string identifier to a {@link Register} instance.
      * 
      * @param s
-     * @return
-     * @throws IllegalArgumentException
+     * @return register or <code>null</code> if the input did not resemble a register identifier
      * @see {@link #isRegisterIdentifier(String)}
      */
-    public static Register fromString(String s) throws IllegalArgumentException {
+    public static Register fromString(String s)  {
         for ( Register r : values() ) {
             if ( r.identifier.toLowerCase().equals( s ) ||
                  r.identifier.toUpperCase().equals( s ) ) {
                 return r;
             }
         }
-        throw new IllegalArgumentException("Not a valid register identifier : '"+s+"' ");
+        return null;
     }
     
     /**
@@ -90,12 +90,6 @@ public enum Register
      */
     public static boolean isRegisterIdentifier(String s) throws IllegalArgumentException 
     {
-        for ( Register r : values() ) {
-            if ( r.identifier.toLowerCase().equals( s ) ||
-                 r.identifier.toUpperCase().equals( s ) ) {
-                return true;
-            }
-        }
-        return false;
+        return fromString(s) != null;
     }    
 }

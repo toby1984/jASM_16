@@ -29,6 +29,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.Operator;
 
 /**
  * An operand in an assembly opcode.
@@ -116,7 +117,7 @@ public class OperandNode extends ASTNode
 				validateRegisterRefCount( context , expr , 0 );
 				addChild( expr , context );
 			}
-		} else if ( tok.hasType( TokenType.NUMBER_LITERAL ) || tok.hasType( TokenType.PARENS_OPEN )) {
+		} else if ( isMinusOperator( tok ) || tok.hasType( TokenType.NUMBER_LITERAL ) || tok.hasType( TokenType.PARENS_OPEN )) {
 			this.addressingMode = AddressingMode.IMMEDIATE;
 			final ASTNode expression = wrapExpression( new ExpressionNode().parse( context ) , context );
 			validateRegisterRefCount( context, expression , 0 );
@@ -125,6 +126,10 @@ public class OperandNode extends ASTNode
 			throw new ParseException("Unexpected operand token: "+tok.getType() , tok );
 		}
 		return this;
+	}
+	
+	private boolean isMinusOperator(IToken tok) {
+	    return tok.hasType( TokenType.OPERATOR ) && Operator.fromString( tok.getContents() ) == Operator.MINUS;
 	}
 	
 	private void validateRegisterRefCount(IParseContext context,ASTNode node,int maxNum) throws ParseException 

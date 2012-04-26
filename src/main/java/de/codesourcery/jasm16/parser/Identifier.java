@@ -15,8 +15,11 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import de.codesourcery.jasm16.OpCode;
+import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * A valid identifier in the assembler source code.
@@ -111,6 +114,27 @@ outer:
             }
         }
         return false;
+    }
+    
+    /**
+     * Performs additional checks (not an opcode etc.) on an identifier , throwing a {@link ParseException}
+     * if any of these checks fails.
+     *  
+     * @param s
+     * @param textRegion text region to report when throwing a <code>ParseException</code>
+     * @throws ParseException
+     */
+    public static void assertValidIdentifier(String s,ITextRegion textRegion) throws ParseException 
+    {
+        final OpCode op = OpCode.fromIdentifier( s );
+        if ( op != null ) {
+            throw new ParseException("Reserved keywords (opcode) must not be used as identifiers", textRegion );
+        }
+        
+        final Register register = Register.fromString( s );
+        if ( register != null ) {
+            throw new ParseException("Reserved keywords (register name) must not be used as identifiers", textRegion );
+        } 
     }
     
 }

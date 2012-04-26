@@ -36,92 +36,275 @@ import de.codesourcery.jasm16.compiler.ISymbolTable;
 public enum OpCode 
 {
     /*
-     * Basic:
+     *                === Basic opcodes (5 bits) ===
+     *   |
+     *   |C | VAL  | NAME     | DESCRIPTION
+     *   +--+------+----------+---------------------------------------------------------
+     *   |- | 0x00 | n/a      | special instruction - see below
+     *   |1 | 0x01 | SET b, a | sets b to a
+     *   |2 | 0x02 | ADD b, a | sets b to b+a, sets EX to 0x0001 if there's an overflow,  0x0 otherwise
+     *   |2 | 0x03 | SUB b, a | sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
+     *   |2 | 0x04 | MUL b, a | sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
+     *   |2 | 0x05 | MLI b, a | like MUL, but treat b, a as signed
+     *   |3 | 0x06 | DIV b, a | sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
+     *   |3 | 0x07 | DVI b, a | like DIV, but treat b, a as signed. Rounds towards 0
+     *   |3 | 0x08 | MOD b, a | sets b to b%a. if a==0, sets b to 0 instead.
+     *   |3 | 0x09 | MDI b, a | like MOD, but treat b, a as signed. Rounds towards 0
+     *   
+     *   |1 | 0x0a | AND b, a | sets b to b&a
+     *   |1 | 0x0b | BOR b, a | sets b to b|a
+     *   |1 | 0x0c | XOR b, a | sets b to b^a
+     *   
+     *   |2 | 0x0d | SHR b, a | sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff (logical shift)
+     *   |2 | 0x0e | ASR b, a | sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff  (arithmetic shift) (treats b as signed)
+     *   |2 | 0x0f | SHL b, a | sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+     *   
+     *   |2+| 0x10 | IFB b, a | performs next instruction only if (b&a)!=0
+     *   |2+| 0x11 | IFC b, a | performs next instruction only if (b&a)==0
+     *   |2+| 0x12 | IFE b, a | performs next instruction only if b==a 
+     *   |2+| 0x13 | IFN b, a | performs next instruction only if b!=a 
+     *   |2+| 0x14 | IFG b, a | performs next instruction only if b>a 
+     *   |2+| 0x15 | IFA b, a | performs next instruction only if b>a (signed)
+     *   |2+| 0x16 | IFL b, a | performs next instruction only if b<a 
+     *   |2+| 0x17 | IFU b, a | performs next instruction only if b<a (signed)
+     *   |- | 0x18 | -        |
+     *   |- | 0x19 | -        |
+     *   |3 | 0x1a | ADX b, a | sets b to b+a+EX, sets EX to 0x0001 if there is an over-
+     *   |  |      |          | flow, 0x0 otherwise
+     *   |3 | 0x1b | SBX b, a | sets b to b-a+EX, sets EX to 0xFFFF if there is an under-
+     *   |  |      |          | flow, 0x0 otherwise
+     *   |- | 0x1c | -        | 
+     *   |- | 0x1d | -        |
+     *   |2 | 0x1e | STI b, a | sets b to a, then increases I and J by 1
+     *   |2 | 0x1f | STD b, a | sets b to a, then decreases I and J by 1
+     *   +--+------+----------+---------------------------------------------------------
+     *   
+     *   
+     *                       === Special opcodes: (5 bits) ===
+     *                       
      * 
-     * 0x1: SET a, b - sets a to b
-
-     * 0x2: ADD a, b - sets a to a+b, sets O to 0x0001 if there's an overflow, 0x0 otherwise
-     * 0x3: SUB a, b - sets a to a-b, sets O to 0xffff if there's an underflow, 0x0 otherwise
-     * 0x4: MUL a, b - sets a to a*b, sets O to ((a*b)>>16)&0xffff
-     * 0x5: DIV a, b - sets a to a/b, sets O to ((a<<16)/b)&0xffff. if b==0, sets a and O to 0 instead.
-     * 0x6: MOD a, b - sets a to a%b. if b==0, sets a to 0 instead.
-     * 
-     * 0x7: SHL a, b - sets a to a<<b, sets O to ((a<<b)>>16)&0xffff
-     * 0x8: SHR a, b - sets a to a>>b, sets O to ((a<<16)>>b)&0xffff
-     * 
-     * 0x9: AND a, b - sets a to a&b
-     * 0xa: BOR a, b - sets a to a|b
-     * 0xb: XOR a, b - sets a to a^b
-     * 
-     * 0xc: IFE a, b - performs next instruction only if a==b
-     * 0xd: IFN a, b - performs next instruction only if a!=b
-     * 0xe: IFG a, b - performs next instruction only if a>b
-     * 0xf: IFB a, b - performs next instruction only if (a&b)!=0	
-     * 
-     * extended:
-     * 
-     * JSR
+     *  | C | VAL  | NAME  | DESCRIPTION
+     *  +---+------+-------+-------------------------------------------------------------
+     *  | - | 0x00 | n/a   | reserved for future expansion
+     *  | 3 | 0x01 | JSR a | pushes the address of the next instruction to the stack,
+     *  |   |      |       | then sets PC to a
+     *  | - | 0x02 | -     |
+     *  | - | 0x03 | -     |
+     *  | - | 0x04 | -     |
+     *  | - | 0x05 | -     |
+     *  | - | 0x06 | -     |
+     *  | 9 | 0x07 | HCF a | use sparingly
+     *  | 4 | 0x08 | INT a | triggers a software interrupt with message a
+     *  | 1 | 0x09 | IAG a | sets a to IA 
+     *  | 1 | 0x0a | IAS a | sets IA to a
+     *  | 3 | 0x0b | IAP a | if IA is 0, does nothing, otherwise pushes IA to the stack,
+     *  |   |      |       | then sets IA to a
+     *  | 2 | 0x0c | IAQ a | if a is nonzero, interrupts will be added to the queue
+     *  |   |      |       | instead of triggered. if a is zero, interrupts will be
+     *  |   |      |       | triggered as normal again
+     *  | - | 0x0d | -     |
+     *  | - | 0x0e | -     |
+     *  | - | 0x0f | -     |
+     *  | 2 | 0x10 | HWN a | sets a to number of connected hardware devices
+     *  | 4 | 0x11 | HWQ a | sets A, B, C, X, Y registers to information about hardware a
+     *  |   |      |       | A+(B<<16) is a 32 bit word identifying the hardware id
+     *  |   |      |       | C is the hardware version
+     *  |   |      |       | X+(Y<<16) is a 32 bit word identifying the manufacturer
+     *  | 4+| 0x12 | HWI a | sends an interrupt to hardware a
+     *  | - | 0x13 | -     |
+     *  | - | 0x14 | -     |
+     *  | - | 0x15 | -     |
+     *  | - | 0x16 | -     |
+     *  | - | 0x17 | -     |
+     *  | - | 0x18 | -     |
+     *  | - | 0x19 | -     |
+     *  | - | 0x1a | -     |
+     *  | - | 0x1b | -     |
+     *  | - | 0x1c | -     |
+     *  | - | 0x1d | -     |
+     *  | - | 0x1e | -     |
+     *  | - | 0x1f | -     |
+     *  +---+------+-------+-------------------------------------------------------------     
      */
+    
     // general
-    SET("set",2,0x01) {
+    SET("set",2,0x01) // sets b to a 
+    {
         @Override
-        public boolean isValidAddressingMode(int operandIndex , AddressingMode type) 
+        public boolean isValidAddressingMode(OperandPosition position , AddressingMode type) 
         {
-            if ( operandIndex == 0 && type.equals( AddressingMode.IMMEDIATE ) ) {
+            if ( position == OperandPosition.TARGET_OPERAND && type.equals( AddressingMode.IMMEDIATE ) ) {
                 return false;
             }
             return true;
         }
     },
+    
     // arithmetics
     ADD("add",2,0x02),
     SUB("sub",2,0x03),
     MUL("mul",2,0x04),
-    DIV("div",2,0x05),
-    MOD("mod",2,0x06),	
+    MLI("mli",2,0x05),
+    DIV("div",2,0x06),
+    DVI("dvi",2,0x07),    
+    MOD("mod",2,0x08),	
+    MDI("mdi",2,0x09), 
+    ADX("adx",2,0x1a),
+    SBX("sbx",2,0x1b),
+    STI("sti",2,0x1e),
+    STD("std",2,0x1f),
 
-    // control flow
+    // EXTENDED opcodes / control flow
     JSR( "jsr",1,0x01) 
     {
-        protected boolean isBasicOpCode() {
-            return false;
-        };
+        protected boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
-            // operand no. 0 is always considered to TARGET operand
-            // while operand no. 1 is always considered the SOURCE operand.
+            // operand no. 0 is always considered to be the TARGET operand
+            // while operand no. 1 is always considered to be the SOURCE operand.
 
             // This breaks stuff in case of JSR which only takes a single operand
             // that needs to be treated as SOURCE (because it needs to provide the jump target)
-            // Thus we'll just hard-code the operand position to always be SOURCE 
+            // Thus we'll just hard-code the operand position to always be SOURCE before
+            // actually doing the check
             return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
         }
     },
+    HCF( "hcf",1,0x07) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },    
+    INT( "int",1,0x08) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },    
+    IAG( "iag",1,0x09) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            return super.isOperandValidInPosition( OperandPosition.TARGET_OPERAND , mode , register ); // IAG assigns IA to a so cannot have a literal value as a target
+        }
+    },  
+    IAS( "ias",1,0x0a) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason            
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },  
+    IAP( "iap",1,0x0b) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },   
+    IAQ( "iaq",1,0x0c) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },  
+    HWN( "hwn",1,0x10) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },  
+    HWQ( "hwq",1,0x11) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    }, 
+    HWI( "hwi",1,0x12) 
+    {
+        protected boolean isBasicOpCode() { return false; };
+        
+        public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
+        {
+            // use hard-coded operand position here, see in-line comment in JSR enum constant for reason
+            return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
+        }
+    },      
+    
+    
     // conditions
-    IFE("ife",2,0x0c) {
+    IFB("ifb",2,0x10) {
         @Override
         protected boolean isConditionalBranchOpCode() { return true; }
-    } ,
-    IFN("ifn",2,0x0d) {
+    },  
+    IFC("ifc",2,0x11) {
+        @Override
+        protected boolean isConditionalBranchOpCode() { return true; }
+    },       
+    IFE("ife",2,0x12) {
+        @Override
+        protected boolean isConditionalBranchOpCode() { return true; }
+    },
+    IFN("ifn",2,0x13) {
         @Override
         protected boolean isConditionalBranchOpCode() { return true; }
     },	
-    IFG("ifg",2,0x0e) {
+    IFG("ifg",2,0x14) {
         @Override
         protected boolean isConditionalBranchOpCode() { return true; }
     },
-    IFB("ifb",2,0x0f) {
+    IFA("ifa",2,0x15) {
+        @Override
+        protected boolean isConditionalBranchOpCode() { return true; }
+    }, 
+    IFL("ifl",2,0x16) {
         @Override
         protected boolean isConditionalBranchOpCode() { return true; }
     },
+    IFU("ifu",2,0x17) {
+        @Override
+        protected boolean isConditionalBranchOpCode() { return true; }
+    },     
     // bit-shifting
-    SHL("shl",2,0x07),
-    SHR("shr",2,0x08),	
+    SHR("shr",2,0x0d),    
+    ASR("asr",2,0x0e),    
+    SHL("shl",2,0x0f),
+    
     // boolean operations
-    AND("and",2,0x09),
-    OR("bor",2 ,0x0a),	
-    XOR("xor",2,0x0b);
+    
+    AND("and",2,0x0a),
+    OR("bor",2 ,0x0b),	
+    XOR("xor",2,0x0c);
 
     private final int opCodeBits;
     private final String identifier;
@@ -168,7 +351,7 @@ public enum OpCode
         return identifier.toUpperCase();
     }
 
-    public boolean isValidAddressingMode(int operandIndex , AddressingMode type) {
+    public boolean isValidAddressingMode(OperandPosition position, AddressingMode type) {
         return true;
     }
 
@@ -240,21 +423,21 @@ public enum OpCode
 	public byte[] generateObjectCode(ICompilationContext context , InstructionNode instruction) 
     {
         final byte[] buffer = new byte[6]; // max. instruction length: three words (3*2 bytes)
-        final OperandNode operandA;
+        final OperandNode targetOperand;
         if ( instruction.getOperandCount() > 0 ) {
-            operandA = instruction.getOperand( 0 );
+            targetOperand = instruction.getOperand( 0 );
         } else {
-            operandA = null;
+            targetOperand = null;
         }
 
-        final OperandNode operandB;
+        final OperandNode sourceOperand;
         if ( instruction.getOperandCount() > 1 ) {
-            operandB = instruction.getOperand( 1 );
+            sourceOperand = instruction.getOperand( 1 );
         } else {
-            operandB = null;
+            sourceOperand = null;
         }        
 
-        final int bytesToWrite = writeInstruction( context , operandA, operandB , buffer );
+        final int bytesToWrite = writeInstruction( context , targetOperand, sourceOperand , buffer );
         if ( bytesToWrite != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
         {
             final byte[] result = new byte[ bytesToWrite ];
@@ -264,64 +447,69 @@ public enum OpCode
         return null;
     }
 
-    private int writeInstruction(ICompilationContext context,OperandNode a , OperandNode b, byte[] buffer) {
+    private int writeInstruction(ICompilationContext context,OperandNode targetOperand , OperandNode sourceOperand, byte[] buffer) {
 
         /*
-         * BASIC instructions are 1-3 words long and are fully defined by the first word.
+         * Instructions are 1-3 words long and are fully defined by the first word.
+         * In a basic instruction, the lower FIVE bits of the first word of the instruction
+         * are the opcode, and the remaining ELEVEN bits are split into a FIVE bit value b
+         * and a SIX bit value a.
          * 
-         * In a basic instruction, the lower four bits of the first word of the instruction are the opcode,
-         * and the remaining twelve bits are split into two six bit values, called a and b.
+         * b is always handled by the processor after a, and is the LOWER FIVE bits.
          * 
-         * a is always handled by the processor before b, and is the lower six bits.
+         * In bits (in LSB-0 format), a basic instruction has the format: 
          * 
-         * In bits (with the least significant being last), a basic instruction has the format: 
+         * aaaaaabbbbbooooo
          * 
-         * bbbbbbaaaaaaoooo
+         * NON-BASIC opcodes always have their lower five bits unset, have one value and a
+         * five bit opcode. 
          * 
-         * NON-BASIC instructions always have their lower four bits unset, have one value and a six bit opcode.
+         * In binary, they have the format: 
          * 
-         * In binary, they have the format: aaaaaaoooooo0000
-         * The value (a) is in the same six bit format as defined earlier.
-         *       
+         * aaaaaaooooo00000
+         * 
+         * The value (a) is in the same six bit format as defined earlier. 
          */
     	final ISymbolTable symbolTable = context.getSymbolTable();
         int opcode = 0;
-        OperandDesc descA=null;
-        OperandDesc descB=null;
+        OperandDesc descTarget=null;
+        OperandDesc descSource=null;
+        
+        final int OPCODE_BITS = 5;
 
         if ( isExtendedOpCode() ) 
         {
-            if ( a == null ) {
+            if ( targetOperand == null ) {
                 throw new RuntimeException("Extended instruction "+this+" requires a single operand, got none");
             }
-            if ( b != null ) {
+            if ( sourceOperand != null ) {
                 throw new RuntimeException("Extended instruction "+this+" requires a single operand, got two ?");
             }            
-            opcode |= ( opCodeBits << 4 );
-            descA = getOperandBits( symbolTable , 0 , a ,b );
-            if ( descA == null ) {
+            opcode |= ( opCodeBits << OPCODE_BITS );
+            descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand );
+            if ( descTarget == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }
-            opcode |= ( descA.operandBits << 10 );
+            opcode |= ( descTarget.operandBits << 10 );
         } 
         else 
         {
             // handle basic opcode
-            opcode |= ( opCodeBits & 0xf);
-            if ( a != null ) 
+            opcode |= ( opCodeBits & 0x1f); // 5-bit opcodes = 0x1F
+            if ( targetOperand != null ) 
             {
-                descA = getOperandBits( symbolTable , 0 , a ,b );
-                if ( descA == null ) {
+                descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand );
+                if ( descTarget == null ) {
                     return ObjectCodeOutputNode.UNKNOWN_SIZE;
                 }
-                opcode |= ( descA.operandBits << 4 );
+                opcode |= ( descTarget.operandBits << OPCODE_BITS );
             }
-            if ( b != null ) {
-                descB = getOperandBits( symbolTable , 1 , a ,b );
-                if ( descB == null ) {
+            if ( sourceOperand != null ) {
+                descSource = getOperandBits( symbolTable , OperandPosition.SOURCE_OPERAND , targetOperand ,sourceOperand );
+                if ( descSource == null ) {
                     return ObjectCodeOutputNode.UNKNOWN_SIZE;
                 }
-                opcode |= ( descB.operandBits << 10 );
+                opcode |= ( descSource.operandBits << 10 );
             }
         }
 
@@ -331,9 +519,9 @@ public enum OpCode
         buffer[idx++] = (byte) ( opcode & 0xff );
 
         // write operand A
-        if ( descA != null && descA.appendAsWord ) 
+        if ( descTarget != null && descTarget.appendAsWord ) 
         {
-			Long literalValue = a.getLiteralValue( symbolTable );
+			Long literalValue = targetOperand.getLiteralValue( symbolTable );
             if ( literalValue == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }
@@ -343,9 +531,9 @@ public enum OpCode
         }
 
         // write operand B
-        if ( descB != null && descB.appendAsWord ) 
+        if ( descSource != null && descSource.appendAsWord ) 
         {
-			Long literalValue = b.getLiteralValue( symbolTable );
+			Long literalValue = sourceOperand.getLiteralValue( symbolTable );
             if ( literalValue == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }            
@@ -356,30 +544,39 @@ public enum OpCode
         return idx;
     }
     
-    private OperandDesc getOperandBits(ISymbolTable symbolTable,int operandIndex,OperandNode a,OperandNode b) 
+    private OperandDesc getOperandBits(ISymbolTable symbolTable,OperandPosition operandToHandle,OperandNode targetOperand,OperandNode sourceOperand) 
     {
-    	final OperandNode operand=operandIndex == 0 ? a : b;
+    	final OperandNode operand = operandToHandle == OperandPosition.TARGET_OPERAND ? targetOperand : sourceOperand;
     	
         /*
-         * Values: (6 bits)
+         * SET TARGET (b) ,SOURCE (a)
          * 
-         * OK 0x00-0x07: register (A, B, C, X, Y, Z, I or J, in that order)      
-         * OK 0x08-0x0f: [register]                                              
-         * OK 0x10-0x17: [next word + register]                                  
-         * OK      0x18: POP / [SP++]                                            
-         * OK      0x19: PEEK / [SP]                                             
-         * OK      0x1a: PUSH / [--SP]                                           
-         * OK      0x1b: SP                                                      
-         * OK      0x1c: PC                                                      
-         * OK      0x1d: O                                                       
-         * OK      0x1e: [next word]                                             
-         * OK      0x1f: next word (literal)                                     
-         * OK      0x20-0x3f: literal value 0x00-0x1f (literal)                  
-         *     
-         * "next word" really means "[PC++]". These increase the word length of the instruction by 1. 
-         * If any instruction tries to assign a literal value, the assignment fails silently. Other than that, the instruction behaves as normal.
-         * All values that read a word (0x10-0x17, 0x1e, and 0x1f) take 1 cycle to look up. The rest take 0 cycles.
-         * By using 0x18, 0x19, 0x1a as POP, PEEK and PUSH, there's a reverse stack starting at memory location 0xffff. Example: "SET PUSH, 10", "SET X, POP"        
+         * aaaaaabbbbbooooo
+         * 
+         * - 5 bits for the TARGET operand (b)
+         * - 6 bits for the SOURCE operand (a)
+         *
+         * --- Values: (5/6 bits) ---------------------------------------------------------
+         *  C | VALUE     | DESCRIPTION
+         * ---+-----------+----------------------------------------------------------------
+         *  0 | 0x00-0x07 | register (A, B, C, X, Y, Z, I or J, in that order)
+         *  0 | 0x08-0x0f | [register]
+         *  1 | 0x10-0x17 | [register + next word]
+         *  0 |      0x18 | (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
+         *  0 |      0x19 | [SP] / PEEK
+         *  1 |      0x1a | [SP + next word] / PICK n
+         *  0 |      0x1b | SP
+         *  0 |      0x1c | PC
+         *  0 |      0x1d | EX
+         *  1 |      0x1e | [next word]
+         *  1 |      0x1f | next word (literal)
+         *  0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for a)
+         *  --+-----------+----------------------------------------------------------------      
+         *  
+         * - "next word" means "[PC++]". Increases the word length of the instruction by 1.
+         * - By using 0x18, 0x19, 0x1a as PEEK, POP/PUSH, and PICK there's a reverse stack
+         *   starting at memory location 0xffff. Example: "SET PUSH, 10", "SET X, POP"
+         *
          */
         switch ( operand.getAddressingMode() ) 
         {
@@ -389,11 +586,13 @@ public enum OpCode
                     return null; // => ObjectCodeOutputNode#UNKNOWN_SIZE
                 }
                 long value = value2;
-                if ( value <= 0x1f ) 
+                // inlining is ONLY supported for source operand (a) OR the only operand in single-operand opcodes 
+                if ( ( operandToHandle == OperandPosition.SOURCE_OPERAND || getOperandCount() == 1 ) && value >= -1 && value <= 30  ) 
                 {
+                    value+=1; // shift because -1 = 0x20 , 0 = 0x21 , +++
                     return operandDesc( 0x20 + (int) value );
                 }
-                return operandDesc( 0x1f , true  ); // value too large , cannot be inlined
+                return operandDesc( 0x1f , true  ); // value too large (for this operand position), cannot be inlined
             case INDIRECT:
                 return operandDesc( 0x1e , true );
             case INDIRECT_REGISTER:
@@ -401,7 +600,7 @@ public enum OpCode
                 if ( register == Register.SP ) 
                 {
                     return operandDesc( 0x19 );
-                } else if ( register == Register.PC ||register == Register.O ) {
+                } else if ( register == Register.PC ||register == Register.EX ) {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER");                    
                 }
                 return operandDesc( getRegisterBitmask( register , 0x08 ) );
@@ -411,14 +610,24 @@ public enum OpCode
                 {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_POSTINCREMENT");                    
                 }
-                return operandDesc( 0x18 );
+                // SET b,[SP++] => VALID
+                // SET [SP++],a => INVALID because there's no opcode for it
+                if ( operandToHandle == OperandPosition.TARGET_OPERAND ) {
+                    throw new RuntimeException("POP/[SP++] cannot be used as TARGET operand");
+                }
+                return operandDesc( 0x18 ); // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
             case INDIRECT_REGISTER_PREDECREMENT:
                 register = operand.getRegister();
                 if ( register != Register.SP ) 
                 {
                     throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_PREDECREMENT");                    
                 }
-                return operandDesc( 0x1a );                 
+                // SET [--SP],a => VALID
+                // SET b,[--SP] => INVALID because there's no opcode for it
+                if ( operandToHandle == OperandPosition.SOURCE_OPERAND ) {
+                    throw new RuntimeException("PUSH/[--SP] cannot be used as SOURCE operand");
+                }                
+                return operandDesc( 0x18 ); // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a                
             case INDIRECT_REGISTER_OFFSET:
                 value2 = operand.getLiteralValue(symbolTable);
                 if ( value2 == null ) {
@@ -427,13 +636,13 @@ public enum OpCode
                 value = value2;
                 
                 register = operand.getRegister();
-                if ( register == Register.SP || register == Register.PC || register == Register.O ) {
-                    throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_OFFSET");
+                if ( register == Register.SP ) { 
+                    return operandDesc( 0x1a , true ); // new since DCPU 1.1: [SP + next word] / PICK n
                 }
                 
-//                if ( value <= 0x1f ) {
-//                    return operandDesc( (int) ( getRegisterBitmask( register , 0x10 ) | ( 0x20+value ) ) );                	
-//                }
+                if ( register == Register.PC || register == Register.EX ) {
+                    throw new RuntimeException("Internal error, register "+register+" must not be used with addressing mode INDIRECT_REGISTER_OFFSET");
+                }
                 return operandDesc( getRegisterBitmask( register , 0x10 ) , true  );             
             case REGISTER:
                 register = operand.getRegister();
@@ -441,7 +650,7 @@ public enum OpCode
                     return operandDesc( 0x1b );
                 } else if ( register == Register.PC ) {
                     return operandDesc( 0x1c );
-                } else if ( register == Register.O ) {
+                } else if ( register == Register.EX ) {
                     return operandDesc( 0x1d );
                 }
                 return operandDesc( getRegisterBitmask( register , 0x00 ) );                

@@ -634,7 +634,7 @@ public abstract class ASTNode
         final ITextRegion errorRange;
         if ( e instanceof ParseException ) 
         {
-            errorRange = ((ParseException) e).getRange();
+            errorRange = ((ParseException) e).getTextRegion();
             errorOffset = errorRange.getStartingOffset();
         } else if ( e instanceof ICompilationError) {
             errorOffset = ((ICompilationError) e).getErrorOffset();

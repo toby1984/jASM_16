@@ -18,10 +18,12 @@ package de.codesourcery.jasm16.ast;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.lexer.NumberToken;
+import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.Operator;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.NumberLiteralHelper;
 import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
@@ -45,8 +47,31 @@ public class NumberNode extends ConstantValueNode
     @Override
 	protected NumberNode parseInternal(IParseContext context) throws ParseException
     {
-    	final NumberToken token = (NumberToken) context.read( "Expected a number",TokenType.NUMBER_LITERAL );
-   		this.value = token.getValue();
+        final boolean isNegativeNumber;
+        final IToken nextToken = context.peek();
+        
+        if ( ! nextToken.hasType( TokenType.NUMBER_LITERAL) ) 
+        {
+            if ( ! nextToken.hasType( TokenType.OPERATOR) || Operator.fromString( nextToken.getContents() ) != Operator.MINUS )
+            {
+                throw new ParseException("Expected a number literal",nextToken);
+            }
+            mergeWithAllTokensTextRegion( context.read() );
+            isNegativeNumber = true;
+        } else {
+            isNegativeNumber = false;
+        }
+        
+        final int offset = context.currentParseIndex();
+    	final IToken token = context.read( "Expected a number",TokenType.NUMBER_LITERAL );
+    	try {
+    	    this.value = NumberLiteralHelper.parseValue( token.getContents() );
+    	    if ( isNegativeNumber ) {
+    	        this.value = this.value * -1;
+    	    }
+    	} catch(ParseException e) {
+    	    throw new ParseException( e.getMessage() , offset + e.getTextRegion().getStartingOffset() , e.getTextRegion().getLength() );
+    	}
    		mergeWithAllTokensTextRegion( token );
     	return this;
     }
@@ -65,7 +90,7 @@ public class NumberNode extends ConstantValueNode
     
 	public int getAsByte() throws ParseException 
 	{
-		if ( value < 0 | value > 255 ) {
+		if ( value < Byte.MIN_VALUE | value > 255 ) {
 			throw new ParseException("8-bit value expected but found: "+value,getTextRegion() );
 		}
 		return (int) value;
@@ -77,10 +102,15 @@ public class NumberNode extends ConstantValueNode
 	
     public int getAsWord() throws ParseException 
     {
-		if ( value < 0 | value > 65535 ) {
+		if ( value < Short.MIN_VALUE || value > 65535 ) {
 			throw new ParseException("16-bit value expected but found: "+value,getTextRegion());
 		}
         return (int) value;
+    }
+    
+    public void convertToNegativeNumber() 
+    {
+         value = value * -1;
     }
 
 	@Override

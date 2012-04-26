@@ -22,7 +22,7 @@ import de.codesourcery.jasm16.utils.TextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class Token extends TextRegion implements IToken {
+public final class Token extends TextRegion implements IToken {
 
 	private final TokenType type;
 	private final String contents;
