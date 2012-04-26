@@ -9,7 +9,7 @@ public final class Simulation implements Runnable
 {
     private static final boolean DEBUG = false;
     
-    private static final boolean USE_DELAY_LOOP = false;
+    private static final boolean USE_DELAY_LOOP = true;
     
     private final Object SLEEP_LOCK = new Object();
     

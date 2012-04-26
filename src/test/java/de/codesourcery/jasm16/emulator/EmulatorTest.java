@@ -36,7 +36,7 @@ public class EmulatorTest extends TestCase
         
         final Emulator emu = new Emulator();
         
-//        emu.calibrate();
+        emu.calibrate();
         
         emu.load(unit.getObjectCodeStartOffset() , objectCode);
         
