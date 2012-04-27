@@ -18,14 +18,18 @@ package de.codesourcery.jasm16.utils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
@@ -33,6 +37,7 @@ import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.emulator.Disassembler.DisassembledLine;
 import de.codesourcery.jasm16.scanner.IScanner;
 import de.codesourcery.jasm16.scanner.Scanner;
 
@@ -42,9 +47,9 @@ import de.codesourcery.jasm16.scanner.Scanner;
  * @author tobias.gierke@code-sourcery.de
  */
 public class Misc {
-	
-	private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
-	
+
+    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
+
     public static String toHexString(byte[] data) 
     {
         final StringBuilder builder = new StringBuilder();
@@ -58,167 +63,237 @@ public class Misc {
 
         return builder.toString();
     }
-    
-    public static String toHexDumpWithAddresses(int startingAddress , byte[] data, int wordsPerLine) 
+
+    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int wordsPerLine) 
     {
-    	return toHexDumpWithAddresses( startingAddress , data , data.length , wordsPerLine );
+        return toHexDumpWithAddresses( startingAddressInBytes , data , data.length , wordsPerLine );
     }
-    
-    public static String toHexDumpWithAddresses(int startingAddress , byte[] data, int length , int wordsPerLine) 
+
+    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
     {
-        final StringBuilder builder = new StringBuilder();
-        int current = 0;
-		while( current < length )
-        {
-            final int wordAddress = (startingAddress+current) >> 1;
-            builder.append( toHexString( wordAddress ) ).append(": ");
-            
-            for ( int i = 0 ; current < length && i < wordsPerLine  ; i++)
-            {
-                byte b1 = data[current++];
-                builder.append( toHexString( b1 ) );
-                if ( current >= length ) {
-                    break;
-                }
-                
-                b1 = data[current++];
-                builder.append( toHexString( b1 ) );   
-                if ( current >= length ) {
-                    break;
-                } 
-                builder.append(" ");
+        return toHexDumpWithAddresses(startingAddressInBytes, data, length, wordsPerLine, false );
+    }
+
+    public static String toHexDumpWithoutAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
+    {
+        return toHexDump(startingAddressInBytes, data, length, wordsPerLine, false , false );
+    }    
+
+    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII) 
+    {
+        return toHexDump(startingAddressInBytes, data, length, wordsPerLine, printASCII, true);
+    }
+
+    public static String toHexDump(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
+    {
+        final List<String> lines = toHexDumpLines(startingAddressInBytes, data, length, wordsPerLine, printASCII, printAddress);
+        StringBuilder result = new StringBuilder();
+        for (Iterator<String> iterator = lines.iterator(); iterator.hasNext();) {
+            String line = iterator.next();
+            result.append( line );
+            if ( iterator.hasNext() ) {
+                result.append("\n");
             }
-            builder.append("\n");
         }
-        return builder.toString();
+        return result.toString();
     }
-    
+
+    public static List<String> toHexDumpLines(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
+    {
+        final List<String> result = new ArrayList<String>();
+
+        final StringBuilder asciiBuilder = new StringBuilder(); 
+        final StringBuilder hexBuilder = new StringBuilder();
+        int current = 0;
+        while( current < length )
+        {
+            final int wordAddress = (startingAddressInBytes+current) >> 1; // divide by 2 to get word address
+        if ( printAddress ) {
+            hexBuilder.append( toHexString( wordAddress ) ).append(": ");
+        }
+
+        for ( int i = 0 ; current < length && i < wordsPerLine  ; i++)
+        {
+            byte b1 = data[current++];
+            hexBuilder.append( toHexString( b1 ) );
+            if ( printASCII ) {
+                asciiBuilder.append( toASCII(b1) );
+            }
+            if ( current >= length ) {
+                break;
+            }
+
+            b1 = data[current++];
+            hexBuilder.append( toHexString( b1 ) );
+            if ( printASCII ) {
+                asciiBuilder.append( toASCII(b1) );
+            }                
+            if ( current >= length ) {
+                break;
+            } 
+            hexBuilder.append(" ");
+        }
+        if ( printASCII ) {
+            hexBuilder.append(" ").append( asciiBuilder.toString() );
+            asciiBuilder.setLength( 0 );
+        } 
+        result.add( hexBuilder.toString() );
+        hexBuilder.setLength( 0 );
+        asciiBuilder.setLength( 0 );
+        }
+
+        if ( printASCII && asciiBuilder.length() > 0 ) {
+            hexBuilder.append(" ").append( asciiBuilder.toString() );
+        } 		
+        if ( hexBuilder.length() > 0 ) {
+            result.add( hexBuilder.toString() );
+        }
+        return result;
+    }
+
+    private static char toASCII(byte b) 
+    {
+        int val = b;
+        if ( val < 0 ) {
+            val+=256;
+        }
+        if ( val < 32 || val > 126 ) {
+            return '.';
+        }
+        return (char) val;
+    }
     public static String toHexString(int val) 
     {
         return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) ); 
     }       
-    
-	public static String toHexString(byte val) 
-	{
-		final int lo = ( val & 0x0f );
-		final int hi = ( val >> 4) & 0x0f;
-		return ""+HEX_CHARS[ hi ]+HEX_CHARS[ lo ];
-	}	
-	
-	public static byte[] readBytes(IResource resource) throws IOException {
-		final InputStream in = resource.createInputStream();
-		try {
-			return readBytes( in );
-		} finally {
-			IOUtils.closeQuietly( in );
-		}
-	}
-	
-	public static byte[] readBytes(InputStream in) throws IOException {
 
-		final ByteArrayOutputStream out = new ByteArrayOutputStream();
-		int len = 0 ;
-		final byte[] buffer = new byte[1024];
-		while ( ( len = in.read( buffer) ) > 0 ) {
-			out.write( buffer ,0 , len );
-		}
-		out.flush();
-		return out.toByteArray();
-	}	
-	
-	public static String readSource(IResource resource) throws IOException 
-	{
-		return new String( readBytes( resource ) );
-	}	
+    public static String toHexString(byte val) 
+    {
+        final int lo = ( val & 0x0f );
+        final int hi = ( val >> 4) & 0x0f;
+        return ""+HEX_CHARS[ hi ]+HEX_CHARS[ lo ];
+    }	
 
-	public static String readSource(InputStream in) throws IOException {
-		return new String( readBytes( in ) );
-	}
+    public static byte[] readBytes(IResource resource) throws IOException {
+        final InputStream in = resource.createInputStream();
+        try {
+            return readBytes( in );
+        } finally {
+            IOUtils.closeQuietly( in );
+        }
+    }
 
-	public static String readSource(ICompilationUnit unit) throws IOException 
-	{
-		return readSource( unit.getResource().createInputStream() );
-	}	
+    public static byte[] readBytes(InputStream in) throws IOException {
 
-	public static String toPrettyString(String errorMessage, int errorOffset , String input) 
-	{
-		return toPrettyString( errorMessage , errorOffset , new Scanner( input ) );
-	}
-	
-	public static String toPrettyString(String errorMessage, SourceLocation location , IScanner input) 
-	{
-		return toPrettyString( errorMessage , location.getStartingOffset() , location , input );
-	}
-	
-	public static String toPrettyString(String errorMessage, int errorOffset , IScanner input) 
-	{
-		return toPrettyString( errorMessage , errorOffset , null , input );
-	}
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int len = 0 ;
+        final byte[] buffer = new byte[1024];
+        while ( ( len = in.read( buffer) ) > 0 ) {
+            out.write( buffer ,0 , len );
+        }
+        out.flush();
+        return out.toByteArray();
+    }	
 
-	public static String toPrettyString(String errorMessage, int errorOffset , ITextRegion location , IScanner input) 
-	{
-		int oldOffset = input.currentParseIndex();
-		try {
-			input.setCurrentParseIndex( errorOffset );
-		} 
-		catch(IllegalArgumentException e) {
-			return "ERROR at offset "+errorOffset+": "+errorMessage;
-		}
+    public static String readSource(IResource resource) throws IOException 
+    {
+        return new String( readBytes( resource ) );
+    }	
 
-		try {
-			StringBuilder context = new StringBuilder();
-			while ( ! input.eof() && input.peek() != '\n' ) {
-				context.append( input.read() );
-			}
-			final String loc;
-			if ( location instanceof SourceLocation) 
-			{
-				final SourceLocation srcLoc = (SourceLocation) location;
-				loc = "Line "+
-					srcLoc.getLineNumber()+",column "+
-					srcLoc.getColumnNumber()+" ("+srcLoc.getOffset()+"): ";
-			} else {
-				loc = "index "+errorOffset+": ";
-			}
-			
-			final String line1 = loc+context.toString();
-	        final String indent = StringUtils.repeat(" ", loc.length() );
-			final String line2 = indent+"^ "+errorMessage;
-			return line1+"\n"+line2;
-		} 
-		finally {
-			try {
-				input.setCurrentParseIndex( oldOffset );
-			} catch(Exception e2) {
-				/* swallow */
-			}    		
-		}
-	}
+    public static String readSource(InputStream in) throws IOException {
+        return new String( readBytes( in ) );
+    }
 
-	public static void printCompilationErrors(ICompilationUnit unit,String source,boolean printStackTraces) 
-	{
-		if ( unit.hasErrors() ) 
-		{
-			final List<ICompilationError> errors = new ArrayList<ICompilationError>(unit.getErrors() );
-			
-			Collections.sort( errors ,new Comparator<ICompilationError>() {
+    public static String readSource(ICompilationUnit unit) throws IOException 
+    {
+        return readSource( unit.getResource().createInputStream() );
+    }	
 
-				@Override
-				public int compare(ICompilationError o1, ICompilationError o2) 
-				{
-					if ( o1 instanceof CompilationError && o2 instanceof CompilationError ) 
-					{
-						CompilationError err1 = (CompilationError) o1;
-						CompilationError err2 = (CompilationError) o2;
-						return Integer.valueOf( err1.getLocation().getStartingOffset() ).compareTo( Integer.valueOf( err2.getLocation().getStartingOffset() ) );
-					}
-					return 0;
-				}} );
-			
-			for ( Iterator<ICompilationError> it = errors.iterator(); it.hasNext(); )
-			{
-			    final  ICompilationError error=it.next(); 
-			    final int errorOffset;
+    public static String toPrettyString(String errorMessage, int errorOffset , String input) 
+    {
+        return toPrettyString( errorMessage , errorOffset , new Scanner( input ) );
+    }
+
+    public static String toPrettyString(String errorMessage, SourceLocation location , IScanner input) 
+    {
+        return toPrettyString( errorMessage , location.getStartingOffset() , location , input );
+    }
+
+    public static String toPrettyString(String errorMessage, int errorOffset , IScanner input) 
+    {
+        return toPrettyString( errorMessage , errorOffset , null , input );
+    }
+
+    public static String toPrettyString(String errorMessage, int errorOffset , ITextRegion location , IScanner input) 
+    {
+        int oldOffset = input.currentParseIndex();
+        try {
+            input.setCurrentParseIndex( errorOffset );
+        } 
+        catch(IllegalArgumentException e) {
+            return "ERROR at offset "+errorOffset+": "+errorMessage;
+        }
+
+        try {
+            StringBuilder context = new StringBuilder();
+            while ( ! input.eof() && input.peek() != '\n' ) {
+                context.append( input.read() );
+            }
+            final String loc;
+            if ( location instanceof SourceLocation) 
+            {
+                final SourceLocation srcLoc = (SourceLocation) location;
+                loc = "Line "+
+                        srcLoc.getLineNumber()+",column "+
+                        srcLoc.getColumnNumber()+" ("+srcLoc.getOffset()+"): ";
+            } else {
+                loc = "index "+errorOffset+": ";
+            }
+
+            final String line1 = loc+context.toString();
+            final String indent = StringUtils.repeat(" ", loc.length() );
+            final String line2 = indent+"^ "+errorMessage;
+            return line1+"\n"+line2;
+        } 
+        finally {
+            try {
+                input.setCurrentParseIndex( oldOffset );
+            } catch(Exception e2) {
+                /* swallow */
+            }    		
+        }
+    }
+
+    public static void printCompilationErrors(ICompilationUnit unit,IResource resource,boolean printStackTraces) throws IOException 
+    {
+        final String source = readSource( resource );
+        printCompilationErrors( unit , source , printStackTraces );
+    }
+
+    public static void printCompilationErrors(ICompilationUnit unit,String source,boolean printStackTraces) 
+    {
+        if ( unit.hasErrors() ) 
+        {
+            final List<ICompilationError> errors = new ArrayList<ICompilationError>(unit.getErrors() );
+
+            Collections.sort( errors ,new Comparator<ICompilationError>() {
+
+                @Override
+                public int compare(ICompilationError o1, ICompilationError o2) 
+                {
+                    if ( o1 instanceof CompilationError && o2 instanceof CompilationError ) 
+                    {
+                        CompilationError err1 = (CompilationError) o1;
+                        CompilationError err2 = (CompilationError) o2;
+                        return Integer.valueOf( err1.getLocation().getStartingOffset() ).compareTo( Integer.valueOf( err2.getLocation().getStartingOffset() ) );
+                    }
+                    return 0;
+                }} );
+
+            for ( Iterator<ICompilationError> it = errors.iterator(); it.hasNext(); )
+            {
+                final  ICompilationError error=it.next(); 
+                final int errorOffset;
                 ITextRegion range;
                 if ( error.getLocation() != null ) {
                     range = error.getLocation();
@@ -233,58 +308,58 @@ public class Misc {
                         range = null;
                     }
                 }                
-                
-			    int line = error.getLineNumber();
-			    int column = error.getColumnNumber();
-			    if ( column == -1 && ( error.getErrorOffset() != -1 && error.getLineStartOffset() != -1 ) )
-			    {
-			        column = error.getErrorOffset() - error.getLineStartOffset()+1;
-			    }
-			    
-			    if ( (line == -1 || column == -1) & errorOffset != -1 ) {
-			        try {
-			            SourceLocation location = unit.getSourceLocation( range );
-			            line = location.getLineNumber();
-			            column = errorOffset - location.getLineStartOffset()+1;
-			            if ( column < 1 ) {
-			                column = -1;
-			            }
-			        } catch(Exception e) {
-			            // can't help it
-			        }
-			    }
-			    
-			    final boolean hasLocation = line != -1 && column != -1;
-			    final String locationString;
-			    if ( hasLocation ) {
-			        locationString="line "+line+", column "+column+": ";
-			    } else if ( errorOffset != -1 ) {
-	                locationString="offset "+errorOffset+": ";
-			    } else {
-	                locationString="< unknown location >: ";
-			    }
-			    
-			    boolean hasSource=false;
-			    String sourceLine = null;
-			    if ( line != -1 || range != null ) 
-			    {
-			        Line thisLine=null;
-			        Line nextLine=null;
-			        
-			        if ( line != -1 ) 
-			        {
-    			        try {
-    			            thisLine = error.getCompilationUnit().getLineByNumber( line );
-    			            IScanner scanner = new Scanner( source );
-    			            scanner.setCurrentParseIndex( thisLine.getLineStartingOffset() );
-    			            while ( ! scanner.eof() && scanner.peek() != '\n' ) {
-    			                scanner.read();
-    			            }
-    			            nextLine = new Line( line+1 , scanner.currentParseIndex() );
-    			            
-    			        } catch(Exception e) {
-    			            // can't help it
-    			        }
+
+                int line = error.getLineNumber();
+                int column = error.getColumnNumber();
+                if ( column == -1 && ( error.getErrorOffset() != -1 && error.getLineStartOffset() != -1 ) )
+                {
+                    column = error.getErrorOffset() - error.getLineStartOffset()+1;
+                }
+
+                if ( (line == -1 || column == -1) & errorOffset != -1 ) {
+                    try {
+                        SourceLocation location = unit.getSourceLocation( range );
+                        line = location.getLineNumber();
+                        column = errorOffset - location.getLineStartOffset()+1;
+                        if ( column < 1 ) {
+                            column = -1;
+                        }
+                    } catch(Exception e) {
+                        // can't help it
+                    }
+                }
+
+                final boolean hasLocation = line != -1 && column != -1;
+                final String locationString;
+                if ( hasLocation ) {
+                    locationString="line "+line+", column "+column+": ";
+                } else if ( errorOffset != -1 ) {
+                    locationString="offset "+errorOffset+": ";
+                } else {
+                    locationString="< unknown location >: ";
+                }
+
+                boolean hasSource=false;
+                String sourceLine = null;
+                if ( line != -1 || range != null ) 
+                {
+                    Line thisLine=null;
+                    Line nextLine=null;
+
+                    if ( line != -1 ) 
+                    {
+                        try {
+                            thisLine = error.getCompilationUnit().getLineByNumber( line );
+                            IScanner scanner = new Scanner( source );
+                            scanner.setCurrentParseIndex( thisLine.getLineStartingOffset() );
+                            while ( ! scanner.eof() && scanner.peek() != '\n' ) {
+                                scanner.read();
+                            }
+                            nextLine = new Line( line+1 , scanner.currentParseIndex() );
+
+                        } catch(Exception e) {
+                            // can't help it
+                        }
                         if ( thisLine != null && nextLine != null ) {
                             sourceLine = new TextRegion( thisLine.getLineStartingOffset() , nextLine.getLineStartingOffset() - thisLine.getLineStartingOffset() ).apply( source );
                         } else {
@@ -292,58 +367,58 @@ public class Misc {
                             column=1;      
                         }
                         hasSource = true;
-			        } else { // range != null
-			            sourceLine = range.apply( source );
-			            column=1;
-			            hasSource = true;
-			        }
-			    }
-			    
-			    if ( hasSource ) {
-			        sourceLine = sourceLine.replaceAll( Pattern.quote("\r\n") , "" ).replaceAll( Pattern.quote("\n") , "" ).replaceAll("\t" , " ");		
-			        final String trimmedSourceLine = removeLeadingWhitespace( sourceLine );
-			        if ( column != -1 && trimmedSourceLine.length() != sourceLine.length() ) {
-			            column -= ( sourceLine.length() - trimmedSourceLine.length() );
-			        }
-			        sourceLine = trimmedSourceLine;			        
-			    }
-			    
-			    String firstLine;
+                    } else { // range != null
+                        sourceLine = range.apply( source );
+                        column=1;
+                        hasSource = true;
+                    }
+                }
+
+                if ( hasSource ) {
+                    sourceLine = sourceLine.replaceAll( Pattern.quote("\r\n") , "" ).replaceAll( Pattern.quote("\n") , "" ).replaceAll("\t" , " ");		
+                    final String trimmedSourceLine = removeLeadingWhitespace( sourceLine );
+                    if ( column != -1 && trimmedSourceLine.length() != sourceLine.length() ) {
+                        column -= ( sourceLine.length() - trimmedSourceLine.length() );
+                    }
+                    sourceLine = trimmedSourceLine;			        
+                }
+
+                String firstLine;
                 String secondLine=null;			    
-			    if ( hasLocation ) 
-			    {
-			        if ( hasSource ) {
-			            firstLine=locationString+sourceLine+"\n";
-			            secondLine=StringUtils.repeat(" " ,locationString.length())+StringUtils.repeat( " ", (column-1) )+"^ "+error.getMessage()+"\n";
-			        } else {
+                if ( hasLocation ) 
+                {
+                    if ( hasSource ) {
+                        firstLine=locationString+sourceLine+"\n";
+                        secondLine=StringUtils.repeat(" " ,locationString.length())+StringUtils.repeat( " ", (column-1) )+"^ "+error.getMessage()+"\n";
+                    } else {
                         firstLine=locationString+error.getMessage();			            
-			        }
-			    } else {
-			        firstLine="Unknown error: "+error.getMessage();
-			    }
-			    System.err.print( firstLine );
-			    if ( secondLine != null ) {
-			        System.err.print( secondLine );
-			    }
-			    System.out.println();
-			    
-				if ( printStackTraces && error.getCause() != null ) {
-					error.getCause().printStackTrace();
-				}
-				
-			}
-		}    	
-	}
-	
-	public static String removeLeadingWhitespace(String input) 
-	{
-	    StringBuilder output = new StringBuilder(input);
-	    while ( output.length() > 0 && Character.isWhitespace( output.charAt( 0 ) ) ) {
-	        output.delete( 0 , 1 );
-	    }
-	    return output.toString();
-	}
-	
+                    }
+                } else {
+                    firstLine="Unknown error: "+error.getMessage();
+                }
+                System.err.print( firstLine );
+                if ( secondLine != null ) {
+                    System.err.print( secondLine );
+                }
+                System.out.println();
+
+                if ( printStackTraces && error.getCause() != null ) {
+                    error.getCause().printStackTrace();
+                }
+
+            }
+        }    	
+    }
+
+    public static String removeLeadingWhitespace(String input) 
+    {
+        StringBuilder output = new StringBuilder(input);
+        while ( output.length() > 0 && Character.isWhitespace( output.charAt( 0 ) ) ) {
+            output.delete( 0 , 1 );
+        }
+        return output.toString();
+    }
+
     public static String padRight(String input,int length) 
     {
         final int delta = length - input.length();
@@ -366,11 +441,21 @@ public class Misc {
         }
         return result;
     }
-    
+
     public static String toBinaryString(int value,int padToLength) {
-        
+        return toBinaryString(value,padToLength,new int[0]);
+    }
+
+    public static String toBinaryString(int value,int padToLength,int... separatorsAtBits) {
+
         final StringBuilder result = new StringBuilder();
-        
+        final Set<Integer> separators = new HashSet<Integer>();
+        if ( ! ArrayUtils.isEmpty( separatorsAtBits ) ) {
+            for ( int bitPos : separatorsAtBits ) {
+                separators.add( bitPos );
+            }
+        }
+
         for ( int i = 15 ; i >= 0 ; i-- ) {
             if ( ( value & ( 1 << i ) ) != 0 ) {
                 result.append("1");
@@ -378,13 +463,60 @@ public class Misc {
                 result.append("0");
             }
         }
-        
+
         final String s = result.toString();
         if ( s.length() < padToLength ) {
             final int delta = padToLength - s.length();
             return StringUtils.repeat("0" , delta )+s;
         }
+        if ( ! separators.isEmpty() ) 
+        {
+            final StringBuilder finalResult = new StringBuilder();
+            for ( int i = result.length() -1 ; i >= 0 ; i-- ) {
+                finalResult.append( result.charAt( i ) );
+                final int bitOffset = result.length() -2-i;
+                if ( separators.contains( bitOffset ) ) {
+                    finalResult.append(" ");
+                }
+            }
+            return finalResult.toString();
+        }
         return s;
     }	
 
+    public static String toString(List<DisassembledLine> lines) 
+    {
+        StringBuilder result = new StringBuilder();
+        final Iterator<DisassembledLine> it = lines.iterator();
+        while( it.hasNext() ) 
+        {
+            final DisassembledLine line = it.next();
+            result.append( Misc.toHexString( line.getAddress().getValue() ) ).append(": ").append( line.getContents() );
+            if ( it.hasNext() ) {
+                result.append("\n");
+            }
+        }
+        return result.toString();
+    }
+
+    public static void copyResource(IResource source,IResource target) throws IOException {
+
+        if ( source == null ) {
+            throw new IllegalArgumentException("source must not be NULL.");
+        }
+        if ( target == null ) {
+            throw new IllegalArgumentException("target must not be NULL.");
+        }
+        final InputStream in = source.createInputStream();
+        try {
+            final OutputStream out = target.createOutputStream(false);
+            try {
+                IOUtils.copy(in , out );
+            } finally {
+                IOUtils.closeQuietly( out );
+            }
+        } finally {
+            IOUtils.closeQuietly( in );
+        }
+    }
 }

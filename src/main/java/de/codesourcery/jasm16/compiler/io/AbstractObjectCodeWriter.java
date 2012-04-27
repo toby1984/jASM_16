@@ -32,6 +32,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     private OutputStream writer;
 
     private int currentWriteOffset = 0;
+    private int firstWriteOffset=0;
     
     protected AbstractObjectCodeWriter() {
     }
@@ -62,6 +63,12 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
             }
         }
         return writer;
+    }
+    
+    @Override
+    public Address getFirstWriteOffset()
+    {
+        return Address.valueOf( firstWriteOffset );
     }
     
    protected abstract OutputStream createOutputStream() throws IOException;
@@ -105,7 +112,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     }
 
     @Override
-    public final void advanceToWriteOffset(Address offset) throws IOException
+    public void advanceToWriteOffset(Address offset) throws IOException
     {
         if (offset == null) {
             throw new IllegalArgumentException("offset must not be NULL.");
@@ -117,6 +124,10 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         
         if ( offset.getValue() == currentWriteOffset ) {
             return;
+        }
+        
+        if ( firstWriteOffset == 0 ) {
+            firstWriteOffset  = offset.getValue();
         }
         
         if ( this.writer == null ) {

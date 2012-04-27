@@ -107,6 +107,7 @@ import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
+import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 
 /**
  * Crude editor to test the compiler's inner workings.
@@ -1190,8 +1191,6 @@ public class ASTInspector {
 			enableDocumentListener();
 		}
 	}
-
-
 
 	private void setupCompiler() 
 	{

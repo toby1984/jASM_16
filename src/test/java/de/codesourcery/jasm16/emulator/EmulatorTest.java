@@ -18,7 +18,11 @@ public class EmulatorTest extends TestCase
     public void testEmulator() throws InterruptedException {
         
         final String source = ":label SET a,1\n"+
-                              "       SET PC,label";
+                              "       ADD b ,1\n"+
+                              "       ADD [stuff],1\n"+
+                              "       SET c , [stuff]\n"+
+                              "       SET PC,label\n"+
+                              ":stuff .dat 0x000";
         
         final ICompiler c = new de.codesourcery.jasm16.compiler.Compiler();
         final ByteArrayObjectCodeWriterFactory factory = new ByteArrayObjectCodeWriterFactory();
@@ -34,14 +38,12 @@ public class EmulatorTest extends TestCase
         assertNotNull( objectCode );
         assertTrue( "bad size: "+objectCode.length , objectCode.length > 0 );
         
-        final Emulator emu = new Emulator();
+        final IEmulator emu = new Emulator();
         
-        emu.calibrate();
-        
-        emu.load(unit.getObjectCodeStartOffset() , objectCode);
+        emu.loadMemory(unit.getObjectCodeStartOffset() , objectCode);
         
         emu.start();
-        Thread.sleep( 10 * 1000 );
+        Thread.sleep( 20 * 1000 );
         emu.stop();
     }
 }

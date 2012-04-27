@@ -418,6 +418,12 @@ public class InstructionNodeTest extends TestHelper
             {
                 return Address.ZERO;
             }
+            
+            @Override
+            public Address getFirstWriteOffset()
+            {
+                return Address.ZERO;
+            }            
 
             @Override
             public void advanceToWriteOffset(Address offset) throws IOException

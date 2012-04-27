@@ -37,10 +37,12 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
+import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -149,6 +151,25 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 		Misc.printCompilationErrors( unit , source , true );
         assertSourceCode( source , unit.getAST() );  
 		return unit;
+    }    
+    
+    protected byte[] compileToByteCode(String source) 
+    {
+        
+        final ICompiler c = new de.codesourcery.jasm16.compiler.Compiler();
+        final ByteArrayObjectCodeWriterFactory factory = new ByteArrayObjectCodeWriterFactory();
+        c.setObjectCodeWriterFactory( factory );
+        
+        final ICompilationUnit unit = CompilationUnit.createInstance("string" , source );
+        
+        c.compile( Collections.singletonList( unit ) );
+        
+        if ( unit.hasErrors() ) {
+            Misc.printCompilationErrors( unit , source , true );
+            throw new RuntimeException("Internal error, compilation failed.");
+        }
+        
+        return factory.getBytes();
     }    
     
     protected final void assertDoesNotCompile(String source) {

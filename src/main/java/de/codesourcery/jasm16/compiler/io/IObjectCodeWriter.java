@@ -58,9 +58,17 @@ public interface IObjectCodeWriter extends Closeable
     public void deleteOutput() throws IOException;
     
     /**
+     * Returns the address where the first byte was written to
+     * by this writer.
+     * 
+     * @return first write offset (BYTE address !) or <code>null</code> if nothing has been written to this writer
+     */
+    public Address getFirstWriteOffset();
+    
+    /**
      * Returns the next memory location where object code would be written.
      * 
-     * @return
+     * @return BYTE address !
      */
     public Address getCurrentWriteOffset();
     
@@ -69,7 +77,7 @@ public interface IObjectCodeWriter extends Closeable
      * output at the specified memory location.
      *  
      * <p>Note that currently you can only <b>advance</b> to a location that hasn't already been output.</p>
-     * @param offset
+     * @param offset address (BYTE offset!)
      * @throws IllegalStateException if this writer is already past the given address
      */
     public void advanceToWriteOffset(Address offset) throws IOException;

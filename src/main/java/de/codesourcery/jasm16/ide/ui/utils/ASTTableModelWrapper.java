@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.utils;
+package de.codesourcery.jasm16.ide.ui.utils;
 
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.TreeModel;

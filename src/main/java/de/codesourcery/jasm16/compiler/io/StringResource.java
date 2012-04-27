@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.compiler.io;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,7 +32,7 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public class StringResource implements IResource
 {
-    private final String data;
+    private String data;
     private final String identifier;
     
     public StringResource(String identifier, String data)
@@ -56,7 +57,15 @@ public class StringResource implements IResource
     @Override
     public OutputStream createOutputStream(boolean append) throws IOException
     {
-        throw new UnsupportedOperationException("not possible");
+        final OutputStream result = new ByteArrayOutputStream() {
+            @Override
+            public void close() throws IOException
+            {
+                super.close();
+                data = new String( toByteArray() );
+            }
+        };
+        return result;
     }
 
     @Override
