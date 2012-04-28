@@ -37,6 +37,7 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.StringResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
@@ -76,7 +77,7 @@ public class CompilationUnit implements ICompilationUnit {
     
     public static ICompilationUnit createInstance(final String identifier, final String source) 
     {
-        return new CompilationUnit( identifier  , new StringResource( identifier , source) );
+        return new CompilationUnit( identifier  , new StringResource( identifier , source , ResourceType.SOURCE_CODE) );
     }
 
     @Override
@@ -153,10 +154,9 @@ public class CompilationUnit implements ICompilationUnit {
         return result;
     }
 
-    public static ICompilationUnit createInstance(final String identifier, 
-            final File sourceFile) 
+    public static ICompilationUnit createInstance(final String identifier,final File sourceFile) 
     {
-        return new CompilationUnit(identifier , new FileResource( sourceFile ) );
+        return new CompilationUnit(identifier , new FileResource( sourceFile , ResourceType.SOURCE_CODE ) );
     }	
 
     @SuppressWarnings({ "unchecked", "cast" })
@@ -196,6 +196,9 @@ public class CompilationUnit implements ICompilationUnit {
         }
         if ( resource == null ) {
             throw new IllegalArgumentException("resource must not be NULL.");
+        }
+        if ( ! resource.hasType( ResourceType.SOURCE_CODE ) ) {
+        	throw new IllegalArgumentException("Cannot create compilation unit from resource "+resource);
         }
         this.resource = resource;
         this.identifier=identifier;

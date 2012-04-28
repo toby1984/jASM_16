@@ -15,17 +15,23 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
 
 public interface IWorkspace
 {
-    public List<IAssemblerProject> getAllProjects();
-    
+	public File getBaseDirectory();
+	
     public boolean doesProjectExist(String name);
     
-    public IAssemblerProject createNewProject(String name);
+    public IAssemblerProject getProjectByName(String name);
+    
+    public IAssemblerProject createNewProject(String name) throws IOException;
+
+    public List<IAssemblerProject> getAllProjects();
     
     public void deleteProject(IAssemblerProject project);
     
@@ -36,4 +42,6 @@ public interface IWorkspace
     public void addWorkspaceListener(IWorkspaceListener listener);
     
     public void removeWorkspaceListener(IWorkspaceListener listener);
+    
+    public void reloadWorkspace();
 }

@@ -95,9 +95,11 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
+import de.codesourcery.jasm16.compiler.io.AbstractResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.ide.IDEMain;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.MainFrame;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
@@ -138,7 +140,7 @@ public class SourceEditorView extends AbstractView {
     // compiler
     
     private final IWorkspace workspace;
-    private final IDEMain ideMain;
+    private final MainFrame ideMain;
     
     private ICompilationUnit wrappedUnit;
     private IResource originalUnit;    
@@ -477,7 +479,7 @@ public class SourceEditorView extends AbstractView {
         }
     };
 
-    public SourceEditorView(IDEMain main,IWorkspace workspace) 
+    public SourceEditorView(MainFrame main,IWorkspace workspace) 
     {
         if (main == null) {
             throw new IllegalArgumentException("main must not be NULL.");
@@ -620,7 +622,7 @@ public class SourceEditorView extends AbstractView {
         
         final String source = Misc.readSource( unit.getResource() );
 
-        final IResource documentResource = new IResource() {
+        final IResource documentResource = new AbstractResource(ResourceType.SOURCE_CODE) {
             
             @Override
             public String readText(ITextRegion range) throws IOException

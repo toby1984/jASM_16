@@ -16,6 +16,8 @@
 package de.codesourcery.jasm16.utils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -31,6 +33,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationError;
@@ -49,6 +52,8 @@ import de.codesourcery.jasm16.scanner.Scanner;
  */
 public class Misc {
 
+	private static final Logger LOG = Logger.getLogger(Misc.class);
+	
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
     public static String toHexString(byte[] data) 
@@ -525,5 +530,58 @@ public class Misc {
         } finally {
             IOUtils.closeQuietly( in );
         }
+    }
+    
+    public static void checkFileExistsAndIsDirectory(File f,boolean createIfMissing) throws IOException 
+    {
+		if ( ! f.exists() ) 
+		{
+			if ( ! createIfMissing || ! f.mkdirs() )
+			{
+				throw new IOException("Non-existant directory "+f.getAbsolutePath() );
+			}
+		}
+		if ( ! f.isDirectory() ) {
+			throw new IOException( f.getAbsolutePath()+" is no directory");
+		}
+    }
+    
+    public static boolean isSourceFile(File file) 
+    {
+		if ( file.isFile() ) {
+			final String name = file.getName();
+			if ( name.toLowerCase().endsWith(".dasm") || 
+				 name.toLowerCase().endsWith(".dasm16" ) ||
+				 name.toLowerCase().endsWith(".asm") ) 
+			{
+				return true;
+			}
+		}
+		return false;
+    }
+    
+    public static File getUserHomeDirectory() 
+    {
+		final String homeDirectory = System.getProperty("user.home");
+		if ( StringUtils.isBlank( homeDirectory ) ) 
+		{
+			LOG.fatal("createDefaultConfiguration(): Failed to get user's home directory");
+			throw new RuntimeException("Failed to get user's home directory");
+		}
+		return new File( homeDirectory );
+    }
+    
+    public static void writeFile(File file,String s) throws IOException {
+    	writeFile( file , s.getBytes() );
+    }
+    
+    public static void writeFile(File file,byte[] data) throws IOException {
+    	
+    	final FileOutputStream out = new FileOutputStream(file);
+    	try {
+    		IOUtils.write( data , out );
+    	} finally {
+    		IOUtils.closeQuietly( out );
+    	}
     }
 }

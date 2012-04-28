@@ -15,29 +15,87 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
 
 public class DefaultWorkspace implements IWorkspace
 {
+	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
+	
     private final List<IAssemblerProject> projects = new ArrayList<IAssemblerProject>();
-    
     private final List<IWorkspaceListener> listeners = new ArrayList<IWorkspaceListener>();
+
+    private final AtomicBoolean projectsLoaded = new AtomicBoolean(false);
+	private final IApplicationConfig appConfig;
+	
+    public DefaultWorkspace(IApplicationConfig appConfig) throws IOException 
+    {
+    	if (appConfig == null) {
+			throw new IllegalArgumentException("appConfig must not be NULL");
+		}
+    	this.appConfig = appConfig;
+    }
+    
+    @Override
+    public File getBaseDirectory() {
+    	return appConfig.getWorkspaceDirectory();
+    }
     
     @Override
     public List<IAssemblerProject> getAllProjects()
     {
+    	loadProjects();
         return new ArrayList<IAssemblerProject>( projects );
+    }
+    
+    protected void loadProjects() 
+    {
+    	if ( projectsLoaded.compareAndSet( false , true ) ) 
+    	{
+	    	final File[] topLevelDirs = getBaseDirectory().listFiles( new FileFilter() {
+	
+				@Override
+				public boolean accept(File pathname) 
+				{
+					return pathname.isDirectory() && pathname.canRead();
+				}
+	    	} );
+	    	
+	    	final List<IAssemblerProject> tmp = new ArrayList<IAssemblerProject>();
+	    	for ( File dir : topLevelDirs ) {
+				try {
+					tmp.add( loadProject( dir ) );
+				} catch (IOException e) {
+					LOG.error("loadProjects(): Failed to load project from "+dir.getAbsolutePath());
+				}
+	    	}
+	    	this.projects.addAll( tmp );
+    	}
+    }
+    
+    private IAssemblerProject loadProject(File baseDir) throws IOException 
+    {
+    	final ProjectConfiguration config = new ProjectConfiguration( baseDir );
+    	config.load();
+    	return new AssemblerProject( config );
     }
     
     @Override
     public boolean doesProjectExist(String name)
     {
+    	loadProjects();
+    	
         for ( IAssemblerProject existing : projects ) {
             if ( existing.getName().equals( name ) ) {
                 return true;
@@ -47,7 +105,7 @@ public class DefaultWorkspace implements IWorkspace
     }
 
     @Override
-    public IAssemblerProject createNewProject(String name)
+    public IAssemblerProject createNewProject(String name) throws IOException
     {
         if (StringUtils.isBlank(name)) {
             throw new IllegalArgumentException("name must not be NULL/blank.");
@@ -57,7 +115,19 @@ public class DefaultWorkspace implements IWorkspace
             throw new IllegalArgumentException("A project with this name already exists");
         }
         
-        final IAssemblerProject result = new UnsavedProject(name);
+        final File baseDir = new File( getBaseDirectory() , name );
+        if ( ! baseDir.exists() ) 
+        {
+        	if ( ! baseDir.mkdirs() ) {
+                throw new IOException("Failed to create project base directory "+baseDir.getAbsolutePath());
+        	}
+        }
+        
+        final ProjectConfiguration config = new ProjectConfiguration(baseDir);
+        config.setProjectName( name );
+        config.create();
+        
+		final IAssemblerProject result = new AssemblerProject( config );
         projects.add( result );
         return result;
     }
@@ -68,6 +138,9 @@ public class DefaultWorkspace implements IWorkspace
         if (project == null) {
             throw new IllegalArgumentException("project must not be NULL.");
         }
+    	
+        loadProjects();
+    	
         for (Iterator<IAssemblerProject> it = projects.iterator(); it.hasNext();) {
             final IAssemblerProject existing = it.next();
             if ( existing.getName().equals( project.getName() ) ) {
@@ -84,10 +157,13 @@ public class DefaultWorkspace implements IWorkspace
             throw new IllegalArgumentException("project must not be NULL.");
         }
         
+        loadProjects();
+        
         for (Iterator<IAssemblerProject> it = projects.iterator(); it.hasNext();) 
         {
             final IAssemblerProject existing = it.next();
-            if ( existing.getName().equals( project.getName() ) ) {
+            if ( existing.getName().equals( project.getName() ) ) 
+            {
                 it.remove();
             }
         }      
@@ -139,5 +215,24 @@ public class DefaultWorkspace implements IWorkspace
             listeners.remove( listener );
         }        
     }
+
+	@Override
+	public void reloadWorkspace() {
+		projectsLoaded.set( false );	
+		loadProjects();
+	}
+
+	@Override
+	public IAssemblerProject getProjectByName(String name) 
+	{
+		loadProjects();
+		for ( IAssemblerProject p : projects ) 
+		{
+			if ( p.getName().equals( name ) ) {
+				return p;
+			}
+		}
+		throw new NoSuchElementException("Found no project named '"+name+"'");
+	}
 
 }

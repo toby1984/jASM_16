@@ -19,6 +19,7 @@ import java.io.File;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 public class FileResourceResolver implements IResourceResolver 
@@ -57,7 +58,7 @@ public class FileResourceResolver implements IResourceResolver
             throw new ResourceNotFoundException( file.getAbsolutePath()+" is not a regular file." , identifier );
         }        
         
-        return new FileResource( file );
+        return new FileResource( file , ResourceType.UNKNOWN);
     }
 
     @Override
@@ -78,6 +79,6 @@ public class FileResourceResolver implements IResourceResolver
         if ( parentFile == null ) {
             return resolve( identifier );
         }
-        return new FileResource( new File( parentFile , identifier ));
+        return new FileResource( new File( parentFile , identifier ) , ResourceType.UNKNOWN );
     }
 }

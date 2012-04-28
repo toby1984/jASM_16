@@ -32,14 +32,16 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class ClassPathResource implements IResource
+public class ClassPathResource extends AbstractResource
 {
     private final String classpathLocation;
     
     private byte[] contents;
     
-    public ClassPathResource(String classpathLocation)
+    public ClassPathResource(String classpathLocation,ResourceType type)
     {
+    	super(type);
+    	
 		if (StringUtils.isBlank(classpathLocation)) {
 			throw new IllegalArgumentException(
 					"classpathLocation must not be NULL/blank");

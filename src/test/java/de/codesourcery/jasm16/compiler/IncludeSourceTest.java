@@ -23,6 +23,7 @@ import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.StringResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.parser.Identifier;
@@ -56,7 +57,7 @@ public class IncludeSourceTest extends TestHelper {
 			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
 			}
@@ -106,9 +107,9 @@ public class IncludeSourceTest extends TestHelper {
 			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
 				} else if ( "source1".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");				
 			}

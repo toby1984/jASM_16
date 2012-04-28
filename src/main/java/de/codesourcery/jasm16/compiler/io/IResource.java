@@ -31,11 +31,24 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public interface IResource
 {
+	
+	public static enum ResourceType {
+		SOURCE_CODE,
+		OBJECT_FILE,
+		UNKNOWN;
+	}
+	
 	/**
 	 * Returns this resource's identifier.
 	 * @return
 	 */
 	public String getIdentifier();
+	
+	public ResourceType getType();
+	
+	public void setType(ResourceType type);
+	
+	public boolean hasType(ResourceType t);
 	
     /**
      * Returns an input stream to read from.

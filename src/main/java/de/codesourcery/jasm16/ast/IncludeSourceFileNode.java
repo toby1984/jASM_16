@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -75,6 +76,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		mergeWithAllTokensTextRegion( tok );
 		try {
 			resource = context.resolveRelative( tok.getContents() , context.getCompilationUnit().getResource() );
+			resource.setType( ResourceType.SOURCE_CODE );
 		} 
 		catch (ResourceNotFoundException e) 
 		{

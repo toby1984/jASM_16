@@ -31,14 +31,15 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class FileResource implements IResource
+public class FileResource extends AbstractResource 
 {
     private final File file;
     
     private String contents;
     
-    public FileResource(File file)
+    public FileResource(File file,ResourceType type)
     {
+    	super( type );
         if (file == null) {
             throw new IllegalArgumentException("file must not be NULL.");
         }

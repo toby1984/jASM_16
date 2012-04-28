@@ -21,10 +21,13 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 
 public interface IAssemblerProject extends IResourceResolver
 {
     public String getName();
+    
+    public ProjectConfiguration getConfiguration();
     
     public IObjectCodeWriterFactory getObjectCodeWriterFactory();
     
@@ -32,7 +35,7 @@ public interface IAssemblerProject extends IResourceResolver
     
     public void unregisterResource(IResource resource );    
     
-    public List<IResource> getSourceFiles();
+    public List<IResource> getResources(ResourceType type);
     
     public List<IResource> getAllResources();
     
@@ -42,6 +45,4 @@ public interface IAssemblerProject extends IResourceResolver
      * @return
      */
     public  List<ICompilationUnit> getCompilationUnits();
-    
-    public void setCompilationUnits(List<ICompilationUnit> units);
 }

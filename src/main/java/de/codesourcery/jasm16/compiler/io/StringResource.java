@@ -30,13 +30,15 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class StringResource implements IResource
+public class StringResource extends AbstractResource
 {
     private String data;
     private final String identifier;
     
-    public StringResource(String identifier, String data)
+    public StringResource(String identifier, String data,ResourceType type)
     {
+    	super( type );
+    	
 		if (StringUtils.isBlank(identifier)) {
 			throw new IllegalArgumentException(
 					"identifier must not be NULL/blank");

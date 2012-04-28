@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.utils;
 
+import static de.codesourcery.jasm16.compiler.io.IResource.ResourceType.SOURCE_CODE;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -102,10 +104,12 @@ import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.AbstractResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 
@@ -911,7 +915,7 @@ public class ASTInspector {
 
 		editorPane.setText( source );
 
-		final IResource resource = new IResource() {
+		final IResource resource = new AbstractResource(SOURCE_CODE) {
 
 			@Override
 			public String readText(ITextRegion range) throws IOException
@@ -1208,13 +1212,13 @@ public class ASTInspector {
 				if ( parent instanceof FileResource) {
 					return super.resolveRelative(identifier, parent);
 				}
-				return new FileResource( new File( file.getParentFile() , identifier ) );
+				return new FileResource( new File( file.getParentFile() , identifier ) , ResourceType.UNKNOWN);
 			}
 
 			@Override
 			public IResource resolve(String identifier) throws ResourceNotFoundException
 			{
-				return new FileResource( new File(identifier) );
+				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );
 			}
 		} );
 	}

@@ -25,6 +25,7 @@ import org.apache.commons.lang.ArrayUtils;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.io.FileResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IMemory;
 import de.codesourcery.jasm16.utils.Misc;
@@ -58,7 +59,7 @@ public class Disassembler
     		System.exit(1);
     	}
     	
-    	final byte[] data = Misc.readBytes( new FileResource( new File( args[0] ) ) );
+    	final byte[] data = Misc.readBytes( new FileResource( new File( args[0] ) , ResourceType.OBJECT_FILE ) );
     	System.out.println("Input file has "+data.length+" ("+Misc.toHexString( data.length)+") bytes.");
     	for ( DisassembledLine line : new Disassembler().disassemble( data , true ) ) {
     		System.out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents() );
