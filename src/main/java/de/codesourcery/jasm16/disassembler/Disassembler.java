@@ -88,19 +88,19 @@ public class Disassembler
             @Override
             public int nextWord()
             {
-                return memory.readWord( Address.valueOf( current++ ) );
+                return memory.readWord( Address.wordAddress( current++ ) );
             }
 
             @Override
             public boolean hasNext()
             {
-                return current < 65536;
+                return current < ( memory.getSizeInBytes() >> 1 )-1;
             }
 
             @Override
             public Address currentAddress()
             {
-                return Address.valueOf( current );
+                return Address.wordAddress( current );
             }
         };
 
@@ -109,7 +109,6 @@ public class Disassembler
         		iterator.hasNext() ) 
         {
             final Address current = iterator.currentAddress();
-            System.out.println("Disassembling at "+Misc.toHexString( current ) );
             String contents = dissassembleInstruction( iterator );
             
             if ( printHexDump ) 
@@ -516,6 +515,9 @@ public class Disassembler
         }
         if ( operandBits <= 0x17 ) 
         {
+        	if ( ! it.hasNext() ) {
+        		return "operand word missing";
+        	}
             final int nextWord = it.nextWord();
             return "["+ICPU.COMMON_REGISTER_NAMES[ operandBits - 0x10 ]+" + 0x"+Misc.toHexString( nextWord)+"]";            
         }
@@ -526,6 +528,9 @@ public class Disassembler
             case 0x19:
                 return "[SP]";
             case 0x1a:
+            	if ( ! it.hasNext() ) {
+            		return "operand word missing";
+            	}            	
                 int nextWord = it.nextWord();                
                 return "[SP + 0x"+Misc.toHexString( nextWord)+"]";
             case 0x1b:
@@ -535,9 +540,15 @@ public class Disassembler
             case 0x1d:
                 return "EX";
             case 0x1e:
+            	if ( ! it.hasNext() ) {
+            		return "operand word missing";
+            	}            	
                 nextWord = it.nextWord();
                 return "[ 0x"+Misc.toHexString( nextWord )+" ]";
             case 0x1f:
+            	if ( ! it.hasNext() ) {
+            		return "operand word missing";
+            	}            	
                 nextWord = it.nextWord();
                 return "0x"+Misc.toHexString( nextWord );
         }

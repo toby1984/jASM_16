@@ -76,7 +76,7 @@ public class IncludeSourceTest extends TestHelper {
 		
 		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
 		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
-		assertEquals( Address.valueOf( 0 ) , symbol.getAddress() );		
+		assertEquals( Address.wordAddress( 0 ) , symbol.getAddress() );		
 	}
 	
 	public void testCircularInclude() throws ParseException {

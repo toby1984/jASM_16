@@ -68,7 +68,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     @Override
     public Address getFirstWriteOffset()
     {
-        return Address.valueOf( firstWriteOffset );
+        return Address.byteAddress( firstWriteOffset );
     }
     
    protected abstract OutputStream createOutputStream() throws IOException;
@@ -108,7 +108,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     @Override
     public final Address getCurrentWriteOffset()
     {
-        return Address.valueOf( currentWriteOffset );
+        return Address.byteAddress( currentWriteOffset );
     }
 
     @Override

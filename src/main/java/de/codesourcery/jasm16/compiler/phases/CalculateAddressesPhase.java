@@ -129,7 +129,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
 							throw new RuntimeException("Internal error, address of label "+symbol+" is "+
 									byteAddress+" which is not on a 16-bit boundary?");
 						}
-						symbol.setAddress( Address.valueOf( wordAddress ) );
+						symbol.setAddress( Address.wordAddress( wordAddress ) );
 					}
 				} 
 				else if ( n instanceof ObjectCodeOutputNode) 

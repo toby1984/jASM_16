@@ -19,6 +19,7 @@ import org.apache.commons.lang.ArrayUtils;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.IMemory;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Wraps a byte array into an {@link IMemory}.
@@ -36,18 +37,24 @@ public class ByteArrayMemoryAdapter implements IMemory {
 		this.data = data;
 	}
 	
+	@Override
+	public int getSizeInBytes() {
+		return data.length;
+	}
+	
     @Override
     public int readWord(Address address)
     {
-        int offset = address.getValue()*2;
-        if ( offset >= data.length ) {
-            return 0;
+        int offset = address.toByteAddress().getValue();
+        if ( offset >= getSizeInBytes() ) {
+            throw new IllegalArgumentException("Address "+Misc.toHexString( address )+
+            		" is out-of-range (0-"+getSizeInBytes()+")");
         }
         int hi = data[offset++];
         if ( hi < 0 ) {
             hi+=256;
         }
-        if ( offset >= data.length ) {
+        if ( offset >= getSizeInBytes() ) {
             return ( hi & 0x00ff);
         }                
         int lo = data[offset];
@@ -61,14 +68,15 @@ public class ByteArrayMemoryAdapter implements IMemory {
     @Override
     public byte[] getBytes(Address startAddress, int lengthInBytes)
     {
-        if ( startAddress.getValue() < 0 || 
-             startAddress.getValue() > ( data.length >> 1) ) 
-        {
-            throw new IllegalArgumentException("Invalid address: "+startAddress);
+        final int startOffset =  startAddress.toByteAddress().getValue();
+        
+        if ( startOffset < 0 || startOffset >= getSizeInBytes() ) {
+            throw new IllegalArgumentException("Address is out-of-range: "+startAddress+"( expected 0 - "+
+            		Misc.toHexString(getSizeInBytes()));
         }
         
-        final int startOffset =  startAddress.getValue() << 1; // *2 => byte offset
-        final int endOffset = (int) ( ( ( startOffset + lengthInBytes ) % Address.MAX_ADDRESS ) & 0xffff ); 
+        
+        final int endOffset = (int) ( ( ( startOffset + lengthInBytes ) % getSizeInBytes() ) & 0xffff ); 
         if ( startOffset <= endOffset ) {
             return ArrayUtils.subarray( data , startOffset , endOffset-startOffset );
         }

@@ -37,7 +37,7 @@ public class HexDumpView extends AbstractView
     private final JTextArea textArea = new JTextArea();
     
     private IEmulator emulator;
-    private Address dumpStartAddress = Address.valueOf( 0 );
+    private Address dumpStartAddress = Address.wordAddress( 0 );
     private int numberOfBytesToDump = 128;
     private boolean printASCII = true;
     

@@ -66,7 +66,7 @@ public class FileObjectCodeWriterTest extends TestCase
         
         writer.advanceToWriteOffset( Address.ZERO );
         writer.writeObjectCode( "test".getBytes() );
-        assertEquals( Address.valueOf( 4 ) , writer.getCurrentWriteOffset() );
+        assertEquals( Address.byteAddress( 4 ) , writer.getCurrentWriteOffset() );
         writer.close();
         
         assertEquals( "test" , new String( writer.getBytes() ) );
@@ -75,7 +75,7 @@ public class FileObjectCodeWriterTest extends TestCase
     public void testSkipToZeroAfterWritingFails() throws Exception {
         
         writer.writeObjectCode( "test".getBytes() );
-        assertEquals( Address.valueOf( 4 ) , writer.getCurrentWriteOffset() );
+        assertEquals( Address.byteAddress( 4 ) , writer.getCurrentWriteOffset() );
         
         try {
             writer.advanceToWriteOffset( Address.ZERO );
@@ -91,10 +91,10 @@ public class FileObjectCodeWriterTest extends TestCase
         final byte[] input = "test".getBytes();
         final int offset = 7;
         
-        writer.advanceToWriteOffset( Address.valueOf( offset ) );
+        writer.advanceToWriteOffset( Address.byteAddress( offset ) );
 
         writer.writeObjectCode( input );
-        assertEquals( Address.valueOf( offset+input.length ) , writer.getCurrentWriteOffset() );
+        assertEquals( Address.byteAddress( offset+input.length ) , writer.getCurrentWriteOffset() );
         writer.close();
         
         final byte[] data = writer.getBytes();
@@ -110,10 +110,10 @@ public class FileObjectCodeWriterTest extends TestCase
         final byte[] input = "test".getBytes();
         final int offset = 3500;
         
-        writer.advanceToWriteOffset( Address.valueOf( offset ) );
+        writer.advanceToWriteOffset( Address.byteAddress( offset ) );
 
         writer.writeObjectCode( input );
-        assertEquals( Address.valueOf( offset+input.length ) , writer.getCurrentWriteOffset() );
+        assertEquals( Address.byteAddress( offset+input.length ) , writer.getCurrentWriteOffset() );
         writer.close();
         
         final byte[] data = writer.getBytes();
@@ -130,10 +130,10 @@ public class FileObjectCodeWriterTest extends TestCase
         final int offset = 8;
         
         writer.writeObjectCode( input );
-        writer.advanceToWriteOffset( Address.valueOf( offset ) );
+        writer.advanceToWriteOffset( Address.byteAddress( offset ) );
         writer.writeObjectCode( input );
         
-        assertEquals( Address.valueOf( offset+input.length ) , writer.getCurrentWriteOffset() );
+        assertEquals( Address.byteAddress( offset+input.length ) , writer.getCurrentWriteOffset() );
         writer.close();
         
         final byte[] data = writer.getBytes();

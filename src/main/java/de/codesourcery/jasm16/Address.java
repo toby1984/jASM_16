@@ -15,76 +15,68 @@
  */
 package de.codesourcery.jasm16;
 
-import de.codesourcery.jasm16.utils.Misc;
 
 /**
- * Represents an address in the DCPU-16 address space.
+ * Represents an address (immutable object).
+ * 
+ * <p>Since the DCPU only supports word-sized addressing , this is
+ * actually an abstract class that comes in two flavors (byte-sized addressing
+ * and word-sized addressing).
+ * </p>
+ * <p>Conversion between these types is possible using the {@link #toByteAddress()} and
+ * {@link #toWordAddress()} methods.
+ * </p>
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class Address
+public abstract class Address
 {
-	/**
-	 * DCPU-16 Address space size.
-	 */
-    public static final long MAX_ADDRESS = 65535;
+    public static final Address ZERO = new WordAddress(0);
     
-    public static final Address ZERO = new Address(0);
-    
-    private final int value;
-    
-    public static Address valueOf( long value) 
+    public static WordAddress wordAddress( long value) 
     {
-        if ( value == 0 ) {
-            return ZERO;
-        }
-        return new Address( value );
+        return new WordAddress( value );
     }
     
-    public boolean isLessThan(Address other) {
-        return this.value < other.value;
-    }
-    
-    /**
-     * Create a new instance.
-     * 
-     * @param value
-     * @throws IllegalArgumentException if the address is not within
-     * the DCPU-16 address space.
-     */
-    private Address(long value) throws IllegalArgumentException 
+    public static ByteAddress byteAddress( long value) 
     {
-        if ( value < 0 ) {
-            throw new IllegalArgumentException("Address value must be positive: "+value);
-        }
-        if ( value > MAX_ADDRESS ) {
-            throw new IllegalArgumentException("Address value must be less than "+MAX_ADDRESS+": "+value);
-        }        
-        this.value = (int) value;
+        return new ByteAddress( value );
+    }    
+    
+    public final boolean isLessThan(Address other) 
+    {
+        return this.toByteAddress().getValue() < other.toByteAddress().getValue();
     }
     
     @Override
-    public boolean equals(Object obj)
+    public final boolean equals(Object obj)
     {
         if ( obj == this ) {
             return true;
         }
-        if ( obj instanceof Address) {
-            return this.value == ((Address) obj).value;
+        if ( obj instanceof Address) 
+        {
+        	final int value1 = this.toByteAddress().getValue();
+        	final int value2 = ((Address) obj).toByteAddress().getValue();
+            return value1 == value2;
         }
         return false;
     }
     
-    public int getValue() {
-        return value;
-    }
+    /**
+     * Returns the raw value of this address.
+     * 
+     * <p>Make sure you know whether this is a word-sized or byte-sized
+     * address!
+     * </p>
+     * @return
+     */
+    public abstract int getValue();
     
-    @Override
-    public String toString()
-    {
-        return "0x"+Misc.toHexString( this.value );
-    }
-
+    public abstract ByteAddress toByteAddress();
+    	
+    public abstract WordAddress toWordAddress();
+    
 	public static int alignTo16Bit(int sizeInBytes) 
 	{
 		int result = sizeInBytes;

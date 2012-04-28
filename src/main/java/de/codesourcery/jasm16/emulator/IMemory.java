@@ -19,6 +19,8 @@ import de.codesourcery.jasm16.Address;
 
 public interface IMemory
 {
+	public int getSizeInBytes();
+	
     public int readWord(Address address);
     
     public void bulkLoad(Address startingOffset, byte[] data);

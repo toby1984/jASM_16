@@ -46,7 +46,7 @@ public class Emulator implements IEmulator {
         {
             // hack since java does not have volatile arrays
             memory = memory;
-            return memory[ address.getValue() ];
+            return memory[ address.toWordAddress().getValue() ];
         }
 
         @Override
@@ -55,7 +55,7 @@ public class Emulator implements IEmulator {
             // hack since java does not have volatile arrays
             memory = memory;
 
-            int current = startingOffset.getValue();
+            int current = startingOffset.toWordAddress().getValue();
             int pointer=0;
             int value=0;
             while ( pointer < data.length ) 
@@ -90,7 +90,12 @@ public class Emulator implements IEmulator {
                         result[index++] = (byte) ( value & 0xff );                 
                     }
                     return result;
-        }        
+        }
+
+		@Override
+		public int getSizeInBytes() {
+			return memory.length*2;
+		}        
     };
 
     // ============ CPU =============== 
@@ -118,13 +123,13 @@ public class Emulator implements IEmulator {
         @Override
         public Address getPC()
         {
-            return Address.valueOf( pc );
+            return Address.wordAddress( pc );
         }
 
         @Override
         public Address getSP()
         {
-            return Address.valueOf( sp );
+            return Address.wordAddress( sp );
         }
 
         @Override

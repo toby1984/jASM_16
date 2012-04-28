@@ -26,7 +26,7 @@ public class ASTTest extends TestHelper {
 		
 		ICompilationUnit unit = compile( source );
 		assertFalse( unit.hasErrors() );
-		assertEquals( Address.valueOf( 0x2000 ) , unit.getObjectCodeStartOffset() );
+		assertEquals( Address.wordAddress( 0x2000 ) , unit.getObjectCodeStartOffset() );
 	}
 	
 	public void testValidOrg2() throws Exception {
@@ -36,7 +36,7 @@ public class ASTTest extends TestHelper {
 		
 		ICompilationUnit unit = compile( source );
 		assertFalse( unit.hasErrors() );
-		assertEquals( Address.valueOf( 0x2000 ) , unit.getObjectCodeStartOffset() );
+		assertEquals( Address.wordAddress( 0x2000 ) , unit.getObjectCodeStartOffset() );
 	}	
 	public void testInvalidOrg1() throws Exception {
 		
@@ -45,7 +45,7 @@ public class ASTTest extends TestHelper {
 		
 		ICompilationUnit unit = compile( source );
 		assertTrue( unit.hasErrors() );
-		assertEquals( Address.valueOf( 0x2000 ) , unit.getObjectCodeStartOffset() );
+		assertEquals( Address.wordAddress( 0x2000 ) , unit.getObjectCodeStartOffset() );
 	}		
 	
 	public void testInvalidOrg2() throws Exception {
@@ -55,6 +55,6 @@ public class ASTTest extends TestHelper {
 		
 		ICompilationUnit unit = compile( source );
 		assertTrue( unit.hasErrors() );
-		assertEquals( Address.valueOf( 0x2000 ) , unit.getObjectCodeStartOffset() );
+		assertEquals( Address.wordAddress( 0x2000 ) , unit.getObjectCodeStartOffset() );
 	}	
 }

@@ -26,6 +26,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -37,7 +38,7 @@ public class StackView extends AbstractView
     private final JTextArea textArea = new JTextArea();
     
     private IEmulator emulator;
-    private Address startOfStack = Address.valueOf( 0 );
+    private Address startOfStack = Address.wordAddress( 0 );
     private int numberOfWordsToDump = 16;
     private boolean printASCII = true;
     
@@ -82,12 +83,12 @@ public class StackView extends AbstractView
         
         final int realStart;
         if ( startOfStack.getValue() - numberOfWordsToDump < 0 ) {
-            realStart = ((int) ( Address.MAX_ADDRESS - numberOfWordsToDump) ) & 0xffff;            
+            realStart = ((int) ( WordAddress.MAX_ADDRESS - numberOfWordsToDump) ) & 0xffff;            
         } else {
             realStart = (startOfStack.getValue() - numberOfWordsToDump) & 0xffff;
         }
                 
-        final byte[] data = emulator.getMemory().getBytes( Address.valueOf( realStart ) , numberOfWordsToDump*2);
+        final byte[] data = emulator.getMemory().getBytes( Address.wordAddress( realStart ) , numberOfWordsToDump*2);
         SwingUtilities.invokeLater( new Runnable() {
 
             @Override

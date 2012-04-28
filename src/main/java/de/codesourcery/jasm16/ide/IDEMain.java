@@ -185,7 +185,7 @@ public class IDEMain
             final byte[] objectCode = factory.getBytes();
             if ( objectCode != null ) {
                 // note that ByteArrayObjectCodeWriterFactory returns the address in BYTES
-                emulator.loadMemory( Address.valueOf( factory.getFirstWriteOffset() >> 1) , objectCode);
+                emulator.loadMemory( Address.byteAddress( factory.getFirstWriteOffset() ) , objectCode);
             }
         }
     }

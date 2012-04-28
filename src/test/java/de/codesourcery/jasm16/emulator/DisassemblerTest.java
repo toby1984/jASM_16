@@ -37,7 +37,7 @@ public class DisassemblerTest extends TestHelper
         
         final byte[] data = compileToByteCode( source );
         
-//        System.out.println("\n\nCOMPILED:\n\n"+Misc.toHexDumpWithAddresses( 0 , data , 1 ) );
+        System.out.println("\n\nCOMPILED:\n\n"+Misc.toHexDumpWithAddresses( 0 , data , 1 ) );
         final Disassembler dis = new Disassembler();
         final List<DisassembledLine> lines = dis.disassemble( Address.ZERO , data , 7 , false );
         final String[] expected = new String[]{
