@@ -32,12 +32,13 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.emulator.Disassembler.DisassembledLine;
+import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.scanner.IScanner;
 import de.codesourcery.jasm16.scanner.Scanner;
 
@@ -162,6 +163,12 @@ public class Misc {
         }
         return (char) val;
     }
+    
+    public static String toHexString(Address address) 
+    {
+        return toHexString( address.getValue() ); 
+    } 
+    
     public static String toHexString(int val) 
     {
         return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) ); 

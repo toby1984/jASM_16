@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package de.codesourcery.jasm16.emulator;
 
 import java.util.ArrayList;
@@ -51,8 +66,6 @@ public class Emulator implements IEmulator {
                 }
                 memory[ current++ ] = value;
             }
-            System.out.println( "\nMEMORY: \n\n");
-            System.out.println( Misc.toHexDumpWithAddresses( 0 , data , 8 ) );
         }
 
         @Override
@@ -331,8 +344,6 @@ public class Emulator implements IEmulator {
         @Override
         public void run() {
 
-            System.out.println("*** Emulation ready ***");
-
             while( isRunnable == false ) 
             {
                 try {
@@ -348,8 +359,6 @@ public class Emulator implements IEmulator {
 
             acknowledgeCommand();
 
-            System.out.println("*** Emulation started ***");
-
             lastStart = System.currentTimeMillis();
 
             while ( true ) {
@@ -360,7 +369,6 @@ public class Emulator implements IEmulator {
 
                     acknowledgeCommand();
 
-                    System.out.println("*** Emulation stopped ***");					
                     while ( isRunnable == false ) 
                     {
                         try 
@@ -374,8 +382,6 @@ public class Emulator implements IEmulator {
 
                     acknowledgeCommand();
 
-                    System.out.println("*** Emulation started ***");
-
                     lastStart = System.currentTimeMillis();   					
                 }
 
@@ -388,7 +394,6 @@ public class Emulator implements IEmulator {
     @Override
     public void executeOneInstruction() 
     {
-        System.out.println("Executing one instruction");
         int execDurationInCycles=-1; 
         try 
         {
@@ -1465,17 +1470,13 @@ public class Emulator implements IEmulator {
         final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
         final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
-        System.out.println("Calibration started...");
-
         /*
          * Warm-up JVM / JIT.
          */
-        System.out.println(" *** warm-up ***");
         double sum =0.0d;
         for ( int i = 0 ; i < 5 ; i++ ) {
             final double tmp = clockThread.measureDelayLoopInNanos();
             sum+= tmp;
-            System.out.println("Nanoseconds per delay loop execution: "+tmp);               
         }
 
         /*
@@ -1485,16 +1486,12 @@ public class Emulator implements IEmulator {
         final int LOOP_COUNT=5;
         sum =0.0d;
 
-        System.out.println(" *** measurement start ***");       
         for ( int i = 0 ; i < LOOP_COUNT ; i++ ) {
             final double tmp = clockThread.measureDelayLoopInNanos();
             sum+= tmp;
-            System.out.println("Nanoseconds per delay loop execution: "+tmp);           
         }
 
         final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
-
-        System.out.println("Avg. nanoseconds per delay loop execution: "+nanosPerDelayLoopExecution);
 
         /*
          * Measure max. cycles/sec on this machine... 
@@ -1512,8 +1509,6 @@ public class Emulator implements IEmulator {
         double adjustedNanosPerDelayLoopExecution = nanosPerDelayLoopExecution * adjustmentFactor;        
         clockThread.delay = (int) Math.round( delayNanosAccurate / adjustedNanosPerDelayLoopExecution );
 
-        System.out.println("Using initial delay of "+delayNanosAccurate+" nanos per cycle ( delay loop iterations: "+clockThread.delay+")");
-
         /*
          * Incrementally adjust the delay loop iteration count until
          * we reach clock rate (deviation).
@@ -1527,7 +1522,6 @@ public class Emulator implements IEmulator {
 
             if (deltaPercentage < 0.0d || deltaPercentage > 0.9d )
             {
-                System.out.println("Deviation: "+deltaPercentage+" % (delay loop iterations: "+clockThread.delay+")");
                 if ( increment < 1 ) {
                     increment = 1;
                 }
@@ -1542,7 +1536,6 @@ public class Emulator implements IEmulator {
             }
         } while ( true );
 
-        System.out.println("Calibration complete.");
     }
 
     private double measureActualCyclesPerSecond() 
