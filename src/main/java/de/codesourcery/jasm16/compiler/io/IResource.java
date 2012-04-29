@@ -35,6 +35,7 @@ public interface IResource
 	public static enum ResourceType {
 		SOURCE_CODE,
 		OBJECT_FILE,
+		EXECUTABLE,
 		UNKNOWN;
 	}
 	
@@ -85,4 +86,8 @@ public interface IResource
      * @throws IOException
      */
     public long getAvailableBytes() throws IOException;
+    
+    public boolean supportsDelete();
+    
+    public void delete() throws IOException,UnsupportedOperationException;
 }

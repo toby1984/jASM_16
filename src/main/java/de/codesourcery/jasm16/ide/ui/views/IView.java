@@ -13,21 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.ide;
+package de.codesourcery.jasm16.ide.ui.views;
 
-import java.io.File;
-import java.io.IOException;
+import javax.swing.JPanel;
 
-/**
- * Global IDE application configuration.
- * 
- * @author tobias.gierke@code-sourcery.de
- */
-public interface IApplicationConfig {
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
-	public File getWorkspaceDirectory();
-	
-	public void setWorkspaceDirectory(File dir) throws IOException;
-
-	void saveConfiguration() throws IOException;
+public interface IView
+{
+    public JPanel getPanel(IViewContainer container);
+    
+    public void dispose();
+    
+    public void refreshDisplay();
+    
+    public String getTitle();
 }

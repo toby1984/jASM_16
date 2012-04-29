@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.ast;
 
-import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;

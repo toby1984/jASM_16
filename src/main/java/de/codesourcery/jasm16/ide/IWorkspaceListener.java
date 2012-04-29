@@ -15,10 +15,30 @@
  */
 package de.codesourcery.jasm16.ide;
 
-import de.codesourcery.jasm16.compiler.io.IResource;
-
-public interface IWorkspaceListener
+/**
+ * A listener that gets notified whenever important
+ * changes happen to the {@link IWorkspace} instance the
+ * listener was registered with.
+ *  
+ * @author tobias.gierke@code-sourcery.de
+ * 
+ * @see IWorkspace#addWorkspaceListener(IWorkspaceListener)
+ * @see IWorkspace#removeWorkspaceListener(IWorkspaceListener)
+ */
+public interface IWorkspaceListener extends IResourceListener
 {
-
-    public void resourceChanged(IResource resource);
+	/**
+	 * Invoked after a new project was created in this workspace.
+	 * 
+	 * @param project
+	 */
+	public void projectCreated(IAssemblyProject project);
+	
+	/**
+	 * Invoked after a project has been removed from a workspace.
+	 * 
+	 * @param project
+	 */
+	public void projectDeleted(IAssemblyProject project);
+	
 }

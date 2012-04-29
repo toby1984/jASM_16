@@ -584,4 +584,78 @@ public class Misc {
     		IOUtils.closeQuietly( out );
     	}
     }
+    
+    public static void deleteRecursively(File file) throws IOException 
+    {
+    	deleteRecursively( file , null );
+    }
+
+    /**
+     * Visit directory tree in post-order, deleting files as we go along.
+     * 
+     * @param file
+     * @param visitor <code>null</code> or visitor that is invoked on each file/directory BEFORE
+     * it get's deleted. If the visitor returns <code>false</code> , the file/directory will NOT be deleted.
+     * @throws IOException
+     */
+    public static void deleteRecursively(File file,final IFileVisitor visitor) throws IOException {
+
+    	final IFileVisitor deletingVisitor = new IFileVisitor() {
+
+			@Override
+			public boolean visit(File file) throws IOException 
+			{
+				if ( visitor == null || visitor.visit( file ) ) 
+				{
+					file.delete();
+				}
+				return true;
+			}
+    	};
+    	
+    	visitDirectoryTreePostOrder( file , deletingVisitor );
+    }
+    
+	public interface IFileVisitor 
+	{
+		public boolean visit(File file) throws IOException;
+	}	
+
+	public static boolean visitDirectoryTreePostOrder(File currentDir,IFileVisitor visitor) throws IOException 
+	{
+		if ( currentDir.isDirectory() ) 
+		{
+			for ( File f : currentDir.listFiles() ) 
+			{
+				if ( ! visitDirectoryTreePostOrder( f , visitor ) ) {
+					return false;
+				}
+			}
+		}
+		
+		final boolean cont = visitor.visit( currentDir );
+		if ( ! cont ) {
+			return false;
+		}		
+		return true;
+	}    
+	
+	public static boolean visitDirectoryTreeInOrder(File currentDir,IFileVisitor visitor) throws IOException 
+	{
+		final boolean cont = visitor.visit( currentDir );
+		if ( ! cont ) {
+			return false;
+		}		
+		
+		if ( currentDir.isDirectory() ) 
+		{
+			for ( File f : currentDir.listFiles() ) 
+			{
+				if ( ! visitDirectoryTreeInOrder( f , visitor ) ) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}	
 }

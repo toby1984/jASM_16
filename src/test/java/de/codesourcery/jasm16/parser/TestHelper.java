@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -78,6 +79,14 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
             throw new UnsupportedOperationException("Not implemented"); 
         }
     };
+    
+    protected File getTempDir() throws IOException {
+    	File f = File.createTempFile("blubb"," blah");
+    	File parent = f.getParentFile();
+    	assertNotNull( parent );
+    	f.delete();
+    	return parent;
+    }
     
     protected static final IObjectCodeWriterFactory NOP_WRITER = new NullObjectCodeWriterFactory();
     
@@ -329,5 +338,9 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     		throws IOException 
     {
     	return CompilationUnit.createInstance( resource.getIdentifier() , resource );
+    }
+    
+    protected void assertEquals(File expected,File actual) {
+    	assertEquals( expected.getAbsolutePath() , actual.getAbsolutePath() );
     }
 }

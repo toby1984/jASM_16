@@ -161,5 +161,10 @@ public class DisassemblerView extends AbstractView
         }
         return panel;
     }
+
+	@Override
+	public String getTitle() {
+		return "Disassembly view";
+	}
     
 }

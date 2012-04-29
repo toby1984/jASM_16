@@ -42,7 +42,9 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     {
         try {
             closeHook();
-        } finally {
+        } 
+        finally 
+        {
             currentWriteOffset = 0;
             if ( writer != null ) {
                 writer.close();

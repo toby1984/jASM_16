@@ -159,5 +159,10 @@ public class StackView extends AbstractView
         }
         return panel;
     }
+
+	@Override
+	public String getTitle() {
+		return "stack view";
+	}
     
 }

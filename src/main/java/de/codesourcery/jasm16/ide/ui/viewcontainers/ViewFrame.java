@@ -13,19 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.ide.ui;
+package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.Collections;
+import java.util.List;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-public class ViewFrame extends JFrame
+import de.codesourcery.jasm16.ide.ui.views.IView;
+
+/**
+ * A view container that inherits from {@link JFrame} and 
+ * holds at most a single view.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
+public class ViewFrame extends JFrame implements IViewContainer
 {
-    @SuppressWarnings("unused")
     private final IView component;
     
     public ViewFrame(String title,final IView component) 
@@ -41,7 +50,7 @@ public class ViewFrame extends JFrame
             @Override
             public void windowClosing(WindowEvent e)
             {
-                component.dispose();                
+            	removeView( component );
             } 
         } );
         
@@ -58,9 +67,28 @@ public class ViewFrame extends JFrame
         cnstrs.gridwidth = GridBagConstraints.REMAINDER;
         cnstrs.gridx=0;
         cnstrs.gridy=0;
-        panel.add( component.getPanel() , cnstrs );
+        panel.add( component.getPanel(this) , cnstrs );
         getContentPane().add( panel );
         pack();
     }
+
+	@Override
+	public void removeView(IView view) 
+	{
+		if ( view == component ) {
+			component.dispose();
+			dispose();
+		}
+	}
+
+	@Override
+	public void addView(IView view) {
+		throw new UnsupportedOperationException("showView()");
+	}
+
+	@Override
+	public List<IView> getViews() {
+		return Collections.singletonList( component );
+	}
     
 }

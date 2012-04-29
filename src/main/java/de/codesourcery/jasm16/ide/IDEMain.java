@@ -17,24 +17,27 @@ package de.codesourcery.jasm16.ide;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.compiler.CompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.DesktopWindow;
+import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer;
 import de.codesourcery.jasm16.utils.Misc;
 
-
+/**
+ * Entry point (command-line executable) of the IDE application.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class IDEMain
 {
 	private static final Logger LOG = Logger.getLogger(IDEMain.class);
-	
-	private MainFrame mainFrame;
+
+	private DesktopWindow desktop;
     private IWorkspace workspace;
     
     public static void main(String[] args) throws IOException
@@ -48,11 +51,15 @@ public class IDEMain
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
 		
 		workspace = new DefaultWorkspace( appConfig );
+		workspace.open();
 		
 		createSampleProject( "sample-project" );
 		
-    	mainFrame = new MainFrame( workspace );
-    	mainFrame.setVisible( true );
+		desktop = new DesktopWindow();
+		desktop.addView( new WorkspaceExplorer( workspace ) );
+		desktop.pack();
+		desktop.setSize( 800 , 600 );		
+    	desktop.setVisible( true );
     }
     
     private void createSampleProject(String projectName) throws IOException
@@ -62,7 +69,7 @@ public class IDEMain
     		return;
     	}
     	
-    	final IAssemblerProject project = workspace.createNewProject( projectName );
+    	final IAssemblyProject project = workspace.createNewProject( projectName );
     	
     	final List<File> sourceFolders = project.getConfiguration().getSourceFolders();
     	if ( sourceFolders.isEmpty() ) {
@@ -82,6 +89,6 @@ public class IDEMain
         Misc.writeFile( sourceFile , source );        
         
         final IResource file = new FileResource( sourceFile ,ResourceType.SOURCE_CODE );
-        project.registerResource( file );
+        workspace.resourceCreated( project , file );
     }    
 }

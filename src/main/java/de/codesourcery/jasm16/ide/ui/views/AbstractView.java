@@ -21,7 +21,9 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 
-import de.codesourcery.jasm16.ide.ui.IView;
+import javax.swing.JPanel;
+
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
 public abstract class AbstractView implements IView
 {
@@ -30,6 +32,19 @@ public abstract class AbstractView implements IView
     public static final Color DEFAULT_BACKGROUND_COLOR = Color.BLACK;
     
     public static final Font DEFAULT_FONT=new Font( "Courier", Font.PLAIN , 13 );
+    
+    private IViewContainer container;
+
+    public final JPanel getPanel(IViewContainer container) {
+    	this.container = container;
+    	return getPanel();
+    }
+    
+    protected final IViewContainer getViewContainer() {
+    	return container;
+    }
+    
+    protected abstract JPanel getPanel();
     
     protected final Font getMonospacedFont() 
     {

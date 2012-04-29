@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package de.codesourcery.jasm16.ide;
 
 import java.io.File;
@@ -8,37 +23,44 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.utils.Misc;
 
+/**
+ * Global IDE configuration.
+ * 
+ * <p>Currently , the IDE configuration only holds the path
+ * to the current's workspace base directory and is stored 
+ * as file {@link #FILE_NAME} in the user's home directory.</p>
+ *   
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class ApplicationConfig implements IApplicationConfig {
 
 	private static final Logger LOG = Logger.getLogger(ApplicationConfig.class);
 
 	public static final String FILE_NAME = ".jasm_workspace.properties";
 
-	private static final String KEY_WORKSPACE_DIRECTORY = "workspace.dir";
+	protected static final String KEY_WORKSPACE_DIRECTORY = "workspace.dir";
 
 	private final File configFile;
 	private final Map<String,String> configProperties = new HashMap<String,String>();
-	private final AtomicBoolean configLoaded = new AtomicBoolean( false );
 
-	public ApplicationConfig(File configFile) 
+	public ApplicationConfig(File configFile) throws IOException 
 	{
 		if (configFile == null) {
 			throw new IllegalArgumentException("configFile must not be NULL");
 		}
 		this.configFile = configFile;
+		loadConfig();
 	}
 
 	@Override
 	public File getWorkspaceDirectory() 
 	{
-		loadConfiguration();
 		return getFile( KEY_WORKSPACE_DIRECTORY );
 	}
 
@@ -46,58 +68,71 @@ public class ApplicationConfig implements IApplicationConfig {
 		return new File( configProperties.get( key ) );
 	}
 
-	protected void loadConfiguration() {
+	protected void loadConfig() throws IOException
+	{
+		boolean success = false;
+		if ( configFile.exists() ) 
+		{
+			try {
+				final Properties props = loadPropertiesFile( configFile );
+				for ( String key : props.stringPropertyNames() ) {
+					configProperties.put( key , props.getProperty( key ) );
+				}
+				success = true;
+			} catch (IOException e) {
+				LOG.error("loadConfiguration(): Failed to load workspace configuration");
+			}
+		}
 
-		if ( configLoaded.compareAndSet( false , true ) )
+		if ( ! success ) 
 		{
 			configProperties.clear();
-			
-			boolean success = false;
-			if ( configFile.exists() ) {
-
-				final Properties props = new Properties();
-				try {
-					final InputStream in = new FileInputStream( configFile );
-					try {
-						props.load( in );
-						for ( String key : props.stringPropertyNames() ) {
-							configProperties.put( key , props.getProperty( key ) );
-						}
-						success = true;
-					} finally {
-						IOUtils.closeQuietly( in );
-					}
-				} catch (IOException e) {
-					LOG.error("loadConfiguration(): Failed to load workspace configuration");
-				}
-			}
-			
-			if ( ! success ) 
-			{
-				configProperties.clear();
-				configProperties.putAll( createDefaultConfiguration() );
-				saveConfiguration();
-			}
+			configProperties.putAll( createDefaultConfiguration() );
+			saveConfiguration();
 		}
 	}
 
-	protected Map<String,String> createDefaultConfiguration() {
+	protected Properties loadPropertiesFile(File configFIle) throws IOException 
+	{
+		final Properties props = new Properties();
+		final InputStream in = new FileInputStream( configFile );
+		try {
+			props.load( in );
+			return props;
+		} finally {
+			IOUtils.closeQuietly( in );
+		}
+	}
+
+	protected Map<String,String> createDefaultConfiguration() throws IOException {
 
 		final Map<String,String> result = new HashMap<String,String> ();
 
 		final File homeDirectory = new File( Misc.getUserHomeDirectory() , "jasm_workspace" );
+		if ( ! homeDirectory.exists() ) 
+		{
+			LOG.info("createDefaultConfiguration(): Creating workspace folder "+homeDirectory.getAbsolutePath());
+			if ( ! homeDirectory.mkdirs() ) {
+				LOG.error("createDefaultConfiguration(): Unable to create workspace directory "+homeDirectory.getAbsolutePath());
+				throw new IOException("Unable to create workspace directory "+homeDirectory.getAbsolutePath());
+			}
+		}
+		if ( ! homeDirectory.isDirectory() ) {
+			LOG.error("createDefaultConfiguration(): Workspace directory is no directory: "+homeDirectory.getAbsolutePath());
+			throw new IOException("Workspace directory is no directory: "+homeDirectory.getAbsolutePath());
+		}
 		result.put( KEY_WORKSPACE_DIRECTORY , homeDirectory.getAbsolutePath() );
 		return result;
 	}
 
 	@Override
-	public void saveConfiguration() {
+	public void saveConfiguration() throws IOException {
 
 		final Properties props = new Properties();
 		for ( Map.Entry<String,String> keyValue : configProperties.entrySet() ) {
 			props.put( keyValue.getKey() , keyValue.getValue() );
 		}
-		
+
 		final String comments =  "jASM16 workspace configuration -- automatically generated, do NOT edit";
 		try {
 			final FileOutputStream out = new FileOutputStream( configFile );
@@ -109,6 +144,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		} catch (IOException e) {
 			LOG.fatal("createDefaultConfiguration(): Failed to save configuration to "+
 					configFile.getAbsolutePath(),e);
+			throw e;
 		}
 	}
 
@@ -118,7 +154,6 @@ public class ApplicationConfig implements IApplicationConfig {
 		if (dir == null) {
 			throw new IllegalArgumentException("dir must not be NULL");
 		}
-		loadConfiguration();
 		Misc.checkFileExistsAndIsDirectory( dir , true );
 		this.configProperties.put( KEY_WORKSPACE_DIRECTORY , dir.getAbsolutePath() );
 		saveConfiguration();

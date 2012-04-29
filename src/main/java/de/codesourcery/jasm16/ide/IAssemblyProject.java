@@ -13,15 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.ide.ui;
+package de.codesourcery.jasm16.ide;
 
-import javax.swing.JPanel;
+import java.util.List;
 
-public interface IView
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+
+public interface IAssemblyProject extends IResourceResolver
 {
-    public JPanel getPanel();
+    public String getName();
     
-    public void dispose();
+    public ProjectConfiguration getConfiguration();
     
-    public void refreshDisplay();
+    public List<IResource> getResources(ResourceType type);
+    
+    public List<IResource> getAllResources();
+    
+    public IProjectBuilder getBuilder();
+    
+    public IResource lookupResource(String identifier);
 }

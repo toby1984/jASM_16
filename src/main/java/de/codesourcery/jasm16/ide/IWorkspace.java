@@ -19,29 +19,39 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import de.codesourcery.jasm16.compiler.io.IResource;
-
-public interface IWorkspace
+/**
+ * A workspace.
+ * 
+ * <p>A workspace instance manages a set of {@link IAssemblyProject} instances and
+ * allows {@link IWorkspaceListener}s to receive change notifications for these projects.</p>
+ * @author tobias.gierke@code-sourcery.de
+ */
+public interface IWorkspace extends IResourceListener
 {
-	public File getBaseDirectory();
+	public File getBaseDirectory(); // ok
 	
-    public boolean doesProjectExist(String name);
+	// project management
+    public boolean doesProjectExist(String name); // ok
     
-    public IAssemblerProject getProjectByName(String name);
+    public IAssemblyProject getProjectByName(String name); // ok
     
-    public IAssemblerProject createNewProject(String name) throws IOException;
+    public IAssemblyProject createNewProject(String name) throws IOException;
 
-    public List<IAssemblerProject> getAllProjects();
+    public List<IAssemblyProject> getAllProjects(); // ok
     
-    public void deleteProject(IAssemblerProject project);
+    public void deleteProject(IAssemblyProject project) throws IOException;
     
-    public void saveOrUpdateProject(IAssemblerProject project);
+    public void saveMetaData(IAssemblyProject project) throws IOException;
     
-    public void resourceChanged(IResource resource);
-    
+    // workspace listeners
     public void addWorkspaceListener(IWorkspaceListener listener);
     
     public void removeWorkspaceListener(IWorkspaceListener listener);
     
-    public void reloadWorkspace();
+    // state management
+    public void open() throws IOException; // ok
+    
+    public void close() throws IOException; // ok
+    
+    public void reloadWorkspace() throws IOException; // ok
 }

@@ -151,5 +151,10 @@ public class CPUView extends AbstractView
         }
         return panel;
     }
+
+	@Override
+	public String getTitle() {
+		return "CPU view";
+	}
     
 }

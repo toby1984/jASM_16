@@ -15,15 +15,12 @@
  */
 package de.codesourcery.jasm16.ide.ui.views;
 
-import java.awt.Color;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
-import javax.swing.text.StyleConstants;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.Emulator;
@@ -139,5 +136,9 @@ public class HexDumpView extends AbstractView
         }
         return panel;
     }
-    
+
+	@Override
+	public String getTitle() {
+		return "memory view";
+	}
 }

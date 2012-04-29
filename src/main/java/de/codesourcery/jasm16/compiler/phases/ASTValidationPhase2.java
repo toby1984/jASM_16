@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;

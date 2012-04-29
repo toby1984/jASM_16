@@ -87,6 +87,21 @@ public class FileResource extends AbstractResource
     {
         return file.length();
     }
+    
+    @Override
+    public boolean supportsDelete() {
+    	return true;
+    }
+    
+    @Override
+    public void delete() throws IOException 
+    {
+    	if ( file.exists() ) {
+    		if ( ! file.delete() ) {
+    			throw new IOException("Failed to delete "+file.getAbsolutePath());
+    		}
+    	}
+    }
 
     public File getFile()
     {

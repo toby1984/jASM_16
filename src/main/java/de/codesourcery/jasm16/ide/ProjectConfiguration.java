@@ -1,3 +1,18 @@
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package de.codesourcery.jasm16.ide;
 
 import java.io.File;
@@ -43,6 +58,8 @@ public class ProjectConfiguration
 	private static final Logger LOG = Logger.getLogger(ProjectConfiguration.class);
 	
 	public static final String PROJECT_CONFIG_FILE = "jasm_project.xml";
+
+	public static final String DEFAULT_EXECUTABLE_NAME = "a.out";
 	
 	private final File baseDir;
 	
@@ -50,6 +67,8 @@ public class ProjectConfiguration
 	
 	private String outputFolder;
 	private String projectName;
+	
+	private String executableName;
 
 	/**
 	 * Create instance.
@@ -60,6 +79,20 @@ public class ProjectConfiguration
 	public ProjectConfiguration(File baseDir) throws IOException 
 	{
 		this.baseDir = baseDir;
+	}
+	
+	public String getExecutableName() {
+		return executableName;
+	}
+	
+	public void setExecutableName(String executableName) {
+		
+		if (StringUtils.isBlank(executableName)) {
+			throw new IllegalArgumentException(
+					"executableName must not be NULL/blank");
+		}
+		
+		this.executableName = executableName;
 	}
 	
 	/**
@@ -75,6 +108,8 @@ public class ProjectConfiguration
 			LOG.error("load(): File "+xmlFile.getAbsolutePath()+" does not exist?");
 			throw new IOException("File "+xmlFile.getAbsolutePath()+" does not exist?");
 		}
+		
+		LOG.info("load(): Loading project configuration from "+xmlFile.getAbsolutePath());
 		
 		final Document doc;
 		try {
@@ -121,8 +156,11 @@ public class ProjectConfiguration
 		
 		root.appendChild( createElement("name" , projectName , document ) );
 		root.appendChild( createElement("outputFolder" , outputFolder , document ) );
+		root.appendChild( createElement("executableName" , executableName , document ) );		
 		
 		final Element srcFolderNode = createElement("sourceFolders",document);
+		root.appendChild( srcFolderNode );
+		
 		for ( String folder : sourceFolders ) {
 			srcFolderNode.appendChild( createElement("sourceFolder" , folder , document ) );
 		}
@@ -161,6 +199,7 @@ public class ProjectConfiguration
 	 *     <sourceFolder>src</sourceFolder>
 	 *   </sourceFolders>
 	 *   <outputFolder>bin</outputFolder>
+	 *   <executableName>a.out</executableName>
 	 * </project>
 	 */
 	private void parseXML(Document doc) throws XPathExpressionException {
@@ -169,11 +208,13 @@ public class ProjectConfiguration
 		final XPath xpath = factory.newXPath();
 
 		final XPathExpression nameExpr = xpath.compile("/project/name");
-		final XPathExpression outputFolderExpr = xpath.compile("/project/outputFolder");		
+		final XPathExpression outputFolderExpr = xpath.compile("/project/outputFolder");
+		final XPathExpression executableNameExpr = xpath.compile("/project/executableName");
 		final XPathExpression srcFoldersExpr = xpath.compile("/project/sourceFolders/sourceFolder");
 		
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
+		this.executableName = getValue( executableNameExpr , doc );
 		this.sourceFolders.clear();
 		this.sourceFolders.addAll( getValues( srcFoldersExpr , doc ) );
 	}
@@ -197,22 +238,23 @@ public class ProjectConfiguration
 		final List<String> result = new ArrayList<String>();
 		for ( int i = 0 ; i < nodes.getLength() ; i++ ) {
 			final Node node = nodes.item( i );
-			final String value = node.getNodeValue().trim();
-			if ( StringUtils.isBlank( value ) ) {
+			final String value = node.getTextContent();
+			if ( value == null || StringUtils.isBlank( value ) ) {
 				LOG.error("getValues(): Invalid project XML - blank/empty value");
-				throw new XPathExpressionException("Invalid project XML - blank/empty value");
+				throw new XPathExpressionException("Invalid project XML - blank/empty value for "+
+						" expression "+expr);
 			}
-			result.add( value );
+			result.add( value.trim() );
 		}
 		return result;
 	}
 
-	private DocumentBuilder createDocumentBuilder() throws ParserConfigurationException {
+	protected DocumentBuilder createDocumentBuilder() throws ParserConfigurationException {
 		final DocumentBuilderFactory fac = DocumentBuilderFactory.newInstance();
 		return fac.newDocumentBuilder();
 	}
 	
-	private Document loadXML(File xmlFile) throws ParserConfigurationException, SAXException, IOException 
+	protected Document loadXML(File xmlFile) throws ParserConfigurationException, SAXException, IOException 
 	{
 		return createDocumentBuilder().parse( xmlFile );
 	}
@@ -242,6 +284,10 @@ public class ProjectConfiguration
 		
 		if ( outputFolder == null ) {
 			outputFolder = "bin";
+		}
+		
+		if ( executableName == null ) {
+			executableName = DEFAULT_EXECUTABLE_NAME;
 		}
 		
 		Misc.checkFileExistsAndIsDirectory( baseDir , true );
