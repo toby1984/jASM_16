@@ -17,8 +17,12 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -97,7 +101,93 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			}
 		}
 	}
+	
+	private static class SizeAndLocation 
+	{
+		public Point location;
+		public Dimension dimension;
+		
+		public SizeAndLocation(Point location, Dimension dimension) {
+			this.location = location;
+			this.dimension = dimension;
+		}
+	}
 
+//	protected SizeAndLocation findLargestFreeSpace() {
+//	
+//		final Dimension maxSize = desktop.getSize();
+//		
+//		if ( views.isEmpty() ) {
+//			return new SizeAndLocation( new Point(0,0) , maxSize );
+//		}
+//		
+//		/*
+//		 * +-----+
+//		 * |     |
+//		 * |     |
+//		 * +-----+    
+//		 */
+//		final List<InternalFrameWithView > existing = new ArrayList<InternalFrameWithView>( views );
+//		final Comparator<InternalFrameWithView> comparator = new Comparator<InternalFrameWithView>() 
+//		{
+//			
+//			@Override
+//			public int compare(InternalFrameWithView o1, InternalFrameWithView o2) 
+//			{
+//				final Point loc1 = o1.frame.getLocation();
+//				final Point loc2 = o2.frame.getLocation();
+//				
+//				if ( loc1.y <= loc2.y )
+//				{
+//					return Integer.valueOf( loc1.x ).compareTo( loc2.x );
+//				}
+//				return 1;
+//			}
+//		};
+//		
+//		Collections.sort( existing , comparator );
+//		
+//		Rectangle rect = new Rectangle(0,0,400,400);
+//		
+//		for (Iterator<InternalFrameWithView> it = existing.iterator(); it.hasNext();) 
+//		{
+//			final InternalFrameWithView thisFrame =  it.next();
+//			if ( ! it.hasNext() ) 
+//			{
+//				final int x1 = thisFrame.frame.getSize().width;
+//				final int y1 = (int) thisFrame.frame.getLocation().getY();
+//				final int width = 200;
+//				final int height = 200;
+//				Rectangle result = new Rectange( x1,y1,width,height );
+//				if ( isFullyVisible( result ) ) {
+//					return new SizeAndLocation( result );
+//				}
+//			}
+//			final InternalFrameWithView nextFrame =  it.next();
+//			if ( thisFrame.frame.getLocation().getY() < nextFrame.frame.getLocation().getY() ) {
+//				final Rectangle bounds = new Rectangle( new Point( 0 , 0 ) , frameAndView.frame.getSize() );
+//			}
+//		}
+//	}
+	
+	private boolean isFullyVisible(Rectangle rect) 
+	{
+		final int x1 = (int) rect.getX();
+		final int y1 = (int) rect.getY();
+		
+		final int x2 = (int) rect.getMaxX();
+		final int y2 = (int) rect.getMaxY();
+		
+		if ( x1 < desktop.getBounds().getX() || y1 < desktop.getBounds().y ) {
+			return false;
+		}
+		
+		if ( x2 > desktop.getBounds().getMaxX() || y2 > desktop.getBounds().getMaxY() ) {
+			return false;
+		}
+		return true;
+	}
+	
 	@Override
 	public void addView(final IView view) 
 	{
