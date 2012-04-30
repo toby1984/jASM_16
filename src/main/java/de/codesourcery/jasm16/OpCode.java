@@ -721,9 +721,6 @@ public enum OpCode
                 }
                 return OperandPosition.NOT_POSSIBLE;
             case INDIRECT_REGISTER_OFFSET:
-                if (register == Register.SP) {
-                    return OperandPosition.NOT_POSSIBLE;
-                }
                 return OperandPosition.SOURCE_OR_TARGET;			
             case INDIRECT:
                 return OperandPosition.SOURCE_OR_TARGET;

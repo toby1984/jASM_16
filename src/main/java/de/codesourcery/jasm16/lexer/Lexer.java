@@ -277,6 +277,11 @@ public final class Lexer implements ILexer {
             currentTokens.add( new Token(TokenType.POP , buffer , startIndex ) );
             return ;
         }		
+        
+        if ( "pick".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.PICK , buffer , startIndex ) );
+            return ;        	
+        }
 
         if ( "peek".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.PEEK , buffer , startIndex ) );

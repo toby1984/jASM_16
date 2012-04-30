@@ -60,7 +60,8 @@ public class RegisterReferenceNode extends TermNode
          * 0x19: PEEK / [SP]                                             
          * 0x1a: PUSH / [--SP] */       	 
     	IToken token = context.peek();
-    	if ( token.hasType( TokenType.PUSH ) ||
+    	if ( token.hasType( TokenType.PICK ) ||
+    		 token.hasType( TokenType.PUSH ) ||
     	     token.hasType( TokenType.PEEK ) ||
     	     token.hasType( TokenType.POP )    	     
     	   ) 
@@ -69,16 +70,18 @@ public class RegisterReferenceNode extends TermNode
     		
     	    token = context.read();
     	    switch( token.getType() ) {
-    	    case PUSH:
-    	    	hasPreDecrement = true;
+    	    	case PICK:
     	    	break;
-    	    case PEEK:
-    	    	break;
-    	    case POP:
-    	    	hasPostIncrement = true;
-    	    	break;
-    	    default: 
-    	    	throw new RuntimeException("Unreachable code reached");
+	    	    case PUSH:
+	    	    	hasPreDecrement = true;
+	    	    	break;
+	    	    case PEEK:
+	    	    	break;
+	    	    case POP:
+	    	    	hasPostIncrement = true;
+	    	    	break;
+	    	    default: 
+	    	    	throw new RuntimeException("Unreachable code reached");
     	    }
             mergeWithAllTokensTextRegion( token );
     	    return this; 

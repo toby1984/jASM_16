@@ -161,6 +161,14 @@ public class InstructionNodeTest extends TestHelper
 	
     public void testAddressingModesParsing() throws Exception {
 
+    	assertCompiles("SET PICK 3,a");
+    	assertCompiles("SET a,PICK 3");  
+    	
+    	assertCompiles("SET [SP+3],a");
+    	assertCompiles("label: SET [SP+3+4+label],a");
+    	assertCompiles("label: SET PICK 3+4,a");       	
+    	assertCompiles("SET a,[SP+3]");  
+    	
         assertCompiles(":test SET A, 2+test");
         
         assertDoesNotCompile(":sub SET a,1") ; // sub is an opcode !

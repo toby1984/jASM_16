@@ -87,7 +87,17 @@ public class OperandNode extends ASTNode
 		 * DECREMENT := '--'
 		 */
 		final IToken tok = context.peek();
-		if ( tok.hasType( TokenType.PUSH ) || tok.hasType( TokenType.POP) || tok.hasType( TokenType.PEEK )) 
+		if ( tok.hasType( TokenType.PICK ) ) 
+		{
+			this.addressingMode = AddressingMode.INTERNAL_EXPRESSION;
+			addChild( new RegisterReferenceNode().parse( context ) , context );
+			// parse operand
+			final ASTNode expr = new ExpressionNode().parse( context );
+			validateRegisterRefCount( context , expr , 0 );
+			addChild( expr , context );
+			return this;
+			
+		} else if ( tok.hasType( TokenType.PUSH ) || tok.hasType( TokenType.POP) || tok.hasType( TokenType.PEEK )) 
 		{
 			this.addressingMode = AddressingMode.INTERNAL_EXPRESSION;
 			addChild( new RegisterReferenceNode().parse( context ) , context );
@@ -185,13 +195,14 @@ public class OperandNode extends ASTNode
 		for ( ASTNode child : getChildren() ) {
 			if ( child instanceof ConstantValueNode ) {
 				literalValues.add( (ConstantValueNode) child );
-			} 
+			} else if ( child instanceof RegisterReferenceNode ) {
+				// ignore
+			}			
 			else if ( child instanceof TermNode ) // careful, ConstantValueNode extends TermNode so order matters !!!
 			{
 				terms.add( (TermNode) child);
-			} else if ( child instanceof RegisterReferenceNode ) {
-				// ignore
 			}
+
 		}
 		if ( terms.size() > 1 || literalValues.size() > 1 ) {
 			return null;
@@ -263,7 +274,9 @@ public class OperandNode extends ASTNode
 			return ExpressionType.REGISTER_POSTINCREMENT;     
 		} else if ( equals( nodeTypes , NodeType.REGISTER_PREDECREMENT) ) {
 			return ExpressionType.REGISTER_PREDECREMENT;             
-		} else if ( equals( nodeTypes , NodeType.CONSTANT , NodeType.OPERATOR , NodeType.REGISTER ) ) {
+		} else if ( equals( nodeTypes , NodeType.CONSTANT , NodeType.OPERATOR , NodeType.REGISTER ) ||
+				    equals( nodeTypes , NodeType.CONSTANT , NodeType.REGISTER ) ) // special case: PICK N
+		{
 			return ExpressionType.REGISTER_OFFSET;                
 		}
 		return ExpressionType.UNKNOWN; 

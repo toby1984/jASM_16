@@ -1,0 +1,9 @@
+SET PICK 3,a
+SET PICK 1+2,a
+SET [SP+3],a
+SET [SP+1+2],a
+
+SET a,PICK 3
+SET a,PICK 1+2
+SET a,[SP+3]
+SET a,[SP+1+2]

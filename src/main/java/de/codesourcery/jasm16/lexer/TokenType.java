@@ -40,6 +40,7 @@ public enum TokenType
 	PUSH, // 'push' ( shorthand for [--SP] )
 	POP, // 'pop' ( shorthand for [SP++] )
 	PEEK, // 'peek' (shorthand for [SP] )
+	PICK, // 'pick' (shorthand for [SP+offset] )
 	OPERATOR,
 	// ============ preprocessor-style stuff ======
     INITIALIZED_MEMORY_WORD, // .dat
