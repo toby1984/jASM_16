@@ -15,8 +15,14 @@
  */
 package de.codesourcery.jasm16.ide.ui.views;
 
+import java.awt.Color;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,7 +32,9 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
@@ -40,9 +48,11 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class WorkspaceExplorer extends AbstractView {
@@ -126,9 +136,6 @@ public class WorkspaceExplorer extends AbstractView {
 	{
 		treeModel = createTreeModel();
 		tree.setModel( treeModel );
-		
-		final JPanel panel = new JPanel();
-		setColors( panel );
 		setColors( tree );
 		tree.setRootVisible( false );
 		
@@ -169,6 +176,22 @@ public class WorkspaceExplorer extends AbstractView {
 		tree.getSelectionModel().addTreeSelectionListener( selectionListener );
 		
 		tree.setCellRenderer( new DefaultTreeCellRenderer() {
+
+			public Color getTextSelectionColor() {
+				return Color.GREEN;
+			};
+			
+			public java.awt.Color getTextNonSelectionColor() {
+				return Color.GREEN;
+			};			
+
+			public Color getBackgroundSelectionColor() {
+				return Color.BLACK;
+			};
+			
+			public Color getBackgroundNonSelectionColor() {
+				return Color.BLACK;
+			};
 			
 			public java.awt.Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean expanded, boolean leaf, int row, boolean hasFocus) {
 				
@@ -199,10 +222,17 @@ public class WorkspaceExplorer extends AbstractView {
 			
 		} );
 		
+		setupPopupMenu();
+		
 		final JScrollPane pane = new JScrollPane( tree );
 		setColors( pane );
-		panel.add( pane );
-		return panel;
+		
+		final JPanel result = new JPanel();
+		result.setLayout( new GridBagLayout() );
+		GridBagConstraints cnstrs = constraints(0 , 0 , true , true , GridBagConstraints.BOTH);
+		setColors( result );		
+		result.add( pane , cnstrs );
+		return result;
 	}
 	
 	protected void onTreeNodeLeftClick(IAssemblyProject project, WorkspaceTreeNode selected) throws IOException 
@@ -228,19 +258,28 @@ public class WorkspaceExplorer extends AbstractView {
 			return;
 		}
 		
+		EditorContainer editorContainer = null;
 		final List<IView> views = getViewContainer().getViews();
-		
 		for (IView view : views) 
 		{
-			if ( view instanceof SourceEditorView ) 
+			if ( view instanceof EditorContainer ) 
 			{
-				((SourceEditorView) view).openFile( project , resource );
-				return;
+				editorContainer = (EditorContainer) view;
+				final IEditorView editor = editorContainer.getEditor( resource );
+				if ( editor != null ) {
+					return;
+				}
 			}
 		}
-		final SourceEditorView view = new SourceEditorView();
-		getViewContainer().addView( view );
-		view.openFile( project , resource );
+		
+		if ( editorContainer == null ) {
+			editorContainer = new EditorContainer("Editors",getViewContainer());
+			getViewContainer().addView( editorContainer );
+		}
+		
+		final IEditorView editor = EditorFactory.createEditor( project , resource );
+		editor.openResource( project , resource );
+		editorContainer.addView( editor );
 	}
 
 	@Override
@@ -265,6 +304,55 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 		return null;
+	}
+	
+	protected void setupPopupMenu() 
+	{
+	    tree.addMouseListener( new PopupListener() );
+	}
+	
+	protected JPopupMenu createPopupMenu(WorkspaceTreeNode selectedNode) 
+	{
+		final JPopupMenu popup = new JPopupMenu();
+
+		JMenuItem menuItem = new JMenuItem("Open debugger");
+	    menuItem.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				
+			}
+	    });
+	    
+	    popup.add(menuItem);
+	    return popup;
+	}	
+	
+	protected class PopupListener extends MouseAdapter 
+	{
+	    public void mousePressed(MouseEvent e) {
+	        maybeShowPopup(e);
+	    }
+
+	    public void mouseReleased(MouseEvent e) {
+	        maybeShowPopup(e);
+	    }
+
+	    private void maybeShowPopup(MouseEvent e) 
+	    {
+	        if (e.isPopupTrigger()) 
+	        {
+				final TreePath path = tree.getPathForLocation( e.getX() , e.getY() );
+				if ( path != null ) 
+				{
+					final WorkspaceTreeNode node = (WorkspaceTreeNode) path.getLastPathComponent();
+					final JPopupMenu menu = createPopupMenu( node );
+					if ( menu != null ) {
+						menu.show(e.getComponent(),e.getX(), e.getY());
+					}
+				}
+	        }
+	    }
 	}
 	
 	private static final class WorkspaceTreeModel extends DefaultTreeModel implements IWorkspaceListener {

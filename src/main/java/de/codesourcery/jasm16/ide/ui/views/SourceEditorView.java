@@ -102,21 +102,22 @@ import de.codesourcery.jasm16.utils.TextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class SourceEditorView extends AbstractView {
+public class SourceEditorView extends AbstractView implements IEditorView {
 
 	// time to wait until recompiling after the user edited the source code
 	private static final int RECOMPILATION_DELAY_MILLIS = 300;
 
 	// UI widgets
 
+	private volatile JPanel panel;
 	private JFrame astInspector;
 	private final JTree astTree = new JTree();
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
 
 	private final JTextField cursorPosition = new JTextField(); 
-	private JTextPane editorPane;
-	private JScrollPane editorScrollPane;    
+	private final JTextPane editorPane = new JTextPane();
+	private JScrollPane editorScrollPane;  
 
 	private final SimpleAttributeSet registerStyle;    
 	private final SimpleAttributeSet commentStyle;     
@@ -133,7 +134,8 @@ public class SourceEditorView extends AbstractView {
 	
 	private IResource documentResource; // possibly edited source code in RAM
 	private ICompilationUnit compilationUnit;
-
+	private volatile boolean hasUnsavedContent = false;
+	
 	private CompilationThread compilationThread = null;
 
 	/*
@@ -424,6 +426,7 @@ public class SourceEditorView extends AbstractView {
 
 		private void textChanged(DocumentEvent e) 
 		{
+			hasUnsavedContent = true;
 			if ( compilationThread == null ) 
 			{
 				compilationThread = new CompilationThread();
@@ -597,7 +600,7 @@ public class SourceEditorView extends AbstractView {
 		}
 	}
 
-	public void openFile(IAssemblyProject project, final IResource sourceFile) throws IOException 
+	private void openFile(IAssemblyProject project, final IResource sourceFile) throws IOException 
 	{
 		if ( project == null ) {
 			throw new IllegalArgumentException("project must not be NULL");
@@ -655,7 +658,9 @@ public class SourceEditorView extends AbstractView {
 
 		enableDocumentListener();
 
-		validateSourceCode();
+		if ( panel != null ) {
+			validateSourceCode();
+		}
 	}
 
 	private void validateSourceCode() throws IOException {
@@ -666,11 +671,14 @@ public class SourceEditorView extends AbstractView {
 		compilationUnit = project.getBuilder().parse( documentResource , new CompilationListener() );
 		
 		doHighlighting( compilationUnit , true );
-		
 	}
 	
 	protected void doHighlighting(ICompilationUnit unit,boolean addStatusMessages) 
 	{
+		if ( panel == null ) {
+			return;
+		}
+		
 		if ( unit.getAST() != null ) 
 		{
 			final ASTTableModelWrapper astModel = new ASTTableModelWrapper( compilationUnit.getAST() ) ;
@@ -808,7 +816,11 @@ public class SourceEditorView extends AbstractView {
 		try {
 			final int start = editorPane.viewToModel( startPoint );
 			final int end = editorPane.viewToModel( endPoint );
-			return new TextRegion( start , end-start );
+			final int len = end-start;
+			if ( len < 0  || start < 0) {
+				return null;
+			}
+			return new TextRegion( start , len );
 		} 
 		catch(NullPointerException e) 
 		{
@@ -878,8 +890,16 @@ public class SourceEditorView extends AbstractView {
 	@Override
 	public JPanel getPanel()
 	{
-		// editor pane
-		editorPane = new JTextPane();
+		if ( panel == null ) {
+			panel = createPanel();
+		}
+		return panel;
+	}
+	
+	protected JPanel createPanel() 
+	{
+		
+		editorPane.setCaretColor( Color.WHITE );
 		setColors( editorPane );
 
 		editorScrollPane = new JScrollPane(editorPane);
@@ -1015,12 +1035,12 @@ public class SourceEditorView extends AbstractView {
 		final JSplitPane splitPane = new JSplitPane( JSplitPane.VERTICAL_SPLIT , topPanel , bottomPanel );
 		setColors( splitPane );
 
-		final JPanel frame = new JPanel();
-		frame.setLayout( new GridBagLayout() );
-		setColors( frame );  
+		final JPanel panel = new JPanel();
+		panel.setLayout( new GridBagLayout() );
+		setColors( panel );  
 		cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
-		frame.add( splitPane , cnstrs );
-		return frame;
+		panel.add( splitPane , cnstrs );
+		return panel;
 	}
 	
 	public IAssemblyProject getCurrentProject() {
@@ -1054,6 +1074,33 @@ public class SourceEditorView extends AbstractView {
 	@Override
 	public String getTitle() {
 		return "source view";
+	}
+
+	@Override
+	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource) 
+	{
+		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
+			return new SourceEditorView();
+		}
+		throw new IllegalArgumentException("Unsupported resource type: "+resource);
+	}
+
+	@Override
+	public boolean hasUnsavedContent() {
+		return hasUnsavedContent;
+	}
+	
+	@Override
+	public boolean mayBeDisposed() {
+		return ! hasUnsavedContent();
+	}
+
+	@Override
+	public void openResource(IAssemblyProject project, IResource resource) throws IOException 
+	{
+		if ( this.project != project || this.fileResource != resource ) {
+			openFile( project , resource );
+		}
 	}
 
 }

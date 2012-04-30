@@ -85,13 +85,22 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		} );
 
 		setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
+		
+		setBackground( Color.BLACK );
+		setForeground( Color.GREEN );
+		
+		desktop.setBackground( Color.BLACK );
+		desktop.setForeground( Color.GREEN );		
 	}
 
 
 	@Override
 	public void removeView(IView view) 
 	{
-		for (Iterator<InternalFrameWithView> it = this.views.iterator(); it.hasNext();) {
+		System.out.println("View disposed: "+view.getTitle());
+		
+		for (Iterator<InternalFrameWithView> it = this.views.iterator(); it.hasNext();) 
+		{
 			InternalFrameWithView frame = it.next();
 			if ( frame.view == view ) 
 			{
@@ -203,20 +212,22 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		internalFrame.pack();
 		internalFrame.setVisible( true );
 
+		final InternalFrameWithView frameAndView = new InternalFrameWithView( internalFrame , view );
+		
 		final InternalFrameListener listener = new InternalFrameAdapter() {
 			
 			@Override
-			public void internalFrameClosed(InternalFrameEvent e) {
-				view.dispose();
+			public void internalFrameClosing(InternalFrameEvent e) {
+				removeView( view );
 			}
 		};
 		
+		internalFrame.setDefaultCloseOperation( JInternalFrame.DO_NOTHING_ON_CLOSE );
 		internalFrame.addInternalFrameListener( listener );
 		
-		views.add( new InternalFrameWithView( internalFrame , view ) );
+		views.add( frameAndView );
 		desktop.add(internalFrame);			
 	}
-
 
 	@Override
 	public List<IView> getViews() 

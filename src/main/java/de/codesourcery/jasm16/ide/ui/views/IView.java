@@ -23,6 +23,8 @@ public interface IView
 {
     public JPanel getPanel(IViewContainer container);
     
+    public boolean mayBeDisposed();
+    
     public void dispose();
     
     public void refreshDisplay();

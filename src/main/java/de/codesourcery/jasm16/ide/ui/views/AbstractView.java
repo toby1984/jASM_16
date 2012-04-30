@@ -88,4 +88,9 @@ public abstract class AbstractView implements IView
         cnstrs.gridy=y;
         return cnstrs;
     }
+    
+    @Override
+    public boolean mayBeDisposed() {
+    	return true;
+    }
 }
