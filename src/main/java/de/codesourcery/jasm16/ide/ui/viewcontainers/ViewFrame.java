@@ -25,6 +25,8 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -94,5 +96,18 @@ public class ViewFrame extends JFrame implements IViewContainer
 	@Override
 	public void setTitle(IView view, String title) {
 		setTitle( title );
+	}
+
+	@Override
+	public IView getViewByID(String viewId) 
+	{
+		if (StringUtils.isBlank(viewId)) {
+			throw new IllegalArgumentException("viewId must not be blank/null");
+		}
+		
+		if ( component == null ) {
+			return null;
+		}
+		return component.getID().equals( viewId ) ? component : null;
 	}
 }

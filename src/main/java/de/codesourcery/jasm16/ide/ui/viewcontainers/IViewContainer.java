@@ -71,4 +71,14 @@ public interface IViewContainer {
 	 * @return
 	 */
 	public List<IView> getViews();
+	
+	/**
+	 * Returns the view with the given ID.
+	 * 
+	 * @param viewId
+	 * @return view with the given ID or <code>null</code> if this container
+	 * does not contain the specified view 
+	 * @see IView#getID()
+	 */
+	public IView getViewByID(String viewId);
 }

@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.io.IOException;
@@ -32,10 +31,13 @@ import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.SizeAndLocation;
+import de.codesourcery.jasm16.ide.ui.MenuManager;
+import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -53,6 +55,8 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 	private final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>();
 
 	private IApplicationConfig applicationConfig;
+	
+	private final MenuManager menuManager = new MenuManager();
 
 	protected final class InternalFrameWithView 
 	{
@@ -115,7 +119,38 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		setForeground( Color.GREEN );
 		
 		desktop.setBackground( Color.BLACK );
-		desktop.setForeground( Color.GREEN );		
+		desktop.setForeground( Color.GREEN );	
+		
+		menuManager.addEntry( new MenuEntry("File/Save all") {
+
+			@Override
+			public void onClick() {
+				System.out.println("Save all!");
+			}
+			
+			public boolean isEnabled() {
+				
+				EditorContainer editorContainer = (EditorContainer ) getViewByID( EditorContainer.VIEW_ID );
+				
+				if ( editorContainer == null ) {
+					return false;
+				}
+				return editorContainer.getViews().size() > 0 ;
+			};
+			
+		} );
+		
+		menuManager.addEntry( new MenuEntry("File/Quit") {
+
+			@Override
+			public void onClick() 
+			{
+				System.exit(0);
+			}
+			
+		} );		
+		
+		setJMenuBar( menuManager.getMenuBar() );
 	}
 
 	@Override
@@ -274,5 +309,21 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 				break;
 			}
 		}
+	}
+
+	@Override
+	public IView getViewByID(String viewId) 
+	{
+		if (StringUtils.isBlank(viewId)) {
+			throw new IllegalArgumentException("viewId must not be blank/null");
+		}
+		
+		for (InternalFrameWithView frame : this.views) 
+		{
+			if ( frame.view.getID().equals( viewId ) ) {
+				return frame.view;
+			}
+		}		
+		return null;
 	}
 }

@@ -258,19 +258,7 @@ public class WorkspaceExplorer extends AbstractView {
 			return;
 		}
 		
-		EditorContainer editorContainer = null;
-		final List<IView> views = getViewContainer().getViews();
-		for (IView view : views) 
-		{
-			if ( view instanceof EditorContainer ) 
-			{
-				editorContainer = (EditorContainer) view;
-				final IEditorView editor = editorContainer.getEditor( resource );
-				if ( editor != null ) {
-					return;
-				}
-			}
-		}
+		EditorContainer editorContainer = (EditorContainer ) getViewContainer().getViewByID( EditorContainer.VIEW_ID );
 		
 		if ( editorContainer == null ) {
 			editorContainer = new EditorContainer("Editors",getViewContainer());

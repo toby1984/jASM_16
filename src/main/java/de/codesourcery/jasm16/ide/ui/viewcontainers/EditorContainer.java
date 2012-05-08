@@ -1,6 +1,5 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
-import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
@@ -10,6 +9,8 @@ import java.util.List;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
@@ -17,6 +18,7 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
 
 public class EditorContainer extends AbstractView implements IViewContainer {
 
+	public static final String VIEW_ID = "editor-container";
 	private JPanel panel;
 	private final String title;
 	
@@ -166,7 +168,23 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 
 	@Override
 	public String getID() {
-		return "editor-container";
+		return VIEW_ID;
+	}
+
+	@Override
+	public IView getViewByID(String viewId) 
+	{
+		if (StringUtils.isBlank(viewId)) {
+			throw new IllegalArgumentException("viewId must not be blank/null");
+		}
+		
+		for ( ViewWithPanel p : this.views ) 
+		{
+			if ( p.view.getID().equals( viewId ) ) {
+				return p.view;
+			}
+		}
+		return null;
 	}
 
 }
