@@ -90,6 +90,16 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @see TokenType#WHITESPACE
      */
     public ITextRegion parseWhitespace() throws EOFException,ParseException;	
+    
+    /**
+     * Parses a string enclosed by string delimiters.
+     * 
+     * @param region region to merge text regions from consumed tokens with, may be <code>null</code> 
+     * @return
+     * @throws EOFException
+     * @throws ParseException
+     */
+    public String parseString(ITextRegion region) throws EOFException,ParseException;
 
     /**
      * Set whether the parser is currently trying to recover from a parse error.

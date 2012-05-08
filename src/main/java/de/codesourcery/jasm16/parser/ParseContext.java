@@ -326,5 +326,36 @@ public class ParseContext implements IParseContext
 		final ILexer lexer = new Lexer( new Scanner( source ) );
 		return new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
 	}
+
+	@Override
+	public String parseString(ITextRegion region) throws EOFException, ParseException 
+	{
+		IToken tok = read( TokenType.STRING_DELIMITER );
+		if ( region != null ) {
+			region.merge( tok );
+		}
+		StringBuilder contents = new StringBuilder();
+		do 
+		{
+			if ( eof() ) {
+				throw new ParseException("Unexpected EOF while looking for closing string delimiter",currentParseIndex(),0);
+			}
+			
+			tok = read();
+			if ( region != null ) {
+				region.merge( tok );
+			}
+			
+			if ( tok.isEOL() ) {
+				throw new ParseException("Unexpected EOL while looking for closing string delimiter",currentParseIndex(),0);				
+			}			
+
+			if ( tok.hasType( TokenType.STRING_DELIMITER ) ) {
+				break; // ok
+			}
+			contents.append( tok.getContents() );
+		} while ( true );
+		return contents.toString();
+	}
 	
 }

@@ -51,7 +51,7 @@ public class FileResourceResolver implements IResourceResolver
         if ( identifier.startsWith( File.pathSeparator ) ) {
             return resolve( identifier );
         }
-        final File parentFile = ((FileResource) parent).getFile().getParentFile();
+        final File parentFile = ((FileResource) parent).getAbsoluteFile().getParentFile();
         if ( parentFile == null ) {
             return resolve( identifier );
         }

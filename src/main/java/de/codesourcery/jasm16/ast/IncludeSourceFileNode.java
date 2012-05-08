@@ -21,10 +21,11 @@ import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
-import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
+import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * The '.include' AST node.
@@ -57,30 +58,24 @@ public class IncludeSourceFileNode extends ASTNode {
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
-		mergeWithAllTokensTextRegion( context.read( TokenType.INCLUDE_SOURCE ) );
+		final ITextRegion region = new TextRegion( context.read( TokenType.INCLUDE_SOURCE ) );
+		
 		if ( context.peek().isWhitespace() ) {
-			mergeWithAllTokensTextRegion( context.read( TokenType.WHITESPACE ) );
-		}
-		if ( ! context.peek().hasType(TokenType.STRING_DELIMITER ) ) {
-			throw new ParseException("Expected a file name" , context.currentParseIndex() , 0 );
+			region.merge( context.read( TokenType.WHITESPACE ) );
 		}
 		
-		mergeWithAllTokensTextRegion( context.read( TokenType.STRING_DELIMITER ) );
-		if ( ! context.peek().hasType(TokenType.CHARACTERS) ) {
-			throw new ParseException("Expected a file name" , context.currentParseIndex() , 0 );
-		}		
-		final IToken tok = context.read( TokenType.CHARACTERS );
-		this.resourceIdentifier = tok.getContents();
+		final String path = context.parseString( region );
+		this.resourceIdentifier = path;
 		
-		mergeWithAllTokensTextRegion( tok );
+		mergeWithAllTokensTextRegion( region );
+		
 		try {
-			resource = context.resolveRelative( tok.getContents() , context.getCompilationUnit().getResource() );
+			resource = context.resolveRelative( path , context.getCompilationUnit().getResource() );
 		} 
 		catch (ResourceNotFoundException e) 
 		{
 			context.getCompilationUnit().addMarker(
-					new CompilationError("File '"+tok.getContents()+"' does not exist", 
-							context.getCompilationUnit() , tok )
+					new CompilationError("File '"+path+"' does not exist",context.getCompilationUnit() , region )
 			);
 		}
 		
@@ -96,13 +91,11 @@ public class IncludeSourceFileNode extends ASTNode {
 			catch (IOException e) 
 			{
 				context.getCompilationUnit().addMarker(
-						new CompilationError("I/O error while including '"+tok.getContents()+"' : "+e.getMessage(), 
-								context.getCompilationUnit() , tok )
+						new CompilationError("I/O error while including '"+path+"' : "+e.getMessage(), 
+								context.getCompilationUnit() , region )
 				);			
 			}
 		}
-		
-		mergeWithAllTokensTextRegion( context.read( TokenType.STRING_DELIMITER ) );
 		
 		return this;
 	}

@@ -86,6 +86,11 @@ public class FileResource implements IResource
     {
         return file.length();
     }
+    
+    public File getAbsoluteFile()
+    {
+        return file.getAbsoluteFile();
+    }    
 
     public File getFile()
     {

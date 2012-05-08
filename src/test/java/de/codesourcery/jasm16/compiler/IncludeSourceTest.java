@@ -31,6 +31,57 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class IncludeSourceTest extends TestHelper {
 
+	public void testIncludeUsingPathWithSlashes() throws ParseException {
+		
+		final String source1 = ".include \"../source2\"";
+		final String source2 = ":label";
+
+		final Compiler c = new Compiler() 
+		{
+			@Override
+			protected ISymbolTable createSymbolTable() {
+				return symbolTable;
+			}
+		};
+		
+		final ICompilationUnit unit1 = CompilationUnit.createInstance( "source1" , source1 );
+		
+		c.setResourceResolver( new IResourceResolver() {
+
+			@Override
+			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			{
+				throw new UnsupportedOperationException("Unexpected call");
+			}
+
+			@Override
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			{
+				if ( "../source2".equals( identifier ) ) 
+				{
+					assertSame( unit1.getResource() , parent );
+					return new StringResource( identifier , source2 );
+				}
+				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
+			}
+		});
+
+		c.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
+		
+		c.compile( Collections.singletonList( unit1) , new CompilationListener() );
+		
+		Misc.printCompilationErrors( unit1  , source1 , true );
+		assertFalse( unit1.hasErrors() );
+		assertEquals( 1 , unit1.getDependencies().size() );
+		
+		final ICompilationUnit unit2 = unit1.getDependencies().get(0);
+		assertFalse( unit2.hasErrors() );		
+		
+		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
+		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
+		assertEquals( Address.valueOf( 0 ) , symbol.getAddress() );		
+	}
+	
 	public void testInclude() throws ParseException {
 		
 		final String source1 = ".include \"source2\"";
