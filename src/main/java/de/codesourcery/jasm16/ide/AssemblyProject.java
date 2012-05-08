@@ -44,9 +44,9 @@ import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.utils.Misc;
 import de.codesourcery.jasm16.utils.Misc.IFileVisitor;
@@ -433,6 +433,7 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 		for ( File f : folder.listFiles() ) 
 		{
 			Misc.deleteRecursively( f );
+			workspace.resourceDeleted( this , new FileResource( f , ResourceType.UNKNOWN) );
 		}
 	}
 

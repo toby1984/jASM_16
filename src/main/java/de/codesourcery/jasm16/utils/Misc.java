@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Array;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -682,5 +683,19 @@ public class Misc {
 		}
 		final byte[] result = digest.digest( data.getBytes()  );
 		return toHexString( result );
+	}
+	
+	public static <T> T[] subarray(T[] array , int beginIndex , int endIndex) {
+		
+		final Class<?> componentType = array.getClass().getComponentType();
+		
+		@SuppressWarnings("unchecked")
+		final T[] result = (T[]) Array.newInstance( componentType , endIndex - beginIndex );
+		
+		int offset = 0;
+		for ( int i = beginIndex ; i < endIndex ; i++ , offset++) {
+			result[offset] = array[i];
+		}
+		return (T[]) result;
 	}
 }

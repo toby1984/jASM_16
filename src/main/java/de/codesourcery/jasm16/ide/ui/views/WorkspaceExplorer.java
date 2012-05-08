@@ -22,7 +22,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -31,6 +30,7 @@ import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -41,11 +41,13 @@ import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
+import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.EditorFactory;
@@ -206,9 +208,9 @@ public class WorkspaceExplorer extends AbstractView {
 						
 						setText( project.getName() );
 					} 
-					else if ( value instanceof ResourceNode) 
+					else if ( value instanceof FileNode) 
 					{
-						final ResourceNode resourceNode = (ResourceNode) value;
+						final FileNode resourceNode = (FileNode) value;
 						final File resource = resourceNode.getValue();
 						setText( resource.getName() );
 					} else {
@@ -241,9 +243,9 @@ public class WorkspaceExplorer extends AbstractView {
 			throw new IllegalArgumentException("project must not be NULL");
 		}
 		
-		if ( selected instanceof ResourceNode) 
+		if ( selected instanceof FileNode) 
 		{
-			final File file = ((ResourceNode) selected).getValue();
+			final File file = ((FileNode) selected).getValue();
 			if ( file.isFile() && Misc.isSourceFile( file ) ) 
 			{
 				openSourceFileEditor( project , file );
@@ -281,7 +283,7 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( node instanceof ProjectNode) {
 			return ((ProjectNode) node).getValue();
 		}
-		if ( node instanceof ResourceNode) {
+		if ( node instanceof FileNode) {
 			WorkspaceTreeNode current = node.getParent();
 			while( current != null ) 
 			{
@@ -303,18 +305,40 @@ public class WorkspaceExplorer extends AbstractView {
 	{
 		final JPopupMenu popup = new JPopupMenu();
 
-		JMenuItem menuItem = new JMenuItem("Open debugger");
-	    menuItem.addActionListener(new ActionListener() {
+		// open debugger
+		addMenuEntry( popup , "Open debugger", new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				
 			}
 	    });
+		
+		final IAssemblyProject project = getProject( selectedNode );
+		
+		if ( project != null ) {
+		addMenuEntry( popup , "Build", new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					project.getBuilder().build();
+				} catch (IOException e1) {
+					LOG.error("Failed to build "+project,e1);
+				}
+			}
+	    });		
+		}
 	    
-	    popup.add(menuItem);
 	    return popup;
 	}	
+	
+	private void addMenuEntry(JPopupMenu menu,String title, final ActionListener listener) 
+	{
+		final JMenuItem menuItem = new JMenuItem(title);
+	    menuItem.addActionListener( listener );
+	    menu.add(menuItem);		
+	}
 	
 	protected class PopupListener extends MouseAdapter 
 	{
@@ -343,110 +367,237 @@ public class WorkspaceExplorer extends AbstractView {
 	    }
 	}
 	
-	private static final class WorkspaceTreeModel extends DefaultTreeModel implements IWorkspaceListener {
+	private final class WorkspaceTreeModel extends DefaultTreeModel implements IWorkspaceListener {
 
-		public WorkspaceTreeModel(TreeNode root) {
-			super(root);
+		private WorkspaceTreeNode root;
+		
+		public WorkspaceTreeModel() {
+			super( null );
+		}
+		
+		@Override
+		public WorkspaceTreeNode getRoot() 
+		{
+			if ( root == null ) {
+				root = createRootNode();
+			}
+			return root;
 		}
 
 		@Override
 		public void projectCreated(IAssemblyProject project) {
-			// TODO Auto-generated method stub
-			
+			treeStructureChanged();			
 		}
 
 		@Override
 		public void projectDeleted(IAssemblyProject project) {
-			// TODO Auto-generated method stub
-			
+			treeStructureChanged();
 		}
 
 		@Override
 		public void resourceChanged(IAssemblyProject project, IResource resource) {
-			// TODO Auto-generated method stub
-			
+			treeStructureChanged();			
 		}
 
 		@Override
-		public void resourceCreated(IAssemblyProject project, IResource resource) {
-			// TODO Auto-generated method stub
+		public void resourceCreated(IAssemblyProject project, IResource resource) 
+		{
+			final FileResource fr = (FileResource) resource;
+			final WorkspaceTreeNode nearestNode = findNearestFileNode( project , fr );
 			
+			if ( !( nearestNode instanceof FileNode) ) 
+			{
+				treeStructureChanged();
+				return;
+			}
+			
+			final FileNode fn = (FileNode) nearestNode;
+					
+			final String existingPath = fn.getValue().getAbsolutePath();
+			final String actualPath = fr.getFile().getAbsolutePath();
+			if ( existingPath.equals( actualPath ) )
+			{
+				LOG.warn("resourceCreated(): Duplicate creation event?");
+				return; // ...we already know about this node...strange...
+			} 
+			
+			// create intermediate nodes
+			// existingPath = /a/b
+			// actualPath   = /a/b/c/d
+			// delta        =     /c/d
+			String delta = actualPath.substring( existingPath.length() , actualPath.length() );
+			while ( delta.startsWith( File.separator ) ) {
+				delta = delta.substring( 1 , delta.length() );
+			}
+			final String[] deltaPath = delta.split( Pattern.quote( File.separator ) );
+			
+			FileNode previousNode = fn;
+			FileNode newRoot = null;
+			for ( int i = 0 ; i < deltaPath.length ; i++ ) 
+			{
+				final String path = i == 0 ? deltaPath[i] : 
+					StringUtils.join( deltaPath , File.separator , 0 , i );
+				
+				final File currentPath = new File( fn.getValue().getAbsoluteFile() , path); 
+				FileNode newNode = new FileNode( currentPath );
+				if ( newRoot == null ) {
+					newRoot = newNode;
+				}
+				previousNode.addChild( newNode );
+				previousNode = newNode;
+			}
+			
+			fireTreeNodesInserted( this , 
+					newRoot.getParent().getPathToRoot() ,
+					new int[] { newRoot.getParent().getIndex( newRoot ) } ,
+					new Object[] { newRoot } ); 			
+		}
+		
+		@Override
+		public void resourceDeleted(IAssemblyProject project, IResource resource) 
+		{
+			final FileResource fr = (FileResource) resource;
+			final WorkspaceTreeNode nearestNode = findNearestFileNode( project , fr );
+			
+			if ( !( nearestNode instanceof FileNode) ) 
+			{
+				treeStructureChanged();
+				return;
+			}
+			
+			final FileNode fn = (FileNode) nearestNode;
+					
+			if ( ! fn.getValue().getAbsolutePath().equals( fr.getFile().getAbsolutePath() ) ) 
+			{
+				treeStructureChanged();
+				return;
+			} 
+			
+			// perfect match
+			final Object[] pathToRoot = fn.getParent().getPathToRoot();
+			final int index = fn.getParent().getIndex( fn );
+			
+			fn.getParent().removeChild( fn );
+			
+			fireTreeNodesRemoved( this , 
+					pathToRoot , 
+					new int[] { index } ,
+					new Object[] { fn } ); 
+		}
+		
+		private void treeStructureChanged() {
+			root = createRootNode();
+			fireTreeStructureChanged( this , new Object[] { root } , new int[0] , new Object[0] );
+		}
+		
+		private WorkspaceTreeNode findNearestFileNode(IAssemblyProject project,FileResource fileResource) 
+		{
+			final ProjectNode parent = findProjectNode( project );
+			if ( parent == null ) {
+				return null;
+			}
+			
+			return findNearestFileNode( parent , fileResource.getFile() );
+		}
+		
+		private FileNode findNearestFileNode(ProjectNode parent,File file) 
+		{
+			File currentPath = file;
+			do {
+				WorkspaceTreeNode result = parent.findNodeByValue( currentPath );
+				if ( result != null ) {
+					return (FileNode) result;
+				}
+				currentPath = currentPath.getParentFile();
+			} while ( currentPath != null );
+			
+			return null;
+		}
+		
+		private ProjectNode findProjectNode(IAssemblyProject project) {
+			
+			for ( WorkspaceTreeNode child : getRoot().children ) {
+				if ( child instanceof ProjectNode ) {
+					if ( child.getValue() == project ) {
+						return (ProjectNode) child;
+					}
+				}
+			}
+			return null;
+		}
+		
+		private WorkspaceTreeNode createRootNode() {
+			
+			WorkspaceTreeNode result = new WorkspaceTreeNode(null);
+			final List<IAssemblyProject> projects = workspace.getAllProjects();
+			
+			Collections.sort( projects , new Comparator<IAssemblyProject>() {
+
+				@Override
+				public int compare(IAssemblyProject o1, IAssemblyProject o2) {
+					return o1.getName().compareTo( o2.getName() );
+				}
+			} );
+			
+			for ( IAssemblyProject p : projects ) {
+				addProject( p , result );
+			}
+			return result;
+		}
+		
+		private void addProject(IAssemblyProject p, WorkspaceTreeNode result) 
+		{
+			final ProjectNode n = new ProjectNode( p );
+			result.addChild( n );
+			
+			addDirectory( p.getConfiguration().getBaseDirectory() , n ); 
 		}
 
-		@Override
-		public void resourceDeleted(IAssemblyProject project, IResource resource) {
-			// TODO Auto-generated method stub
+		private void addDirectory(File dir, WorkspaceTreeNode n) 
+		{
+			final List<File> files = new ArrayList<File>();
+			final List<File> dirs = new ArrayList<File>();
 			
-		}
+			for ( File f : dir.listFiles() ) 
+			{
+				if ( f.isFile() ) {
+					files.add( f);
+				} else if ( f.isDirectory() ) {
+					dirs.add( f );
+				}
+			}
+			
+			final Comparator<File> BY_NAME_COMP = new Comparator<File>() {
+				
+				@Override
+				public int compare(File o1, File o2) 
+				{
+					return o1.getName().compareTo( o2.getName() );
+				}
+			};
+			
+			Collections.sort( files , BY_NAME_COMP );
+			Collections.sort( dirs , BY_NAME_COMP );
+			
+			// always add directores before files 
+			for ( File current : dirs ) 
+			{
+				final FileNode dirNode = new FileNode( current );
+				n.addChild( dirNode );
+				addDirectory(  current , dirNode );
+			}
+			
+			for ( File f : files ) 
+			{
+				n.addChild( new FileNode( f  ) );
+			}
+		}		
 	}
 	
 	private WorkspaceTreeModel createTreeModel() {
-		
-		WorkspaceTreeNode result = new WorkspaceTreeNode(null);
-		final List<IAssemblyProject> projects = workspace.getAllProjects();
-		
-		Collections.sort( projects , new Comparator<IAssemblyProject>() {
-
-			@Override
-			public int compare(IAssemblyProject o1, IAssemblyProject o2) {
-				return o1.getName().compareTo( o2.getName() );
-			}
-		} );
-		
-		for ( IAssemblyProject p : projects ) {
-			addProject( p , result );
-		}
-		return new WorkspaceTreeModel( result );
+		return new WorkspaceTreeModel();
 	}
 	
-	private void addProject(IAssemblyProject p, WorkspaceTreeNode result) 
-	{
-		final ProjectNode n = new ProjectNode( p );
-		result.addChild( n );
-		
-		addDirectory( p.getConfiguration().getBaseDirectory() , n ); 
-	}
-
-	private void addDirectory(File dir, WorkspaceTreeNode n) 
-	{
-		final List<File> files = new ArrayList<File>();
-		final List<File> dirs = new ArrayList<File>();
-		
-		for ( File f : dir.listFiles() ) 
-		{
-			if ( f.isFile() ) {
-				files.add( f);
-			} else if ( f.isDirectory() ) {
-				dirs.add( f );
-			}
-		}
-		
-		final Comparator<File> BY_NAME_COMP = new Comparator<File>() {
-			
-			@Override
-			public int compare(File o1, File o2) 
-			{
-				return o1.getName().compareTo( o2.getName() );
-			}
-		};
-		
-		Collections.sort( files , BY_NAME_COMP );
-		Collections.sort( dirs , BY_NAME_COMP );
-		
-		// always add directores before files 
-		for ( File current : dirs ) 
-		{
-			final ResourceNode dirNode = new ResourceNode( current );
-			n.addChild( dirNode );
-			addDirectory(  current , dirNode );
-		}
-		
-		for ( File f : files ) 
-		{
-			n.addChild( new ResourceNode( f  ) );
-		}
-	}
-
 	protected static class WorkspaceTreeNode implements javax.swing.tree.TreeNode 
 	{
 		private WorkspaceTreeNode parent;
@@ -457,6 +608,24 @@ public class WorkspaceExplorer extends AbstractView {
 			this.value = value;
 		}
 		
+		public void removeChild(FileNode fn) {
+			children.remove( fn );
+		}
+
+		public Object[] getPathToRoot() 
+		{
+			final List<WorkspaceTreeNode> result = new ArrayList<WorkspaceTreeNode>();
+
+			WorkspaceTreeNode current = this;
+			do {
+				result.add( current );
+				current = current.getParent();
+			} while ( current != null );
+			
+			Collections.reverse( result );
+			return result.toArray( new Object[ result.size() ] );
+		}
+
 		public Object getValue() {
 			return value;
 		}
@@ -466,6 +635,20 @@ public class WorkspaceExplorer extends AbstractView {
 			child.setParent( this );
 		}
 		
+		public WorkspaceTreeNode findNodeByValue(Object expected) {
+			
+			if ( ObjectUtils.equals( this.value , expected ) ) {
+				return this;
+			}
+			
+			for ( WorkspaceTreeNode child : children ) {
+				WorkspaceTreeNode result = child.findNodeByValue( expected );
+				if ( result != null ) {
+					return result;
+				}
+			}
+			return null;
+		}
 		public WorkspaceTreeNode getParent() {
 			return parent;
 		}
@@ -491,9 +674,9 @@ public class WorkspaceExplorer extends AbstractView {
 		@Override
 		public boolean getAllowsChildren() 
 		{
-			if ( this instanceof ResourceNode) 
+			if ( this instanceof FileNode) 
 			{
-				return ((ResourceNode) this).isDirectory();
+				return ((FileNode) this).isDirectory();
 			}
 			return true;
 		}
@@ -517,8 +700,8 @@ public class WorkspaceExplorer extends AbstractView {
 		@Override
 		public boolean isLeaf() 
 		{
-			if ( this instanceof ResourceNode) {
-				final File file = ((ResourceNode) this).getValue();
+			if ( this instanceof FileNode) {
+				final File file = ((FileNode) this).getValue();
 				if ( file.isFile() ) {
 					return true;
 				}
@@ -548,9 +731,9 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 	}	
 	
-	protected static final class ResourceNode extends WorkspaceTreeNode {
+	protected static final class FileNode extends WorkspaceTreeNode {
 		
-		public ResourceNode(File file) {
+		public FileNode(File file) {
 			super( file );
 			if (file == null) {
 				throw new IllegalArgumentException("file must not be NULL");
