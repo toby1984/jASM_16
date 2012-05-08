@@ -21,12 +21,17 @@ import javax.swing.SwingUtilities;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
-public class MenuManager {
-
+public abstract class MenuManager 
+{
 	// @GuardedBy( entries )
 	private final List<MenuEntry> entriesList = new ArrayList<MenuEntry>();
 
+	private final Object menuBarLock  = new Object();
+
+	// @GuardedBy( menuBarLock )
 	private JMenuBar menuBar;
+	// @GuardedBy( menuBarLock )	
+	private ItemWatchdog watchdogThread;	
 	
 	private static final class MenuPath 
 	{
@@ -110,14 +115,14 @@ public class MenuManager {
 		public JMenuItem getMenuItem() {
 			return menuItem;
 		}
-		
+
 		public void setMenuItem(JMenuItem menuItem) {
 			if (menuItem == null) {
 				throw new IllegalArgumentException("menuItem must not be null");
 			}
 			this.menuItem = menuItem;
 		}
-		
+
 		public MenuEntry(String path,int mnemonic) {
 			this.path = new MenuPath( path );
 			if ( this.path.length() == 1 ) {
@@ -165,88 +170,153 @@ public class MenuManager {
 		synchronized( entriesList ) {
 			this.entriesList.add( entry );
 		}
+		
+		notifyMenuBarChanged();
+	}
+	
+	private void notifyMenuBarChanged() 
+	{
+		final boolean notifyChange;
+		synchronized( menuBarLock ) 
+		{
+			if ( menuBar != null ) {
+				menuBar = null;
+				notifyChange = true;
+			} else {
+				notifyChange = false;
+			}
+		}
+		
+		if ( notifyChange ) 
+		{
+			System.out.println("Menu bar has changed!");
+			menuBarChanged();
+		}
 	}
 
 	public void removeEntry(MenuEntry entry) {
 		if (entry == null) {
 			throw new IllegalArgumentException("entry must not be null");
 		}
-		synchronized( entriesList ) {
-			this.entriesList.remove( entry );
+		synchronized( entriesList ) 
+		{
+			if ( this.entriesList.remove( entry ) == false ) {
+				return;
+			}
 		}
+
+		notifyMenuBarChanged();
 	}
 
-	public synchronized JMenuBar getMenuBar() 
+	public JMenuBar getMenuBar() 
 	{
-		if ( menuBar == null ) 
+		synchronized( menuBarLock ) 
 		{
-			menuBar = createMenuBar();
-			
-			final Thread t = new Thread() {
-
-				private final IdentityHashMap<MenuEntry, Boolean> stateCache = 
-						new IdentityHashMap<MenuEntry, Boolean>();
-				
-				@Override
-				public void run() 
+			if ( menuBar == null ) 
+			{
+				menuBar = createMenuBar();
+				if ( watchdogThread == null || ! watchdogThread.isAlive() ) 
 				{
-					while( true ) 
-					{
-						try {
-							Thread.sleep( 500 );
-						} 
-						catch (InterruptedException e) 
-						{
-						}
-
-						final List<MenuEntry> copy;
-						synchronized( entriesList ) {
-							copy = new ArrayList<MenuEntry>( entriesList );
-						}						
-						
-						for ( final MenuEntry entry : copy ) 
-						{
-							final Boolean currentState = Boolean.valueOf( entry.isEnabled() );							
-							final Boolean oldState = stateCache.get( entry );
-							if ( oldState == null ) {
-								stateCache.put( entry , currentState );
-							} 
-							else 
-							{
-								if ( ! oldState.equals( currentState ) ) 
-								{
-									stateCache.put( entry , currentState );									
-
-									SwingUtilities.invokeLater( new Runnable() {
-
-										@Override
-										public void run() 
-										{
-											entry.getMenuItem().setEnabled( currentState.booleanValue() );
-										}
-									});
-								}
-							}
-						}
-
-					}
+					watchdogThread = new ItemWatchdog();
+					watchdogThread.start();
+				} else {
+					watchdogThread.clearCache();
 				}
-			};
-			t.setDaemon( true );
-			t.setName("menuitem-watchdog-thread");
-			
-			t.start();
+			}
+			return menuBar;
 		}
-		return menuBar;
 	}
 	
+	private class ItemWatchdog extends Thread {
+
+		// @GuardedBy( stateCache )
+		private final IdentityHashMap<MenuEntry, Boolean> stateCache = 
+				new IdentityHashMap<MenuEntry, Boolean>();
+
+		public ItemWatchdog() {
+			setDaemon( true );
+			setName("menuitem-watchdog-thread");			
+		}
+		
+		public void clearCache() {
+			synchronized(stateCache) {
+				stateCache.clear();
+			}
+		}
+		
+		@Override
+		public void run() 
+		{
+			while( true ) 
+			{
+				try { Thread.sleep( 500 ); } 
+				catch (InterruptedException e) { }
+				
+				synchronized( menuBarLock ) 
+				{
+					if ( menuBar == null ) {
+						continue;
+					}
+				}
+
+				final List<MenuEntry> entriesCopy;
+				synchronized( entriesList ) {
+					entriesCopy = new ArrayList<MenuEntry>( entriesList );
+				}						
+				
+				boolean cacheModified = false;
+				final Map<MenuEntry, Boolean> cacheCopy;
+				synchronized( stateCache ) {
+					cacheCopy = new IdentityHashMap<MenuEntry, Boolean>( this.stateCache );
+				}
+				
+				for ( final MenuEntry entry : entriesCopy ) 
+				{
+					final Boolean currentState = Boolean.valueOf( entry.isEnabled() );							
+					final Boolean oldState = cacheCopy.get( entry );
+					if ( oldState == null ) {
+						cacheCopy.put( entry , currentState );
+						cacheModified = true;
+					} 
+					else 
+					{
+						if ( ! oldState.equals( currentState ) ) 
+						{
+							cacheCopy.put( entry , currentState );									
+							cacheModified = true;
+							SwingUtilities.invokeLater( new Runnable() {
+
+								@Override
+								public void run() 
+								{
+									System.out.println("Item state changed: "+entry.getLabel()+"  "+oldState+" -> "+currentState);
+									entry.getMenuItem().setEnabled( currentState.booleanValue() );
+								}
+							});
+						}
+					}
+				}
+
+				if ( cacheModified ) 
+				{
+					synchronized( stateCache ) 
+					{
+						this.stateCache.clear();
+						this.stateCache.putAll( cacheCopy );
+					}					
+				}
+			}
+		}
+			
+	}
+
 	protected JMenuBar createMenuBar() 
 	{
 		final List<MenuEntry> copy;
 		synchronized( entriesList ) {
 			copy = new ArrayList<MenuEntry>( entriesList );
 		}
-		
+
 		// collect distinct parent paths
 		final List<MenuPath> paths = new ArrayList<MenuPath>();
 		for ( MenuEntry e : copy ) 
@@ -338,17 +408,22 @@ public class MenuManager {
 				public void actionPerformed(ActionEvent event) {
 					e.onClick();
 				}
+				
+				@Override
+				public boolean isEnabled() {
+					return e.isEnabled();
+				}
 
 			};
 
 			final JMenuItem item = new JMenuItem( action ) {
-				
+
 				@Override
 				public boolean isEnabled() {
 					return action.isEnabled();
 				}
 			};
-			
+
 			if ( e.hasMnemonic() ) {
 				item.setMnemonic( e.getMnemonic() );
 			}
@@ -358,4 +433,6 @@ public class MenuManager {
 
 		return menuBar;
 	}
+
+	public abstract void menuBarChanged();
 }

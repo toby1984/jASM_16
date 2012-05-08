@@ -23,10 +23,12 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JFrame;
+import javax.swing.JMenuBar;
 import javax.swing.JPanel;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -38,6 +40,16 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
 public class ViewFrame extends JFrame implements IViewContainer
 {
     private final IView component;
+    private final MenuManager menuManager = new MenuManager() {
+
+		@Override
+		public void menuBarChanged() 
+		{
+			setJMenuBar( menuManager.getMenuBar() );
+		}
+	};
+    
+    private JMenuBar menuBar;
     
     public ViewFrame(String title,final IView component) 
     {
@@ -109,5 +121,15 @@ public class ViewFrame extends JFrame implements IViewContainer
 			return null;
 		}
 		return component.getID().equals( viewId ) ? component : null;
+	}
+
+	@Override
+	public MenuManager getMenuManager() 
+	{
+		if ( menuBar == null ) {
+			menuBar = menuManager.getMenuBar();
+			setJMenuBar( menuBar );
+		}
+		return menuManager;
 	}
 }

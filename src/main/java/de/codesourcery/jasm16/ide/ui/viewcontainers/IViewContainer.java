@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.util.List;
 
+import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -81,4 +82,12 @@ public interface IViewContainer {
 	 * @see IView#getID()
 	 */
 	public IView getViewByID(String viewId);
+	
+	/**
+	 * Returns this container's menu manager or <code>null</code> if this
+	 * container does not support menues.
+	 * 
+	 * @return
+	 */
+	public MenuManager getMenuManager();
 }

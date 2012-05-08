@@ -12,6 +12,8 @@ import javax.swing.JTabbedPane;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.ide.ui.MenuManager;
+import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
@@ -24,6 +26,18 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	
 	private final List<ViewWithPanel> views = new ArrayList<ViewWithPanel>();
 	private final JTabbedPane tabbedPane = new JTabbedPane();
+	
+	private MenuEntry saveCurrent = new MenuEntry("File/Save") {
+
+		@Override
+		public void onClick() {
+			System.out.println("Save current editor contents");
+		}
+		
+		public boolean isVisible() {
+			return ! mayBeDisposed();
+		};
+	};	
 
 	protected final class ViewWithPanel 
 	{
@@ -59,9 +73,13 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		setColors( result );
 		setColors( tabbedPane );
 		result.add( tabbedPane ,cnstrs );
+		
+		if ( getViewContainer().getMenuManager() != null ) {
+			getViewContainer().getMenuManager().addEntry( saveCurrent );
+		}
 		return result;
 	}
-
+	
 	@Override
 	public void addView(IView view) 
 	{
@@ -92,6 +110,10 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 			v.view.dispose();
 		}
 		this.views.clear();
+		
+		if ( getViewContainer().getMenuManager() != null ) {
+			getViewContainer().getMenuManager().removeEntry( saveCurrent );
+		}
 	}
 
 	@Override
@@ -187,4 +209,8 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		return null;
 	}
 
+	@Override
+	public MenuManager getMenuManager() {
+		return null;
+	}
 }

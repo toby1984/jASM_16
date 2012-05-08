@@ -56,7 +56,14 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 
 	private IApplicationConfig applicationConfig;
 	
-	private final MenuManager menuManager = new MenuManager();
+	private final MenuManager menuManager = new MenuManager() {
+		
+		@Override
+		public void menuBarChanged() 
+		{
+			setJMenuBar( menuManager.getMenuBar() );
+		}
+	};
 
 	protected final class InternalFrameWithView 
 	{
@@ -130,7 +137,8 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			
 			public boolean isEnabled() {
 				
-				EditorContainer editorContainer = (EditorContainer ) getViewByID( EditorContainer.VIEW_ID );
+				final EditorContainer editorContainer = (EditorContainer ) 
+						getViewByID( EditorContainer.VIEW_ID );
 				
 				if ( editorContainer == null ) {
 					return false;
@@ -163,6 +171,7 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			InternalFrameWithView frame = it.next();
 			if ( frame.view == view ) 
 			{
+				frame.view.dispose();
 				frame.frame.dispose();
 				it.remove();
 				return;
@@ -325,5 +334,10 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			}
 		}		
 		return null;
+	}
+
+	@Override
+	public MenuManager getMenuManager() {
+		return menuManager;
 	}
 }
