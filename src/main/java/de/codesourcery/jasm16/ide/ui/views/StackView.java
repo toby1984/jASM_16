@@ -164,5 +164,10 @@ public class StackView extends AbstractView
 	public String getTitle() {
 		return "stack view";
 	}
+
+	@Override
+	public String getID() {
+		return "stack-view";
+	}
     
 }

@@ -30,4 +30,6 @@ public interface IView
     public void refreshDisplay();
     
     public String getTitle();
+    
+    public String getID();
 }

@@ -593,4 +593,14 @@ public class WorkspaceExplorer extends AbstractView {
 	public String getTitle() {
 		return "Workspace view";
 	}
+
+	@Override
+	public String getID() {
+		return "workspace-explorer";
+	}
+	
+	@Override
+	public boolean mayBeDisposed() {
+		return false;
+	}
 }

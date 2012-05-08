@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.awt.Dimension;
+import java.awt.Point;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.utils.Misc;
@@ -44,6 +47,8 @@ public class ApplicationConfig implements IApplicationConfig {
 
 	public static final String FILE_NAME = ".jasm_workspace.properties";
 
+	protected static final String KEY_VIEW_COORDINATES_PREFIX = "view.";
+	
 	protected static final String KEY_WORKSPACE_DIRECTORY = "workspace.dir";
 
 	private final File configFile;
@@ -157,6 +162,51 @@ public class ApplicationConfig implements IApplicationConfig {
 		Misc.checkFileExistsAndIsDirectory( dir , true );
 		this.configProperties.put( KEY_WORKSPACE_DIRECTORY , dir.getAbsolutePath() );
 		saveConfiguration();
+	}
+
+	@Override
+	public void storeViewCoordinates(String viewID, SizeAndLocation loc) 
+	{
+		if (StringUtils.isBlank(viewID)) {
+			throw new IllegalArgumentException(
+					"viewID must not be blank/null");
+		}
+		
+		if ( loc == null ) {
+			throw new IllegalArgumentException("loc must not be null");
+		}
+		
+		final String posKey =  KEY_VIEW_COORDINATES_PREFIX+viewID+".position";
+		final String sizeKey =  KEY_VIEW_COORDINATES_PREFIX+viewID+".size";
+		
+		final String posValue = loc.getLocation().x+","+loc.getLocation().y;
+		final String sizeValue = loc.getSize().width+","+loc.getSize().height;
+		this.configProperties.put( posKey , posValue );
+		this.configProperties.put( sizeKey , sizeValue );
+	}
+
+	@Override
+	public SizeAndLocation getViewCoordinates(String viewId) 
+	{
+		final String posKey =  KEY_VIEW_COORDINATES_PREFIX+viewId+".position";
+		final String sizeKey =  KEY_VIEW_COORDINATES_PREFIX+viewId+".size";
+		
+		final String posValue = this.configProperties.get( posKey );
+		final String sizeValue = this.configProperties.get( sizeKey );
+		
+		if ( StringUtils.isBlank( posValue ) || StringUtils.isBlank( sizeValue ) ) {
+			return null;
+		}
+		
+		String[] parts = posValue.split(",");
+		final int x = Integer.parseInt( parts[0] );
+		final int y = Integer.parseInt( parts[1] );
+		
+		parts = sizeValue.split(",");
+		final int width = Integer.parseInt( parts[0] );
+		final int height = Integer.parseInt( parts[1] );
+		
+		return new SizeAndLocation( new Point( x , y ) , new Dimension( width , height ) );
 	}
 
 }

@@ -149,4 +149,9 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		return result;
 	}
 
+	@Override
+	public String getID() {
+		return "editor-container";
+	}
+
 }

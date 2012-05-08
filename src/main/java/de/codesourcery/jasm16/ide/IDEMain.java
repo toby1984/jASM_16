@@ -55,7 +55,7 @@ public class IDEMain
 		
 		createSampleProject( "sample-project" );
 		
-		desktop = new DesktopWindow();
+		desktop = new DesktopWindow( appConfig );
 		desktop.addView( new WorkspaceExplorer( workspace ) );
 		desktop.pack();
 		desktop.setSize( 800 , 600 );		

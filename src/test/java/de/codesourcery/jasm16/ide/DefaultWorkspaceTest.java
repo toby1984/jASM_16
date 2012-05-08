@@ -56,6 +56,13 @@ public class DefaultWorkspaceTest extends TestHelper {
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
 			}
+			@Override
+			public void storeViewCoordinates(String viewID, SizeAndLocation loc) {
+			}
+			@Override
+			public SizeAndLocation getViewCoordinates(String viewId) {
+				return null;
+			}
 		};
 
 		DefaultWorkspace workspace = new DefaultWorkspace( config );
@@ -100,6 +107,14 @@ public class DefaultWorkspaceTest extends TestHelper {
 			@Override
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
+			}
+			@Override
+			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
+			
+			@Override
+			public SizeAndLocation getViewCoordinates(String viewId) {
+				// TODO Auto-generated method stub
+				return null;
 			}
 		};
 
@@ -150,6 +165,15 @@ public class DefaultWorkspaceTest extends TestHelper {
 			@Override
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
+			}
+			
+			@Override
+			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
+			
+			@Override
+			public SizeAndLocation getViewCoordinates(String viewId) {
+				// TODO Auto-generated method stub
+				return null;
 			}
 		};
 

@@ -141,4 +141,9 @@ public class HexDumpView extends AbstractView
 	public String getTitle() {
 		return "memory view";
 	}
+
+	@Override
+	public String getID() {
+		return "hexdump-view";
+	}
 }

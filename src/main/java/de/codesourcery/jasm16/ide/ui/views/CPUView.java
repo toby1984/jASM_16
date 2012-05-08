@@ -156,5 +156,10 @@ public class CPUView extends AbstractView
 	public String getTitle() {
 		return "CPU view";
 	}
+
+	@Override
+	public String getID() {
+		return "cpu-view";
+	}
     
 }

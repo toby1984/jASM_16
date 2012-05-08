@@ -594,7 +594,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			return "";
 		}
 		try {
-			return editorPane.getDocument().getText( 0 , len );
+			return editorPane.getDocument().getText( 0 , len-1 );
 		} catch (BadLocationException e) {
 			throw new RuntimeException("bad location: ",e);
 		}
@@ -1101,6 +1101,11 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		if ( this.project != project || this.fileResource != resource ) {
 			openFile( project , resource );
 		}
+	}
+
+	@Override
+	public String getID() {
+		return "source-editor";
 	}
 
 }

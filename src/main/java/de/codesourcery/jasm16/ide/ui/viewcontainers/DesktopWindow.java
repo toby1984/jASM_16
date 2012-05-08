@@ -20,9 +20,8 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -33,6 +32,10 @@ import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
 
+import org.apache.log4j.Logger;
+
+import de.codesourcery.jasm16.ide.IApplicationConfig;
+import de.codesourcery.jasm16.ide.SizeAndLocation;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -43,11 +46,15 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
  */
 public class DesktopWindow extends JFrame implements IViewContainer {
 
+	private static final Logger LOG = Logger.getLogger(DesktopWindow.class);
+	
 	private final JDesktopPane desktop = new JDesktopPane();
 
 	private final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>();
 
-	protected static final class InternalFrameWithView 
+	private IApplicationConfig applicationConfig;
+
+	protected final class InternalFrameWithView 
 	{
 		public final JInternalFrame frame;
 		public final IView view;
@@ -57,6 +64,15 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			this.view = view;
 			this.frame = frame;
 		}
+		
+		public void dispose() 
+		{
+			SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
+			System.out.println("store(): "+view.getID()+" => "+sizeAndLoc);
+			applicationConfig.storeViewCoordinates( view.getID() , sizeAndLoc );
+			frame.dispose();
+			view.dispose();			
+		}
 	}
 	
 	@Override
@@ -64,16 +80,25 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 	{
 		final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>(this.views);
 		for ( InternalFrameWithView v : views) {
-			v.frame.dispose();
-			v.view.dispose();
+			v.dispose();
 		}
 		
 		super.dispose();
+		
+		try {
+			this.applicationConfig.saveConfiguration();
+		} catch (IOException e) {
+			LOG.error("dispose(): Failed to save view coordinates",e);
+		}
 	}
 
-	public DesktopWindow() 
+	public DesktopWindow(IApplicationConfig appConfig) 
 	{
 		super("jASM16 DCPU emulator V"+de.codesourcery.jasm16.compiler.Compiler.getVersionNumber() );
+		if (appConfig == null) {
+			throw new IllegalArgumentException("appConfig must not be null");
+		}
+		this.applicationConfig = appConfig;
 		setPreferredSize( new Dimension(400,200 ) );
 		getContentPane().add( desktop );
 
@@ -93,7 +118,6 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		desktop.setForeground( Color.GREEN );		
 	}
 
-
 	@Override
 	public void removeView(IView view) 
 	{
@@ -111,17 +135,6 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		}
 	}
 	
-	private static class SizeAndLocation 
-	{
-		public Point location;
-		public Dimension dimension;
-		
-		public SizeAndLocation(Point location, Dimension dimension) {
-			this.location = location;
-			this.dimension = dimension;
-		}
-	}
-
 //	protected SizeAndLocation findLargestFreeSpace() {
 //	
 //		final Dimension maxSize = desktop.getSize();
@@ -204,12 +217,24 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 			throw new IllegalArgumentException("view must not be NULL");
 		}
 		final JInternalFrame internalFrame = new JInternalFrame( view.getTitle(),true, true, true, true);
-		internalFrame.setSize(200, 150);
-		internalFrame.setLocation( 0 , 0 );
+		
 		internalFrame.setBackground(Color.BLACK);
 		internalFrame.setForeground( Color.GREEN );
+		
 		internalFrame.getContentPane().add( view.getPanel(this) );
-		internalFrame.pack();
+		
+		SizeAndLocation sizeAndLoc = applicationConfig.getViewCoordinates( view.getID() );
+		if ( sizeAndLoc != null ) 
+		{
+			System.out.println("load(): "+view.getID()+" => "+sizeAndLoc);
+			internalFrame.setSize( sizeAndLoc.getSize() );
+			internalFrame.setLocation( sizeAndLoc.getLocation() );
+		} else {
+			internalFrame.setSize(200, 150);
+			internalFrame.setLocation( 0 , 0 );
+			internalFrame.pack();
+		}
+		
 		internalFrame.setVisible( true );
 
 		final InternalFrameWithView frameAndView = new InternalFrameWithView( internalFrame , view );

@@ -166,5 +166,10 @@ public class DisassemblerView extends AbstractView
 	public String getTitle() {
 		return "Disassembly view";
 	}
+
+	@Override
+	public String getID() {
+		return "dissassembly-view";
+	}
     
 }

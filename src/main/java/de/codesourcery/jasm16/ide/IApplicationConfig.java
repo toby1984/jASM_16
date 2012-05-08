@@ -18,6 +18,8 @@ package de.codesourcery.jasm16.ide;
 import java.io.File;
 import java.io.IOException;
 
+import de.codesourcery.jasm16.ide.ui.views.IView;
+
 /**
  * Global IDE application configuration.
  * 
@@ -30,4 +32,22 @@ public interface IApplicationConfig {
 	public void setWorkspaceDirectory(File dir) throws IOException;
 
 	void saveConfiguration() throws IOException;
+	
+	/**
+	 * Stores view coordinates (position and size) for a given view ID.
+	 * @param viewID
+	 * @param loc
+	 * @throws IOException 
+	 * @see IView#getID()
+	 */
+	public void storeViewCoordinates(String viewID , SizeAndLocation loc);
+	
+	/**
+	 * Returns the view coordinates (position and size) for a given view ID.
+	 * 
+	 * @param viewId
+	 * @return
+	 * @see IView#getID()
+	 */
+	public SizeAndLocation getViewCoordinates(String viewId);
 }

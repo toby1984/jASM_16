@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.awt.Dimension;
+import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
 
@@ -34,7 +36,7 @@ public class ApplicationConfigTest extends TestHelper {
 	
 	public void testLoad() throws IOException {
 		
-		final File workspaceDir = new File("/home/tobi");
+		final File workspaceDir = getTempDir();
 		final String contents = ApplicationConfig.KEY_WORKSPACE_DIRECTORY+"="+workspaceDir.getAbsolutePath();
 		
 		file = new File( workspaceDir , ApplicationConfig.FILE_NAME );
@@ -47,7 +49,7 @@ public class ApplicationConfigTest extends TestHelper {
 	
 	public void testSave() throws IOException {
 		
-		final File workspaceDir = new File("/home/tobi");
+		final File workspaceDir = getTempDir();
 		final String contents = ApplicationConfig.KEY_WORKSPACE_DIRECTORY+"="+workspaceDir.getAbsolutePath();
 		
 		file = new File( workspaceDir , ApplicationConfig.FILE_NAME );
@@ -57,13 +59,46 @@ public class ApplicationConfigTest extends TestHelper {
 		ApplicationConfig config = new ApplicationConfig( file );
 		assertEquals( workspaceDir.getAbsolutePath() , config.getWorkspaceDirectory().getAbsolutePath() );
 		
+		final File workspaceDir2 = getTempDir();
+		config.setWorkspaceDirectory( workspaceDir2 );
+		config.saveConfiguration();
+		
+		config = new ApplicationConfig( file );
+		assertEquals( workspaceDir2.getAbsolutePath() , config.getWorkspaceDirectory().getAbsolutePath() );
+	}	
+	
+	public void testLoadAndStore() throws IOException {
+		
+		final File workspaceDir = getTempDir();
+		final String contents = ApplicationConfig.KEY_WORKSPACE_DIRECTORY+"="+workspaceDir.getAbsolutePath();
+		
+		file = new File( workspaceDir , ApplicationConfig.FILE_NAME );
+		
+		Misc.writeFile( file , contents );
+		
+		ApplicationConfig config = new ApplicationConfig( file );
+		assertEquals( workspaceDir.getAbsolutePath() , config.getWorkspaceDirectory().getAbsolutePath() );
+		
+		SizeAndLocation sizeAndLoc1 = new SizeAndLocation( new Point(1,2) , new Dimension(2,3) );
+		config.storeViewCoordinates( "test-view" , sizeAndLoc1 );
+
+		SizeAndLocation sizeAndLoc2 = config.getViewCoordinates( "test-view" );
+		assertNotNull( sizeAndLoc2 );
+		assertEquals( sizeAndLoc1.getSize() , sizeAndLoc2.getSize() );
+		assertEquals( sizeAndLoc1.getLocation() , sizeAndLoc2.getLocation() );
+		
 		final File workspaceDir2 = new File("/home/tobi");
 		config.setWorkspaceDirectory( workspaceDir2 );
 		config.saveConfiguration();
 		
 		config = new ApplicationConfig( file );
 		assertEquals( workspaceDir2.getAbsolutePath() , config.getWorkspaceDirectory().getAbsolutePath() );
-				
 		
+		SizeAndLocation sizeAndLoc3 = config.getViewCoordinates( "test-view" );
+		assertNotNull( sizeAndLoc3 );
+		assertEquals( sizeAndLoc1.getSize() , sizeAndLoc3.getSize() );
+		assertEquals( sizeAndLoc1.getLocation() , sizeAndLoc3.getLocation() );	
+		
+		assertNull( config.getViewCoordinates( "test-view2" ) ); 
 	}	
 }
