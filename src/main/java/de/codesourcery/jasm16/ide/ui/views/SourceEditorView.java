@@ -19,6 +19,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -28,6 +29,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
@@ -39,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -50,6 +53,7 @@ import javax.swing.JTextPane;
 import javax.swing.JToolBar;
 import javax.swing.JTree;
 import javax.swing.JViewport;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
@@ -67,6 +71,7 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
@@ -104,6 +109,8 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class SourceEditorView extends AbstractView implements IEditorView {
 
+	private static final Logger LOG = Logger.getLogger(SourceEditorView.class);
+
 	// time to wait until recompiling after the user edited the source code
 	private static final int RECOMPILATION_DELAY_MILLIS = 300;
 
@@ -117,6 +124,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 	private final JTextField cursorPosition = new JTextField(); 
 	private final JTextPane editorPane = new JTextPane();
+	private volatile int documentListenerDisableCount = 0; 
 	private JScrollPane editorScrollPane;  
 
 	private final SimpleAttributeSet registerStyle;    
@@ -130,12 +138,12 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 	// compiler
 	private IAssemblyProject project;
+	private String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
 	private IResource fileResource; // source code on disk
+	private IResource documentResource; // possibly edited source code (in RAM / JEditorPane)
 	
-	private IResource documentResource; // possibly edited source code in RAM
 	private ICompilationUnit compilationUnit;
-	private volatile boolean hasUnsavedContent = false;
-	
+
 	private CompilationThread compilationThread = null;
 
 	/*
@@ -426,7 +434,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 		private void textChanged(DocumentEvent e) 
 		{
-			hasUnsavedContent = true;
+			updateTitle();
+			
 			if ( compilationThread == null ) 
 			{
 				compilationThread = new CompilationThread();
@@ -444,7 +453,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		@Override
 		public void changedUpdate(DocumentEvent e) 
 		{
-			textChanged(e); }
+			// do nothing, style change only
+		}
 	};
 
 	private final CaretListener listener = new CaretListener() {
@@ -594,7 +604,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			return "";
 		}
 		try {
-			return editorPane.getDocument().getText( 0 , len-1 );
+			return editorPane.getDocument().getText( 0 , len );
 		} catch (BadLocationException e) {
 			throw new RuntimeException("bad location: ",e);
 		}
@@ -615,7 +625,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		this.fileResource = sourceFile;
 
 		final String source = Misc.readSource( sourceFile );
-
+		this.initialHashCode = Misc.calcHash( source );
+		
 		documentResource = new AbstractResource(ResourceType.SOURCE_CODE) {
 
 			@Override
@@ -656,29 +667,33 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 		editorPane.setText( source );
 
-		enableDocumentListener();
-
 		if ( panel != null ) {
 			validateSourceCode();
 		}
+
+		enableDocumentListener();		
 	}
 
 	private void validateSourceCode() throws IOException {
 
-		clearCompilationErrors();
-		statusModel.clearMessages();
-		
-		compilationUnit = project.getBuilder().parse( documentResource , new CompilationListener() );
-		
-		doHighlighting( compilationUnit , true );
+		disableDocumentListener();
+		try 
+		{
+			clearCompilationErrors();
+			statusModel.clearMessages();
+			compilationUnit = project.getBuilder().parse( documentResource , new CompilationListener() );
+			doHighlighting( compilationUnit , true );
+		} finally {
+			enableDocumentListener();
+		}
 	}
-	
+
 	protected void doHighlighting(ICompilationUnit unit,boolean addStatusMessages) 
 	{
 		if ( panel == null ) {
 			return;
 		}
-		
+
 		if ( unit.getAST() != null ) 
 		{
 			final ASTTableModelWrapper astModel = new ASTTableModelWrapper( compilationUnit.getAST() ) ;
@@ -707,14 +722,11 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		try {
 			final ITextRegion visible = getVisibleTextRegion();
 			if ( visible != null ) {
-				long time = -System.currentTimeMillis();
 				final List<ASTNode> nodes = unit.getAST().getNodesInRange( visible );
 				for ( ASTNode child : nodes ) 
 				{
 					doSemanticHighlighting( unit , child );
 				}
-				time += System.currentTimeMillis();
-				System.out.println("Syntax highlighting "+visible+" took "+time+" millis.");
 			}
 		} finally {
 			enableDocumentListener();
@@ -832,21 +844,28 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 	private void clearCompilationErrors() 
 	{
-		StyledDocument doc = editorPane.getStyledDocument();
-		disableDocumentListener();
+		disableDocumentListener();		
 		try {
+			final StyledDocument doc = editorPane.getStyledDocument();
 			doc.setCharacterAttributes( 0 , doc.getLength() , defaultStyle , true );
 		} finally {
 			enableDocumentListener();
 		}
 	}
 
-	private void disableDocumentListener() {
+	private void disableDocumentListener() 
+	{
+		documentListenerDisableCount++;		
 		editorPane.getDocument().removeDocumentListener( recompilationListener );
 	}
 
-	private void enableDocumentListener() {
-		editorPane.getDocument().addDocumentListener( recompilationListener );
+	private void enableDocumentListener() 
+	{
+		documentListenerDisableCount--;		
+		if ( documentListenerDisableCount == 0) 
+		{
+			editorPane.getDocument().addDocumentListener( recompilationListener );
+		}
 	}   
 
 	private void showCompilationErrors(ICompilationUnit unit,boolean addStatusMessages) 
@@ -892,20 +911,30 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	{
 		if ( panel == null ) {
 			panel = createPanel();
+			if ( this.fileResource != null ) {
+				try {
+					validateSourceCode();
+				} catch (IOException e) {
+					LOG.error("getPanel(): ",e);
+				}
+			}
 		}
 		return panel;
 	}
-	
+
 	protected JPanel createPanel() 
 	{
-		
-		editorPane.setCaretColor( Color.WHITE );
-		setColors( editorPane );
-
-		editorScrollPane = new JScrollPane(editorPane);
-		setColors( editorScrollPane );
-
-		editorPane.addCaretListener( listener );
+		disableDocumentListener(); // necessary because setting colors on editor pane triggers document change listeners (is considered a style change...)
+		try {
+			editorPane.setCaretColor( Color.WHITE );
+			setupKeyBindings( editorPane );
+			setColors( editorPane );
+			editorScrollPane = new JScrollPane(editorPane);
+			setColors( editorScrollPane );
+			editorPane.addCaretListener( listener );
+		} finally {
+			enableDocumentListener();
+		}
 
 		editorScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 		editorScrollPane.setPreferredSize( new Dimension(400,600 ) );
@@ -1042,11 +1071,37 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		panel.add( splitPane , cnstrs );
 		return panel;
 	}
+
+	private void setupKeyBindings(JTextPane editor) 
+	{
+		// 'Save' action 
+		addKeyBinding( editor , 
+				KeyStroke.getKeyStroke(KeyEvent.VK_S,Event.CTRL_MASK),
+				new AbstractAction() 
+		{
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				saveCurrentFile();
+			}
+		});
+	}
 	
+	private void saveCurrentFile() {
+		
+		final String source = getTextFromTextPane();
+		try {
+			Misc.writeResource( getCurrentResource() , source );
+			this.initialHashCode = Misc.calcHash( source );
+			updateTitle();
+		} catch (IOException e1) {
+			LOG.error("save(): Failed to write to "+getCurrentResource());
+		}
+	}
+
 	public IAssemblyProject getCurrentProject() {
 		return project;
 	}
-	
+
 	public IResource getCurrentResource() {
 		return this.fileResource;
 	}
@@ -1072,8 +1127,12 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	}
 
 	@Override
-	public String getTitle() {
-		return "source view";
+	public String getTitle() 
+	{
+		if ( getCurrentResource() == null ) {
+			return "source view";
+		}
+		return ( hasUnsavedContent() ? "*" : "" )+getCurrentResource().getIdentifier();
 	}
 
 	@Override
@@ -1086,10 +1145,14 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	}
 
 	@Override
-	public boolean hasUnsavedContent() {
-		return hasUnsavedContent;
+	public boolean hasUnsavedContent() 
+	{
+		if ( this.fileResource == null ) {
+			return false;
+		}
+		return ! initialHashCode.equals( Misc.calcHash( getTextFromTextPane() ) );
 	}
-	
+
 	@Override
 	public boolean mayBeDisposed() {
 		return ! hasUnsavedContent();
@@ -1101,6 +1164,12 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		if ( this.project != project || this.fileResource != resource ) {
 			openFile( project , resource );
 		}
+	}
+
+	private void updateTitle() 
+	{
+		final String title = ( hasUnsavedContent() ? "*" : "")+getCurrentResource().getIdentifier();
+		getViewContainer().setTitle( SourceEditorView.this , title );				
 	}
 
 	@Override

@@ -1,5 +1,6 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
+import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
@@ -65,6 +66,20 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		final ViewWithPanel newView = new ViewWithPanel( view );
 		views.add( newView );
 		tabbedPane.add( view.getTitle() , newView.panel );
+	}
+	
+	@Override
+	public void setTitle(IView view, String title) 
+	{
+		for ( ViewWithPanel p : this.views ) {
+			if ( p.view == view ) {
+				final int index = tabbedPane.indexOfComponent( p.panel );
+				if ( index != -1 ) {
+					tabbedPane.setTitleAt( index , title );
+				}
+				break;
+			}
+		}
 	}
 
 	@Override

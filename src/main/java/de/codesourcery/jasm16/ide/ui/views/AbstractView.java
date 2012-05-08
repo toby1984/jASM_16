@@ -20,18 +20,22 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
+import java.util.concurrent.atomic.AtomicLong;
 
+import javax.swing.Action;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
 public abstract class AbstractView implements IView
 {
     public static final Color DEFAULT_TEXT_COLOR = Color.GREEN;
-    
     public static final Color DEFAULT_BACKGROUND_COLOR = Color.BLACK;
-    
     public static final Font DEFAULT_FONT=new Font( "Courier", Font.PLAIN , 13 );
+    
+	private static final AtomicLong ACTION_ID = new AtomicLong(0);    
     
     private IViewContainer container;
 
@@ -93,4 +97,12 @@ public abstract class AbstractView implements IView
     public boolean mayBeDisposed() {
     	return true;
     }
+    
+	protected String addKeyBinding(JComponent editor , KeyStroke key , Action action) 
+	{
+		final String actionId = Long.toString( ACTION_ID.incrementAndGet() );
+		editor.getInputMap().put( key , actionId );
+		editor.getActionMap().put( actionId , action );
+		return actionId;
+	}    
 }

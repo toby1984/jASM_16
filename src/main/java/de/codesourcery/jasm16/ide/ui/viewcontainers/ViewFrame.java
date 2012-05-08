@@ -90,5 +90,9 @@ public class ViewFrame extends JFrame implements IViewContainer
 	public List<IView> getViews() {
 		return Collections.singletonList( component );
 	}
-    
+
+	@Override
+	public void setTitle(IView view, String title) {
+		setTitle( title );
+	}
 }

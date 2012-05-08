@@ -21,6 +21,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -571,6 +574,16 @@ public class Misc {
 		return new File( homeDirectory );
     }
     
+    public static void writeResource(IResource resource,String s) throws IOException 
+    {
+    	final OutputStreamWriter writer = new OutputStreamWriter( resource.createOutputStream( false ) );
+    	try {
+    		writer.write( s );
+    	} finally {
+    		IOUtils.closeQuietly( writer );
+    	}
+    }    
+    
     public static void writeFile(File file,String s) throws IOException {
     	writeFile( file , s.getBytes() );
     }
@@ -657,5 +670,17 @@ public class Misc {
 			}
 		}
 		return true;
-	}	
+	}
+	
+	public static String calcHash(String data) {
+		
+		final MessageDigest digest;
+		try {
+			digest = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException(e);
+		}
+		final byte[] result = digest.digest( data.getBytes()  );
+		return toHexString( result );
+	}
 }

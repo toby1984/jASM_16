@@ -51,6 +51,18 @@ public interface IViewContainer {
 	 * @param view
 	 */
 	public void removeView(IView view);
+	
+	/**
+	 * Sets the title for a given view (if this view container supports displaying
+	 * titles for views).
+	 * 
+	 * <p>If this view container does not display titles for views, this
+	 * method does nothing.</p>
+	 *  
+	 * @param view
+	 * @param title
+	 */
+	public void setTitle(IView view,String title);
 
 	/**
 	 * Returns all views that are currently

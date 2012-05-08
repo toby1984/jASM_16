@@ -263,4 +263,16 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		}
 		return result;
 	}
+
+	@Override
+	public void setTitle(IView view, String title) 
+	{
+		for (InternalFrameWithView frame : this.views) 
+		{
+			if ( frame.view == view ) {
+				frame.frame.setTitle( title );
+				break;
+			}
+		}
+	}
 }

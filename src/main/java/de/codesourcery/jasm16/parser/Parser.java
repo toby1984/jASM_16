@@ -97,7 +97,14 @@ public class Parser implements IParser
         		resolver , 
         		compilationUnitResolver,
         		this.options );
-		return (AST) new AST().parse( context );
+        final AST result = (AST) new AST().parse( context );
+        if ( ! context.eof() ) {
+        	throw new RuntimeException("Internal error, parsing finished although not at eof?");
+        }
+        if ( context.currentParseIndex() != source.length() ) {
+        	throw new RuntimeException("Internal error, parsing at EOF but not all input tokens consumed ?");
+        }
+        return result;
     }
 
     @Override
