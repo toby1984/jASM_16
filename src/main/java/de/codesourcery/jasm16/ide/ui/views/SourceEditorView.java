@@ -658,6 +658,15 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			{
 				return new ByteArrayInputStream( getTextFromTextPane().getBytes() );
 			}
+
+            @Override
+            public boolean isSame(IResource other)
+            {
+                if ( other == this ) {
+                    return true;
+                }
+                return false;
+            }
 		};
 
 		disableDocumentListener();

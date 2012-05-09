@@ -31,6 +31,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class CPUView extends AbstractView
 {
+    public static final String VIEW_ID = "cpu-view";
+    
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
     
@@ -58,6 +60,7 @@ public class CPUView extends AbstractView
         @Override
         public void onMemoryLoad(Emulator emulator, Address startAddress, int lengthInBytes)
         {
+            refreshDisplay();            
         }
      };
     
@@ -159,7 +162,7 @@ public class CPUView extends AbstractView
 
 	@Override
 	public String getID() {
-		return "cpu-view";
+		return VIEW_ID;
 	}
     
 }

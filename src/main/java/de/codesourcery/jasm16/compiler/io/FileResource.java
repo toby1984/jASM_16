@@ -55,7 +55,6 @@ public class FileResource extends AbstractResource
         return new ByteArrayInputStream( contents.getBytes() );
     }
 
-
     @Override
     public OutputStream createOutputStream(boolean append) throws IOException
     {
@@ -113,4 +112,15 @@ public class FileResource extends AbstractResource
 		return file.getAbsolutePath();
 	}
 
+    @Override
+    public boolean isSame(IResource other)
+    {
+        if ( other == this ) {
+            return true;
+        }
+        if ( other instanceof FileResource) {
+            return this.file.getAbsolutePath().equals( ((FileResource) other).file.getAbsolutePath() );
+        }
+        return false;
+    }	
 }

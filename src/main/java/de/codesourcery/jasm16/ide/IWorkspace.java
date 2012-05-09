@@ -48,6 +48,10 @@ public interface IWorkspace extends IResourceListener
     
     public void removeWorkspaceListener(IWorkspaceListener listener);
     
+    public void addResourceListener(IResourceListener listener);
+    
+    public void removeResourceListener(IResourceListener listener);
+    
     // state management
     public void open() throws IOException; // ok
     

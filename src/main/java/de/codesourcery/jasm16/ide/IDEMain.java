@@ -24,7 +24,8 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.DesktopWindow;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.Perspective;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -37,7 +38,7 @@ public class IDEMain
 {
 	private static final Logger LOG = Logger.getLogger(IDEMain.class);
 
-	private DesktopWindow desktop;
+	private final ViewContainerManager viewContainerManager = new ViewContainerManager();
     private IWorkspace workspace;
     
     public static void main(String[] args) throws IOException
@@ -55,11 +56,12 @@ public class IDEMain
 		
 		createSampleProject( "sample-project" );
 		
-		desktop = new DesktopWindow( appConfig );
-		desktop.addView( new WorkspaceExplorer( workspace ) );
+		final Perspective desktop = new Perspective( "desktop" , appConfig );
+		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , appConfig ) );
 		desktop.pack();
 		desktop.setSize( 800 , 600 );		
     	desktop.setVisible( true );
+    	viewContainerManager.addViewContainer( desktop );
     }
     
     private void createSampleProject(String projectName) throws IOException

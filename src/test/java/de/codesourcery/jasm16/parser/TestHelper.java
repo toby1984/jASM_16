@@ -46,6 +46,7 @@ import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -68,13 +69,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected static final IResourceResolver RESOURCE_RESOLVER = new IResourceResolver() {
         
         @Override
-        public IResource resolve(String identifier) throws ResourceNotFoundException
+        public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
 
         @Override
-        public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+        public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
@@ -217,13 +218,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         		new IResourceResolver() {
             
             @Override
-            public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+            public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
             }
             
             @Override
-            public IResource resolve(String identifier) throws ResourceNotFoundException
+            public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
             }
@@ -311,12 +312,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			}
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException {
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 

@@ -34,6 +34,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class StackView extends AbstractView
 {
+    public static final String VIEW_ID = "stack-view";
+    
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
     
@@ -167,7 +169,7 @@ public class StackView extends AbstractView
 
 	@Override
 	public String getID() {
-		return "stack-view";
+		return VIEW_ID;
 	}
     
 }

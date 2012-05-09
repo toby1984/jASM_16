@@ -40,6 +40,9 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
 public class ViewFrame extends JFrame implements IViewContainer
 {
     private final IView component;
+    
+    private final ViewContainerHelper helper = new ViewContainerHelper();
+    
     private final MenuManager menuManager = new MenuManager() {
 
 		@Override
@@ -65,6 +68,7 @@ public class ViewFrame extends JFrame implements IViewContainer
             public void windowClosing(WindowEvent e)
             {
             	removeView( component );
+                helper.fireViewContainerClosed( ViewFrame.this );
             } 
         } );
         
@@ -132,4 +136,22 @@ public class ViewFrame extends JFrame implements IViewContainer
 		}
 		return menuManager;
 	}
+
+    @Override
+    public String getID()
+    {
+        return component.getID();
+    }
+
+    @Override
+    public void addViewContainerListener(IViewContainerListener listener)
+    {
+        helper.addViewContainerListener( listener );
+    }
+
+    @Override
+    public void removeViewContainerListener(IViewContainerListener listener)
+    {
+        helper.removeViewContainerListener( listener );
+    }
 }

@@ -24,6 +24,8 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	private JPanel panel;
 	private final String title;
 	
+	private final ViewContainerHelper helper = new ViewContainerHelper();
+	   
 	private final List<ViewWithPanel> views = new ArrayList<ViewWithPanel>();
 	private final JTabbedPane tabbedPane = new JTabbedPane();
 	
@@ -114,6 +116,8 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		if ( getViewContainer().getMenuManager() != null ) {
 			getViewContainer().getMenuManager().removeEntry( saveCurrent );
 		}
+		
+		helper.fireViewContainerClosed( this );
 	}
 
 	@Override
@@ -213,4 +217,16 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	public MenuManager getMenuManager() {
 		return null;
 	}
+
+    @Override
+    public void addViewContainerListener(IViewContainerListener listener)
+    {
+        helper.addViewContainerListener( listener );
+    }
+
+    @Override
+    public void removeViewContainerListener(IViewContainerListener listener)
+    {
+        helper.removeViewContainerListener( listener );
+    }
 }

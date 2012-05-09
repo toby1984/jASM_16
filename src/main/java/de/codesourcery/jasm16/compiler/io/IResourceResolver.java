@@ -15,13 +15,14 @@
  */
 package de.codesourcery.jasm16.compiler.io;
 
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 /**
  * Responsible for looking-up an {@link IResource} instance by string identifier.
  * 
  * @author tobias.gierke@code-sourcery.de
- * @see IResourceResolver#resolve(String)
+ * @see IResourceResolver#resolve(String, ResourceType)
  */
 public interface IResourceResolver
 {
@@ -30,29 +31,31 @@ public interface IResourceResolver
      * 
      * <p>
      * The outcome of passing "relative" identifiers to this method is undefined.
-     * Use {@link #resolveRelative(String, IResource)} if you suspect the identifier
+     * Use {@link #resolveRelative(String, IResource, ResourceType)} if you suspect the identifier
      * may be a relative resource reference.
      * </p>
      * 
      * @param identifier
+     * @param resourceType TODO
      * @return
      * @throws ResourceNotFoundException
      */
-    public IResource resolve(String identifier) throws ResourceNotFoundException;
+    public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException;
     
     /**
      * Look-up a resource while assuming that relative identifiers should be resolved relative to a specific parent resource. 
      * 
      * <p>
-     * If the identifier is an absolute reference, behaves exactly like {@link #resolve(String)}. 
+     * If the identifier is an absolute reference, behaves exactly like {@link #resolve(String, ResourceType)}. 
      * If the identifier is a relative reference, the reference is resolved relative to 
      * the given parent resource.
      * </p>
      * 
      * @param identifier
      * @param parent parent resource
+     * @param resourceType TODO
      * @return
      * @throws ResourceNotFoundException
      */
-    public IResource resolveRelative(String identifier,IResource parent) throws ResourceNotFoundException;    
+    public IResource resolveRelative(String identifier,IResource parent, ResourceType resourceType) throws ResourceNotFoundException;    
 }

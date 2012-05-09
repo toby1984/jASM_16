@@ -15,19 +15,28 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.io.File;
 import java.util.List;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
-public interface IAssemblyProject extends IResourceResolver
+public interface IAssemblyProject extends IResourceResolver, IResourceListener
 {
     public String getName();
     
     public ProjectConfiguration getConfiguration();
     
     public List<IResource> getResources(ResourceType type);
+    
+    /**
+     * 
+     * @param file
+     * @return resource or <code>null</code> if this resource is currently not being
+     * managed by this project / unknown to this project.
+     */
+    public IResource getResourceForFile(File file);
     
     public List<IResource> getAllResources();
     

@@ -954,6 +954,15 @@ public class ASTInspector {
 			public String getIdentifier() {
 				return file.getAbsolutePath();
 			}
+
+            @Override
+            public boolean isSame(IResource other)
+            {
+                if ( other == this ) {
+                    return true;
+                }
+                return false;
+            }
 		};
 
 		this.file = file;
@@ -1207,16 +1216,16 @@ public class ASTInspector {
 		compiler.setResourceResolver( new FileResourceResolver() {
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
 			{
 				if ( parent instanceof FileResource) {
-					return super.resolveRelative(identifier, parent);
+					return super.resolveRelative(identifier, parent, resourceType);
 				}
 				return new FileResource( new File( file.getParentFile() , identifier ) , ResourceType.UNKNOWN);
 			}
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
 			{
 				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );
 			}

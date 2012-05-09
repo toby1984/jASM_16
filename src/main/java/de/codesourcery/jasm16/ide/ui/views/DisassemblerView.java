@@ -34,6 +34,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DisassemblerView extends AbstractView
 {
+    public static final String VIEW_ID = "dissassembly-view";
+    
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
     
@@ -169,7 +171,7 @@ public class DisassemblerView extends AbstractView
 
 	@Override
 	public String getID() {
-		return "dissassembly-view";
+		return VIEW_ID;
 	}
     
 }

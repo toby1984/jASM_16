@@ -24,6 +24,9 @@ import de.codesourcery.jasm16.utils.ITextRegion;
 /**
  * A generic resource that one can read from / write to (e.g. a file). 
  * 
+ * <p>Note that implementations of this interface <b>MUST</b> be immutable (at least to the
+ * outside observer).</p>
+ * 
  * @author tobias.gierke@code-sourcery.de
  * 
  * @see FileResource
@@ -31,7 +34,6 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public interface IResource
 {
-	
 	public static enum ResourceType {
 		SOURCE_CODE,
 		OBJECT_FILE,
@@ -45,11 +47,27 @@ public interface IResource
 	 */
 	public String getIdentifier();
 	
+	/**
+	 * Returns this resource's type.
+	 * 
+	 * @return
+	 */
 	public ResourceType getType();
 	
-	public void setType(ResourceType type);
-	
+	/**
+	 * Check whether this resource has a specific resource type.
+	 * @param t
+	 * @return
+	 */
 	public boolean hasType(ResourceType t);
+	
+	/**
+	 * Check whether this resource is equivalent so some other resource.
+	 * 
+	 * @param other
+	 * @return
+	 */
+	public boolean isSame(IResource other);
 	
     /**
      * Returns an input stream to read from.

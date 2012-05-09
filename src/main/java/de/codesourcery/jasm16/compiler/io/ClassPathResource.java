@@ -99,4 +99,16 @@ public class ClassPathResource extends AbstractResource
 		return classpathLocation;
 	}
 
+    @Override
+    public boolean isSame(IResource other)
+    {
+        if ( other == this ) {
+            return true;
+        }
+        if ( other instanceof ClassPathResource) {
+            return this.classpathLocation.equals( ((ClassPathResource) other).classpathLocation );
+        }
+        return false;
+    }
+
 }

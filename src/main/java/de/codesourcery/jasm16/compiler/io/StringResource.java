@@ -95,4 +95,16 @@ public class StringResource extends AbstractResource
 	public String getIdentifier() {
 		return identifier;
 	}
+	
+    @Override
+    public boolean isSame(IResource other)
+    {
+        if ( other == this ) {
+            return true;
+        }
+        if ( other instanceof StringResource) {
+            return this.data.equals( ((StringResource) other).data );
+        }
+        return false;
+    }   	
 }

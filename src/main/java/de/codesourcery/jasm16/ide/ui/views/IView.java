@@ -31,5 +31,12 @@ public interface IView
     
     public String getTitle();
     
+    /**
+     * Returns an immutable ID that identifies this view.
+     * 
+     * <p>Note that other code RELIES on the fact
+     * that the ID returned by this method never changes!</p> 
+     * @return
+     */
     public String getID();
 }

@@ -48,13 +48,13 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
 					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
@@ -98,13 +98,13 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
 					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);

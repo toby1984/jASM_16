@@ -56,13 +56,17 @@ import de.codesourcery.jasm16.utils.Misc.IFileVisitor;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class AssemblyProject implements IAssemblyProject , IResourceListener
+public class AssemblyProject implements IAssemblyProject 
 {
 	private static final Logger LOG = Logger.getLogger(AssemblyProject.class);
 
 	private final ProjectConfiguration projectConfiguration;
 
-	private final List<IResource> allResources = new ArrayList<IResource>();
+	private final Object RESOURCE_LOCK = new Object();
+	
+	// @GuardedBy( RESOURCE_LOCK )
+	private final List<IResource> resources = new ArrayList<IResource>();
+	
 	private final List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 
 	private final IWorkspace workspace;
@@ -289,13 +293,16 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 		}
 		this.workspace = workspace;
 		this.projectConfiguration = config;
-		allResources.addAll( scanForResources() );
+		synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
+		    resources.addAll( scanForResources() );
+		}
 	}
 
 	protected List<IResource> scanForResources() throws IOException {
 
 		final Map<String,IResource> result = new HashMap<String,IResource> ();
 
+		// scan source folders
 		final IFileVisitor visitor = new IFileVisitor() 
 		{
 			@Override
@@ -305,7 +312,9 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 				{
 					if ( ! result.containsKey( file.getAbsolutePath() ) ) 
 					{
-						result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.SOURCE_CODE ) );
+						final FileResource resource = new FileResource( file , ResourceType.SOURCE_CODE );
+                        result.put( file.getAbsolutePath() , resource );
+                        units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
 					}
 				}
 				return true;
@@ -320,6 +329,29 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 				LOG.warn("scanForResources(): Missing source folder: "+srcFolder.getAbsolutePath());
 			}
 		}
+		
+		// scan binary output folder
+		final File outputFolder = projectConfiguration.getOutputFolder();
+		if ( outputFolder.exists() ) 
+		{
+		    final IFileVisitor executableVisitor = new IFileVisitor() {
+                
+                @Override
+                public boolean visit(File file) throws IOException
+                {
+                    if ( file.isFile() ) 
+                    {
+                        if ( file.getName().equals( projectConfiguration.getExecutableName() ) ) {
+                            result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.EXECUTABLE ) );
+                        } else {
+                            result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.OBJECT_FILE ) );                            
+                        }
+                    }
+                    return true;
+                }
+            };
+            Misc.visitDirectoryTreeInOrder( outputFolder , executableVisitor );
+		}
 		return new ArrayList<IResource>( result.values() );
 	}
 	
@@ -332,18 +364,20 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 	@Override
 	public List<IResource> getAllResources()
 	{
-		return new ArrayList<IResource>( this.allResources );
+	    synchronized( RESOURCE_LOCK ) {
+	        return new ArrayList<IResource>( this.resources );
+	    }
 	}
 
 	@Override
-	public IResource resolve(String identifier) throws ResourceNotFoundException 
+	public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 	{
-		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier );
+		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier, resourceType );
 	}
 
 	@Override
-	public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
-		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent );
+	public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
+		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent, resourceType );
 	}
 
 	@Override
@@ -357,9 +391,9 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 		if (type == null) {
 			throw new IllegalArgumentException("type must not be NULL");
 		}
-
+		
 		final List<IResource> result = new ArrayList<IResource>();
-		for ( IResource r : allResources ) {
+		for ( IResource r : getAllResources() ) {
 			if ( r.hasType( type ) ) {
 				result.add( r );
 			}
@@ -399,27 +433,6 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 		}
 	}	
 	
-	protected void handleResourceCreated(IResource resource) 
-	{
-		if (resource == null) {
-			throw new IllegalArgumentException("resource must not be NULL");
-		}
-		for (Iterator<IResource> it = getAllResources().iterator(); it.hasNext();) 
-		{
-			final IResource existing = it.next();
-			if ( existing.getIdentifier().equals( resource.getIdentifier() ) ) 
-			{
-				return; // already known
-			}
-		}
-
-		allResources.add( resource );
-		
-		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
-		}
-	}
-
 	protected void cleanOutputFolder() throws IOException 
 	{
 		File folder = getConfiguration().getOutputFolder();
@@ -455,19 +468,71 @@ public class AssemblyProject implements IAssemblyProject , IResourceListener
 
 	@Override
 	public void resourceChanged(IAssemblyProject project, IResource resource) {
-		// TODO Auto-generated method stub
-		
+
+	    // nothing to do yet...
 	}
 
 	@Override
-	public void resourceCreated(IAssemblyProject project, IResource resource) {
-		// TODO Auto-generated method stub
-		
+	public void resourceCreated(IAssemblyProject project, IResource resource) 
+	{
+	    if ( resource instanceof FileResource) 
+	    {
+	        if ( ((FileResource) resource).getFile().isDirectory() ) 
+	        {
+	            return; // we don't care about directories
+	        }
+	        
+	        synchronized( RESOURCE_LOCK ) 
+	        {
+    	        for ( IResource r : getAllResources() ) {
+    	            if ( r.isSame( resource ) ) 
+    	            {
+    	                resources.remove( r );
+   	                    removeCompilationUnitFor( r );
+   	                    
+    	                resources.add( resource );
+                        if ( r.hasType( ResourceType.SOURCE_CODE ) ) {
+                            units.add( CompilationUnit.createInstance( r.getIdentifier() , r  ) );
+                        }    	                
+    	                return;
+    	            }
+    	        }
+    	        resources.add( resource );
+    	        
+                if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
+                    units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
+                }       	        
+	        }
+	    }
 	}
 
 	@Override
 	public void resourceDeleted(IAssemblyProject project, IResource resource) {
-		// TODO Auto-generated method stub
-		
+	    
+        synchronized( RESOURCE_LOCK ) 
+        {
+            for (Iterator<IResource> it = resources.iterator(); it.hasNext();) {
+                IResource existing = it.next();
+                if ( existing.isSame( resource ) ) 
+                {
+                    it.remove();
+                    removeCompilationUnitFor( existing );
+                    return;
+                }
+            }
+        }	    
 	}
+
+    @Override
+    public IResource getResourceForFile(File file)
+    {
+        for ( IResource r : getAllResources() ) {
+            if ( r instanceof FileResource) {
+                if ( ((FileResource) r).getFile().getAbsolutePath().equals( file.getAbsolutePath() ) ) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
 }

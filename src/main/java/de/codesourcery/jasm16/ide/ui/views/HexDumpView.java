@@ -30,6 +30,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class HexDumpView extends AbstractView
 {
+    public static final String VIEW_ID = "hexdump-view";
+    
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
     
@@ -144,6 +146,6 @@ public class HexDumpView extends AbstractView
 
 	@Override
 	public String getID() {
-		return "hexdump-view";
+		return VIEW_ID;
 	}
 }

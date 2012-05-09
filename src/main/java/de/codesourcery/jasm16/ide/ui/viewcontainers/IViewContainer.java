@@ -27,6 +27,10 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
  * @author tobias.gierke@code-sourcery.de
  */
 public interface IViewContainer {
+    
+    public void addViewContainerListener(IViewContainerListener listener);
+    
+    public void removeViewContainerListener(IViewContainerListener listener);
 
 	/**
 	 * Dispose this container with all view's 
@@ -90,4 +94,13 @@ public interface IViewContainer {
 	 * @return
 	 */
 	public MenuManager getMenuManager();
+	
+    /**
+     * Returns an immutable ID that identifies this view container.
+     * 
+     * <p>Note that other code RELIES on the fact
+     * that the ID returned by this method never changes!</p> 
+     * @return
+	 */
+	public String getID();
 }

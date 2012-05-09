@@ -46,15 +46,20 @@ import de.codesourcery.jasm16.ide.ui.views.IView;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class DesktopWindow extends JFrame implements IViewContainer {
+public class Perspective extends JFrame implements IViewContainer {
 
-	private static final Logger LOG = Logger.getLogger(DesktopWindow.class);
+
+    private static final Logger LOG = Logger.getLogger(Perspective.class);
 	
 	private final JDesktopPane desktop = new JDesktopPane();
 
 	private final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>();
 
-	private IApplicationConfig applicationConfig;
+	private final String id;
+	
+	private final ViewContainerHelper helper = new ViewContainerHelper();
+	
+	private final IApplicationConfig applicationConfig;
 	
 	private final MenuManager menuManager = new MenuManager() {
 		
@@ -78,12 +83,15 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		
 		public void dispose() 
 		{
-			SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
-			System.out.println("store(): "+view.getID()+" => "+sizeAndLoc);
-			applicationConfig.storeViewCoordinates( view.getID() , sizeAndLoc );
+			final SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
+			applicationConfig.storeViewCoordinates( getUniqueID( view ) , sizeAndLoc );
 			frame.dispose();
 			view.dispose();			
 		}
+	}
+	
+	private final String getUniqueID(IView view) {
+	    return getID()+"."+view.getID();
 	}
 	
 	@Override
@@ -96,6 +104,8 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		
 		super.dispose();
 		
+		helper.fireViewContainerClosed( this );
+		
 		try {
 			this.applicationConfig.saveConfiguration();
 		} catch (IOException e) {
@@ -103,12 +113,18 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		}
 	}
 
-	public DesktopWindow(IApplicationConfig appConfig) 
+	public Perspective(String id , IApplicationConfig appConfig) 
 	{
 		super("jASM16 DCPU emulator V"+de.codesourcery.jasm16.compiler.Compiler.getVersionNumber() );
 		if (appConfig == null) {
 			throw new IllegalArgumentException("appConfig must not be null");
 		}
+		
+        if (StringUtils.isBlank(id)) {
+            throw new IllegalArgumentException("ID must not be NULL/blank.");
+        }
+        
+		this.id = id;
 		this.applicationConfig = appConfig;
 		setPreferredSize( new Dimension(400,200 ) );
 		getContentPane().add( desktop );
@@ -267,7 +283,7 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 		
 		internalFrame.getContentPane().add( view.getPanel(this) );
 		
-		SizeAndLocation sizeAndLoc = applicationConfig.getViewCoordinates( view.getID() );
+		SizeAndLocation sizeAndLoc = applicationConfig.getViewCoordinates( getUniqueID( view ) );
 		if ( sizeAndLoc != null ) 
 		{
 			System.out.println("load(): "+view.getID()+" => "+sizeAndLoc);
@@ -340,4 +356,22 @@ public class DesktopWindow extends JFrame implements IViewContainer {
 	public MenuManager getMenuManager() {
 		return menuManager;
 	}
+
+    @Override
+    public String getID()
+    {
+        return id;
+    }
+
+    @Override
+    public void addViewContainerListener(IViewContainerListener listener)
+    {
+        helper.addViewContainerListener( listener );
+    }
+
+    @Override
+    public void removeViewContainerListener(IViewContainerListener listener)
+    {
+        helper.removeViewContainerListener( listener );
+    }
 }

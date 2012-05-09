@@ -47,7 +47,7 @@ public class DefaultWorkspace implements IWorkspace
 	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
 
 	private final List<IAssemblyProject> projects = new ArrayList<IAssemblyProject>();
-	private final List<IWorkspaceListener> listeners = new ArrayList<IWorkspaceListener>();
+	private final List<IResourceListener> listeners = new ArrayList<IResourceListener>();
 
 	public static final String WORKSPACE_METADATA_FILE=".jasm16_metadata";
 
@@ -198,10 +198,16 @@ public class DefaultWorkspace implements IWorkspace
 			throw e;
 		}
 		
+		// register project as resource listener
+		addResourceListener( result );
+		
 		notifyListeners( new IInvoker() {
 			@Override
-			public void invoke(IWorkspaceListener listener) {
-				listener.projectCreated(result);
+			public void invoke(IResourceListener listener) 
+			{
+			    if ( listener instanceof IWorkspaceListener) {
+			        ((IWorkspaceListener) listener).projectCreated(result);
+			    }
 			}
 			@Override
 			public String toString() {
@@ -226,6 +232,9 @@ public class DefaultWorkspace implements IWorkspace
 			if ( existing.getName().equals( project.getName() ) ) 
 			{
 				it.remove();
+				
+				removeResourceListener( existing );
+				
 				try {
 					rememberProjectDirectories();
 				} 
@@ -237,8 +246,10 @@ public class DefaultWorkspace implements IWorkspace
 				
 				notifyListeners( new IInvoker() {
 					@Override
-					public void invoke(IWorkspaceListener listener) {
-						listener.projectDeleted(existing);
+					public void invoke(IResourceListener listener) {
+		                if ( listener instanceof IWorkspaceListener) {
+		                    ((IWorkspaceListener) listener).projectDeleted(existing);
+		                }					    
 					}
 					@Override
 					public String toString() {
@@ -270,7 +281,7 @@ public class DefaultWorkspace implements IWorkspace
 	{
 		notifyListeners( new IInvoker() {
 			@Override
-			public void invoke(IWorkspaceListener listener) {
+			public void invoke(IResourceListener listener) {
 				listener.resourceChanged( project , resource );
 			}
 			
@@ -282,19 +293,19 @@ public class DefaultWorkspace implements IWorkspace
 	}
 	
 	protected interface IInvoker {
-		public void invoke(IWorkspaceListener listener);
+		public void invoke(IResourceListener listener);
 	}
 	
 	private void notifyListeners(IInvoker invoker) 
 	{
 		System.out.println( invoker.toString() );
 		
-		final List<IWorkspaceListener> copy;
+		final List<IResourceListener> copy;
 		synchronized (listeners) {
-			copy = new ArrayList<IWorkspaceListener>( this.listeners );
+			copy = new ArrayList<IResourceListener>( this.listeners );
 		}
 
-		for ( IWorkspaceListener l : copy ) {
+		for ( IResourceListener l : copy ) {
 			try {
 				invoker.invoke( l );
 			} 
@@ -307,24 +318,13 @@ public class DefaultWorkspace implements IWorkspace
 	@Override
 	public void addWorkspaceListener(IWorkspaceListener listener)
 	{
-		if (listener == null) {
-			throw new IllegalArgumentException("listener must not be NULL.");
-		}
-
-		synchronized (listeners) {
-			listeners.add( listener );
-		}
+	    addResourceListener( listener );
 	}
 
 	@Override
 	public void removeWorkspaceListener(IWorkspaceListener listener)
 	{
-		if (listener == null) {
-			throw new IllegalArgumentException("listener must not be NULL.");
-		}
-		synchronized (listeners) {
-			listeners.remove( listener );
-		}        
+	    removeResourceListener( listener );
 	}
 
 	@Override
@@ -365,7 +365,7 @@ public class DefaultWorkspace implements IWorkspace
 		notifyListeners( new IInvoker() {
 
 			@Override
-			public void invoke(IWorkspaceListener listener) {
+			public void invoke(IResourceListener listener) {
 				listener.resourceCreated( project , resource );
 			}
 			
@@ -382,7 +382,7 @@ public class DefaultWorkspace implements IWorkspace
 		notifyListeners( new IInvoker() {
 
 			@Override
-			public void invoke(IWorkspaceListener listener) 
+			public void invoke(IResourceListener listener) 
 			{
 				listener.resourceDeleted( project , resource );
 			}
@@ -393,5 +393,28 @@ public class DefaultWorkspace implements IWorkspace
 			}			
 		});		
 	}
+
+    @Override
+    public void addResourceListener(IResourceListener listener)
+    {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be NULL.");
+        }
+
+        synchronized (listeners) {
+            listeners.add( listener );
+        }        
+    }
+
+    @Override
+    public void removeResourceListener(IResourceListener listener)
+    {
+        if (listener == null) {
+            throw new IllegalArgumentException("listener must not be NULL.");
+        }
+        synchronized (listeners) {
+            listeners.remove( listener );
+        }         
+    }
 
 }

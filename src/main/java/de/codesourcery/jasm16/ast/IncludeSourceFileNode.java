@@ -75,8 +75,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		
 		mergeWithAllTokensTextRegion( tok );
 		try {
-			resource = context.resolveRelative( tok.getContents() , context.getCompilationUnit().getResource() );
-			resource.setType( ResourceType.SOURCE_CODE );
+			resource = context.resolveRelative( tok.getContents() , context.getCompilationUnit().getResource(), ResourceType.SOURCE_CODE );
 		} 
 		catch (ResourceNotFoundException e) 
 		{
