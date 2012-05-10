@@ -23,7 +23,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.emulator.Emulator;
+import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -41,26 +41,33 @@ public class CPUView extends AbstractView
     private final IEmulationListener listener = new IEmulationListener() {
 
         @Override
-        public void beforeExecution(Emulator emulator) { 
+        public void beforeExecution(IEmulator emulator) { 
             refreshDisplay();  
         }
 
         @Override
-        public void afterExecution(Emulator emulator, int commandDuration)
+        public void afterExecution(IEmulator emulator, int commandDuration)
         {
             refreshDisplay();
         }
 
         @Override
-        public void onReset(Emulator emulator)
+        public void afterReset(IEmulator emulator)
         {
             refreshDisplay();
         }
 
         @Override
-        public void onMemoryLoad(Emulator emulator, Address startAddress, int lengthInBytes)
+        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             refreshDisplay();            
+        }
+
+        @Override
+        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
+        {
+            // TODO Auto-generated method stub
+            
         }
      };
     

@@ -97,6 +97,9 @@ public class Perspective extends JFrame implements IViewContainer {
 	@Override
 	public void dispose() 
 	{
+        final SizeAndLocation sizeAndLoc = new SizeAndLocation( getLocation() , getSize() );
+        applicationConfig.storeViewCoordinates( getID() , sizeAndLoc );
+        
 		final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>(this.views);
 		for ( InternalFrameWithView v : views) {
 			v.dispose();
@@ -174,14 +177,18 @@ public class Perspective extends JFrame implements IViewContainer {
 			
 		} );		
 		
+        final SizeAndLocation sizeAndLoc = applicationConfig.getViewCoordinates( getID() );
+        if ( sizeAndLoc != null ) {
+            setLocation( sizeAndLoc.getLocation() );
+            setSize( sizeAndLoc.getSize() );
+        }
+        
 		setJMenuBar( menuManager.getMenuBar() );
 	}
 
 	@Override
 	public void removeView(IView view) 
 	{
-		System.out.println("View disposed: "+view.getTitle());
-		
 		for (Iterator<InternalFrameWithView> it = this.views.iterator(); it.hasNext();) 
 		{
 			InternalFrameWithView frame = it.next();

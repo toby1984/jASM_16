@@ -15,11 +15,12 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.util.List;
+
 import de.codesourcery.jasm16.Address;
 
 public interface IEmulator
 {
-
     public abstract void reset(boolean clearMemory);
 
     public abstract void stop();
@@ -41,5 +42,12 @@ public interface IEmulator
     public void executeOneInstruction();
     
     public void skipCurrentInstruction();
+    
+    public void addBreakpoint(BreakPoint bp);
+    
+    public BreakPoint getBreakPoint(Address address);
+    
+    public void deleteBreakpoint(BreakPoint bp);
 
+    public List<BreakPoint> getBreakPoints();
 }

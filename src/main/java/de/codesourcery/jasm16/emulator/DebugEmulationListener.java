@@ -22,13 +22,12 @@ public class DebugEmulationListener implements IEmulationListener
 {
 
     @Override
-    public void beforeExecution(Emulator emulator)
+    public void beforeExecution(IEmulator emulator)
     {
-
     }
 
     @Override
-    public void afterExecution(Emulator emulator, int commandDuration)
+    public void afterExecution(IEmulator emulator, int commandDuration)
     {
         final ICPU cpu = emulator.getCPU();
 
@@ -49,17 +48,18 @@ public class DebugEmulationListener implements IEmulationListener
     }
 
     @Override
-    public void onReset(Emulator emulator)
+    public void afterReset(IEmulator emulator)
     {
-        // TODO Auto-generated method stub
-        
     }
 
     @Override
-    public void onMemoryLoad(Emulator emulator, Address startAddress, int lengthInBytes)
+    public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
     {
-        // TODO Auto-generated method stub
-        
+    }
+
+    @Override
+    public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
+    {
     }
 
 }

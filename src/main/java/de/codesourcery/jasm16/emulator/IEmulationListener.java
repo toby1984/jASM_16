@@ -24,17 +24,18 @@ import de.codesourcery.jasm16.Address;
  */
 public interface IEmulationListener
 {
-
-    public void onReset(Emulator emulator);
+    public void afterReset(IEmulator emulator);
     
-    public void onMemoryLoad(Emulator emulator, Address startAddress,int lengthInBytes);
+    public void onMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes);
+    
+    public void onBreakpoint(IEmulator emulator,BreakPoint breakpoint);
     
     /**
      * Invoked before executing the next command.
      * 
      * @param emulator
      */
-    public void beforeExecution(Emulator emulator);
+    public void beforeExecution(IEmulator emulator);
     
     /**
      * Invoked after executing a command.
@@ -42,5 +43,5 @@ public interface IEmulationListener
      * @param emulator
      * @param commandDuration duration (in cycles) of the last command or -1 on internal errors during command execution.
      */
-    public void afterExecution(Emulator emulator,int commandDuration);
+    public void afterExecution(IEmulator emulator,int commandDuration);
 }

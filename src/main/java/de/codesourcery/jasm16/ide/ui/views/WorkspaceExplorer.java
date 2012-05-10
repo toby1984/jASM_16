@@ -58,7 +58,6 @@ import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.Perspective;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -156,7 +155,11 @@ public class WorkspaceExplorer extends AbstractView {
         tree.setModel( treeModel );
         setColors( tree );
         tree.setRootVisible( false );
-
+        
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            tree.expandRow(i);
+        }
+        
         tree.addMouseListener( new MouseAdapter() {
 
             public void mouseClicked(java.awt.event.MouseEvent e) 

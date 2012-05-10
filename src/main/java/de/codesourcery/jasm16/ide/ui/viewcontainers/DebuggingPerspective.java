@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -29,24 +30,31 @@ public class DebuggingPerspective extends Perspective
     private final IEmulationListener listener = new IEmulationListener() 
     {
         @Override
-        public void onReset(Emulator emulator)
+        public void afterReset(IEmulator emulator)
         {
         }
         
         @Override
-        public void onMemoryLoad(Emulator emulator, Address startAddress, int lengthInBytes)
+        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             setupPerspective();
         }
         
         @Override
-        public void beforeExecution(Emulator emulator)
+        public void beforeExecution(IEmulator emulator)
         {
         }
         
         @Override
-        public void afterExecution(Emulator emulator, int commandDuration)
+        public void afterExecution(IEmulator emulator, int commandDuration)
         {
+        }
+
+        @Override
+        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
+        {
+            // TODO Auto-generated method stub
+            
         }
     };
     
@@ -117,4 +125,10 @@ public class DebuggingPerspective extends Perspective
     private CPUView getCPUView() {
         return (CPUView) getViewByID( CPUView.VIEW_ID );
     }      
+    
+    @Override
+    public String getID()
+    {
+        return ID;
+    }
 }

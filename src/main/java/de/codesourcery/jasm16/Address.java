@@ -63,6 +63,44 @@ public abstract class Address
         return false;
     }
     
+    @Override
+    public final int hashCode()
+    {
+        return toByteAddress().getValue();
+    }
+    
+    /**
+     * Increments this address by one (with wrapping at end of DCPU16 address space).
+     *  
+     * <p>The DCPU address space is currently 64k words (=128 MB).</p>
+     * @return
+     */
+    public abstract Address incrementByOne();
+    
+    /**
+     * Decrements this address by one (with wrapping at end of DCPU16 address space).
+     *  
+     * <p>The DCPU address space is currently 64k words (=128 MB).</p>
+     * @return
+     */
+    public abstract Address decrementByOne();    
+    
+    /**
+     * Add another address to this one (while wrapping at end of DCPU16 address space).
+     *  
+     * <p>The DCPU address space is currently 64k words (=128 MB).</p>
+     * @return
+     */    
+    public abstract Address plus(Address other);
+    
+    /**
+     * Subtract another address from this one (while wrapping at start of DCPU16 address space).
+     *  
+     * <p>The DCPU address space is currently 64k words (=128 MB).</p>
+     * @return
+     */     
+    public abstract Address minus(Address other);    
+    
     /**
      * Returns the raw value of this address.
      * 
@@ -84,6 +122,20 @@ public abstract class Address
 			result++;
 		}
 		return result;
+	}
+	
+	public static int getDistanceInBytes(Address start, Address end) {
+	    
+	    Address startNormalized = start.toByteAddress();
+	    Address endNormalized = end.toByteAddress();
+	    
+	    if ( startNormalized.getValue() <= endNormalized.getValue() ) {
+	        return endNormalized.getValue() - startNormalized.getValue();
+	    }
+	    
+	    final int len1 = (int) ((ByteAddress.MAX_ADDRESS+1) - startNormalized.getValue());
+	    final int len2 = endNormalized.getValue();
+	    return len1+len2;
 	}
     
 }

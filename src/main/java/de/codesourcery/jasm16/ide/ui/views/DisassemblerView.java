@@ -17,9 +17,12 @@ package de.codesourcery.jasm16.ide.ui.views;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -27,7 +30,7 @@ import javax.swing.SwingUtilities;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
-import de.codesourcery.jasm16.emulator.Emulator;
+import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.utils.Misc;
@@ -49,26 +52,32 @@ public class DisassemblerView extends AbstractView
     private final IEmulationListener listener = new IEmulationListener() {
 
         @Override
-        public void onMemoryLoad(Emulator emulator, Address startAddress, int lengthInBytes)
+        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             refreshDisplay();
         }
         
         @Override
-        public void beforeExecution(Emulator emulator) {  
-            refreshDisplay();
+        public void beforeExecution(IEmulator emulator) {  
         }
 
         @Override
-        public void afterExecution(Emulator emulator, int commandDuration)
+        public void afterExecution(IEmulator emulator, int commandDuration)
         {
             refreshDisplay();            
         }
 
         @Override
-        public void onReset(Emulator emulator)
+        public void afterReset(IEmulator emulator)
         {
             refreshDisplay();
+        }
+
+        @Override
+        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
+        {
+            // TODO Auto-generated method stub
+            
         }
      };
      
@@ -88,9 +97,8 @@ public class DisassemblerView extends AbstractView
         
         final Address pc = emulator.getCPU().getPC();
         
-        final byte[] data = emulator.getMemory().getBytes( dumpStartAddress , numberOfInstructionsToDump*2*3 ); // assume worst-case: 6 bytes per instruction
-        
-        final List<DisassembledLine> lines = disassembler.disassemble( Address.ZERO , data , numberOfInstructionsToDump , showHexDump );
+        final Address offset = Address.wordAddress( 3 );
+        final List<DisassembledLine> lines = disassembler.disassemble( emulator.getMemory() , pc.minus( offset ) , numberOfInstructionsToDump , showHexDump );
         final StringBuilder result = new StringBuilder();
         final Iterator<DisassembledLine> it = lines.iterator();
         while( it.hasNext() ) 
@@ -147,13 +155,56 @@ public class DisassemblerView extends AbstractView
         textArea.setFont( getMonospacedFont() );
         textArea.setEditable( false );
         
-        final JPanel panel = new JPanel();
-        setColors( panel );
-        panel.setLayout( new GridBagLayout() );        
-        final GridBagConstraints cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
-        panel.add( textArea , cnstrs );
+        // setup top panel
+        final JPanel buttonBar = new JPanel();
+        buttonBar.setLayout( new GridBagLayout() );        
+
+        // =========== "SINGLE STEP" button ============        
+        final JButton singleStepButton = new JButton("Step");
+        singleStepButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.executeOneInstruction();
+            }
+        });
         
-        return panel;
+        GridBagConstraints cnstrs = constraints( 0 , 0 , false , true , GridBagConstraints.NONE );          
+        buttonBar.add( singleStepButton , cnstrs );
+        
+        // =========== "RESET" button ============
+        final JButton resetButton = new JButton("Reset");
+        resetButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.reset(false);
+            }
+        });
+        
+        cnstrs = constraints( 1 , 0 , true , true , GridBagConstraints.NONE );          
+        buttonBar.add( resetButton , cnstrs );
+        
+        // setup bottom panel        
+        final JPanel bottomPanel = new JPanel();
+        setColors( bottomPanel );
+        bottomPanel.setLayout( new GridBagLayout() );        
+        cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
+        bottomPanel.add( textArea , cnstrs );
+        
+        // ======== assemble result panel ===========
+        final JPanel result = new JPanel();
+        setColors( result );
+        result.setLayout( new GridBagLayout() );       
+        
+        cnstrs = constraints( 0 , 0 , true, false , GridBagConstraints.HORIZONTAL );
+        result.add( buttonBar  , cnstrs );
+        cnstrs = constraints( 0 , 1 , true , true , GridBagConstraints.BOTH);
+        result.add( bottomPanel  , cnstrs );        
+        
+        return result;
     }
 
     @Override

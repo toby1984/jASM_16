@@ -31,8 +31,8 @@ import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
-import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
+import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.Misc;
 

@@ -20,8 +20,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
 
-import org.apache.commons.lang.ArrayUtils;
-
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;

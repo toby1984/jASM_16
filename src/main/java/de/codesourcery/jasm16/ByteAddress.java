@@ -67,5 +67,40 @@ public class ByteAddress extends Address
 		}
 		return new WordAddress( value >> 1 );
 	}
+
+    @Override
+    public Address incrementByOne()
+    {
+        final int newValue = (int) ( (getValue()+1) % (ByteAddress.MAX_ADDRESS+1) );
+        return new ByteAddress( newValue );
+    }
+
+    @Override
+    public Address plus(Address other)
+    {
+        final int sum = other.toByteAddress().getValue() + getValue();
+        final int newValue = (int) ( sum % (ByteAddress.MAX_ADDRESS+1) );        
+        return new ByteAddress( newValue );
+    }
+    
+    @Override
+    public Address decrementByOne()
+    {
+        int newValue = getValue() - 1;
+        if ( newValue < 0 ) {
+            newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
+        }
+        return new ByteAddress( newValue );
+    }
+
+    @Override
+    public Address minus(Address other)
+    {
+        int newValue = getValue() - other.toByteAddress().getValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
+        }
+        return new ByteAddress( newValue );
+    }    
     
 }

@@ -84,24 +84,26 @@ public class Disassembler
 
         final IMemoryIterator iterator = new IMemoryIterator() {
 
-            private int current = startingAddress.getValue();
+            private Address current = startingAddress.toWordAddress();
 
             @Override
             public int nextWord()
             {
-                return memory.readWord( Address.wordAddress( current++ ) );
+                final Address old = current;
+                current = current.incrementByOne();
+                return memory.readWord( old );
             }
 
             @Override
             public boolean hasNext()
             {
-                return current < ( memory.getSizeInBytes() >> 1 )-1;
+                return current.toByteAddress().getValue() < memory.getSizeInBytes();
             }
 
             @Override
             public Address currentAddress()
             {
-                return Address.wordAddress( current );
+                return current;
             }
         };
 
@@ -114,7 +116,7 @@ public class Disassembler
             
             if ( printHexDump ) 
             {
-                int lengthInBytes = 2*(iterator.currentAddress().getValue() - current.getValue());
+                final int lengthInBytes = Address.getDistanceInBytes( current , iterator.currentAddress() ); // 2*(iterator.currentAddress().getValue() - current.getValue());
                 byte[] data = memory.getBytes( current , lengthInBytes );
                 final String hex = " ; "+Misc.toHexDumpWithoutAddresses( 0 , data , data.length , 8 ).replaceAll("\n","");
                 contents = contents + hex;
@@ -125,7 +127,7 @@ public class Disassembler
         }
         return lines;
     }
-
+    
     private String dissassembleInstruction(IMemoryIterator iterator)
     {
         final int instructionWord = iterator.nextWord();

@@ -16,9 +16,12 @@
 package de.codesourcery.jasm16.emulator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
@@ -34,26 +37,28 @@ public class Emulator implements IEmulator {
 
     private long lastStart;
     private long lastStop;	
+    
+    // ============ BreakPoints =======
+    
+    // @GuardedBy( breakpoints )
+    private final Map<Address,BreakPoint> breakpoints = new HashMap<Address,BreakPoint>(); 
 
     // ============ Memory ============
 
-    private volatile int[] memory = new int[65536];
+    // memory needs to be thread-safe since the emulation runs in a separate thread
+    // and UI threads may access the registers concurrently    
+    private final AtomicIntegerArray memory = new  AtomicIntegerArray(65536);
 
     private final IMemory memAdaptor = new IMemory() {
 
         @Override
         public int readWord(Address address)
         {
-            // hack since java does not have volatile arrays
-            memory = memory;
-            return memory[ address.toWordAddress().getValue() ];
+            return memory.get( address.toWordAddress().getValue() );
         }
 
         @Override
         public void bulkLoad(Address startingOffset, byte[] data) {
-
-            // hack since java does not have volatile arrays
-            memory = memory;
 
             int current = startingOffset.toWordAddress().getValue();
             int pointer=0;
@@ -64,7 +69,7 @@ public class Emulator implements IEmulator {
                 if ( pointer < data.length ) {
                     value = (value << 8) | (0xff & data[pointer++]);
                 }
-                memory[ current++ ] = value;
+                memory.set( current++ , value & 0xffff );
             }
         }
 
@@ -73,38 +78,40 @@ public class Emulator implements IEmulator {
         {
             final byte[] result = new byte[lengthInBytes];
 
-            final int lengthInWords = lengthInBytes >> 1;
+            final int lengthInWords = lengthInBytes >>> 1;
 
-                    final int end = startAddress.getValue()+lengthInWords;
+            final int end = startAddress.toWordAddress().getValue()+lengthInWords;
 
-                    int bytesLeft = lengthInBytes;
-                    int index = 0;
-                    for ( int currentWord = startAddress.getValue() ; currentWord < end && bytesLeft > 0; currentWord++ ) {
-
-                        final int value = memory[ currentWord ];
-                        result[index++] = (byte) ( ( value  >> 8 ) & 0xff );      
-                        bytesLeft--;
-                        if ( bytesLeft <= 0 ) {
-                            break;
-                        }
-                        result[index++] = (byte) ( value & 0xff );                 
-                    }
-                    return result;
+            int bytesLeft = lengthInBytes;
+            int index = 0;
+            for ( int currentWord = startAddress.toWordAddress().getValue() ; currentWord < end && bytesLeft > 0; currentWord++ ) 
+            {
+                final int value = memory.get( currentWord );
+                result[index++] = (byte) ( ( value  >>> 8 ) & 0xff );      
+                bytesLeft--;
+                if ( bytesLeft <= 0 ) {
+                    break;
+                }
+                result[index++] = (byte) ( value & 0xff );                 
+            }
+            return result;
         }
 
-		@Override
-		public int getSizeInBytes() {
-			return memory.length*2;
-		}        
+        @Override
+        public int getSizeInBytes() {
+            return memory.length()*2;
+        }        
     };
 
     // ============ CPU =============== 
 
     // a,b,c,x,y,z,i,j
-    public volatile int[] registers=new int[8];
+    // all CPU registers needs to be thread-safe since the emulation runs in a separate thread
+    // and UI threads may access the registers concurrently 
+    private final AtomicIntegerArray registers=new AtomicIntegerArray(8);
 
-    private volatile int pc;
-    private volatile int sp;
+    private volatile Address pc = Address.wordAddress( 0 );
+    private volatile Address sp = Address.wordAddress( 0 );
     private volatile int ex;
 
     private volatile int interruptAddress;
@@ -115,21 +122,25 @@ public class Emulator implements IEmulator {
         @Override
         public int[] getCommonRegisters()
         {
-            // HACK: java does not have volatile registers so I'll re-assign the register here with the same value
-            registers = registers;
-            return registers;
+            final int len = registers.length();
+            final int[] result = new int[ len ];
+            // TODO: Not quite thread-safe , would require a global lock on the whole array...
+            for ( int i = 0 ; i < len ; i++ ) {
+                result[i] = registers.get(i);
+            }
+            return result;
         }
 
         @Override
         public Address getPC()
         {
-            return Address.wordAddress( pc );
+            return pc;
         }
 
         @Override
         public Address getSP()
         {
-            return Address.wordAddress( sp );
+            return sp;
         }
 
         @Override
@@ -160,32 +171,31 @@ public class Emulator implements IEmulator {
         stop();
         currentCycle = 0;
         interruptAddress = 0;
-        pc = 0;
-        sp = 0;
+        pc = Address.wordAddress( 0 );
+        sp = Address.wordAddress( 0 );
         ex = 0;
-        for ( int i = 0 ; i < registers.length ; i++ ) {
-            registers[i] = 0;
+        
+        final int regCount = registers.length();
+        for ( int i = 0 ; i < regCount ; i++ ) {
+            registers.set( i, 0 );
         }
-        if ( clearMemory ) {
-            for ( int i = 0 ; i < memory.length ; i++ ) {
-                memory[i] = 0;
+        if ( clearMemory ) 
+        {
+            final int len = memory.length();
+            for ( int i = 0 ; i < len ; i++ ) {
+                memory.set(i, 0);
             }		
         }
 
         // notify listeners
-        final List<IEmulationListener> copy;
-        synchronized( listeners ) 
-        {
-            copy = new ArrayList<IEmulationListener>( listeners);
-        }
+        notifyListeners( new IEmulationListenerInvoker() {
 
-        for ( IEmulationListener l : copy) {
-            try {
-                l.onReset( this );
-            } catch(Exception e) {
-                e.printStackTrace();
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.afterReset( emulator );                
             }
-        }
+        });
     }
 
     /* (non-Javadoc)
@@ -399,11 +409,11 @@ public class Emulator implements IEmulator {
     @Override
     public void executeOneInstruction() 
     {
+        beforeCommandExecution();
+        
         int execDurationInCycles=-1; 
         try 
         {
-            beforeCommandExecution();
-
             execDurationInCycles = executeInstruction();
 
             currentCycle+=execDurationInCycles;
@@ -421,25 +431,48 @@ public class Emulator implements IEmulator {
 
     protected void beforeCommandExecution() 
     {
-        synchronized( listeners ) {
-            for ( IEmulationListener l : listeners ) {
-                l.beforeExecution( this );
+        notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.beforeExecution( emulator );
             }
-        }
+        });
     }
 
     /**
      * 
      * @param executedCommandDuration duration (in cycles) of last command or -1 if execution failed with an internal emulator error
      */
-    protected void afterCommandExecution(int executedCommandDuration) 
+    protected void afterCommandExecution(final int executedCommandDuration) 
     {
-        synchronized( listeners ) 
-        {
-            for ( IEmulationListener l : listeners ) {
-                l.afterExecution( this , executedCommandDuration );
+        notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.afterExecution( emulator , executedCommandDuration );
             }
-        }        
+        });     
+        
+        final BreakPoint breakpoint;
+        synchronized( breakpoints ) 
+        {
+            breakpoint = breakpoints.get( pc ); 
+        }
+        if ( breakpoint != null ) 
+        {
+            stop();
+            notifyListeners( new IEmulationListenerInvoker() {
+
+                @Override
+                public void invoke(IEmulator emulator, IEmulationListener listener)
+                {
+                    listener.onBreakpoint( emulator , breakpoint );
+                }
+            });             
+        }
     }
 
     private boolean isConditionalInstruction(int instructionWord) {
@@ -451,7 +484,9 @@ public class Emulator implements IEmulator {
     @Override
     public void skipCurrentInstruction() 
     {
-        final int instructionWord = memory[ pc++ ];
+        final int instructionWord = memory.get( pc.getValue() );
+
+        pc = pc.incrementByOne();
 
         final int opCode = (instructionWord & 0x1f);
 
@@ -506,7 +541,7 @@ public class Emulator implements IEmulator {
                 operandsSizeInWords = getOperandsSizeInWordsForUnknownInstruction( instructionWord );
                 break;
         }
-        pc+=operandsSizeInWords;
+        pc = pc.plus( Address.wordAddress( operandsSizeInWords ) );
     }
 
     private int getOperandsSizeInWordsForBasicInstruction(int instructionWord)
@@ -550,9 +585,9 @@ public class Emulator implements IEmulator {
 
         final int operandBits;
         if ( position == OperandPosition.SOURCE_OPERAND || isSpecialOpCode ) { // SET b , a ==> a
-            operandBits = (instructionWord >> 10) & ( 1+2+4+8+16+32); // SET b,a ==> b            
+            operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32); // SET b,a ==> b            
         } else { 
-            operandBits = (instructionWord >> 5) & ( 1+2+4+8+16+32); // SET b,a ==> b
+            operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16); // SET b,a ==> b
         }
         if ( operandBits <= 0x07 ) {
             return 0; // operandDesc( registers[ operandBits ] );
@@ -590,7 +625,8 @@ public class Emulator implements IEmulator {
 
     private int executeInstruction() 
     {
-        final int instructionWord = memory[ pc++ ];
+        final int instructionWord = memory.get( pc.getValue() );
+        pc = pc.incrementByOne();
 
         final int opCode = (instructionWord & 0x1f);
 
@@ -705,20 +741,20 @@ public class Emulator implements IEmulator {
     private int handleSTD(int instructionWord) {
         // sets b to a, then decreases I and J by 1
         // a,b,c,x,y,z,i,j
-        OperandDesc source = loadSourceOperand( instructionWord );
+        final OperandDesc source = loadSourceOperand( instructionWord );
 
-        registers[6]-=1;
-        registers[7]-=1;
+        registers.decrementAndGet( 6 ); // registers[6]-=1; <<< I
+        registers.decrementAndGet( 7 ); // registers[7]-=1; <<< J
         return 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;			
     }
 
     private int handleSTI(int instructionWord) {
         // sets b to a, then increases I and J by 1
-        OperandDesc source = loadSourceOperand( instructionWord );
-
         // a,b,c,x,y,z,i,j
-        registers[6]+=1;
-        registers[7]+=1;
+        final OperandDesc source = loadSourceOperand( instructionWord );
+
+        registers.incrementAndGet( 6 ); // registers[6]+=1; <<< I
+        registers.incrementAndGet( 7 ); // registers[7]+=1; <<< J
         return 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;			
     }
 
@@ -753,7 +789,7 @@ public class Emulator implements IEmulator {
 
     private int handleUnknownOpCode(int instructionWord) {
         throw new RuntimeException("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+
-                "0x"+Misc.toHexString( pc-1 ) );
+                "0x"+Misc.toHexString( pc.decrementByOne() ) );
     }
 
     private int handleIFU(int instructionWord) {
@@ -765,13 +801,13 @@ public class Emulator implements IEmulator {
         if ( signed( target.value ) >= signed( source.value ) ) 
         {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;			
     }
 
     private int handleConditionFailure() {
-        if ( isConditionalInstruction( memory [pc ] ) ) 
+        if ( isConditionalInstruction( memory.get( pc.getValue() ) ) ) 
         {
             skipCurrentInstruction();		    
             return 1;
@@ -787,7 +823,7 @@ public class Emulator implements IEmulator {
         int penalty = 0;
         if ( target.value >= source.value ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;		
     }
@@ -800,7 +836,7 @@ public class Emulator implements IEmulator {
         int penalty = 0;
         if ( signed( target.value ) <= signed( source.value ) ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;		
     }
@@ -813,7 +849,7 @@ public class Emulator implements IEmulator {
         int penalty=0;
         if ( target.value <= source.value ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;			
     }
@@ -826,7 +862,7 @@ public class Emulator implements IEmulator {
         int penalty = 0;
         if ( target.value == source.value ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;			
     }
@@ -839,7 +875,7 @@ public class Emulator implements IEmulator {
         int penalty=0;
         if ( target.value != source.value ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;		
     }
@@ -852,7 +888,7 @@ public class Emulator implements IEmulator {
         int penalty = 0;
         if ( (target.value & source.value) != 0 ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;
     }
@@ -865,7 +901,7 @@ public class Emulator implements IEmulator {
         int penalty=0;
         if ( (target.value & source.value) == 0 ) {
             penalty = handleConditionFailure();
-            pc++; // skip next instruction
+            pc = pc.incrementByOne(); // skip next instruction
         }
         return 2+target.cycleCount+source.cycleCount+penalty;
     }
@@ -974,8 +1010,9 @@ public class Emulator implements IEmulator {
         return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount; 	
     }
 
-    private int handleDIV(int instructionWord) {
-        /*set b (TARGET) ,a (SOURCE) 
+    private int handleDIV(int instructionWord) 
+    {
+        /* set b (TARGET) ,a (SOURCE) 
          * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
          */
         OperandDesc source = loadSourceOperand( instructionWord );		
@@ -987,7 +1024,7 @@ public class Emulator implements IEmulator {
             acc=0;
         } else {
             acc = target.value / source.value;
-            ex = (( target.value << 16) / source.value)& 0xffff;
+            ex = (( target.value << 16) / source.value) & 0xffff;
         }
         return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
     }
@@ -1056,7 +1093,7 @@ public class Emulator implements IEmulator {
 
     private int handleSpecialOpCode(int instructionWord) {
 
-        final int opCode = ( instructionWord >> 5 ) &0x1f;
+        final int opCode = ( instructionWord >>> 5 ) &0x1f;
 
         /*
          *  |--- Special opcodes: (5 bits) --------------------------------------------------
@@ -1203,8 +1240,9 @@ public class Emulator implements IEmulator {
     {
         // pushes the address of the next instruction to the stack, then sets PC to a
         OperandDesc source= loadSourceOperand( instructionWord );
-        memory[ --sp ] = pc;
-        pc = source.value;
+        sp = sp.decrementByOne();
+        memory.set( sp.getValue() , pc.getValue() );
+        pc = Address.wordAddress( source.value );
         return 3+source.cycleCount;
     }
 
@@ -1240,44 +1278,48 @@ public class Emulator implements IEmulator {
      */
     private int storeTargetOperand(int instructionWord,int value) 
     {
-        final int operandBits = (instructionWord >> 5) & ( 1+2+4+8+16);
+        final int operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);
         if ( operandBits <= 07 ) {
-            registers[ operandBits ]=value;
+            registers.set( operandBits ,  value & 0xffff );
             return 0;
         }
         if ( operandBits <= 0x0f ) {
-            memory[ registers[ operandBits - 0x08 ] ] = value;
+            memory.set( registers.get( operandBits - 0x08 ) , value & 0xffff );
             return 1;
         }
         if ( operandBits <= 0x17 ) {
-            final int nextWord = memory[ pc++ ];
-            memory[ registers[ operandBits - 0x17 ]+nextWord ] = value;
+            final int nextWord = memory.get( pc.getValue() );
+            pc = pc.incrementByOne();
+            memory.set( registers.get( operandBits - 0x17 )+nextWord , value & 0xffff );
             return 1;
         }
         switch( operandBits ) {
             case 0x18:
                 // PUSH / [--SP]
-                sp-=1;
-                memory[ sp ] = value;
+                sp = sp.decrementByOne();
+                memory.set( sp.getValue() , value & 0xffff );
                 return 1;
             case 0x19:
                 return handleIllegalTargetOperand(instructionWord);
             case 0x1a:
-                int nextWord = memory[ pc++ ];
-                memory[ sp + nextWord ] = value;
+                int nextWord = memory.get( pc.getValue() );
+                pc = pc.incrementByOne();
+                Address dst = sp.plus( Address.wordAddress( nextWord ) );
+                memory.set( dst.getValue() , value & 0xffff );
                 return 1;
             case 0x1b:
-                sp = value;
+                sp = Address.wordAddress( value );
                 return 0;
             case 0x1c:
-                pc = value;
+                pc = Address.wordAddress( value );
                 return 0;
             case 0x1d:
                 ex = value;
                 return 0;
             case 0x1e:
-                nextWord = memory[ pc++ ];
-                memory[ nextWord ] = value;
+                nextWord = memory.get( pc.getValue() );
+                pc = pc.incrementByOne();
+                memory.set( nextWord , value & 0xffff );
                 return 1;
             default:
                 return handleIllegalTargetOperand(instructionWord); // assignment to literal value
@@ -1286,7 +1328,7 @@ public class Emulator implements IEmulator {
 
     private int handleIllegalTargetOperand(int instructionWord) {
         throw new RuntimeException("Illegal target operand in instruction word 0x"+
-                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc-1 ) );
+                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() ) );
     }
 
     private OperandDesc loadSourceOperand(int instructionWord) {
@@ -1301,39 +1343,45 @@ public class Emulator implements IEmulator {
          * The value (a) is in the same six bit format as defined earlier.
          */
 
-        final int operandBits= (instructionWord >> 10) & ( 1+2+4+8+16+32);
+        final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
         if ( operandBits <= 0x07 ) {
-            return operandDesc( registers[ operandBits ] );
+            return operandDesc( registers.get( operandBits ) );
         }
         if ( operandBits <= 0x0f ) {
-            return operandDesc( memory[ registers[ operandBits - 0x08 ] ] , 1 );
+            return operandDesc( memory.get( registers.get( operandBits - 0x08 ) ) , 1 );
         }
         if ( operandBits <= 0x17 ) {
-            final int nextWord = memory[ pc++ ];
-            return operandDesc( memory[ registers[ operandBits - 0x17 ]+nextWord ] ,1 );
+            final int nextWord = memory.get( pc.getValue() );
+            pc = pc.incrementByOne();
+            return operandDesc( memory.get( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
         }
 
         switch( operandBits ) {
             case 0x18:
                 // POP / [SP++]
-                sp+=1;
-                return operandDesc( memory[ sp ] , 1 );
+                sp = sp.incrementByOne();
+                return operandDesc( memory.get( sp.getValue() ) , 1 );
             case 0x19:
-                return operandDesc( memory[ sp] , 1 );
+                return operandDesc( memory.get( sp.getValue() ) , 1 );
             case 0x1a:
-                int nextWord = memory[ pc++ ];
-                return operandDesc( memory[ sp + nextWord ] , 1 );
+                int nextWord = memory.get( pc.getValue() );
+                pc = pc.incrementByOne();
+                final Address dst = sp.plus( Address.wordAddress( nextWord ) );
+                return operandDesc( memory.get( dst.getValue() ) , 1 );
             case 0x1b:
-                return operandDesc( sp );
+                return operandDesc( sp.getValue() );
             case 0x1c:
-                return operandDesc( pc );
+                return operandDesc( pc.getValue() );
             case 0x1d:
                 return operandDesc( ex );
             case 0x1e:
-                nextWord = memory[ pc++ ];
-                return operandDesc( memory[ nextWord ] ,1 );
+                nextWord = memory.get( pc.getValue() );
+                pc = pc.incrementByOne();
+                return operandDesc( memory.get( nextWord ) ,1 );
             case 0x1f:
-                return operandDesc( memory[ pc++ ] , 1 );
+                final OperandDesc result = operandDesc( memory.get( pc.getValue() ) , 1 );
+                pc = pc.incrementByOne();
+                return result;
         }
 
         // literal value: -1...30 ( 0x20 - 0x3f )
@@ -1373,43 +1421,67 @@ public class Emulator implements IEmulator {
         final int operandBits;
 
         if ( specialInstruction ) {
-            operandBits= (instructionWord >> 10) & ( 1+2+4+8+16+32);
+            operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
         } else {
-            operandBits= (instructionWord >> 5) & ( 1+2+4+8+16+32);			
+            operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);			
         }
 
         if ( operandBits <= 0x07 ) {
-            return operandDesc( registers[ operandBits ] );
+            return operandDesc( registers.get( operandBits ) );
         }
         if ( operandBits <= 0x0f ) {
-            return operandDesc( memory[ registers[ operandBits - 0x08 ] ] , 1 );
+            return operandDesc( memory.get( registers.get( operandBits - 0x08 ) ) , 1 );
         }
-        if ( operandBits <= 0x17 ) {
-            final int nextWord = performIncrementDecrement ? memory[ pc++ ] : memory[pc];
-            return operandDesc( memory[ registers[ operandBits - 0x17 ]+nextWord ] ,1 );
+        if ( operandBits <= 0x17 ) 
+        {
+            final int nextWord;
+            if ( performIncrementDecrement ) {
+                nextWord = memory.get( pc.getValue() );
+                pc = pc.incrementByOne();
+            } else {
+                nextWord = memory.get( pc.getValue());                
+            }
+            return operandDesc( memory.get( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
         }
 
         switch( operandBits ) {
             case 0x18:
                 // POP / [SP++]
-                sp+=1;
-                return operandDesc( memory[ sp ] , 1 );
+                sp = sp.incrementByOne();
+                return operandDesc( memory.get( sp.getValue() ) , 1 );
             case 0x19:
-                return operandDesc( memory[ sp] , 1 );
+                return operandDesc( memory.get( sp.getValue() ) , 1 );
             case 0x1a:
-                int nextWord = performIncrementDecrement ? memory[ pc++ ] : memory[ pc ];
-                return operandDesc( memory[ sp + nextWord ] , 1 );
+                int nextWord = 0;
+                if ( performIncrementDecrement ) {
+                    nextWord = memory.get( pc.getValue() );
+                    pc = pc.incrementByOne();
+                } else {
+                    nextWord = memory.get( pc.getValue() );                    
+                }
+                final Address dst = sp.plus( Address.wordAddress( nextWord ) );
+                return operandDesc( memory.get( dst.getValue() ) , 1 );
             case 0x1b:
-                return operandDesc( sp );
+                return operandDesc( sp.getValue() );
             case 0x1c:
-                return operandDesc( pc );
+                return operandDesc( pc.getValue() );
             case 0x1d:
                 return operandDesc( ex );
             case 0x1e:
-                nextWord = performIncrementDecrement ? memory[ pc++ ] : memory[ pc ];
-                return operandDesc( memory[ nextWord ] ,1 );
+                if ( performIncrementDecrement ) {
+                    nextWord = memory.get( pc.getValue() );
+                    pc = pc.incrementByOne();
+                } else {
+                    nextWord = memory.get( pc.getValue() );
+                }
+                return operandDesc( memory.get( nextWord ) ,1 );
             case 0x1f:
-                nextWord = performIncrementDecrement ? memory[ pc++ ] : memory[ pc ];
+                if ( performIncrementDecrement ) {
+                    nextWord = memory.get( pc.getValue() );
+                    pc = pc.incrementByOne();
+                } else {
+                    nextWord = memory.get( pc.getValue() );                    
+                }
                 return operandDesc( nextWord , 1 );
         }
 
@@ -1445,11 +1517,23 @@ public class Emulator implements IEmulator {
      * @see de.codesourcery.jasm16.emulator.IEmulator#loadMemory(de.codesourcery.jasm16.Address, byte[])
      */
     @Override
-    public void loadMemory(Address startingOffset, byte[] data) 
+    public void loadMemory(final Address startingOffset, final byte[] data) 
     {
         memAdaptor.bulkLoad( startingOffset, data);
-        
+
         // notify listeners
+        notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.onMemoryLoad( emulator , startingOffset , data.length );                
+            }
+        });
+    }
+
+    protected void notifyListeners(IEmulationListenerInvoker invoker) 
+    {
         final List<IEmulationListener> copy;
         synchronized( listeners ) 
         {
@@ -1458,12 +1542,16 @@ public class Emulator implements IEmulator {
 
         for ( IEmulationListener l : copy) {
             try {
-                l.onMemoryLoad( this , startingOffset , data.length );
+                invoker.invoke( this , l );
             }
             catch(Exception e) {
                 e.printStackTrace();
             }
-        }        
+        }         
+    }
+
+    protected interface IEmulationListenerInvoker {
+        public void invoke(IEmulator emulator, IEmulationListener listener);
     }
 
     /* (non-Javadoc)
@@ -1593,6 +1681,47 @@ public class Emulator implements IEmulator {
         synchronized (listeners) {
             listeners.remove( listener );
         }        
+    }
+
+    @Override
+    public void addBreakpoint(BreakPoint bp)
+    {
+        if (bp == null) {
+            throw new IllegalArgumentException("breakpoint must not be NULL.");
+        }
+        synchronized( breakpoints ) {
+            breakpoints.put( bp.getAddress() , bp );
+        }          
+    }
+
+    @Override
+    public void deleteBreakpoint(BreakPoint bp)
+    {
+        if (bp == null) {
+            throw new IllegalArgumentException("breakpoint must not be NULL.");
+        }
+        synchronized( breakpoints ) {
+            breakpoints.remove( bp.getAddress() );
+        }        
+    }
+
+    @Override
+    public List<BreakPoint> getBreakPoints()
+    {
+        synchronized( breakpoints ) {
+            return new ArrayList<BreakPoint>( breakpoints.values() );
+        }
+    }
+
+    @Override
+    public BreakPoint getBreakPoint(Address address)
+    {
+        if (address == null) {
+            throw new IllegalArgumentException("address must not be NULL.");
+        }
+        synchronized( breakpoints ) {
+            return breakpoints.get( address );
+        }
     }
 
 }

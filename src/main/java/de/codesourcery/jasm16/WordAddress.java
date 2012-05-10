@@ -66,5 +66,39 @@ public class WordAddress extends Address
 	public WordAddress toWordAddress() {
 		return this;
 	}
+
+    @Override
+    public Address incrementByOne()
+    {
+        final int newValue = (int) ( (getValue()+1) % (WordAddress.MAX_ADDRESS+1) );
+        return new WordAddress( newValue );
+    }
+
+    @Override
+    public Address plus(Address other)
+    {
+        final int sum = other.toWordAddress().getValue() + getValue();
+        final int newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );        
+        return new WordAddress( newValue );
+    }
     
+    @Override
+    public Address decrementByOne()
+    {
+        int newValue = getValue() - 1;
+        if ( newValue < 0 ) {
+            newValue = (int) ( (WordAddress.MAX_ADDRESS+1) + newValue );
+        }
+        return new WordAddress( newValue );
+    }
+
+    @Override
+    public Address minus(Address other)
+    {
+        int newValue = getValue() - other.toWordAddress().getValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
+        }
+        return new WordAddress( newValue );
+    }	
 }
