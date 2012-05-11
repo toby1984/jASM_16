@@ -26,7 +26,7 @@ public interface IEmulationListener
 {
     public void afterReset(IEmulator emulator);
     
-    public void onMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes);
+    public void afterMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes);
     
     public void onBreakpoint(IEmulator emulator,BreakPoint breakpoint);
     

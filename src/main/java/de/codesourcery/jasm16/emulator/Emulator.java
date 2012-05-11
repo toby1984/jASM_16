@@ -316,6 +316,8 @@ public class Emulator implements IEmulator {
             }
 
             acknowledgeCommand();
+            
+            System.out.println("Simulation thread is now running...");
 
             lastStart = System.currentTimeMillis();
 
@@ -332,25 +334,25 @@ public class Emulator implements IEmulator {
                         try 
                         {
                             synchronized( SLEEP_LOCK ) {
+                                System.out.println("Simulation thread is now sleeping...");                                
                                 SLEEP_LOCK.wait();
                             }
                         } 
                         catch (Exception e) { /* can't help it */ } 
                     }
-
+                    System.out.println("Simulation thread woke up!");
                     acknowledgeCommand();
 
+                    System.out.println("Simulation thread is now running again...");                    
                     lastStart = System.currentTimeMillis();   					
                 }
 
-                executeOneInstruction();
+                internalExecuteOneInstruction();
             }
         } // END: ClockThread
-
     }
-
-    @Override
-    public void executeOneInstruction() 
+    
+    protected void internalExecuteOneInstruction() 
     {
         beforeCommandExecution();
         
@@ -370,6 +372,13 @@ public class Emulator implements IEmulator {
         {
             afterCommandExecution( execDurationInCycles );
         }
+    }     
+
+    @Override
+    public void executeOneInstruction() 
+    {
+        stop();
+        internalExecuteOneInstruction();
     }   
 
     protected void beforeCommandExecution() 
@@ -1472,7 +1481,7 @@ public class Emulator implements IEmulator {
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
             {
-                listener.onMemoryLoad( emulator , startingOffset , data.length );                
+                listener.afterMemoryLoad( emulator , startingOffset , data.length );                
             }
         });
     }

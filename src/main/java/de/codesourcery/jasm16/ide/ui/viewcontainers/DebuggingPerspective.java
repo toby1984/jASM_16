@@ -28,6 +28,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
 import de.codesourcery.jasm16.ide.ui.views.HexDumpView;
+import de.codesourcery.jasm16.ide.ui.views.ScreenView;
 import de.codesourcery.jasm16.ide.ui.views.StackView;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -50,7 +51,7 @@ public class DebuggingPerspective extends Perspective
         }
         
         @Override
-        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
+        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             setupPerspective();
         }
@@ -122,8 +123,19 @@ public class DebuggingPerspective extends Perspective
             final HexDumpView view = new HexDumpView( emulator );
             addView( view );
             view.refreshDisplay();
-        }            
+        }           
+
+        // setup screen view
+        if ( getScreenView() == null ) {
+            final ScreenView view = new ScreenView( emulator );
+            addView( view );
+            view.refreshDisplay();
+        }          
     }
+    
+    private ScreenView getScreenView() {
+        return (ScreenView) getViewByID( ScreenView.VIEW_ID );
+    }    
     
     private DisassemblerView getDisassemblerView() {
         return (DisassemblerView) getViewByID( DisassemblerView.VIEW_ID );

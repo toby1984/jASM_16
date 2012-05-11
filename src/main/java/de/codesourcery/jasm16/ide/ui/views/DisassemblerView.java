@@ -52,7 +52,7 @@ public class DisassemblerView extends AbstractView
     private final IEmulationListener listener = new IEmulationListener() {
 
         @Override
-        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
+        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             refreshDisplay();
         }
@@ -173,6 +173,34 @@ public class DisassemblerView extends AbstractView
         GridBagConstraints cnstrs = constraints( 0 , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( singleStepButton , cnstrs );
         
+        // =========== "RUN" button ============        
+        final JButton runButton = new JButton("Run");
+        runButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.start();
+            }
+        });
+        
+        cnstrs = constraints( 1 , 0 , false , true , GridBagConstraints.NONE );          
+        buttonBar.add( runButton , cnstrs );   
+        
+        // =========== "STOP" button ============        
+        final JButton stopButton = new JButton("Stop");
+        stopButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.stop();
+            }
+        });
+        
+        cnstrs = constraints( 2 , 0 , false , true , GridBagConstraints.NONE );          
+        buttonBar.add( stopButton , cnstrs );          
+        
         // =========== "RESET" button ============
         final JButton resetButton = new JButton("Reset");
         resetButton.addActionListener( new ActionListener() {
@@ -184,7 +212,7 @@ public class DisassemblerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 1 , 0 , true , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( 3 , 0 , true , true , GridBagConstraints.NONE );          
         buttonBar.add( resetButton , cnstrs );
         
         // setup bottom panel        

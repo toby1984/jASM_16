@@ -58,7 +58,7 @@ public class CPUView extends AbstractView
         }
 
         @Override
-        public void onMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
+        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             refreshDisplay();            
         }
