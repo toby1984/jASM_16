@@ -519,18 +519,6 @@ public enum OpCode
         buffer[idx++] = (byte) ( opcode & 0xff );
 
         // write operand A
-        if ( descTarget != null && descTarget.appendAsWord ) 
-        {
-			Long literalValue = targetOperand.getLiteralValue( symbolTable );
-            if ( literalValue == null ) {
-                return ObjectCodeOutputNode.UNKNOWN_SIZE;
-            }
-            final long value = literalValue;
-            buffer[idx++] = (byte) ( ( value  >> 8 ) & 0xff );      
-            buffer[idx++] = (byte) ( value & 0xff );            
-        }
-
-        // write operand B
         if ( descSource != null && descSource.appendAsWord ) 
         {
 			Long literalValue = sourceOperand.getLiteralValue( symbolTable );
@@ -540,7 +528,19 @@ public enum OpCode
             final long  value = literalValue;
             buffer[idx++] = (byte) ( ( value >> 8 ) & 0xff );             
             buffer[idx++] = (byte) ( value & 0x00ff );            
-        }       
+        }     
+        
+        // write operand B
+        if ( descTarget != null && descTarget.appendAsWord ) 
+        {
+            Long literalValue = targetOperand.getLiteralValue( symbolTable );
+            if ( literalValue == null ) {
+                return ObjectCodeOutputNode.UNKNOWN_SIZE;
+            }
+            final long value = literalValue;
+            buffer[idx++] = (byte) ( ( value  >> 8 ) & 0xff );      
+            buffer[idx++] = (byte) ( value & 0xff );            
+        }        
         return idx;
     }
     
