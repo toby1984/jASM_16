@@ -91,7 +91,7 @@ public class Disassembler
             public int nextWord()
             {
                 final Address old = current;
-                current = current.incrementByOne();
+                current = current.incrementByOne(false);
                 return memory.read( old );
             }
 
@@ -209,9 +209,11 @@ public class Disassembler
         return disassembleBasicInstruction( "STD" , it , instructionWord );
     }
     
-    private String disassembleBasicInstruction(String opCode,IMemoryIterator it , int instructionWord) {
-        return opCode+" "+disassembleOperand( it , OperandPosition.TARGET_OPERAND , instructionWord )+" , "
-                +disassembleOperand( it , OperandPosition.SOURCE_OPERAND , instructionWord );
+    private String disassembleBasicInstruction(String opCode,IMemoryIterator it , int instructionWord) 
+    {
+        final String src = disassembleOperand( it , OperandPosition.SOURCE_OPERAND , instructionWord );
+        final String target = disassembleOperand( it , OperandPosition.TARGET_OPERAND , instructionWord );
+        return opCode+" "+target+" , "+src;
     }
     
     private String disassembleSpecialInstruction(String opCode,IMemoryIterator it , int instructionWord) {
