@@ -33,7 +33,7 @@ public interface IEmulator
     
     public ICPU getCPU();
     
-    public IMemory getMemory();
+    public IReadOnlyMemory getMemory();
     
     public void addEmulationListener(IEmulationListener listener);
     

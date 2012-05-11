@@ -140,7 +140,7 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		final List<ViewWithPanel> copy = new ArrayList<ViewWithPanel>(this.views);
 		for (Iterator<ViewWithPanel> it = copy.iterator(); it.hasNext();) 
 		{
-			final ViewWithPanel viewWithPanel = (ViewWithPanel) it.next();
+			final ViewWithPanel viewWithPanel = it.next();
 			if ( viewWithPanel.view == view ) {
 				this.tabbedPane.remove( viewWithPanel.panel );
 				viewWithPanel.view.dispose();

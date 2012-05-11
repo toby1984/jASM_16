@@ -15,18 +15,17 @@
  */
 package de.codesourcery.jasm16.disassembler;
 
-import org.apache.commons.lang.ArrayUtils;
-
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.emulator.IMemory;
+import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
- * Wraps a byte array into an {@link IMemory}.
+ * Wraps a byte array into an {@link IReadOnlyMemory}.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class ByteArrayMemoryAdapter implements IMemory {
+public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
     
 	private final byte[] data;
 	
@@ -38,17 +37,21 @@ public class ByteArrayMemoryAdapter implements IMemory {
 	}
 	
 	@Override
-	public int getSizeInBytes() {
-		return data.length;
+	public Size getSize() {
+		return Size.sizeInBytes( data.length );
+	}
+	
+	private int getSizeInBytes() {
+	    return getSize().toSizeInBytes().getValue();
 	}
 	
     @Override
-    public int readWord(Address address)
+    public int read(Address address)
     {
         int offset = address.toByteAddress().getValue();
         if ( offset >= getSizeInBytes() ) {
             throw new IllegalArgumentException("Address "+Misc.toHexString( address )+
-            		" is out-of-range (0-"+getSizeInBytes()+")");
+            		" is out-of-range (0-"+getSize()+")");
         }
         int hi = data[offset++];
         if ( hi < 0 ) {
@@ -64,34 +67,11 @@ public class ByteArrayMemoryAdapter implements IMemory {
         final int result= (( hi << 8 ) | lo) & 0xffff;
         return result;
     }
-    
+
     @Override
-    public byte[] getBytes(Address startAddress, int lengthInBytes)
+    public int read(int wordAddress)
     {
-        final int startOffset =  startAddress.toByteAddress().getValue();
-        
-        if ( startOffset < 0 || startOffset >= getSizeInBytes() ) {
-            throw new IllegalArgumentException("Address is out-of-range: "+startAddress+"( expected 0 - "+
-            		Misc.toHexString(getSizeInBytes()));
-        }
-        
-        
-        final int endOffset = (int) ( ( ( startOffset + lengthInBytes ) % getSizeInBytes() ) & 0xffff ); 
-        if ( startOffset <= endOffset ) {
-            return ArrayUtils.subarray( data , startOffset , endOffset-startOffset );
-        }
-        // need to properly wrap-around for displaying stack frames: getBytes( 65535 , 2 ) ;
-        final byte[] firstArray = ArrayUtils.subarray( data , startOffset , 65536 - startOffset );
-        final byte[] secondArray = ArrayUtils.subarray( data , 0 , endOffset );
-        final byte[] result = new byte[ firstArray.length + secondArray.length ];
-        System.arraycopy( firstArray , 0 , result , 0 , firstArray.length );
-        System.arraycopy( secondArray , 0 , result , firstArray.length , secondArray.length );
-        return result;
+        return read( Address.wordAddress( wordAddress ) );
     }
     
-    @Override
-    public void bulkLoad(Address startingOffset, byte[] data)
-    {
-        throw new UnsupportedOperationException();
-    }
 };

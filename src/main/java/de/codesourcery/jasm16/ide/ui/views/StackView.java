@@ -30,6 +30,7 @@ import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class StackView extends AbstractView
@@ -95,7 +96,7 @@ public class StackView extends AbstractView
             realStart = (startOfStack.getValue() - numberOfWordsToDump) & 0xffff;
         }
                 
-        final byte[] data = emulator.getMemory().getBytes( Address.wordAddress( realStart ) , numberOfWordsToDump*2);
+        final byte[] data = MemUtils.getBytes( emulator.getMemory() , Address.wordAddress( realStart ) , numberOfWordsToDump*2);
         SwingUtilities.invokeLater( new Runnable() {
 
             @Override

@@ -696,6 +696,6 @@ public class Misc {
 		for ( int i = beginIndex ; i < endIndex ; i++ , offset++) {
 			result[offset] = array[i];
 		}
-		return (T[]) result;
+		return result;
 	}
 }

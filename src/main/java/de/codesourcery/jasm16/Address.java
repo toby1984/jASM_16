@@ -19,17 +19,16 @@ package de.codesourcery.jasm16;
 /**
  * Represents an address (immutable object).
  * 
- * <p>Since the DCPU only supports word-sized addressing , this is
- * actually an abstract class that comes in two flavors (byte-sized addressing
- * and word-sized addressing).
- * </p>
+ * <p>This class provides an abstraction for address values to avoid conversion errors 
+ * when converting byte-sized addresses to/from word-sized addresses or doing address calculations.</p>
+ * 
  * <p>Conversion between these types is possible using the {@link #toByteAddress()} and
  * {@link #toWordAddress()} methods.
  * </p>
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public abstract class Address
+public abstract class Address implements Comparable<Address>
 {
     public static final Address ZERO = new WordAddress(0);
     
@@ -43,10 +42,40 @@ public abstract class Address
         return new ByteAddress( value );
     }    
     
+    @Override
+    public int compareTo(Address other)
+    {
+        final int value1 = this.toByteAddress().getValue();
+        final int value2 = other.toByteAddress().getValue();
+        if ( value1 < value2 ) {
+            return -1;
+        } 
+        
+        if ( value1 > value2 ) {
+            return 1;
+        }
+        return 0;
+    }
+    
     public final boolean isLessThan(Address other) 
     {
-        return this.toByteAddress().getValue() < other.toByteAddress().getValue();
+        return this.compareTo( other ) < 0;
     }
+    
+    public final boolean isEqualOrLessThan(Address other) 
+    {
+        return this.compareTo( other ) <= 0;
+    }    
+    
+    public final boolean isGreaterThan(Address other) 
+    {
+        return this.compareTo( other ) > 0;
+    }    
+    
+    public final boolean isEqualOrGreaterThan(Address other) 
+    {
+        return this.compareTo( other ) >= 0;
+    }     
     
     @Override
     public final boolean equals(Object obj)
@@ -101,6 +130,10 @@ public abstract class Address
      */     
     public abstract Address minus(Address other);    
     
+    public abstract Address minus(Size size);
+    
+    public abstract Address plus(Size size);    
+    
     /**
      * Returns the raw value of this address.
      * 
@@ -124,7 +157,7 @@ public abstract class Address
 		return result;
 	}
 	
-	public static int getDistanceInBytes(Address start, Address end) {
+	public static int calcDistanceInBytes(Address start, Address end) {
 	    
 	    Address startNormalized = start.toByteAddress();
 	    Address endNormalized = end.toByteAddress();

@@ -41,7 +41,7 @@ public class WordAddress extends Address
         if ( value < 0 ) {
             throw new IllegalArgumentException("Address value must be positive: "+value);
         }
-        if ( value > MAX_ADDRESS ) {
+        if ( value > (MAX_ADDRESS+1) ) { // I don't check for ( value > MAX_ADDRESS ) because the AddressRange class does ( start , end[ and thus the end address may be MAX_ADDRESS + 1
             throw new IllegalArgumentException("Address value must be less than "+MAX_ADDRESS+": "+value);
         }        
         this.value = (int) value;
@@ -100,5 +100,17 @@ public class WordAddress extends Address
             newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
         }
         return new WordAddress( newValue );
+    }
+
+    @Override
+    public Address minus(Size size)
+    {
+        return new WordAddress( getValue() - size.toSizeInWords().getValue() );
+    }
+
+    @Override
+    public Address plus(Size size)
+    {
+        return new WordAddress( getValue() + size.toSizeInWords().getValue() );
     }	
 }

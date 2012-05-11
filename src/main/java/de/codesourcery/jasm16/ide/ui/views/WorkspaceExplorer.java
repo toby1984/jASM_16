@@ -736,7 +736,7 @@ public class WorkspaceExplorer extends AbstractView {
         }
 
         @Override
-        public Enumeration children() 
+        public Enumeration<WorkspaceTreeNode> children() 
         {
             final Iterator<WorkspaceTreeNode> iterator = children.iterator();
             return new Enumeration<WorkspaceTreeNode>() {

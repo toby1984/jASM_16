@@ -61,11 +61,11 @@ public class ByteAddress extends Address
 	@Override
 	public WordAddress toWordAddress() 
 	{
-		final int words = value >> 1;
-		if ( words != value ) {
+		final int wordAddress = value >>> 1;
+		if ( (wordAddress << 1) != value ) {
 			throw new RuntimeException("Internal error, byte address "+this+" is not on a 16-bit boundary");
 		}
-		return new WordAddress( value >> 1 );
+		return new WordAddress( wordAddress );
 	}
 
     @Override
@@ -101,6 +101,18 @@ public class ByteAddress extends Address
             newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
         }
         return new ByteAddress( newValue );
+    }
+
+    @Override
+    public Address minus(Size size)
+    {
+        return new ByteAddress( getValue() - size.toSizeInBytes().getValue() );
+    }
+
+    @Override
+    public Address plus(Size size)
+    {
+        return new ByteAddress( getValue() + size.toSizeInBytes().getValue() );
     }    
     
 }

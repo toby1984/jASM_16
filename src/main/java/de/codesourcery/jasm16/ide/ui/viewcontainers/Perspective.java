@@ -259,7 +259,8 @@ public class Perspective extends JFrame implements IViewContainer {
 //		}
 //	}
 	
-	private boolean isFullyVisible(Rectangle rect) 
+	@SuppressWarnings("unused")
+    private boolean isFullyVisible(Rectangle rect) 
 	{
 		final int x1 = (int) rect.getX();
 		final int y1 = (int) rect.getY();

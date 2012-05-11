@@ -282,8 +282,8 @@ public class CompilationUnit implements ICompilationUnit {
         return internalGetMarkers( types );
     }
     
-    @SuppressWarnings("unchecked")
-	private List internalGetMarkers(String... types)
+	@SuppressWarnings("rawtypes")
+    private List internalGetMarkers(String... types)
     {
         final List<IMarker>  result = new ArrayList<IMarker>();
         

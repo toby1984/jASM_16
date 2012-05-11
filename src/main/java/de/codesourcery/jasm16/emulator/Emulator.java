@@ -47,61 +47,7 @@ public class Emulator implements IEmulator {
 
     // memory needs to be thread-safe since the emulation runs in a separate thread
     // and UI threads may access the registers concurrently    
-    private final AtomicIntegerArray memory = new  AtomicIntegerArray(65536);
-
-    private final IMemory memAdaptor = new IMemory() {
-
-        @Override
-        public int readWord(Address address)
-        {
-            return memory.get( address.toWordAddress().getValue() );
-        }
-
-        @Override
-        public void bulkLoad(Address startingOffset, byte[] data) {
-
-            int current = startingOffset.toWordAddress().getValue();
-            int pointer=0;
-            int value=0;
-            while ( pointer < data.length ) 
-            {
-                value= data[pointer++];
-                if ( pointer < data.length ) {
-                    value = (value << 8) | (0xff & data[pointer++]);
-                }
-                memory.set( current++ , value & 0xffff );
-            }
-        }
-
-        @Override
-        public byte[] getBytes(Address startAddress, int lengthInBytes)
-        {
-            final byte[] result = new byte[lengthInBytes];
-
-            final int lengthInWords = lengthInBytes >>> 1;
-
-            final int end = startAddress.toWordAddress().getValue()+lengthInWords;
-
-            int bytesLeft = lengthInBytes;
-            int index = 0;
-            for ( int currentWord = startAddress.toWordAddress().getValue() ; currentWord < end && bytesLeft > 0; currentWord++ ) 
-            {
-                final int value = memory.get( currentWord );
-                result[index++] = (byte) ( ( value  >>> 8 ) & 0xff );      
-                bytesLeft--;
-                if ( bytesLeft <= 0 ) {
-                    break;
-                }
-                result[index++] = (byte) ( value & 0xff );                 
-            }
-            return result;
-        }
-
-        @Override
-        public int getSizeInBytes() {
-            return memory.length()*2;
-        }        
-    };
+    private final IMemory memory = new MainMemory( 65536 );
 
     // ============ CPU =============== 
 
@@ -181,10 +127,7 @@ public class Emulator implements IEmulator {
         }
         if ( clearMemory ) 
         {
-            final int len = memory.length();
-            for ( int i = 0 ; i < len ; i++ ) {
-                memory.set(i, 0);
-            }		
+            memory.clear();
         }
 
         // notify listeners
@@ -484,7 +427,7 @@ public class Emulator implements IEmulator {
     @Override
     public void skipCurrentInstruction() 
     {
-        final int instructionWord = memory.get( pc.getValue() );
+        final int instructionWord = memory.read( pc );
 
         pc = pc.incrementByOne();
 
@@ -625,7 +568,7 @@ public class Emulator implements IEmulator {
 
     private int executeInstruction() 
     {
-        final int instructionWord = memory.get( pc.getValue() );
+        final int instructionWord = memory.read( pc );
         pc = pc.incrementByOne();
 
         final int opCode = (instructionWord & 0x1f);
@@ -807,7 +750,7 @@ public class Emulator implements IEmulator {
     }
 
     private int handleConditionFailure() {
-        if ( isConditionalInstruction( memory.get( pc.getValue() ) ) ) 
+        if ( isConditionalInstruction( memory.read( pc ) ) ) 
         {
             skipCurrentInstruction();		    
             return 1;
@@ -1241,7 +1184,7 @@ public class Emulator implements IEmulator {
         // pushes the address of the next instruction to the stack, then sets PC to a
         OperandDesc source= loadSourceOperand( instructionWord );
         sp = sp.decrementByOne();
-        memory.set( sp.getValue() , pc.getValue() );
+        memory.write( sp , pc.getValue() );
         pc = Address.wordAddress( source.value );
         return 3+source.cycleCount;
     }
@@ -1276,6 +1219,7 @@ public class Emulator implements IEmulator {
      * | 0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for SOURCE)
      * +---+-----------+----------------------------------------------------------------	 
      */
+    @SuppressWarnings("deprecation")
     private int storeTargetOperand(int instructionWord,int value) 
     {
         final int operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);
@@ -1284,28 +1228,28 @@ public class Emulator implements IEmulator {
             return 0;
         }
         if ( operandBits <= 0x0f ) {
-            memory.set( registers.get( operandBits - 0x08 ) , value & 0xffff );
+            memory.write( registers.get( operandBits - 0x08 ) , value);
             return 1;
         }
         if ( operandBits <= 0x17 ) {
-            final int nextWord = memory.get( pc.getValue() );
+            final int nextWord = memory.read( pc );
             pc = pc.incrementByOne();
-            memory.set( registers.get( operandBits - 0x17 )+nextWord , value & 0xffff );
+            memory.write( registers.get( operandBits - 0x17 )+nextWord , value);
             return 1;
         }
         switch( operandBits ) {
             case 0x18:
                 // PUSH / [--SP]
                 sp = sp.decrementByOne();
-                memory.set( sp.getValue() , value & 0xffff );
+                memory.write( sp.getValue() , value);
                 return 1;
             case 0x19:
                 return handleIllegalTargetOperand(instructionWord);
             case 0x1a:
-                int nextWord = memory.get( pc.getValue() );
+                int nextWord = memory.read( pc );
                 pc = pc.incrementByOne();
                 Address dst = sp.plus( Address.wordAddress( nextWord ) );
-                memory.set( dst.getValue() , value & 0xffff );
+                memory.write( dst , value );
                 return 1;
             case 0x1b:
                 sp = Address.wordAddress( value );
@@ -1317,9 +1261,9 @@ public class Emulator implements IEmulator {
                 ex = value;
                 return 0;
             case 0x1e:
-                nextWord = memory.get( pc.getValue() );
+                nextWord = memory.read( pc );
                 pc = pc.incrementByOne();
-                memory.set( nextWord , value & 0xffff );
+                memory.write( nextWord , value);
                 return 1;
             default:
                 return handleIllegalTargetOperand(instructionWord); // assignment to literal value
@@ -1331,6 +1275,7 @@ public class Emulator implements IEmulator {
                 Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() ) );
     }
 
+    @SuppressWarnings("deprecation")
     private OperandDesc loadSourceOperand(int instructionWord) {
 
         /* SET b,a
@@ -1348,26 +1293,26 @@ public class Emulator implements IEmulator {
             return operandDesc( registers.get( operandBits ) );
         }
         if ( operandBits <= 0x0f ) {
-            return operandDesc( memory.get( registers.get( operandBits - 0x08 ) ) , 1 );
+            return operandDesc( memory.read( registers.get( operandBits - 0x08 ) ) , 1 );
         }
         if ( operandBits <= 0x17 ) {
-            final int nextWord = memory.get( pc.getValue() );
+            final int nextWord = memory.read( pc );
             pc = pc.incrementByOne();
-            return operandDesc( memory.get( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
+            return operandDesc( memory.read( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
         }
 
         switch( operandBits ) {
             case 0x18:
                 // POP / [SP++]
                 sp = sp.incrementByOne();
-                return operandDesc( memory.get( sp.getValue() ) , 1 );
+                return operandDesc( memory.read( sp ) , 1 );
             case 0x19:
-                return operandDesc( memory.get( sp.getValue() ) , 1 );
+                return operandDesc( memory.read( sp ) , 1 );
             case 0x1a:
-                int nextWord = memory.get( pc.getValue() );
+                int nextWord = memory.read( pc );
                 pc = pc.incrementByOne();
                 final Address dst = sp.plus( Address.wordAddress( nextWord ) );
-                return operandDesc( memory.get( dst.getValue() ) , 1 );
+                return operandDesc( memory.read( dst ) , 1 );
             case 0x1b:
                 return operandDesc( sp.getValue() );
             case 0x1c:
@@ -1375,11 +1320,11 @@ public class Emulator implements IEmulator {
             case 0x1d:
                 return operandDesc( ex );
             case 0x1e:
-                nextWord = memory.get( pc.getValue() );
+                nextWord = memory.read( pc );
                 pc = pc.incrementByOne();
-                return operandDesc( memory.get( nextWord ) ,1 );
+                return operandDesc( memory.read( nextWord ) ,1 );
             case 0x1f:
-                final OperandDesc result = operandDesc( memory.get( pc.getValue() ) , 1 );
+                final OperandDesc result = operandDesc( memory.read( pc ) , 1 );
                 pc = pc.incrementByOne();
                 return result;
         }
@@ -1396,6 +1341,7 @@ public class Emulator implements IEmulator {
      * whether this is handled by the caller (because a subsequent STORE will be performed )
      * @return
      */
+    @SuppressWarnings("deprecation")
     protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
 
 
@@ -1430,37 +1376,37 @@ public class Emulator implements IEmulator {
             return operandDesc( registers.get( operandBits ) );
         }
         if ( operandBits <= 0x0f ) {
-            return operandDesc( memory.get( registers.get( operandBits - 0x08 ) ) , 1 );
+            return operandDesc( memory.read( registers.get( operandBits - 0x08 ) ) , 1 );
         }
         if ( operandBits <= 0x17 ) 
         {
             final int nextWord;
             if ( performIncrementDecrement ) {
-                nextWord = memory.get( pc.getValue() );
+                nextWord = memory.read( pc );
                 pc = pc.incrementByOne();
             } else {
-                nextWord = memory.get( pc.getValue());                
+                nextWord = memory.read( pc );                
             }
-            return operandDesc( memory.get( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
+            return operandDesc( memory.read( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
         }
 
         switch( operandBits ) {
             case 0x18:
                 // POP / [SP++]
                 sp = sp.incrementByOne();
-                return operandDesc( memory.get( sp.getValue() ) , 1 );
+                return operandDesc( memory.read( sp ) , 1 );
             case 0x19:
-                return operandDesc( memory.get( sp.getValue() ) , 1 );
+                return operandDesc( memory.read( sp ) , 1 );
             case 0x1a:
                 int nextWord = 0;
                 if ( performIncrementDecrement ) {
-                    nextWord = memory.get( pc.getValue() );
+                    nextWord = memory.read( pc );
                     pc = pc.incrementByOne();
                 } else {
-                    nextWord = memory.get( pc.getValue() );                    
+                    nextWord = memory.read( pc );                    
                 }
                 final Address dst = sp.plus( Address.wordAddress( nextWord ) );
-                return operandDesc( memory.get( dst.getValue() ) , 1 );
+                return operandDesc( memory.read( dst ) , 1 );
             case 0x1b:
                 return operandDesc( sp.getValue() );
             case 0x1c:
@@ -1469,18 +1415,18 @@ public class Emulator implements IEmulator {
                 return operandDesc( ex );
             case 0x1e:
                 if ( performIncrementDecrement ) {
-                    nextWord = memory.get( pc.getValue() );
+                    nextWord = memory.read( pc );
                     pc = pc.incrementByOne();
                 } else {
-                    nextWord = memory.get( pc.getValue() );
+                    nextWord = memory.read( pc );
                 }
-                return operandDesc( memory.get( nextWord ) ,1 );
+                return operandDesc( memory.read( nextWord ) ,1 );
             case 0x1f:
                 if ( performIncrementDecrement ) {
-                    nextWord = memory.get( pc.getValue() );
+                    nextWord = memory.read( pc );
                     pc = pc.incrementByOne();
                 } else {
-                    nextWord = memory.get( pc.getValue() );                    
+                    nextWord = memory.read( pc );                    
                 }
                 return operandDesc( nextWord , 1 );
         }
@@ -1519,7 +1465,7 @@ public class Emulator implements IEmulator {
     @Override
     public void loadMemory(final Address startingOffset, final byte[] data) 
     {
-        memAdaptor.bulkLoad( startingOffset, data);
+        MemUtils.bulkLoad( memory , startingOffset , data );
 
         // notify listeners
         notifyListeners( new IEmulationListenerInvoker() {
@@ -1656,9 +1602,9 @@ public class Emulator implements IEmulator {
     }
 
     @Override
-    public IMemory getMemory()
+    public IReadOnlyMemory getMemory()
     {
-        return memAdaptor;
+        return memory;
     }
 
     @Override

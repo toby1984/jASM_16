@@ -26,6 +26,7 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class HexDumpView extends AbstractView
@@ -85,7 +86,7 @@ public class HexDumpView extends AbstractView
             return;
         }
         
-        final byte[] data = emulator.getMemory().getBytes( dumpStartAddress , numberOfBytesToDump );
+        final byte[] data = MemUtils.getBytes( emulator.getMemory() , dumpStartAddress , numberOfBytesToDump );
         SwingUtilities.invokeLater( new Runnable() {
 
             @Override

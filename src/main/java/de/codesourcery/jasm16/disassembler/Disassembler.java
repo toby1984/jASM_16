@@ -27,7 +27,8 @@ import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
-import de.codesourcery.jasm16.emulator.IMemory;
+import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -68,17 +69,17 @@ public class Disassembler
     
     public List<DisassembledLine> disassemble(final Address startingAddress, final byte[] data, final int instructionCountToDisassemble,boolean printHexDump) 
     {
-        final IMemory mem = new ByteArrayMemoryAdapter( data );
+        final IReadOnlyMemory mem = new ByteArrayMemoryAdapter( data );
         return disassemble( mem , startingAddress , instructionCountToDisassemble , printHexDump );
     }
     
     public List<DisassembledLine> disassemble(final byte[] data,boolean printHexDump) 
     {
-        final IMemory mem = new ByteArrayMemoryAdapter( data );
+        final IReadOnlyMemory mem = new ByteArrayMemoryAdapter( data );
         return disassemble( mem , Address.ZERO , DISASSEMBLE_EVERYTHING, printHexDump );    	
     }
 
-    public List<DisassembledLine> disassemble(final IMemory memory,final Address startingAddress, final int instructionCountToDisassemble,boolean printHexDump) 
+    public List<DisassembledLine> disassemble(final IReadOnlyMemory memory,final Address startingAddress, final int instructionCountToDisassemble,boolean printHexDump) 
     {
         final int[] instructionsLeft = { instructionCountToDisassemble };
 
@@ -91,13 +92,13 @@ public class Disassembler
             {
                 final Address old = current;
                 current = current.incrementByOne();
-                return memory.readWord( old );
+                return memory.read( old );
             }
 
             @Override
             public boolean hasNext()
             {
-                return current.toByteAddress().getValue() < memory.getSizeInBytes();
+                return current.toByteAddress().getValue() < memory.getSize().toSizeInBytes().getValue();
             }
 
             @Override
@@ -116,8 +117,8 @@ public class Disassembler
             
             if ( printHexDump ) 
             {
-                final int lengthInBytes = Address.getDistanceInBytes( current , iterator.currentAddress() ); // 2*(iterator.currentAddress().getValue() - current.getValue());
-                byte[] data = memory.getBytes( current , lengthInBytes );
+                final int lengthInBytes = Address.calcDistanceInBytes( current , iterator.currentAddress() ); // 2*(iterator.currentAddress().getValue() - current.getValue());
+                byte[] data = MemUtils.getBytes( memory , current , lengthInBytes );
                 final String hex = " ; "+Misc.toHexDumpWithoutAddresses( 0 , data , data.length , 8 ).replaceAll("\n","");
                 contents = contents + hex;
             }
