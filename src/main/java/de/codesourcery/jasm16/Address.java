@@ -99,15 +99,15 @@ public abstract class Address implements Comparable<Address>
     }
     
     /**
-     * Increments this address by one (with wrapping at end of DCPU16 address space).
+     * Increments this address by one (with optional wrapping at end of DCPU16 address space).
      *  
      * <p>The DCPU address space is currently 64k words (=128 MB).</p>
      * @return
      */
-    public abstract Address incrementByOne();
+    public abstract Address incrementByOne(boolean wrap);
     
     /**
-     * Decrements this address by one (with wrapping at end of DCPU16 address space).
+     * Decrements this address by one (with optional wrapping at end of DCPU16 address space).
      *  
      * <p>The DCPU address space is currently 64k words (=128 MB).</p>
      * @return
@@ -120,7 +120,7 @@ public abstract class Address implements Comparable<Address>
      * <p>The DCPU address space is currently 64k words (=128 MB).</p>
      * @return
      */    
-    public abstract Address plus(Address other);
+    public abstract Address plus(Address other,boolean wrap);
     
     /**
      * Subtract another address from this one (while wrapping at start of DCPU16 address space).
@@ -132,7 +132,7 @@ public abstract class Address implements Comparable<Address>
     
     public abstract Address minus(Size size);
     
-    public abstract Address plus(Size size);    
+    public abstract Address plus(Size size,boolean wrap);    
     
     /**
      * Returns the raw value of this address.

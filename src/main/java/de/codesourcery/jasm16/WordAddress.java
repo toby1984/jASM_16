@@ -42,7 +42,7 @@ public class WordAddress extends Address
             throw new IllegalArgumentException("Address value must be positive: "+value);
         }
         if ( value > (MAX_ADDRESS+1) ) { // I don't check for ( value > MAX_ADDRESS ) because the AddressRange class does ( start , end[ and thus the end address may be MAX_ADDRESS + 1
-            throw new IllegalArgumentException("Address value must be less than "+MAX_ADDRESS+": "+value);
+            throw new IllegalArgumentException("Address value must be <= "+MAX_ADDRESS+": "+value);
         }        
         this.value = (int) value;
     }
@@ -68,19 +68,42 @@ public class WordAddress extends Address
 	}
 
     @Override
-    public Address incrementByOne()
+    public Address incrementByOne(boolean wrap)
     {
-        final int newValue = (int) ( (getValue()+1) % (WordAddress.MAX_ADDRESS+1) );
+        final int newValue;
+        if ( wrap) {
+            newValue = (int) ( (getValue()+1) % (WordAddress.MAX_ADDRESS+1) );
+        } else {
+            newValue = getValue()+1;
+        }
         return new WordAddress( newValue );
     }
 
     @Override
-    public Address plus(Address other)
+    public Address plus(Address other,boolean wrap)
     {
         final int sum = other.toWordAddress().getValue() + getValue();
-        final int newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );        
+        final int newValue;
+        if ( wrap ) {
+            newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );
+        } else {
+            newValue = sum;
+        }
         return new WordAddress( newValue );
     }
+    
+    @Override
+    public Address plus(Size size,boolean wrap)
+    {
+        final int sum = getValue() + size.toSizeInWords().getValue();
+        final int newValue;
+        if ( wrap ) {
+            newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );            
+        } else {
+            newValue = sum;
+        }
+        return new WordAddress( newValue );
+    }       
     
     @Override
     public Address decrementByOne()
@@ -105,12 +128,11 @@ public class WordAddress extends Address
     @Override
     public Address minus(Size size)
     {
-        return new WordAddress( getValue() - size.toSizeInWords().getValue() );
+        int newValue = getValue() - size.toSizeInWords().getValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
+        }
+        return new WordAddress( newValue );
     }
 
-    @Override
-    public Address plus(Size size)
-    {
-        return new WordAddress( getValue() + size.toSizeInWords().getValue() );
-    }	
 }

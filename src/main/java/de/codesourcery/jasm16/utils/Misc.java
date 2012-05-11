@@ -25,7 +25,9 @@ import java.io.OutputStreamWriter;
 import java.lang.reflect.Array;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -40,6 +42,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -58,6 +61,7 @@ public class Misc {
 
     private static final Logger LOG = Logger.getLogger(Misc.class);
 
+    // code assumes these characters are lowercase !!! Do NOT change this
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
     public static String toHexString(byte[] data) 
@@ -93,10 +97,20 @@ public class Misc {
     {
         return toHexDump(startingAddressInBytes, data, length, wordsPerLine, printASCII, true);
     }
-
+    
+    public static String toHexDumpWithAddresses(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean wrapAddress) 
+    {
+        return toHexDump(startingAddressInBytes, data, length, wordsPerLine, printASCII, true,wrapAddress);
+    }
+    
     public static String toHexDump(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
     {
-        final List<String> lines = toHexDumpLines(startingAddressInBytes, data, length, wordsPerLine, printASCII, printAddress);
+        return toHexDump( startingAddressInBytes, data , length , wordsPerLine , printASCII, printAddress , false );
+    }
+
+    public static String toHexDump(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress,boolean wrapAddress) 
+    {
+        final List<String> lines = toHexDumpLines(startingAddressInBytes, data, length, wordsPerLine, printASCII, printAddress,wrapAddress);
         StringBuilder result = new StringBuilder();
         for (Iterator<String> iterator = lines.iterator(); iterator.hasNext();) {
             String line = iterator.next();
@@ -107,8 +121,13 @@ public class Misc {
         }
         return result.toString();
     }
-
+    
     public static List<String> toHexDumpLines(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
+    {
+        return toHexDumpLines(startingAddressInBytes, data, length, wordsPerLine, printASCII, printAddress, false );
+    }
+
+    public static List<String> toHexDumpLines(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress,boolean wrapAddress) 
     {
         final List<String> result = new ArrayList<String>();
 
@@ -117,8 +136,11 @@ public class Misc {
         int current = 0;
         while( current < length )
         {
-            final int wordAddress = (startingAddressInBytes.toByteAddress().getValue()+current) >>> 1;
             if ( printAddress ) {
+                int wordAddress = (startingAddressInBytes.toByteAddress().getValue()+current) >> 1;
+                if ( wrapAddress ) {
+                    wordAddress = (int) ( wordAddress % (WordAddress.MAX_ADDRESS+1) );
+                }
                 hexBuilder.append( toHexString( wordAddress ) ).append(": ");
             }
 
@@ -180,7 +202,15 @@ public class Misc {
 
     public static String toHexString(int val) 
     {
-        return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) ); 
+        if ( val > 0xffff && val <= 0xffffff )
+        {
+            return toHexString( (byte) ( (val >>16 ) & 0x00ff ) )+toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );             
+        } 
+        
+        if ( val <= 0xffff ) {
+            return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );
+        }
+        return "Value out-of-range: "+val;
     }       
 
     public static String toHexString(byte val) 
@@ -695,6 +725,33 @@ public class Misc {
         int offset = 0;
         for ( int i = beginIndex ; i < endIndex ; i++ , offset++) {
             result[offset] = array[i];
+        }
+        return result;
+    }
+    
+    public static long parseHexString(String s) throws NumberFormatException {
+        
+        String trimmed = s.toLowerCase().trim();
+        if ( trimmed.startsWith("0x") ) {
+            trimmed = trimmed.substring( 2 , trimmed.length() );
+        }
+        
+        long result = 0;
+        for ( int i = 0 ; i < trimmed.length() ; i++ ) 
+        {
+            result = result << 4;
+            int nibble = -1;
+            for ( int j = 0 ; j < HEX_CHARS.length ; j++ ) 
+            {
+                if ( HEX_CHARS[j] == trimmed.charAt( i ) ) {
+                    nibble = j;
+                    break;
+                }
+            }
+            if ( nibble < 0 ) {
+                throw new NumberFormatException("Not a valid hex string: '"+s+"'");
+            }
+            result = result | nibble;
         }
         return result;
     }

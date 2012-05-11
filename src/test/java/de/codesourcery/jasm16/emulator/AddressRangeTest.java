@@ -84,4 +84,11 @@ public class AddressRangeTest extends TestCase
         assertFalse( range1+" intersects "+range6+" ?" , range1.intersectsWith( range6 ) ); 
         assertFalse( range6.intersectsWith( range1 ) );          
     }
+    
+    public void testWrapping() 
+    {
+        AddressRange test = new AddressRange( Address.wordAddress( 0 ) , Size.sizeInWords( 65536 ) );
+        assertEquals( 0 , test.getStartAddress().toWordAddress().getValue() );
+        assertEquals( 65536 , test.getEndAddress().toWordAddress().getValue() );
+    }
 }

@@ -90,7 +90,7 @@ public class StackView extends AbstractView
         
         
         final int realStart;
-        if ( startOfStack.getValue() - numberOfWordsToDump < 0 ) {
+        if ( startOfStack.getValue() - numberOfWordsToDump < 0 ) { // handle case where SP is at 0x0000
             realStart = ((int) ( WordAddress.MAX_ADDRESS+1 - numberOfWordsToDump) ) & 0xffff;            
         } else {
             realStart = (startOfStack.toWordAddress().getValue() - numberOfWordsToDump) & 0xffff;
@@ -102,16 +102,23 @@ public class StackView extends AbstractView
             @Override
             public void run()
             {
-                final List<String> lines = Misc.toHexDumpLines( Address.wordAddress( realStart ), data, data.length , 1 , printASCII , true );
+                final List<String> lines = Misc.toHexDumpLines( Address.wordAddress( realStart ), data, data.length , 1 , printASCII , true , true );
                 Collections.reverse( lines ); // reverse lines => print stack from highest to lowest address
+                
+                Address current = Address.wordAddress( ( realStart + numberOfWordsToDump  -1 ) );
                 
                 StringBuilder result = new StringBuilder();
                 for (Iterator<String> iterator = lines.iterator(); iterator.hasNext();) {
                     String line = iterator.next();
                     result.append( line );
+                    
+                    if ( current.equals( emulator.getCPU().getSP() ) ) {
+                        result.append("  << ");
+                    }
                     if ( iterator.hasNext() ) {
                         result.append("\n");
                     }
+                    current = current.decrementByOne();
                 }
                 textArea.setText( result.toString() );                
             }

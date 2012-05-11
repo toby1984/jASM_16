@@ -69,19 +69,44 @@ public class ByteAddress extends Address
 	}
 
     @Override
-    public Address incrementByOne()
+    public Address incrementByOne(boolean wrap)
     {
-        final int newValue = (int) ( (getValue()+1) % (ByteAddress.MAX_ADDRESS+1) );
+        final int newValue;
+        if ( wrap ) {
+            newValue = (int) ( (getValue()+1) % (ByteAddress.MAX_ADDRESS+1) );
+        } else {
+            newValue = getValue() + 1;
+        }
         return new ByteAddress( newValue );
     }
 
     @Override
-    public Address plus(Address other)
+    public Address plus(Address other,boolean wrap)
     {
         final int sum = other.toByteAddress().getValue() + getValue();
-        final int newValue = (int) ( sum % (ByteAddress.MAX_ADDRESS+1) );        
+        
+        final int newValue;
+        if ( wrap ) {
+            newValue = (int) ( sum % (ByteAddress.MAX_ADDRESS+1) );        
+        } else {
+            newValue = sum;
+        }
         return new ByteAddress( newValue );
     }
+    
+    @Override
+    public Address plus(Size size,boolean wrap)
+    {
+        final int sum = size.toSizeInBytes().getValue() + getValue();
+        
+        final int newValue;
+        if ( wrap ) {
+            newValue = (int) ( sum % (ByteAddress.MAX_ADDRESS+1) );        
+        } else {
+            newValue = sum;
+        }
+        return new ByteAddress( newValue );        
+    }      
     
     @Override
     public Address decrementByOne()
@@ -106,13 +131,11 @@ public class ByteAddress extends Address
     @Override
     public Address minus(Size size)
     {
-        return new ByteAddress( getValue() - size.toSizeInBytes().getValue() );
+        int newValue = getValue() - size.toSizeInBytes().getValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
+        }
+        return new ByteAddress( newValue );        
     }
 
-    @Override
-    public Address plus(Size size)
-    {
-        return new ByteAddress( getValue() + size.toSizeInBytes().getValue() );
-    }    
-    
 }

@@ -26,7 +26,6 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DisassemblerTest extends TestHelper
 {
-
     public void testDisassemble() throws Exception 
     {
         final String source = ":label SET a,1\n"+

@@ -45,7 +45,7 @@ public class AddressRange
 
     public Address getEndAddress()
     {
-        return start.plus( size );
+        return start.plus( size , false );
     }    
 
     public Size getSize()

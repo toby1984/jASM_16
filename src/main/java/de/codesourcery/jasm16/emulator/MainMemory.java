@@ -123,6 +123,15 @@ public class MainMemory implements IMemory
                 return r;
             }
         }
+        
+        // address not mapped...
+        
+        System.err.println( "ERROR: Access to unmapped address "+address);
+        System.err.println( "\nMemory layout:\n\n");
+        for ( IMemoryRegion r : regions ) 
+        {
+            System.err.println( r );
+        }
         throw new RuntimeException("Address not mapped: "+address);
     }
 

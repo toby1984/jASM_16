@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.apache.commons.lang.ArrayUtils;
 
@@ -86,19 +87,24 @@ public class Disassembler
         final IMemoryIterator iterator = new IMemoryIterator() {
 
             private Address current = startingAddress.toWordAddress();
+            private int wordsAvailable = memory.getSize().toSizeInWords().getValue();
 
             @Override
             public int nextWord()
             {
+                if ( wordsAvailable <= 0 ) {
+                    throw new NoSuchElementException();
+                }
+                wordsAvailable--;
                 final Address old = current;
-                current = current.incrementByOne(false);
+                current = current.incrementByOne(true);
                 return memory.read( old );
             }
 
             @Override
             public boolean hasNext()
             {
-                return current.toByteAddress().getValue() < memory.getSize().toSizeInBytes().getValue();
+                return wordsAvailable > 0;
             }
 
             @Override
@@ -109,8 +115,7 @@ public class Disassembler
         };
 
         final List<DisassembledLine> lines = new ArrayList<DisassembledLine>();
-        while( ( instructionCountToDisassemble == DISASSEMBLE_EVERYTHING || instructionsLeft[0] > 0 ) && 
-        		iterator.hasNext() ) 
+        while( ( instructionCountToDisassemble == DISASSEMBLE_EVERYTHING || instructionsLeft[0] > 0 ) && iterator.hasNext() ) 
         {
             final Address current = iterator.currentAddress();
             String contents = dissassembleInstruction( iterator );

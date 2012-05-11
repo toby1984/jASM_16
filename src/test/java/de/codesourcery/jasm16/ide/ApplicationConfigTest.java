@@ -26,6 +26,7 @@ import de.codesourcery.jasm16.utils.Misc;
 public class ApplicationConfigTest extends TestHelper {
 
 	private File file;
+	
 	@Override
 	protected void tearDown() throws Exception {
 		if ( file != null ) {
@@ -87,7 +88,7 @@ public class ApplicationConfigTest extends TestHelper {
 		assertEquals( sizeAndLoc1.getSize() , sizeAndLoc2.getSize() );
 		assertEquals( sizeAndLoc1.getLocation() , sizeAndLoc2.getLocation() );
 		
-		final File workspaceDir2 = new File("/home/tobi");
+		final File workspaceDir2 = new File( getTempDir() , "dummy" );
 		config.setWorkspaceDirectory( workspaceDir2 );
 		config.saveConfiguration();
 		

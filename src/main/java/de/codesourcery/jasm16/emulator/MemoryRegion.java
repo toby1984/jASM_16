@@ -110,5 +110,11 @@ public class MemoryRegion implements IMemoryRegion {
     public AddressRange getAddressRange()
     {
         return addressRange;
-    }        
+    }
+    
+    @Override
+    public String toString()
+    {
+        return getRegionName()+" - "+getAddressRange().toString();
+    }
 }

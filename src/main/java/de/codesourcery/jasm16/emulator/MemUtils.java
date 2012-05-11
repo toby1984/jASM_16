@@ -2,6 +2,7 @@ package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.WordAddress;
 
 /**
  * Utility methods related to the emulator's DCPU-16  memory emulation.
@@ -59,7 +60,7 @@ public class MemUtils
         for ( int currentWord = startAddress.toWordAddress().getValue() ; currentWord < end && bytesLeft > 0; currentWord++ ) 
         {
             @SuppressWarnings("deprecation")
-            final int value = memory.read( currentWord );
+            final int value = memory.read( (int) ( currentWord % (WordAddress.MAX_ADDRESS+1) ) );
             result[index++] = (byte) ( ( value  >>> 8 ) & 0xff );      
             bytesLeft--;
             if ( bytesLeft <= 0 ) {
