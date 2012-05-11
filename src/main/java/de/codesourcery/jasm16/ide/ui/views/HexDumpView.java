@@ -37,7 +37,7 @@ public class HexDumpView extends AbstractView
     private final JTextArea textArea = new JTextArea();
     
     private IEmulator emulator;
-    private Address dumpStartAddress = Address.wordAddress( 0 );
+    private Address dumpStartAddress = Address.wordAddress( 0x8000 );
     private int numberOfBytesToDump = 128;
     private boolean printASCII = true;
     
@@ -92,7 +92,7 @@ public class HexDumpView extends AbstractView
             @Override
             public void run()
             {
-                textArea.setText( Misc.toHexDumpWithAddresses(dumpStartAddress.getValue(), data, data.length , 4 , printASCII));                
+                textArea.setText( Misc.toHexDumpWithAddresses(dumpStartAddress, data, data.length , 4 , printASCII));                
             }
         });
     }

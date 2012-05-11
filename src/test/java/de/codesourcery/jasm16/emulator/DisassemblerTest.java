@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.emulator;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
 import de.codesourcery.jasm16.parser.TestHelper;
@@ -37,7 +38,7 @@ public class DisassemblerTest extends TestHelper
         
         final byte[] data = compileToByteCode( source );
         
-        System.out.println("\n\nCOMPILED:\n\n"+Misc.toHexDumpWithAddresses( 0 , data , 1 ) );
+        System.out.println("\n\nCOMPILED:\n\n"+Misc.toHexDumpWithAddresses( WordAddress.ZERO , data , 1 ) );
         final Disassembler dis = new Disassembler();
         final List<DisassembledLine> lines = dis.disassemble( Address.ZERO , data , 7 , false );
         final String[] expected = new String[]{

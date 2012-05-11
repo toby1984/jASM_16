@@ -201,7 +201,7 @@ public class Main {
             return;
         }
         
-        System.out.println( "\nHex dump:\n\n"+Misc.toHexDumpWithAddresses( 0 , combined , 8 ) );
+        System.out.println( "\nHex dump:\n\n"+Misc.toHexDumpWithAddresses( Address.byteAddress( 0 ) , combined , 8 ) );
     }
 
     private void setupCompiler(List<ICompilationUnit> units) {

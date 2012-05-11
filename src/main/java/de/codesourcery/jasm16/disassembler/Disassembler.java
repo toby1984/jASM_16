@@ -119,7 +119,7 @@ public class Disassembler
             {
                 final int lengthInBytes = Address.calcDistanceInBytes( current , iterator.currentAddress() ); // 2*(iterator.currentAddress().getValue() - current.getValue());
                 byte[] data = MemUtils.getBytes( memory , current , lengthInBytes );
-                final String hex = " ; "+Misc.toHexDumpWithoutAddresses( 0 , data , data.length , 8 ).replaceAll("\n","");
+                final String hex = " ; "+Misc.toHexDumpWithoutAddresses( Address.byteAddress(0) , data , data.length , 8 ).replaceAll("\n","");
                 contents = contents + hex;
             }
             

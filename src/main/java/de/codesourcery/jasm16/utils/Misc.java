@@ -56,8 +56,8 @@ import de.codesourcery.jasm16.scanner.Scanner;
  */
 public class Misc {
 
-	private static final Logger LOG = Logger.getLogger(Misc.class);
-	
+    private static final Logger LOG = Logger.getLogger(Misc.class);
+
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
     public static String toHexString(byte[] data) 
@@ -74,27 +74,27 @@ public class Misc {
         return builder.toString();
     }
 
-    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int wordsPerLine) 
+    public static String toHexDumpWithAddresses(Address startingAddressInBytes , byte[] data, int wordsPerLine) 
     {
         return toHexDumpWithAddresses( startingAddressInBytes , data , data.length , wordsPerLine );
     }
 
-    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
+    public static String toHexDumpWithAddresses(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
     {
         return toHexDumpWithAddresses(startingAddressInBytes, data, length, wordsPerLine, false );
     }
 
-    public static String toHexDumpWithoutAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
+    public static String toHexDumpWithoutAddresses(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine) 
     {
         return toHexDump(startingAddressInBytes, data, length, wordsPerLine, false , false );
     }    
 
-    public static String toHexDumpWithAddresses(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII) 
+    public static String toHexDumpWithAddresses(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII) 
     {
         return toHexDump(startingAddressInBytes, data, length, wordsPerLine, printASCII, true);
     }
 
-    public static String toHexDump(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
+    public static String toHexDump(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
     {
         final List<String> lines = toHexDumpLines(startingAddressInBytes, data, length, wordsPerLine, printASCII, printAddress);
         StringBuilder result = new StringBuilder();
@@ -108,7 +108,7 @@ public class Misc {
         return result.toString();
     }
 
-    public static List<String> toHexDumpLines(int startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
+    public static List<String> toHexDumpLines(Address startingAddressInBytes , byte[] data, int length , int wordsPerLine,boolean printASCII,boolean printAddress) 
     {
         final List<String> result = new ArrayList<String>();
 
@@ -117,39 +117,39 @@ public class Misc {
         int current = 0;
         while( current < length )
         {
-            final int wordAddress = (startingAddressInBytes+current) >> 1; // divide by 2 to get word address
-        if ( printAddress ) {
-            hexBuilder.append( toHexString( wordAddress ) ).append(": ");
-        }
-
-        for ( int i = 0 ; current < length && i < wordsPerLine  ; i++)
-        {
-            byte b1 = data[current++];
-            hexBuilder.append( toHexString( b1 ) );
-            if ( printASCII ) {
-                asciiBuilder.append( toASCII(b1) );
-            }
-            if ( current >= length ) {
-                break;
+            final int wordAddress = (startingAddressInBytes.toByteAddress().getValue()+current) >>> 1;
+            if ( printAddress ) {
+                hexBuilder.append( toHexString( wordAddress ) ).append(": ");
             }
 
-            b1 = data[current++];
-            hexBuilder.append( toHexString( b1 ) );
+            for ( int i = 0 ; current < length && i < wordsPerLine  ; i++)
+            {
+                byte b1 = data[current++];
+                hexBuilder.append( toHexString( b1 ) );
+                if ( printASCII ) {
+                    asciiBuilder.append( toASCII(b1) );
+                }
+                if ( current >= length ) {
+                    break;
+                }
+
+                b1 = data[current++];
+                hexBuilder.append( toHexString( b1 ) );
+                if ( printASCII ) {
+                    asciiBuilder.append( toASCII(b1) );
+                }                
+                if ( current >= length ) {
+                    break;
+                } 
+                hexBuilder.append(" ");
+            }
             if ( printASCII ) {
-                asciiBuilder.append( toASCII(b1) );
-            }                
-            if ( current >= length ) {
-                break;
+                hexBuilder.append(" ").append( asciiBuilder.toString() );
+                asciiBuilder.setLength( 0 );
             } 
-            hexBuilder.append(" ");
-        }
-        if ( printASCII ) {
-            hexBuilder.append(" ").append( asciiBuilder.toString() );
+            result.add( hexBuilder.toString() );
+            hexBuilder.setLength( 0 );
             asciiBuilder.setLength( 0 );
-        } 
-        result.add( hexBuilder.toString() );
-        hexBuilder.setLength( 0 );
-        asciiBuilder.setLength( 0 );
         }
 
         if ( printASCII && asciiBuilder.length() > 0 ) {
@@ -172,12 +172,12 @@ public class Misc {
         }
         return (char) val;
     }
-    
+
     public static String toHexString(Address address) 
     {
         return toHexString( address.getValue() ); 
     } 
-    
+
     public static String toHexString(int val) 
     {
         return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) ); 
@@ -535,73 +535,73 @@ public class Misc {
             IOUtils.closeQuietly( in );
         }
     }
-    
+
     public static void checkFileExistsAndIsDirectory(File f,boolean createIfMissing) throws IOException 
     {
-		if ( ! f.exists() ) 
-		{
-			if ( ! createIfMissing || ! f.mkdirs() )
-			{
-				throw new IOException("Non-existant directory "+f.getAbsolutePath() );
-			}
-		}
-		if ( ! f.isDirectory() ) {
-			throw new IOException( f.getAbsolutePath()+" is no directory");
-		}
+        if ( ! f.exists() ) 
+        {
+            if ( ! createIfMissing || ! f.mkdirs() )
+            {
+                throw new IOException("Non-existant directory "+f.getAbsolutePath() );
+            }
+        }
+        if ( ! f.isDirectory() ) {
+            throw new IOException( f.getAbsolutePath()+" is no directory");
+        }
     }
-    
+
     public static boolean isSourceFile(File file) 
     {
-		if ( file.isFile() ) {
-			final String name = file.getName();
-			if ( name.toLowerCase().endsWith(".dasm") || 
-				 name.toLowerCase().endsWith(".dasm16" ) ||
-				 name.toLowerCase().endsWith(".asm") ) 
-			{
-				return true;
-			}
-		}
-		return false;
+        if ( file.isFile() ) {
+            final String name = file.getName();
+            if ( name.toLowerCase().endsWith(".dasm") || 
+                    name.toLowerCase().endsWith(".dasm16" ) ||
+                    name.toLowerCase().endsWith(".asm") ) 
+            {
+                return true;
+            }
+        }
+        return false;
     }
-    
+
     public static File getUserHomeDirectory() 
     {
-		final String homeDirectory = System.getProperty("user.home");
-		if ( StringUtils.isBlank( homeDirectory ) ) 
-		{
-			LOG.fatal("createDefaultConfiguration(): Failed to get user's home directory");
-			throw new RuntimeException("Failed to get user's home directory");
-		}
-		return new File( homeDirectory );
+        final String homeDirectory = System.getProperty("user.home");
+        if ( StringUtils.isBlank( homeDirectory ) ) 
+        {
+            LOG.fatal("createDefaultConfiguration(): Failed to get user's home directory");
+            throw new RuntimeException("Failed to get user's home directory");
+        }
+        return new File( homeDirectory );
     }
-    
+
     public static void writeResource(IResource resource,String s) throws IOException 
     {
-    	final OutputStreamWriter writer = new OutputStreamWriter( resource.createOutputStream( false ) );
-    	try {
-    		writer.write( s );
-    	} finally {
-    		IOUtils.closeQuietly( writer );
-    	}
+        final OutputStreamWriter writer = new OutputStreamWriter( resource.createOutputStream( false ) );
+        try {
+            writer.write( s );
+        } finally {
+            IOUtils.closeQuietly( writer );
+        }
     }    
-    
+
     public static void writeFile(File file,String s) throws IOException {
-    	writeFile( file , s.getBytes() );
+        writeFile( file , s.getBytes() );
     }
-    
+
     public static void writeFile(File file,byte[] data) throws IOException {
-    	
-    	final FileOutputStream out = new FileOutputStream(file);
-    	try {
-    		IOUtils.write( data , out );
-    	} finally {
-    		IOUtils.closeQuietly( out );
-    	}
+
+        final FileOutputStream out = new FileOutputStream(file);
+        try {
+            IOUtils.write( data , out );
+        } finally {
+            IOUtils.closeQuietly( out );
+        }
     }
-    
+
     public static void deleteRecursively(File file) throws IOException 
     {
-    	deleteRecursively( file , null );
+        deleteRecursively( file , null );
     }
 
     /**
@@ -614,88 +614,88 @@ public class Misc {
      */
     public static void deleteRecursively(File file,final IFileVisitor visitor) throws IOException {
 
-    	final IFileVisitor deletingVisitor = new IFileVisitor() {
+        final IFileVisitor deletingVisitor = new IFileVisitor() {
 
-			@Override
-			public boolean visit(File file) throws IOException 
-			{
-				if ( visitor == null || visitor.visit( file ) ) 
-				{
-					file.delete();
-				}
-				return true;
-			}
-    	};
-    	
-    	visitDirectoryTreePostOrder( file , deletingVisitor );
+            @Override
+            public boolean visit(File file) throws IOException 
+            {
+                if ( visitor == null || visitor.visit( file ) ) 
+                {
+                    file.delete();
+                }
+                return true;
+            }
+        };
+
+        visitDirectoryTreePostOrder( file , deletingVisitor );
     }
-    
-	public interface IFileVisitor 
-	{
-		public boolean visit(File file) throws IOException;
-	}	
 
-	public static boolean visitDirectoryTreePostOrder(File currentDir,IFileVisitor visitor) throws IOException 
-	{
-		if ( currentDir.isDirectory() ) 
-		{
-			for ( File f : currentDir.listFiles() ) 
-			{
-				if ( ! visitDirectoryTreePostOrder( f , visitor ) ) {
-					return false;
-				}
-			}
-		}
-		
-		final boolean cont = visitor.visit( currentDir );
-		if ( ! cont ) {
-			return false;
-		}		
-		return true;
-	}    
-	
-	public static boolean visitDirectoryTreeInOrder(File currentDir,IFileVisitor visitor) throws IOException 
-	{
-		final boolean cont = visitor.visit( currentDir );
-		if ( ! cont ) {
-			return false;
-		}		
-		
-		if ( currentDir.isDirectory() ) 
-		{
-			for ( File f : currentDir.listFiles() ) 
-			{
-				if ( ! visitDirectoryTreeInOrder( f , visitor ) ) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-	
-	public static String calcHash(String data) {
-		
-		final MessageDigest digest;
-		try {
-			digest = MessageDigest.getInstance("MD5");
-		} catch (NoSuchAlgorithmException e) {
-			throw new RuntimeException(e);
-		}
-		final byte[] result = digest.digest( data.getBytes()  );
-		return toHexString( result );
-	}
-	
-	public static <T> T[] subarray(T[] array , int beginIndex , int endIndex) {
-		
-		final Class<?> componentType = array.getClass().getComponentType();
-		
-		@SuppressWarnings("unchecked")
-		final T[] result = (T[]) Array.newInstance( componentType , endIndex - beginIndex );
-		
-		int offset = 0;
-		for ( int i = beginIndex ; i < endIndex ; i++ , offset++) {
-			result[offset] = array[i];
-		}
-		return result;
-	}
+    public interface IFileVisitor 
+    {
+        public boolean visit(File file) throws IOException;
+    }	
+
+    public static boolean visitDirectoryTreePostOrder(File currentDir,IFileVisitor visitor) throws IOException 
+    {
+        if ( currentDir.isDirectory() ) 
+        {
+            for ( File f : currentDir.listFiles() ) 
+            {
+                if ( ! visitDirectoryTreePostOrder( f , visitor ) ) {
+                    return false;
+                }
+            }
+        }
+
+        final boolean cont = visitor.visit( currentDir );
+        if ( ! cont ) {
+            return false;
+        }		
+        return true;
+    }    
+
+    public static boolean visitDirectoryTreeInOrder(File currentDir,IFileVisitor visitor) throws IOException 
+    {
+        final boolean cont = visitor.visit( currentDir );
+        if ( ! cont ) {
+            return false;
+        }		
+
+        if ( currentDir.isDirectory() ) 
+        {
+            for ( File f : currentDir.listFiles() ) 
+            {
+                if ( ! visitDirectoryTreeInOrder( f , visitor ) ) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public static String calcHash(String data) {
+
+        final MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        final byte[] result = digest.digest( data.getBytes()  );
+        return toHexString( result );
+    }
+
+    public static <T> T[] subarray(T[] array , int beginIndex , int endIndex) {
+
+        final Class<?> componentType = array.getClass().getComponentType();
+
+        @SuppressWarnings("unchecked")
+        final T[] result = (T[]) Array.newInstance( componentType , endIndex - beginIndex );
+
+        int offset = 0;
+        for ( int i = beginIndex ; i < endIndex ; i++ , offset++) {
+            result[offset] = array[i];
+        }
+        return result;
+    }
 }

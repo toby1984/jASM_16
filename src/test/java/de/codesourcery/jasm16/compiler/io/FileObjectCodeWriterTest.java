@@ -137,7 +137,7 @@ public class FileObjectCodeWriterTest extends TestCase
         writer.close();
         
         final byte[] data = writer.getBytes();
-        System.out.println( Misc.toHexDumpWithAddresses( offset , data , 8 ) );
+        System.out.println( Misc.toHexDumpWithAddresses( Address.byteAddress( offset ) , data , 8 ) );
         assertEquals( offset + input.length , data.length ); 
         byte[] zeros = new byte[ 4 ];
         assertTrue( ArrayUtils.isEquals( zeros , ArrayUtils.subarray( data , input.length , offset ) ) );
