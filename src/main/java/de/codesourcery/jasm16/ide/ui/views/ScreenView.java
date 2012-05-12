@@ -9,8 +9,6 @@ import javax.swing.JPanel;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.emulator.EmulationListener;
-import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
@@ -25,38 +23,32 @@ public class ScreenView extends AbstractView
     private final IMemoryRegion videoRAM = new MemoryRegion("video RAM",
     		new AddressRange(Address.wordAddress( 0x4000 ) , 
     				Size.words( 384 ) ) // 32x12 words 
-    		); 
-    
-    private final IEmulationListener listener = new EmulationListener() {
-        
-        @Override
-        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
-        {
-            refreshDisplay();            
-        }
-        
-        @Override
-        public void afterReset(IEmulator emulator)
-        {
-            refreshDisplay();            
-        }
-        
-        @Override
-        public void afterCommandExecution(IEmulator emulator, int commandDuration)
-        {
-            refreshDisplay();
-        }
-        
+    		) 
+    {
     	@Override
-    	public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode() {
-    		return true;
-    	}        
-        
-		@Override
-		public void afterContinuousExecutionHook() {
-			refreshDisplay();
-		}        
-    };
+    	public void clear() {
+    		super.clear();
+        	if ( panel != null ) {
+        		panel.repaint();
+        	}    		
+    	};
+    	
+    	@Override
+    	public void write(Address address, int value) {
+    		super.write( address, value);
+        	if ( panel != null ) {
+        		panel.repaint();
+        	}    		
+    	};
+    	
+    	@Override
+    	public void write(int wordAddress, int value) {
+    		super.write( wordAddress , value );
+        	if ( panel != null ) {
+        		panel.repaint();
+        	}    		
+    	};
+    }; 
     
     private final IEmulator emulator;
     
@@ -65,14 +57,12 @@ public class ScreenView extends AbstractView
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
         this.emulator = emulator;
-        this.emulator.addEmulationListener(listener);
         this.emulator.mapRegion( videoRAM );
     }
     
     @Override
     public void dispose()
     {
-        this.emulator.removeEmulationListener( listener );
         this.emulator.unmapRegion( videoRAM );
     }
 
