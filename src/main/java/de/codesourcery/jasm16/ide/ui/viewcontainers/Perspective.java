@@ -181,8 +181,11 @@ public class Perspective extends JFrame implements IViewContainer {
         if ( sizeAndLoc != null ) {
             setLocation( sizeAndLoc.getLocation() );
             setSize( sizeAndLoc.getSize() );
+            setPreferredSize( sizeAndLoc.getSize() );
+        } else {
+        	setPreferredSize( new Dimension(600,800 ) );
+        	pack();
         }
-        
 		setJMenuBar( menuManager.getMenuBar() );
 	}
 

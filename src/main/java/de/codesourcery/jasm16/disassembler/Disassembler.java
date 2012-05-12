@@ -19,17 +19,19 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 import org.apache.commons.lang.ArrayUtils;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.MemUtils;
+import de.codesourcery.jasm16.emulator.MemoryIterator;
+import de.codesourcery.jasm16.utils.IMemoryIterator;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -41,15 +43,6 @@ public class Disassembler
 {
 	public static final int DISASSEMBLE_EVERYTHING = -1;
 	
-    private interface IMemoryIterator {
-
-        public Address currentAddress();
-        
-        public int nextWord();
-
-        public boolean hasNext();
-    }
-    
     public static void main(String[] args) throws IOException {
 		
     	if ( ArrayUtils.isEmpty( args ) ) {
@@ -80,39 +73,13 @@ public class Disassembler
         return disassemble( mem , Address.ZERO , DISASSEMBLE_EVERYTHING, printHexDump );    	
     }
 
-    public List<DisassembledLine> disassemble(final IReadOnlyMemory memory,final Address startingAddress, final int instructionCountToDisassemble,boolean printHexDump) 
+    public List<DisassembledLine> disassemble(final IReadOnlyMemory memory,
+    		final Address startingAddress, 
+    		final int instructionCountToDisassemble,boolean printHexDump) 
     {
         final int[] instructionsLeft = { instructionCountToDisassemble };
 
-        final IMemoryIterator iterator = new IMemoryIterator() {
-
-            private Address current = startingAddress.toWordAddress();
-            private int wordsAvailable = memory.getSize().toSizeInWords().getValue();
-
-            @Override
-            public int nextWord()
-            {
-                if ( wordsAvailable <= 0 ) {
-                    throw new NoSuchElementException();
-                }
-                wordsAvailable--;
-                final Address old = current;
-                current = current.incrementByOne(true);
-                return memory.read( old );
-            }
-
-            @Override
-            public boolean hasNext()
-            {
-                return wordsAvailable > 0;
-            }
-
-            @Override
-            public Address currentAddress()
-            {
-                return current;
-            }
-        };
+        final IMemoryIterator iterator = new MemoryIterator(memory,startingAddress,true);
 
         final List<DisassembledLine> lines = new ArrayList<DisassembledLine>();
         while( ( instructionCountToDisassemble == DISASSEMBLE_EVERYTHING || instructionsLeft[0] > 0 ) && iterator.hasNext() ) 
@@ -123,7 +90,8 @@ public class Disassembler
             if ( printHexDump ) 
             {
                 final int lengthInBytes = Address.calcDistanceInBytes( current , iterator.currentAddress() ); // 2*(iterator.currentAddress().getValue() - current.getValue());
-                byte[] data = MemUtils.getBytes( memory , current , lengthInBytes );
+                byte[] data = MemUtils.getBytes( memory , current , 
+                		Size.bytes( lengthInBytes ) , true );
                 final String hex = " ; "+Misc.toHexDumpWithoutAddresses( Address.byteAddress(0) , data , data.length , 8 ).replaceAll("\n","");
                 contents = contents + hex;
             }

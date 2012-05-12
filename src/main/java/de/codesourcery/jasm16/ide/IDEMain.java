@@ -58,8 +58,6 @@ public class IDEMain
 		
 		final Perspective desktop = new Perspective( "desktop" , appConfig );
 		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , appConfig ) );
-		desktop.pack();
-		desktop.setSize( 800 , 600 );		
     	desktop.setVisible( true );
     	viewContainerManager.addViewContainer( desktop );
     }

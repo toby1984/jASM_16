@@ -12,7 +12,7 @@ public abstract class EmulationListener implements IEmulationListener {
 	private volatile boolean fullSpeedMode = false;
 	
 	@Override
-	public final void beforeContinuousExecution() {
+	public final void beforeContinuousExecution(IEmulator emulator) {
 		fullSpeedMode = true;
 		beforeContinuousExecutionHook();
 	}
@@ -25,7 +25,7 @@ public abstract class EmulationListener implements IEmulationListener {
 	}
 
 	@Override
-	public final void afterContinuousExecution() {
+	public final void afterContinuousExecution(IEmulator emulator) {
 		fullSpeedMode = false;
 		afterContinuousExecutionHook();
 	}

@@ -22,15 +22,15 @@ package de.codesourcery.jasm16;
  * 
  * @author tobias.gierke@voipfuture.com
  */
-public abstract class Size
+public abstract class Size implements Comparable<Size>
 {
     private final int value;
     
-    public static SizeInBytes sizeInBytes(int size) {
+    public static SizeInBytes bytes(int size) {
         return new SizeInBytes( size );
     }
     
-    public static SizeInWords sizeInWords(int size) {
+    public static SizeInWords words(int size) {
         return new SizeInWords( size );
     }    
     
@@ -46,11 +46,28 @@ public abstract class Size
         return value;
     }
     
-    public Size minus(Size other) {
+    @Override
+    public final boolean equals(Object obj) 
+    {
+    	if ( obj == this ) {
+    		return true;
+    	}
+    	if ( obj instanceof Size) {
+    		return toSizeInBytes().getValue() == ((Size) obj).toSizeInBytes().getValue();
+    	}
+    	return false;
+    }
+    
+    @Override
+    public final int hashCode() {
+    	return toSizeInBytes().getValue();
+    }
+    
+    public final Size minus(Size other) {
         return new SizeInBytes( this.toSizeInBytes().getValue() - other.toSizeInBytes().getValue() );
     }
     
-    public Size plus(Size other) {
+    public final Size plus(Size other) {
         return new SizeInBytes( this.toSizeInBytes().getValue() + other.toSizeInBytes().getValue() );
     }    
     
@@ -111,5 +128,29 @@ public abstract class Size
             return getValue()+" words";
         } 
         
-    }    
+    }
+
+	public final boolean isGreaterThan(Size availableSize) 
+	{
+		return toSizeInBytes().getValue() > availableSize.toSizeInBytes().getValue();
+	}    
+	
+	public final boolean isLessThan(Size availableSize) 
+	{
+		return toSizeInBytes().getValue() < availableSize.toSizeInBytes().getValue();
+	}
+	
+	@Override
+	public final int compareTo(Size o) 
+	{
+		final int s1 = toSizeInBytes().getValue();
+		final int s2 = o.toSizeInBytes().getValue();
+		if ( s1 < s2 ) {
+			return -1;
+		}
+		if ( s1 > s2 ) {
+			return 1;
+		}
+		return 0;
+	}
 }

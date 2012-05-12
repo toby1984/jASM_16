@@ -19,6 +19,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
@@ -32,7 +34,6 @@ import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -49,7 +50,6 @@ public class HexDumpView extends AbstractView
     private IEmulator emulator;
     private Address dumpStartAddress = Address.wordAddress( 0x0 );
     private int numberOfWordsPerLine = 8;
-    private int numberOfBytesToDump = 256;
     private boolean printASCII = true;
     
     private final IEmulationListener listener = new EmulationListener() {
@@ -98,15 +98,36 @@ public class HexDumpView extends AbstractView
             return;
         }
         
-        final byte[] data = MemUtils.getBytes( emulator.getMemory() , dumpStartAddress , numberOfBytesToDump );
         SwingUtilities.invokeLater( new Runnable() {
 
             @Override
             public void run()
             {
-                textArea.setText( Misc.toHexDumpWithAddresses(dumpStartAddress, data, data.length , numberOfWordsPerLine , printASCII,true));                
+            	final byte[] data = MemUtils.getBytes( emulator.getMemory() , 
+            		dumpStartAddress ,
+            		calcSizeOfVisibleMemory(),
+            		true
+            	);
+            	
+                textArea.setText( 
+                		Misc.toHexDumpWithAddresses(dumpStartAddress, 
+                				data, 
+                				data.length , 
+                				numberOfWordsPerLine , 
+                				printASCII,
+                				true)
+                );                
             }
         });
+    }
+    
+    protected Size calcSizeOfVisibleMemory() 
+    {
+    	int rows = calculateVisibleTextRowCount( textArea );
+    	if ( rows < 1 ) {
+    		rows = 1;
+    	}
+    	return Size.words( rows * numberOfWordsPerLine );    	
     }
     
     public void setEmulator(IEmulator emulator)
@@ -141,7 +162,6 @@ public class HexDumpView extends AbstractView
         setColors( textArea );        
         textArea.setFont( getMonospacedFont() );
         textArea.setEditable( false );
-        textArea.setRows( numberOfBytesToDump / ( numberOfWordsPerLine*2 ) );
         
         // dump panel
         final JPanel dumpPanel = new JPanel();
@@ -221,26 +241,34 @@ public class HexDumpView extends AbstractView
             }
         } );
         
+        result.addComponentListener( new ComponentAdapter() {
+			
+			@Override
+			public void componentResized(ComponentEvent e) {
+				refreshDisplay();
+			}
+		});
+        
         return result;
     }
     
     private void onePageDown() {
-        dumpStartAddress = dumpStartAddress.plus( Size.sizeInBytes( numberOfBytesToDump ) , true );
+        dumpStartAddress = dumpStartAddress.plus( calcSizeOfVisibleMemory() , true );
         refreshDisplay();        
     }
     
     private void oneLineDown() {
-        dumpStartAddress = dumpStartAddress.plus( Size.sizeInWords( numberOfWordsPerLine ) , true );
+        dumpStartAddress = dumpStartAddress.plus( Size.words( numberOfWordsPerLine ) , true );
         refreshDisplay();        
     }    
     
     private void onePageUp() {
-        dumpStartAddress = dumpStartAddress.minus( Size.sizeInBytes( numberOfBytesToDump ) );
+        dumpStartAddress = dumpStartAddress.minus( calcSizeOfVisibleMemory() );
         refreshDisplay();        
     }    
     
     private void oneLineUp() {
-        dumpStartAddress = dumpStartAddress.minus( Size.sizeInWords( numberOfWordsPerLine ) );
+        dumpStartAddress = dumpStartAddress.minus( Size.words( numberOfWordsPerLine ) );
         refreshDisplay();           
     }     
 

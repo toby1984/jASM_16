@@ -38,7 +38,7 @@ public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
 	
 	@Override
 	public Size getSize() {
-		return Size.sizeInBytes( data.length );
+		return Size.bytes( data.length );
 	}
 	
 	private int getSizeInBytes() {

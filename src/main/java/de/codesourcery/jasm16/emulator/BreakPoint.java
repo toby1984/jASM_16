@@ -39,4 +39,8 @@ public class BreakPoint
         return address;
     }
     
+    public boolean matches(IEmulator emulator) {
+    	return true;
+    }
+    
 }

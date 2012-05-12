@@ -39,7 +39,7 @@ public class AddressRange
             throw new IllegalArgumentException("Start must not be greater than end, start: "+start+" , end: "+end);
         }
         this.start = start;
-        this.size = Size.sizeInBytes( end.toByteAddress().getValue() - start.toByteAddress().getValue() );
+        this.size = Size.bytes( end.toByteAddress().getValue() - start.toByteAddress().getValue() );
     }    
 
     public AddressRange(Address start, Size size) {

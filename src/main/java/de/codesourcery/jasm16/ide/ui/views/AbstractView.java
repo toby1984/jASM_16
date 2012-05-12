@@ -19,6 +19,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -104,5 +105,13 @@ public abstract class AbstractView implements IView
 		editor.getInputMap().put( key , actionId );
 		editor.getActionMap().put( actionId , action );
 		return actionId;
-	}    
+	}
+	
+	protected int calculateVisibleTextRowCount(JComponent component) {
+		
+		final Dimension size = component.getSize();
+		final FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
+		final int height = fontMetrics.getHeight();
+		return size.height / height;
+	}
 }

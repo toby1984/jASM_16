@@ -17,6 +17,8 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.io.IOException;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.emulator.EmulationListener;
@@ -34,13 +36,14 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DebuggingPerspective extends Perspective
 {
+	private static final Logger LOG = Logger.getLogger(DebuggingPerspective.class);
+	
     public static final String ID = "debugger";
     
     private final IEmulator emulator;
     
     private IAssemblyProject project;
     
-    @SuppressWarnings("unused")
     private IResource executable;
     
     private final IEmulationListener listener = new EmulationListener() 
@@ -66,6 +69,7 @@ public class DebuggingPerspective extends Perspective
     
     public void openExecutable(IAssemblyProject project,IResource executable) throws IOException 
     {
+    	emulator.reset( true );
         final byte[] objectCode = Misc.readBytes( executable );
         emulator.loadMemory( Address.wordAddress( 0 ) , objectCode ); // will trigger IEmulationListener
         this.project = project;
@@ -76,6 +80,16 @@ public class DebuggingPerspective extends Perspective
     {
         return project;
     }
+    
+    public void resetEmulator() 
+    {
+    	try {
+    		openExecutable( this.project , this.executable );
+    	} 
+    	catch(Exception e) {
+    		LOG.error("resetEmulator(): ",e);
+    	}
+	}
     
     private void setupPerspective() {
         
@@ -88,7 +102,7 @@ public class DebuggingPerspective extends Perspective
         
         // setup disassembler view
         if ( getDisassemblerView() == null ) {
-            DisassemblerView view = new DisassemblerView( emulator );
+            DisassemblerView view = new DisassemblerView( this, emulator );
             addView( view );
             view.refreshDisplay();
         }

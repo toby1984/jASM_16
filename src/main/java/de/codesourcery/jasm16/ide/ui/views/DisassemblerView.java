@@ -30,10 +30,10 @@ import javax.swing.SwingUtilities;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
-import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class DisassemblerView extends AbstractView
@@ -42,8 +42,14 @@ public class DisassemblerView extends AbstractView
     
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
+    private final JButton singleStepButton = new JButton("Step");
+    private final JButton runButton = new JButton("Run");
+    private final JButton stopButton = new JButton("Stop");   
+    private final JButton resetButton = new JButton("Reset");                               
     
+    private final DebuggingPerspective perspective;
     private IEmulator emulator;
+    
     private Address dumpStartAddress = Address.ZERO;
     private int numberOfInstructionsToDump = 10;
     private boolean showHexDump = true;
@@ -71,22 +77,48 @@ public class DisassemblerView extends AbstractView
         @Override
         public void afterReset(IEmulator emulator)
         {
-        	if ( ! isFullSpeedMode() ) {
-        		refreshDisplay();
-        	}
+        	updateButtonStates( false );          	
+       		refreshDisplay();
         }
+        
+        @Override
+        protected void beforeContinuousExecutionHook() {
+        	updateButtonStates( true );        	
+        };
         
 		@Override
 		public void afterContinuousExecutionHook() {
+			updateButtonStates( false );
 			refreshDisplay();
 		}        
      };
      
-    public DisassemblerView(IEmulator emulator) {
+    public DisassemblerView(DebuggingPerspective perspective, IEmulator emulator) {
+    	if ( perspective == null ) {
+			throw new IllegalArgumentException("perspective must not be null");
+		}
+    	this.perspective = perspective;
         setEmulator( emulator );
     }
     
-    public DisassemblerView() {
+    private void updateButtonStates(final boolean emulatorRunningContinously) {
+
+    	final Runnable runnable = new Runnable() {
+
+			@Override
+			public void run() {
+		   	    singleStepButton.setEnabled( ! emulatorRunningContinously );
+		   	    runButton.setEnabled( ! emulatorRunningContinously );
+		   	    stopButton.setEnabled( emulatorRunningContinously );
+			    resetButton.setEnabled( true );  
+			}
+		};
+
+    	if ( SwingUtilities.isEventDispatchThread() ) {
+    		runnable.run();
+    	} else {
+    		SwingUtilities.invokeLater( runnable );
+    	}
     }
     
     @Override
@@ -161,7 +193,6 @@ public class DisassemblerView extends AbstractView
         buttonBar.setLayout( new GridBagLayout() );        
 
         // =========== "SINGLE STEP" button ============        
-        final JButton singleStepButton = new JButton("Step");
         singleStepButton.addActionListener( new ActionListener() {
             
             @Override
@@ -175,7 +206,6 @@ public class DisassemblerView extends AbstractView
         buttonBar.add( singleStepButton , cnstrs );
         
         // =========== "RUN" button ============        
-        final JButton runButton = new JButton("Run");
         runButton.addActionListener( new ActionListener() {
             
             @Override
@@ -190,7 +220,6 @@ public class DisassemblerView extends AbstractView
         buttonBar.add( runButton , cnstrs );   
         
         // =========== "STOP" button ============        
-        final JButton stopButton = new JButton("Stop");
         stopButton.addActionListener( new ActionListener() {
             
             @Override
@@ -204,13 +233,12 @@ public class DisassemblerView extends AbstractView
         buttonBar.add( stopButton , cnstrs );          
         
         // =========== "RESET" button ============
-        final JButton resetButton = new JButton("Reset");
         resetButton.addActionListener( new ActionListener() {
             
             @Override
             public void actionPerformed(ActionEvent e)
             {
-                emulator.reset(false);
+            	perspective.resetEmulator();
             }
         });
         
@@ -234,6 +262,7 @@ public class DisassemblerView extends AbstractView
         cnstrs = constraints( 0 , 1 , true , true , GridBagConstraints.BOTH);
         result.add( bottomPanel  , cnstrs );        
         
+        updateButtonStates( false );
         return result;
     }
 

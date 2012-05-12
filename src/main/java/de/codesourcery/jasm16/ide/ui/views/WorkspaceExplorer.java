@@ -406,7 +406,6 @@ public class WorkspaceExplorer extends AbstractView {
         final DebuggingPerspective p=new DebuggingPerspective( applicationConfig );
         p.openExecutable( project , executable );
         p.setVisible( true );
-        p.pack();
         p.toFront();            
         perspectivesManager.addViewContainer( p );        
     }

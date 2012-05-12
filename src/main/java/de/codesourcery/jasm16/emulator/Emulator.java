@@ -152,6 +152,14 @@ public class Emulator implements IEmulator {
     public void stop() 
     {
         clockThread.stopSimulation();
+        notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.afterContinuousExecution( emulator );
+            }
+        });         
     }
 
     /* (non-Javadoc)
@@ -160,6 +168,14 @@ public class Emulator implements IEmulator {
     @Override
     public void start() 
     {
+        notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.beforeContinuousExecution( emulator );
+            }
+        });      	
         clockThread.startSimulation();		
     }
 
@@ -423,7 +439,7 @@ public class Emulator implements IEmulator {
         {
             breakpoint = breakpoints.get( pc ); 
         }
-        if ( breakpoint != null ) 
+        if ( breakpoint != null && breakpoint.matches( this ) ) 
         {
             stop();
             notifyListeners( new IEmulationListenerInvoker() {
@@ -1484,6 +1500,7 @@ public class Emulator implements IEmulator {
     public void loadMemory(final Address startingOffset, final byte[] data) 
     {
     	stop();
+    	
     	memory.clear();
         MemUtils.bulkLoad( memory , startingOffset , data );
 

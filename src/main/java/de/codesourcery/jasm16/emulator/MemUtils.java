@@ -17,7 +17,7 @@ package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.utils.IMemoryIterator;
 
 /**
  * Utility methods related to the emulator's DCPU-16  memory emulation.
@@ -62,26 +62,27 @@ public class MemUtils
      * @param numberOfBytesToRead
      * @return
      */
-    public static byte[] getBytes(IReadOnlyMemory memory, Address startAddress, int numberOfBytesToRead)
+    public static byte[] getBytes(IReadOnlyMemory memory, 
+    		Address startAddress, 
+    		Size numBytesToRead,boolean wrap)
     {
+    	final int numberOfBytesToRead = numBytesToRead.toSizeInBytes().getValue();
         final byte[] result = new byte[numberOfBytesToRead];
-
-        final int lengthInWords = numberOfBytesToRead >>> 1;
-
-        final int end = startAddress.toWordAddress().getValue()+lengthInWords;
+        
+        final IMemoryIterator iterator = new MemoryIterator(memory,startAddress,
+        		Size.bytes( numberOfBytesToRead) , wrap ); 
 
         int bytesLeft = numberOfBytesToRead;
-        int index = 0;
-        for ( int currentWord = startAddress.toWordAddress().getValue() ; currentWord < end && bytesLeft > 0; currentWord++ ) 
+        for ( int index = 0 ; iterator.hasNext() && bytesLeft > 0 ; ) 
         {
-            @SuppressWarnings("deprecation")
-            final int value = memory.read( (int) ( currentWord % (WordAddress.MAX_ADDRESS+1) ) );
+            final int value = iterator.nextWord();
             result[index++] = (byte) ( ( value  >>> 8 ) & 0xff );      
             bytesLeft--;
             if ( bytesLeft <= 0 ) {
                 break;
             }
-            result[index++] = (byte) ( value & 0xff );                 
+            result[index++] = (byte) ( value & 0xff );
+            bytesLeft--;
         }
         return result;        
     }    

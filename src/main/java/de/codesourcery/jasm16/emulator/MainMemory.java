@@ -38,7 +38,7 @@ public class MainMemory implements IMemory
     
     public MainMemory(int sizeInWords) 
     {
-        regions.add( createMainMemory( new AddressRange( WordAddress.ZERO , Size.sizeInWords( 65536 ) ) ) );
+        regions.add( createMainMemory( new AddressRange( WordAddress.ZERO , Size.words( 65536 ) ) ) );
     }
     
     private static IMemoryRegion createMainMemory(AddressRange range) {
@@ -177,7 +177,7 @@ public class MainMemory implements IMemory
     @Override
     public Size getSize()
     {
-        Size result = Size.sizeInBytes( 0 );
+        Size result = Size.bytes( 0 );
         for ( IMemory r : regions ) {
             result = result.plus( r.getSize() );
         }        

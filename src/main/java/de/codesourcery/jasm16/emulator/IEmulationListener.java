@@ -31,9 +31,10 @@ public interface IEmulationListener
 	 * <p>When invoked, listeners should try to minimize their performance
 	 * impact by disabling any actions that would not make sense
 	 * while running in full-speed mode.</p>
+	 * @param emulator TODO
 	 * @see IEmulator#start()
 	 */
-	public void beforeContinuousExecution();
+	public void beforeContinuousExecution(IEmulator emulator);
 	
 	/**
 	 * Invoked after the emulation stopped
@@ -41,11 +42,12 @@ public interface IEmulationListener
 	 * 
 	 * <p>When invoked, listeners may re-enable actions suitable for
 	 * single-step execution that were disabled by the last call
-	 * to {@link #beforeContinuousExecution()}.</p>
+	 * to {@link #beforeContinuousExecution(IEmulator)}.</p>
+	 * @param emulator TODO
 	 * 	 
 	 * @see IEmulator#stop()
 	 */
-	public void afterContinuousExecution();
+	public void afterContinuousExecution(IEmulator emulator);
 	
     public void afterReset(IEmulator emulator);
     
