@@ -15,19 +15,12 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.utils.Misc;
 
-public class DebugEmulationListener implements IEmulationListener
+public class DebugEmulationListener extends EmulationListener
 {
-
     @Override
-    public void beforeExecution(IEmulator emulator)
-    {
-    }
-
-    @Override
-    public void afterExecution(IEmulator emulator, int commandDuration)
+    public void afterCommandExecution(IEmulator emulator, int commandDuration)
     {
         final ICPU cpu = emulator.getCPU();
 
@@ -47,19 +40,8 @@ public class DebugEmulationListener implements IEmulationListener
         System.out.println("SP: "+Misc.toHexString( cpu.getSP().getValue() ));
     }
 
-    @Override
-    public void afterReset(IEmulator emulator)
-    {
-    }
-
-    @Override
-    public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
-    {
-    }
-
-    @Override
-    public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
-    {
-    }
+	@Override
+	public void afterContinuousExecutionHook() {
+	}
 
 }

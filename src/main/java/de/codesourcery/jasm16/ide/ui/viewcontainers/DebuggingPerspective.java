@@ -19,7 +19,7 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.emulator.BreakPoint;
+import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -43,35 +43,17 @@ public class DebuggingPerspective extends Perspective
     @SuppressWarnings("unused")
     private IResource executable;
     
-    private final IEmulationListener listener = new IEmulationListener() 
+    private final IEmulationListener listener = new EmulationListener() 
     {
-        @Override
-        public void afterReset(IEmulator emulator)
-        {
-        }
-        
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             setupPerspective();
         }
-        
-        @Override
-        public void beforeExecution(IEmulator emulator)
-        {
-        }
-        
-        @Override
-        public void afterExecution(IEmulator emulator, int commandDuration)
-        {
-        }
 
-        @Override
-        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
-        {
-            // TODO Auto-generated method stub
-            
-        }
+		@Override
+		public void afterContinuousExecutionHook() {
+		}
     };
     
     

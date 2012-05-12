@@ -24,6 +24,29 @@ import de.codesourcery.jasm16.Address;
  */
 public interface IEmulationListener
 {
+	/**
+	 * Invoked before the emulation starts running
+	 * at full speed.
+	 * 
+	 * <p>When invoked, listeners should try to minimize their performance
+	 * impact by disabling any actions that would not make sense
+	 * while running in full-speed mode.</p>
+	 * @see IEmulator#start()
+	 */
+	public void beforeContinuousExecution();
+	
+	/**
+	 * Invoked after the emulation stopped
+	 * (running at full speed).
+	 * 
+	 * <p>When invoked, listeners may re-enable actions suitable for
+	 * single-step execution that were disabled by the last call
+	 * to {@link #beforeContinuousExecution()}.</p>
+	 * 	 
+	 * @see IEmulator#stop()
+	 */
+	public void afterContinuousExecution();
+	
     public void afterReset(IEmulator emulator);
     
     public void afterMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes);
@@ -35,7 +58,7 @@ public interface IEmulationListener
      * 
      * @param emulator
      */
-    public void beforeExecution(IEmulator emulator);
+    public void beforeCommandExecution(IEmulator emulator);
     
     /**
      * Invoked after executing a command.
@@ -43,5 +66,5 @@ public interface IEmulationListener
      * @param emulator
      * @param commandDuration duration (in cycles) of the last command or -1 on internal errors during command execution.
      */
-    public void afterExecution(IEmulator emulator,int commandDuration);
+    public void afterCommandExecution(IEmulator emulator,int commandDuration);
 }

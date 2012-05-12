@@ -11,6 +11,7 @@ import javax.swing.JPanel;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.BreakPoint;
+import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
@@ -58,7 +59,7 @@ public class ScreenView extends AbstractView
         };
     };
     
-    private final IEmulationListener listener = new IEmulationListener() {
+    private final IEmulationListener listener = new EmulationListener() {
         
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
@@ -72,7 +73,7 @@ public class ScreenView extends AbstractView
         }
         
         @Override
-        public void beforeExecution(IEmulator emulator)
+        public void beforeCommandExecution(IEmulator emulator)
         {
             refreshDisplay();
         }
@@ -84,10 +85,15 @@ public class ScreenView extends AbstractView
         }
         
         @Override
-        public void afterExecution(IEmulator emulator, int commandDuration)
+        public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
             refreshDisplay();
         }
+        
+		@Override
+		public void afterContinuousExecutionHook() {
+			refreshDisplay();
+		}        
     };
     
     private final IEmulator emulator;

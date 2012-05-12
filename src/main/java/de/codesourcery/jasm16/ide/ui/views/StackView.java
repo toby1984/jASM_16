@@ -28,6 +28,7 @@ import javax.swing.SwingUtilities;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.BreakPoint;
+import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.MemUtils;
@@ -45,33 +46,37 @@ public class StackView extends AbstractView
     private int numberOfWordsToDump = 16;
     private boolean printASCII = true;
     
-    private final IEmulationListener listener = new IEmulationListener() {
+    private final IEmulationListener listener = new EmulationListener() {
 
         @Override
-        public void beforeExecution(IEmulator emulator) {  }
-
-        @Override
-        public void afterExecution(IEmulator emulator, int commandDuration)
+        public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
-            refreshDisplay();
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
 
         @Override
         public void afterReset(IEmulator emulator)
         {
-            refreshDisplay();            
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
 
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
-            refreshDisplay();
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
 
-        @Override
-        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
-        {
-        }
+		@Override
+		public void afterContinuousExecutionHook() {
+			refreshDisplay();
+		}
+
      };
      
     public StackView(IEmulator emulator) {

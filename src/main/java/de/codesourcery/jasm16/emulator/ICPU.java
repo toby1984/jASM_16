@@ -46,5 +46,4 @@ public interface ICPU
     public int getInterruptAddress();
     
     public int getCurrentCycleCount();
-    
 }

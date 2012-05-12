@@ -23,12 +23,16 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class Emulator implements IEmulator {
 
+	private static final Logger LOG = Logger.getLogger(Emulator.class);
+	
     private final ClockThread clockThread;
 
     private static final Integer CMD_TOKEN = new Integer(1);
@@ -187,15 +191,15 @@ public class Emulator implements IEmulator {
             if ( isRunnable == false ) 
             {
                 try {
+                	cmdQueue.put( Integer.valueOf(1) );
                     isRunnable = true;
-                    cmdQueue.put( Integer.valueOf(1) );
                     synchronized( SLEEP_LOCK ) {
-                        SLEEP_LOCK.notifyAll();
+                        SLEEP_LOCK.notifyAll(); // wake up thread
                     }
                     ackQueue.poll();
                 } 
                 catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.error("startSimulation(): ",e);
                 }
             }
         }		
@@ -205,11 +209,11 @@ public class Emulator implements IEmulator {
             if ( isRunnable == true ) 
             {			    
                 try {
-                    isRunnable = false;
                     cmdQueue.add( Integer.valueOf(1) );
+                    isRunnable = false;                    
                     ackQueue.poll();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.error("stopSimulation(): ",e);                   
                 }
             }
         }	 
@@ -311,7 +315,7 @@ public class Emulator implements IEmulator {
                 } 
                 catch (Exception e) 
                 {
-                    e.printStackTrace();
+                    LOG.error("run(): ",e);
                 }
             }
 
@@ -321,8 +325,12 @@ public class Emulator implements IEmulator {
 
             lastStart = System.currentTimeMillis();
 
-            while ( true ) {
-
+            while ( true ) 
+            {
+            	if ( ( currentCycle % 10000 ) == 0 ) {
+            		System.out.println("Current cycle: "+currentCycle);
+            	}
+            	
                 if ( isRunnable == false ) 
                 {
                     lastStop = System.currentTimeMillis();
@@ -338,7 +346,9 @@ public class Emulator implements IEmulator {
                                 SLEEP_LOCK.wait();
                             }
                         } 
-                        catch (Exception e) { /* can't help it */ } 
+                        catch (Exception e) { 
+                        	LOG.error("run(): ",e);
+                        } 
                     }
                     System.out.println("Simulation thread woke up!");
                     acknowledgeCommand();
@@ -388,7 +398,7 @@ public class Emulator implements IEmulator {
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
             {
-                listener.beforeExecution( emulator );
+                listener.beforeCommandExecution( emulator );
             }
         });
     }
@@ -404,7 +414,7 @@ public class Emulator implements IEmulator {
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
             {
-                listener.afterExecution( emulator , executedCommandDuration );
+                listener.afterCommandExecution( emulator , executedCommandDuration );
             }
         });     
         
@@ -1473,6 +1483,8 @@ public class Emulator implements IEmulator {
     @Override
     public void loadMemory(final Address startingOffset, final byte[] data) 
     {
+    	stop();
+    	memory.clear();
         MemUtils.bulkLoad( memory , startingOffset , data );
 
         // notify listeners

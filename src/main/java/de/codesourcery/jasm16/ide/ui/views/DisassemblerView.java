@@ -31,6 +31,7 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
 import de.codesourcery.jasm16.emulator.BreakPoint;
+import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.utils.Misc;
@@ -49,36 +50,36 @@ public class DisassemblerView extends AbstractView
     
     private final Disassembler disassembler = new Disassembler();
     
-    private final IEmulationListener listener = new IEmulationListener() {
+    private final IEmulationListener listener = new EmulationListener() {
 
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
-            refreshDisplay();
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
         
         @Override
-        public void beforeExecution(IEmulator emulator) {  
-        }
-
-        @Override
-        public void afterExecution(IEmulator emulator, int commandDuration)
+        public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
-            refreshDisplay();            
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
 
         @Override
         public void afterReset(IEmulator emulator)
         {
-            refreshDisplay();
+        	if ( ! isFullSpeedMode() ) {
+        		refreshDisplay();
+        	}
         }
-
-        @Override
-        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
-        {
-            // TODO Auto-generated method stub
-            
-        }
+        
+		@Override
+		public void afterContinuousExecutionHook() {
+			refreshDisplay();
+		}        
      };
      
     public DisassemblerView(IEmulator emulator) {
@@ -181,6 +182,7 @@ public class DisassemblerView extends AbstractView
             public void actionPerformed(ActionEvent e)
             {
                 emulator.start();
+                System.out.println("Simulation started!");
             }
         });
         
