@@ -21,33 +21,56 @@ import de.codesourcery.jasm16.Address;
 
 public interface IEmulator
 {
+    public void addEmulationListener(IEmulationListener listener);
+    
+    public void removeEmulationListener(IEmulationListener listener);   
+    
+    // emulator control
     public abstract void reset(boolean clearMemory);
 
     public abstract void stop();
 
     public abstract void start();
 
-    public abstract void loadMemory(Address startingOffset, byte[] data);
-
-    public abstract void calibrate();
-    
-    public ICPU getCPU();
-    
-    public IReadOnlyMemory getMemory();
-    
-    public void addEmulationListener(IEmulationListener listener);
-    
-    public void removeEmulationListener(IEmulationListener listener);    
-    
     public void executeOneInstruction();
     
     public void skipCurrentInstruction();
     
-    public void addBreakpoint(BreakPoint bp);
-    
-    public BreakPoint getBreakPoint(Address address);
-    
-    public void deleteBreakpoint(BreakPoint bp);
+    public void loadMemory(Address startingOffset, byte[] data);
 
-    public List<BreakPoint> getBreakPoints();
+    // hardware
+    public ICPU getCPU();
+    
+    public IReadOnlyMemory getMemory();
+    
+    /**
+     * Replaces a mapped memory region with plain (unmapped) main-memory.
+     * 
+     * @param region
+     * @see MainMemory#unmapRegion(IMemoryRegion)
+     */
+    public void unmapRegion(IMemoryRegion region);
+    
+    /**
+     * Maps main memory to a specific region.
+     * 
+     * @param region
+     * @see #unmapRegion(IMemoryRegion)
+     * @see MainMemory#mapRegion(IMemoryRegion)
+     */
+    public void mapRegion(IMemoryRegion region);     
+    
+    // breakpoint handling
+    public void addBreakpoint(Breakpoint bp);
+    
+    public Breakpoint getBreakPoint(Address address);
+    
+    public void deleteBreakpoint(Breakpoint bp);
+
+    public List<Breakpoint> getBreakPoints();
+    
+    public void breakpointChanged(Breakpoint breakpoint);      
+    
+    // misc
+    public void calibrate();    
 }

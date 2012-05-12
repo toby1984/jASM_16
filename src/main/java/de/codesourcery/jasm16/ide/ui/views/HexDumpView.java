@@ -21,8 +21,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -38,6 +36,7 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.MemUtils;
+import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class HexDumpView extends AbstractView
@@ -217,29 +216,28 @@ public class HexDumpView extends AbstractView
         cnstrs = constraints( 1 , 0 , true , true , GridBagConstraints.VERTICAL );
         result.add( toolbarPanel , cnstrs );        
         
-        textArea.addKeyListener( new KeyAdapter() 
-        {
-            public void keyPressed(java.awt.event.KeyEvent e) 
-            {
-                switch( e.getKeyCode() ) 
-                {
-                    case KeyEvent.VK_PAGE_DOWN:
-                        onePageDown();
-                        break;    
-                    case KeyEvent.VK_PAGE_UP:
-                        onePageUp();
-                        break;                         
-                    case KeyEvent.VK_DOWN:
-                    case KeyEvent.VK_KP_DOWN:
-                        oneLineDown();
-                        break;
-                    case KeyEvent.VK_UP:
-                    case KeyEvent.VK_KP_UP:
-                        oneLineUp();
-                        break;                        
-                }
-            }
-        } );
+        textArea.addKeyListener( new PagingKeyAdapter() {
+			
+			@Override
+			protected void onePageUp() {
+				HexDumpView.this.onePageUp();
+			}
+			
+			@Override
+			protected void onePageDown() {
+				HexDumpView.this.onePageDown();				
+			}
+			
+			@Override
+			protected void oneLineUp() {
+				HexDumpView.this.oneLineUp();
+			}
+			
+			@Override
+			protected void oneLineDown() {
+				HexDumpView.this.oneLineDown();				
+			}
+		});
         
         result.addComponentListener( new ComponentAdapter() {
 			

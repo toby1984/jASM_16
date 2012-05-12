@@ -45,6 +45,15 @@ public class MainMemory implements IMemory
         return new MemoryRegion( "main memory" , range );
     }
     
+    public void dumpMemoryLayout() 
+    {
+    	System.out.println("\nMemory layout:\n");
+    	for ( IMemoryRegion region : regions ) {
+    		System.out.println( region );
+    	}
+    	System.out.println("\n");
+    }
+    
     @Override
     public void clear()
     {

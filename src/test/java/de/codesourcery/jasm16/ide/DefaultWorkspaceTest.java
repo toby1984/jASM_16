@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.utils.Misc;
 

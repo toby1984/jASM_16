@@ -16,6 +16,8 @@
 package de.codesourcery.jasm16.disassembler;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * A line of source code created from disassembling an object file.
@@ -25,9 +27,10 @@ import de.codesourcery.jasm16.Address;
 public final class DisassembledLine 
 {
     private final Address address;
+    private final Size instructionLength;
     private final String contents;
     
-    public DisassembledLine(Address address, String contents)
+    public DisassembledLine(Address address, String contents,Size instructionLength)
     {
         if ( address== null ) {
             throw new IllegalArgumentException("address  must not be NULL.");
@@ -35,9 +38,17 @@ public final class DisassembledLine
         if ( contents == null ) {
             throw new IllegalArgumentException("contents must not be NULL.");
         }            
+        if ( instructionLength == null ) {
+			throw new IllegalArgumentException("instructionLen must not be null");
+		}
+        this.instructionLength = instructionLength;
         this.address = address;
         this.contents = contents;
     }
+    
+    public Size getInstructionLength() {
+		return instructionLength;
+	}
     
     public Address getAddress()
     {
@@ -47,5 +58,10 @@ public final class DisassembledLine
     public String getContents()
     {
         return contents;
+    }
+    
+    @Override
+    public String toString() {
+    	return Misc.toHexString( getAddress() )+": "+getContents()+" ( "+instructionLength+" )";
     }
 }

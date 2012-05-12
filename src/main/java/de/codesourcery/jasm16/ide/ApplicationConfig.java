@@ -30,6 +30,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**

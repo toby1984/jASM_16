@@ -35,9 +35,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ide.IApplicationConfig;
-import de.codesourcery.jasm16.ide.SizeAndLocation;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
+import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**
@@ -86,6 +86,7 @@ public class Perspective extends JFrame implements IViewContainer {
 			final SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
 			applicationConfig.storeViewCoordinates( getUniqueID( view ) , sizeAndLoc );
 			frame.dispose();
+			System.out.println("Disposing "+view);
 			view.dispose();			
 		}
 	}
@@ -102,7 +103,7 @@ public class Perspective extends JFrame implements IViewContainer {
         
 		final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>(this.views);
 		for ( InternalFrameWithView v : views) {
-			v.dispose();
+			removeView( v.view );
 		}
 		
 		super.dispose();
@@ -197,8 +198,7 @@ public class Perspective extends JFrame implements IViewContainer {
 			InternalFrameWithView frame = it.next();
 			if ( frame.view == view ) 
 			{
-				frame.view.dispose();
-				frame.frame.dispose();
+				frame.dispose();
 				it.remove();
 				return;
 			}

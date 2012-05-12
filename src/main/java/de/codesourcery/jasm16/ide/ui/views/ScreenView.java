@@ -1,21 +1,20 @@
 package de.codesourcery.jasm16.ide.ui.views;
 
-import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
 import java.awt.font.LineMetrics;
 
 import javax.swing.JPanel;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.emulator.BreakPoint;
+import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.MemoryRegion;
 
 public class ScreenView extends AbstractView
 {
@@ -23,23 +22,17 @@ public class ScreenView extends AbstractView
     
     private JPanel panel;
     
+    private final IMemoryRegion videoRAM = new MemoryRegion("video RAM",
+    		new AddressRange(Address.wordAddress( 0x4000 ) , 
+    				Size.words( 384 ) ) // 32x12 words 
+    		); 
+    
     private final IEmulationListener listener = new EmulationListener() {
         
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             refreshDisplay();            
-        }
-        
-        @Override
-        public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint)
-        {
-        }
-        
-        @Override
-        public void beforeCommandExecution(IEmulator emulator)
-        {
-            refreshDisplay();
         }
         
         @Override
@@ -53,6 +46,11 @@ public class ScreenView extends AbstractView
         {
             refreshDisplay();
         }
+        
+    	@Override
+    	public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode() {
+    		return true;
+    	}        
         
 		@Override
 		public void afterContinuousExecutionHook() {
@@ -68,12 +66,14 @@ public class ScreenView extends AbstractView
         }
         this.emulator = emulator;
         this.emulator.addEmulationListener(listener);
+        this.emulator.mapRegion( videoRAM );
     }
     
     @Override
     public void dispose()
     {
         this.emulator.removeEmulationListener( listener );
+        this.emulator.unmapRegion( videoRAM );
     }
 
     @Override
@@ -135,7 +135,8 @@ public class ScreenView extends AbstractView
                      for ( int column = 0 ; column < 32 ; column++ ) 
                      {
                          final int currentMemLocation = videoRam+( 32 * row ) + column;
-                         final int value = memory.read( currentMemLocation ) & 0x00ff;
+                         @SuppressWarnings("deprecation")
+						final int value = memory.read( currentMemLocation ) & 0x00ff;
                          final char c = (char) value;
                          
                          final int x = 15+(maxCharWidth * column);

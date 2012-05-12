@@ -42,7 +42,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
  */
 public enum Operator 
 {
-	INCREMENT("++",2,OperatorPosition.POSTFIX) {
+	INCREMENT("++",7,OperatorPosition.POSTFIX) {
 		@Override
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
@@ -54,7 +54,7 @@ public enum Operator
 		    return 1;
 		}
 	},
-	DECREMENT("--",2,OperatorPosition.PREFIX) {
+	DECREMENT("--",7,OperatorPosition.PREFIX) {
 		@Override
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
@@ -64,28 +64,96 @@ public enum Operator
         {
             return 1;
         }		
+	},	
+	// == !=
+	EQUAL("==",2,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1.longValue() == n2.longValue() ? 1 : 0;
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}		
+	},	
+	NOT_EQUAL("!=",2,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1.longValue() != n2.longValue() ? 1 : 0;			
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}			
+	},	
+	// < > <= >=
+	GREATER_OR_EQUAL(">=",3,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1 >= n2 ? 1 : 0;
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}			
+	},	
+	LESS_OR_EQUAL("<=",3,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1 <= n2 ? 1 : 0;
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}			
 	},		
-	LEFT_SHIFT("<<",3,OperatorPosition.INFIX) {
+	GREATER_THAN(">",3,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1 > n2 ? 1 : 0;
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}			
+	},	
+	LESS_THAN("<",3,OperatorPosition.INFIX) {
+		@Override
+		public long calculate(Long n1, Long n2)
+		{
+			return n1 < n2 ? 1 : 0;
+		}
+		@Override
+		public boolean isComparisonOperator() {
+			return true;
+		}	
+	},
+	LEFT_SHIFT("<<",4,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 << n2;
 		}
 	},	
-	RIGHT_SHIFT(">>",3,OperatorPosition.INFIX) {
+	RIGHT_SHIFT(">>",4,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2)
 		{
 			return n1 >> n2;
 		}
 	},		
-	PLUS("+",4,OperatorPosition.INFIX) {
+	PLUS("+",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1+n2;
 		}
 	},
-	MINUS("-",4,OperatorPosition.INFIX) {
+	MINUS("-",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1-n2;
@@ -227,6 +295,10 @@ public enum Operator
 		this.literal = literal;
 		this.positions = positions;
 		this.precedence = precedence;
+	}
+	
+	public boolean isComparisonOperator() {
+		return false;
 	}
 	
 	/**
@@ -397,6 +469,12 @@ public enum Operator
 			throw new IllegalArgumentException("Found no operators with prefix '"+prefix+"'");
 		}
 		
+		// look for perfect match first
+		for ( Operator op : candidates ) {
+			if ( op.literal.equals( prefix ) ) {
+				return op;
+			}
+		}
 		Operator result = null;
 		int matchLength=0;
 		
@@ -410,6 +488,7 @@ public enum Operator
 				}
 			}
 			if ( result == null || len > matchLength ) {
+				matchLength = len;
 				result = op;
 			}
 		}

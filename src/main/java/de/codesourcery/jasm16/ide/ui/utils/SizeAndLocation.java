@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.ide;
+package de.codesourcery.jasm16.ide.ui.utils;
 
 import java.awt.Dimension;
 import java.awt.Point;

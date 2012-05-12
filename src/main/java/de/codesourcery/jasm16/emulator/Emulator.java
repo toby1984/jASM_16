@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.emulator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -26,6 +27,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -33,25 +35,176 @@ public class Emulator implements IEmulator {
 
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 	
+    private static final boolean DEBUG_LISTENER_PERFORMANCE = false;
+    
+    private final IdentityHashMap<IEmulationListener,Long> listenerPerformance = 
+    		new IdentityHashMap<IEmulationListener,Long>();
+    
     private final ClockThread clockThread;
 
     private static final Integer CMD_TOKEN = new Integer(1);
 
-    private final List<IEmulationListener> listeners = new ArrayList<IEmulationListener>();
+    private final ListenerHelper listenerHelper = new ListenerHelper();
+    
+    /**
+     * Helper to manage IEmulationListeners. 
+     */
+    protected final class ListenerHelper {
+    	
+    	// @GuardedBy( emuListeners )
+        private final List<IEmulationListener> emuListeners = new ArrayList<IEmulationListener>();
+        
+        // @GuardedBy( emuListeners )
+        private final List<IEmulationListener> beforeCommandExecListeners = new ArrayList<IEmulationListener>();
+        
+        // @GuardedBy( emuListeners )
+        private final List<IEmulationListener> continuousModeBeforeCommandExecListeners = new ArrayList<IEmulationListener>();
+        
+        
+        // @GuardedBy( emuListeners )
+        private final List<IEmulationListener> afterCommandExecListeners = new ArrayList<IEmulationListener>();    
 
-    private long lastStart;
-    private long lastStop;	
+        // @GuardedBy( emuListeners )
+        private final List<IEmulationListener> continuousModeAfterCommandExecListeners = new ArrayList<IEmulationListener>();    
+        
+        private final IEmulationListenerInvoker BEFORE_COMMAND_INVOKER = new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.beforeCommandExecution( emulator );
+            }
+        }; 
+        
+        public void addEmulationListener(IEmulationListener listener)
+        {
+            if (listener == null) {
+                throw new IllegalArgumentException("listener must not be NULL.");
+            }
+            synchronized (emuListeners) 
+            {
+            	emuListeners.add( listener );
+            	if ( listener.isInvokeBeforeCommandExecution() ) {
+            		beforeCommandExecListeners.add( listener );
+            		if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
+            			continuousModeBeforeCommandExecListeners.add( listener );
+            		}
+            	}
+            	if ( listener.isInvokeAfterCommandExecution() ) 
+            	{
+            		afterCommandExecListeners.add( listener );
+            		if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
+            			continuousModeAfterCommandExecListeners.add( listener );
+            		}
+            	}
+            }
+        }        
+        
+        public void removeEmulationListener(IEmulationListener listener)
+        {
+            if (listener == null) {
+                throw new IllegalArgumentException("listener must not be NULL.");
+            }
+            synchronized (emuListeners) {
+            	emuListeners.remove( listener );
+        		beforeCommandExecListeners.remove( listener );
+        		continuousModeBeforeCommandExecListeners.remove( listener );
+        		continuousModeAfterCommandExecListeners.remove( listener );
+        		afterCommandExecListeners.remove( listener );
+            }        
+        }
+        
+        public void notifyListeners(IEmulationListenerInvoker invoker) 
+        {
+            notifyListeners( invoker , emuListeners );
+        }
+        
+        public void invokeAfterCommandExecutionListeners(boolean continousMode,final int executedCommandDuration) 
+        {
+            final IEmulationListenerInvoker invoker = new IEmulationListenerInvoker() {
+
+                @Override
+                public void invoke(IEmulator emulator, IEmulationListener listener)
+                {
+                    listener.afterCommandExecution( emulator , executedCommandDuration );
+                }
+            };
+            
+            if ( continousMode ) {
+            	notifyListeners( invoker , continuousModeAfterCommandExecListeners );
+            } else {
+            	notifyListeners( invoker , afterCommandExecListeners );
+            }
+        }
+        
+        public void invokeBeforeCommandExecutionListeners(boolean continousMode) 
+        {
+            if ( continousMode ) {
+            	notifyListeners( BEFORE_COMMAND_INVOKER , continuousModeBeforeCommandExecListeners );
+            } else {        	
+            	notifyListeners( BEFORE_COMMAND_INVOKER , beforeCommandExecListeners );
+            }
+        }        
+
+        public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
+        {
+            final List<IEmulationListener> copy;
+            synchronized( emuListeners ) 
+            {
+            	if ( listeners.isEmpty() ) {
+            		return;
+            	}
+                copy = new ArrayList<IEmulationListener>( listeners );
+            }    	
+            if ( DEBUG_LISTENER_PERFORMANCE ) 
+            {
+    	        for ( IEmulationListener l : copy) 
+    	        {
+    	        	long execTime = -System.currentTimeMillis();
+    	            try {
+    	                invoker.invoke( Emulator.this , l );
+    	            }
+    	            catch(Exception e) {
+    	                e.printStackTrace();
+    	            } finally {
+    	            	execTime += System.currentTimeMillis();
+    	            }
+    	            final Long existing = listenerPerformance.get( l );
+    	            if ( existing == null ) {
+    	            	listenerPerformance.put( l , execTime );
+    	            } else {
+    	            	listenerPerformance.put( l , existing.longValue() + execTime );
+    	            }
+    	        }         	
+            } else {
+    	        for ( IEmulationListener l : copy) 
+    	        {
+    	            try {
+    	                invoker.invoke( Emulator.this , l );
+    	            }
+    	            catch(Exception e) {
+    	                e.printStackTrace();
+    	            }
+    	        }       
+            }
+        }        
+    }
+    
+    private volatile long lastStart;
+    private volatile int cycleCountAtLastStart=0;
+    private volatile long lastStop;
+    private volatile int cycleCountAtLastStop=0;
     
     // ============ BreakPoints =======
     
     // @GuardedBy( breakpoints )
-    private final Map<Address,BreakPoint> breakpoints = new HashMap<Address,BreakPoint>(); 
+    private final Map<Address,Breakpoint> breakpoints = new HashMap<Address,Breakpoint>(); 
 
     // ============ Memory ============
 
     // memory needs to be thread-safe since the emulation runs in a separate thread
     // and UI threads may access the registers concurrently    
-    private final IMemory memory = new MainMemory( 65536 );
+    private final MainMemory memory = new MainMemory( 65536 );
 
     // ============ CPU =============== 
 
@@ -80,6 +233,39 @@ public class Emulator implements IEmulator {
             }
             return result;
         }
+        
+		@Override
+		public int getRegisterValue(Register reg) 
+		{
+		    // a,b,c,x,y,z,i,j
+			switch( reg ) 
+			{
+				case A:
+					return registers.get(0);
+				case B:
+					return registers.get(1);
+				case C:
+					return registers.get(2);
+				case X:
+					return registers.get(3);
+				case Y:
+					return registers.get(4);
+				case Z:
+					return registers.get(5);
+				case I:
+					return registers.get(6);
+				case J:
+					return registers.get(7);				
+				case EX:
+					return ex;
+				case PC:
+					return pc.getValue();
+				case SP:
+					return sp.getValue();
+				default:
+						throw new RuntimeException("Internal error, unhandled register "+reg);
+			}
+		}        
 
         @Override
         public Address getPC()
@@ -110,6 +296,7 @@ public class Emulator implements IEmulator {
         {
             return currentCycle;
         }
+
     };
 
     /* (non-Javadoc)
@@ -135,7 +322,7 @@ public class Emulator implements IEmulator {
         }
 
         // notify listeners
-        notifyListeners( new IEmulationListenerInvoker() {
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
@@ -152,7 +339,8 @@ public class Emulator implements IEmulator {
     public void stop() 
     {
         clockThread.stopSimulation();
-        notifyListeners( new IEmulationListenerInvoker() {
+        
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
@@ -168,7 +356,7 @@ public class Emulator implements IEmulator {
     @Override
     public void start() 
     {
-        notifyListeners( new IEmulationListenerInvoker() {
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
@@ -274,7 +462,6 @@ public class Emulator implements IEmulator {
             if ( durationNanos < 0) {
                 durationNanos = -durationNanos;
             }
-
             delay = oldValue;
             return ( (double) durationNanos / (double) LOOP_COUNT);
         }	    
@@ -285,7 +472,9 @@ public class Emulator implements IEmulator {
 
             final double delta = clockRate-100000.0;
             final double deviationPercentage = 100.0d*( delta / 100000.0 );
-            final String deviation = " ( "+deviationPercentage+" % )";
+
+            final String sign = deviationPercentage > 0 ? "+" : "";
+            final String deviation = " ( "+sign+deviationPercentage+" % )";
 
             if ( clockRate == -1.0d ) {
                 return "<cannot calculate clock rate>";
@@ -304,7 +493,7 @@ public class Emulator implements IEmulator {
         {
             if ( lastStart != 0 )
             {
-                return currentCycle / getRuntimeInSeconds();
+                return (cycleCountAtLastStop - cycleCountAtLastStart ) / getRuntimeInSeconds();
             }
             return -1.0d;
         }		
@@ -337,20 +526,25 @@ public class Emulator implements IEmulator {
 
             acknowledgeCommand();
             
-            System.out.println("Simulation thread is now running...");
-
             lastStart = System.currentTimeMillis();
-
+            cycleCountAtLastStart=currentCycle;
+            
             while ( true ) 
             {
-            	if ( ( currentCycle % 10000 ) == 0 ) {
-            		System.out.println("Current cycle: "+currentCycle);
-            	}
-            	
                 if ( isRunnable == false ) 
                 {
                     lastStop = System.currentTimeMillis();
-
+                    cycleCountAtLastStop=currentCycle;
+                    
+                    System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) );
+                    System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
+                    
+                    if ( DEBUG_LISTENER_PERFORMANCE ) 
+                    {
+                    	for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
+                    		System.out.println( entry.getKey()+" = "+entry.getValue()+" millis" );	
+                    	}
+                    }
                     acknowledgeCommand();
 
                     while ( isRunnable == false ) 
@@ -358,7 +552,6 @@ public class Emulator implements IEmulator {
                         try 
                         {
                             synchronized( SLEEP_LOCK ) {
-                                System.out.println("Simulation thread is now sleeping...");                                
                                 SLEEP_LOCK.wait();
                             }
                         } 
@@ -366,13 +559,11 @@ public class Emulator implements IEmulator {
                         	LOG.error("run(): ",e);
                         } 
                     }
-                    System.out.println("Simulation thread woke up!");
                     acknowledgeCommand();
 
-                    System.out.println("Simulation thread is now running again...");                    
-                    lastStart = System.currentTimeMillis();   					
+                    lastStart = System.currentTimeMillis();   
+                    cycleCountAtLastStart=currentCycle;                    
                 }
-
                 internalExecuteOneInstruction();
             }
         } // END: ClockThread
@@ -406,17 +597,10 @@ public class Emulator implements IEmulator {
         stop();
         internalExecuteOneInstruction();
     }   
-
+    
     protected void beforeCommandExecution() 
     {
-        notifyListeners( new IEmulationListenerInvoker() {
-
-            @Override
-            public void invoke(IEmulator emulator, IEmulationListener listener)
-            {
-                listener.beforeCommandExecution( emulator );
-            }
-        });
+    	listenerHelper.invokeBeforeCommandExecutionListeners( this.clockThread.isRunnable );
     }
 
     /**
@@ -425,16 +609,11 @@ public class Emulator implements IEmulator {
      */
     protected void afterCommandExecution(final int executedCommandDuration) 
     {
-        notifyListeners( new IEmulationListenerInvoker() {
-
-            @Override
-            public void invoke(IEmulator emulator, IEmulationListener listener)
-            {
-                listener.afterCommandExecution( emulator , executedCommandDuration );
-            }
-        });     
+    	// invoke listeners
+    	listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable , executedCommandDuration );
         
-        final BreakPoint breakpoint;
+    	// check whether we reached a breakpoint
+        final Breakpoint breakpoint;
         synchronized( breakpoints ) 
         {
             breakpoint = breakpoints.get( pc ); 
@@ -442,7 +621,8 @@ public class Emulator implements IEmulator {
         if ( breakpoint != null && breakpoint.matches( this ) ) 
         {
             stop();
-            notifyListeners( new IEmulationListenerInvoker() {
+            
+            listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
                 @Override
                 public void invoke(IEmulator emulator, IEmulationListener listener)
@@ -1252,7 +1432,6 @@ public class Emulator implements IEmulator {
      * | 0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for SOURCE)
      * +---+-----------+----------------------------------------------------------------	 
      */
-    @SuppressWarnings("deprecation")
     private int storeTargetOperand(int instructionWord,int value) 
     {
         final int operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);
@@ -1308,7 +1487,6 @@ public class Emulator implements IEmulator {
                 Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() ) );
     }
 
-    @SuppressWarnings("deprecation")
     private OperandDesc loadSourceOperand(int instructionWord) {
 
         /* SET b,a
@@ -1375,7 +1553,6 @@ public class Emulator implements IEmulator {
      * whether this is handled by the caller (because a subsequent STORE will be performed )
      * @return
      */
-    @SuppressWarnings("deprecation")
     protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
 
 
@@ -1505,7 +1682,7 @@ public class Emulator implements IEmulator {
         MemUtils.bulkLoad( memory , startingOffset , data );
 
         // notify listeners
-        notifyListeners( new IEmulationListenerInvoker() {
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
             @Override
             public void invoke(IEmulator emulator, IEmulationListener listener)
@@ -1514,25 +1691,7 @@ public class Emulator implements IEmulator {
             }
         });
     }
-
-    protected void notifyListeners(IEmulationListenerInvoker invoker) 
-    {
-        final List<IEmulationListener> copy;
-        synchronized( listeners ) 
-        {
-            copy = new ArrayList<IEmulationListener>( listeners);
-        }
-
-        for ( IEmulationListener l : copy) {
-            try {
-                invoker.invoke( this , l );
-            }
-            catch(Exception e) {
-                e.printStackTrace();
-            }
-        }         
-    }
-
+    
     protected interface IEmulationListenerInvoker {
         public void invoke(IEmulator emulator, IEmulationListener listener);
     }
@@ -1647,57 +1806,104 @@ public class Emulator implements IEmulator {
     @Override
     public void addEmulationListener(IEmulationListener listener)
     {
-        if (listener == null) {
-            throw new IllegalArgumentException("listener must not be NULL.");
-        }
-        synchronized (listeners) {
-            listeners.add( listener );
-        }
+    	listenerHelper.addEmulationListener( listener );
     }
 
     @Override
     public void removeEmulationListener(IEmulationListener listener)
     {
-        if (listener == null) {
-            throw new IllegalArgumentException("listener must not be NULL.");
-        }
-        synchronized (listeners) {
-            listeners.remove( listener );
-        }        
+    	listenerHelper.removeEmulationListener( listener );
     }
 
     @Override
-    public void addBreakpoint(BreakPoint bp)
+    public void addBreakpoint(final Breakpoint bp)
     {
         if (bp == null) {
             throw new IllegalArgumentException("breakpoint must not be NULL.");
         }
+        Breakpoint existing;
         synchronized( breakpoints ) {
-            breakpoints.put( bp.getAddress() , bp );
-        }          
+            existing = breakpoints.put( bp.getAddress() , bp );
+        }  
+        
+        // notify listeners
+        if ( existing != null ) {
+            listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+                @Override
+                public void invoke(IEmulator emulator, IEmulationListener listener)
+                {
+                    listener.breakpointDeleted( emulator , bp );
+                }
+            });         	
+        }
+        
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.breakpointAdded( emulator , bp );
+            }
+        });        
     }
 
     @Override
-    public void deleteBreakpoint(BreakPoint bp)
+    public void breakpointChanged(final Breakpoint bp) {
+    	
+        Breakpoint existing;
+        synchronized( breakpoints ) {
+            existing = breakpoints.get( bp.getAddress() );
+        }     	
+        
+        if ( existing == null ) {
+        	LOG.warn("breakpointChanged(): Unknown breakpoint "+bp);
+        	return;
+        }
+        
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.breakpointChanged( emulator , bp );
+            }
+        });         
+    }
+
+    @Override
+    public void deleteBreakpoint(final Breakpoint bp)
     {
         if (bp == null) {
             throw new IllegalArgumentException("breakpoint must not be NULL.");
         }
+        Breakpoint existing;
         synchronized( breakpoints ) {
-            breakpoints.remove( bp.getAddress() );
-        }        
-    }
-
-    @Override
-    public List<BreakPoint> getBreakPoints()
-    {
-        synchronized( breakpoints ) {
-            return new ArrayList<BreakPoint>( breakpoints.values() );
+            existing = breakpoints.remove( bp.getAddress() );
+        }      
+        // notify listeners
+        if ( existing != null ) {
+	        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+	
+	            @Override
+	            public void invoke(IEmulator emulator, IEmulationListener listener)
+	            {
+	                listener.breakpointDeleted( emulator , bp );
+	            }
+	        });         
         }
     }
 
     @Override
-    public BreakPoint getBreakPoint(Address address)
+    public List<Breakpoint> getBreakPoints()
+    {
+        synchronized( breakpoints ) {
+            return new ArrayList<Breakpoint>( breakpoints.values() );
+        }
+    }
+
+    @Override
+    public Breakpoint getBreakPoint(Address address)
     {
         if (address == null) {
             throw new IllegalArgumentException("address must not be NULL.");
@@ -1706,5 +1912,17 @@ public class Emulator implements IEmulator {
             return breakpoints.get( address );
         }
     }
+
+	@Override
+	public void unmapRegion(IMemoryRegion region) {
+		this.memory.unmapRegion( region );
+		this.memory.dumpMemoryLayout();
+	}
+
+	@Override
+	public void mapRegion(IMemoryRegion region) {
+		this.memory.mapRegion( region );
+		this.memory.dumpMemoryLayout();
+	}
 
 }

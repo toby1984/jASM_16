@@ -157,18 +157,18 @@ public abstract class Address implements Comparable<Address>
 		return result;
 	}
 	
-	public static int calcDistanceInBytes(Address start, Address end) {
+	public static Size calcDistanceInBytes(Address start, Address end) {
 	    
 	    Address startNormalized = start.toByteAddress();
 	    Address endNormalized = end.toByteAddress();
 	    
 	    if ( startNormalized.getValue() <= endNormalized.getValue() ) {
-	        return endNormalized.getValue() - startNormalized.getValue();
+	        return Size.bytes( endNormalized.getValue() - startNormalized.getValue() );
 	    }
 	    
 	    final int len1 = (int) ((ByteAddress.MAX_ADDRESS+1) - startNormalized.getValue());
 	    final int len2 = endNormalized.getValue();
-	    return len1+len2;
+	    return Size.bytes( len1+len2 );
 	}
     
 }

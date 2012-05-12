@@ -159,6 +159,13 @@ public class InstructionNodeTest extends TestHelper
 		assertSourceCode( source , instruction );
 	}
 	
+    public void testConditionalExpressionsParsing() throws Exception 
+    {
+        assertCompiles(":test SET A , 3 > 2");
+        assertCompiles(":test SET [ 3 > 2 ] , 1 == 2");
+        assertDoesNotCompile(":test SET [ a < 3 ] , 1 == 2");        
+    }
+	
     public void testAddressingModesParsing() throws Exception {
 
         assertCompiles(":test SET A, 2+test");

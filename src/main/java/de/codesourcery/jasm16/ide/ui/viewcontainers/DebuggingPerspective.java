@@ -27,6 +27,7 @@ import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
+import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
 import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
 import de.codesourcery.jasm16.ide.ui.views.HexDumpView;
@@ -126,8 +127,19 @@ public class DebuggingPerspective extends Perspective
             final ScreenView view = new ScreenView( emulator );
             addView( view );
             view.refreshDisplay();
-        }          
+        }     
+        
+        // setup screen view
+        if ( getBreakpointView() == null ) {
+            final BreakpointView view = new BreakpointView( getDisassemblerView() , emulator );
+            addView( view );
+            view.refreshDisplay();
+        }         
     }
+    
+    private BreakpointView getBreakpointView() {
+        return (BreakpointView) getViewByID( BreakpointView.VIEW_ID );
+    }  
     
     private ScreenView getScreenView() {
         return (ScreenView) getViewByID( ScreenView.VIEW_ID );

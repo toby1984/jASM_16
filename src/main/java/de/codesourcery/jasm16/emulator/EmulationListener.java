@@ -5,9 +5,15 @@ import de.codesourcery.jasm16.Address;
 /**
  * Abstract base-class for implementing {@link IEmulationListener}s.
  * 
+ * <p>Beware, this classes {@link #isInvokeBeforeCommandExecution()} implementation returns
+ * <code>false</code> by default (=do <b>NOT</b> invoke {@link #beforeCommandExecution(IEmulator)}.</p>
+ * 
+ * <p>Beware, this classes {@link #isInvokeAfterAndBeforeCommandExecutionInContinuousMode()} implementation returns
+ * <code>false</code> by default.
+ *  
  * @author tobias.gierke@code-sourcery.de
  */
-public abstract class EmulationListener implements IEmulationListener {
+public class EmulationListener implements IEmulationListener {
 
 	private volatile boolean fullSpeedMode = false;
 	
@@ -23,14 +29,15 @@ public abstract class EmulationListener implements IEmulationListener {
 	protected final boolean isFullSpeedMode() {
 		return fullSpeedMode;
 	}
-
+	
 	@Override
 	public final void afterContinuousExecution(IEmulator emulator) {
 		fullSpeedMode = false;
 		afterContinuousExecutionHook();
 	}
 
-	public abstract void afterContinuousExecutionHook();
+	public void afterContinuousExecutionHook() {
+	}
 	
 	@Override
 	public void afterReset(IEmulator emulator) {
@@ -42,7 +49,7 @@ public abstract class EmulationListener implements IEmulationListener {
 	}
 
 	@Override
-	public void onBreakpoint(IEmulator emulator, BreakPoint breakpoint) 
+	public void onBreakpoint(IEmulator emulator, Breakpoint breakpoint) 
 	{
 	}
 
@@ -56,4 +63,30 @@ public abstract class EmulationListener implements IEmulationListener {
 	{
 	}
 
+	@Override
+	public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
+	}
+
+	@Override
+	public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
+	}
+
+	@Override
+	public void breakpointChanged(IEmulator emulator, Breakpoint breakpoint) {
+	}
+
+	@Override
+	public boolean isInvokeBeforeCommandExecution() {
+		return false;
+	}
+
+	@Override
+	public boolean isInvokeAfterCommandExecution() {
+		return true;
+	}
+	
+	@Override
+	public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode() {
+		return false;
+	}
 }

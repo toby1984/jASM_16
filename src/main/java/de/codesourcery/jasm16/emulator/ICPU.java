@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Register;
 
 public interface ICPU
 {
@@ -46,4 +47,6 @@ public interface ICPU
     public int getInterruptAddress();
     
     public int getCurrentCycleCount();
+
+	public int getRegisterValue(Register reg);
 }

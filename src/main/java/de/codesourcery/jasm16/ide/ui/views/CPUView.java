@@ -23,7 +23,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.emulator.BreakPoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
@@ -40,14 +39,6 @@ public class CPUView extends AbstractView
     private IEmulator emulator;
     
     private final IEmulationListener listener = new EmulationListener() {
-
-        @Override
-        public void beforeCommandExecution(IEmulator emulator) 
-        {
-        	if ( ! isFullSpeedMode() ) {
-        		refreshDisplay();
-        	}
-        }
 
         @Override
         public void afterCommandExecution(IEmulator emulator, int commandDuration)
@@ -107,10 +98,13 @@ public class CPUView extends AbstractView
                 builder.append("\n");
             }
         }
-        builder.append("\nPC: "+Misc.toHexString( cpu.getPC().getValue() )).append("\n");
+        builder.append("\nPC: "+Misc.toHexString( cpu.getPC().getValue() ) );
+        builder.append(" (elapsed cycles: "+cpu.getCurrentCycleCount()).append(")");
+        builder.append("\n");
+        
         builder.append("EX: "+Misc.toHexString( cpu.getEX() )).append("\n");
         builder.append("IA: "+Misc.toHexString( cpu.getInterruptAddress() )).append("\n");        
-        builder.append("SP: "+Misc.toHexString( cpu.getSP().getValue() ));
+        builder.append("SP: "+Misc.toHexString( cpu.getSP().getValue() )).append("\n");
         
         SwingUtilities.invokeLater( new Runnable() {
             @Override

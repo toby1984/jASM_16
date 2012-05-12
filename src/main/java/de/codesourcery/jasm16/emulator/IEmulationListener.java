@@ -53,20 +53,70 @@ public interface IEmulationListener
     
     public void afterMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes);
     
-    public void onBreakpoint(IEmulator emulator,BreakPoint breakpoint);
+    public void breakpointAdded(IEmulator emulator,Breakpoint breakpoint);
+    
+    public void breakpointDeleted(IEmulator emulator,Breakpoint breakpoint);
+    
+    public void breakpointChanged(IEmulator emulator,Breakpoint breakpoint);    
+    
+    public void onBreakpoint(IEmulator emulator,Breakpoint breakpoint);
     
     /**
      * Invoked before executing the next command.
      * 
+     * <p>Note that this method will only ever be invoked if the listener also returns
+     * <code>true</code> from {@link #isInvokeBeforeCommandExecution()}.</p>
+     *      
      * @param emulator
+     * @see #isInvokeBeforeCommandExecution()
      */
     public void beforeCommandExecution(IEmulator emulator);
     
     /**
+     * Check whether this listener wants to be invoked before
+     * each command execution.
+     * 
+     * <p>
+     * This method is used by the emulator to determine up-front whether a listener needs
+     * to be invoked on every command execution.</p>
+     * <p>The emulator will only check this flag <b>ONCE</b> when
+     * the listener is first registered.</p>
+     * @return
+     */
+    public boolean isInvokeBeforeCommandExecution();
+    
+    /**
+     * Check whether this listener wants to be invoked
+     * after each command execution.
+     * 
+     * <p>
+     * This method is used by the emulator to determine up-front whether a listener needs
+     * to be invoked on every command execution.</p>
+     *      
+     * <p>The emulator will only check this flag <b>ONCE</b> when
+     * the listener is first registered.</p>     
+     * @return
+     */
+    public boolean isInvokeAfterCommandExecution();
+    
+    /**
+     * Check whether this listener's {@link #beforeCommandExecution(IEmulator)} and
+     * {@link #afterCommandExecution(IEmulator, int)} methods should be invoked
+     * when the emulator is running in continuous (non-single-step) mode.
+     * 
+     * @return
+     */
+    public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode();
+    
+    /**
      * Invoked after executing a command.
+     * 
+     * <p>Note that this method will only ever be invoked if the listener also returns
+     * <code>true</code> from {@link #isInvokeAfterCommandExecution()}.</p>
      * 
      * @param emulator
      * @param commandDuration duration (in cycles) of the last command or -1 on internal errors during command execution.
+     * @see #isInvokeAfterCommandExecution()
      */
     public void afterCommandExecution(IEmulator emulator,int commandDuration);
 }

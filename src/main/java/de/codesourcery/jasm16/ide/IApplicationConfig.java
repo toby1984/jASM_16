@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.ide;
 import java.io.File;
 import java.io.IOException;
 
+import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.ide.ui.views.IView;
 
 /**

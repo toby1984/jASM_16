@@ -19,8 +19,14 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Iterator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JButton;
 import javax.swing.JPanel;
@@ -28,11 +34,14 @@ import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
+import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -50,14 +59,28 @@ public class DisassemblerView extends AbstractView
     private final DebuggingPerspective perspective;
     private IEmulator emulator;
     
-    private Address dumpStartAddress = Address.ZERO;
-    private int numberOfInstructionsToDump = 10;
     private boolean showHexDump = true;
     
     private final Disassembler disassembler = new Disassembler();
     
     private final IEmulationListener listener = new EmulationListener() {
 
+    	public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
+        	refreshDisplay();
+    	};
+    	
+    	public void breakpointChanged(IEmulator emulator, Breakpoint breakpoint) {
+    		refreshDisplay();
+    	};
+    	
+    	public void onBreakpoint(IEmulator emulator, Breakpoint breakpoint) {
+    		System.out.println("Breakpoint reached: "+breakpoint);
+    	};
+    	
+    	public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
+    		refreshDisplay();
+    	};
+    	
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
@@ -128,18 +151,37 @@ public class DisassemblerView extends AbstractView
             return;
         }
         
-        final Address pc = emulator.getCPU().getPC();
+        setViewStartingAddress( emulator.getCPU().getPC() );
+    }
+    
+    public void setViewStartingAddress(Address startingAddress) 
+    {
+    	// show some context before the actual address so the 
+    	// use is not completely lost where in the program he is
+        final Address offset = Address.wordAddress( 3 ); 
+        final Address realStart = startingAddress.minus( offset );
         
-        final Address offset = Address.wordAddress( 3 );
-        final List<DisassembledLine> lines = disassembler.disassemble( emulator.getMemory() , pc.minus( offset ) , numberOfInstructionsToDump , showHexDump );
-        final StringBuilder result = new StringBuilder();
+        int rows = calculateVisibleTextRowCount( textArea );
+        if ( rows < 5 ) {
+        	rows = 5;
+        }
+        final List<DisassembledLine> lines = disassembler.disassemble( 
+        		emulator.getMemory() , 
+        		realStart , rows , showHexDump 
+        );
+        
+        renderDisassembly(lines);    	
+    }
+
+	private void renderDisassembly(final List<DisassembledLine> lines) 
+	{
+        final Address pc = emulator.getCPU().getPC(); // used to mark the current PC value
+        
+		final StringBuilder result = new StringBuilder();
         final Iterator<DisassembledLine> it = lines.iterator();
         while( it.hasNext() ) 
         {
-            final DisassembledLine line = it.next();
-            final int realAddress = line.getAddress().getValue()+dumpStartAddress.getValue();
-            final String prefix = realAddress == pc.getValue() ? " >> " : "    ";
-            result.append( prefix ).append( Misc.toHexString( realAddress ) ).append(": ").append( line.getContents() );
+            result.append( toString( pc , it.next() ) );
             if ( it.hasNext() ) {
                 result.append("\n");
             }
@@ -153,6 +195,50 @@ public class DisassemblerView extends AbstractView
                 textArea.setText( result.toString() );         
             }
         });
+	}
+    
+    private String toString(Address pc , DisassembledLine line) 
+    {
+        final Address realAddress = line.getAddress();
+        return createLinePrefix(pc,realAddress,line)+ Misc.toHexString( realAddress )+": "+line.getContents();
+    }
+    
+    private String createLinePrefix(Address pc , Address realAddress , DisassembledLine line) 
+    {
+    	/*
+    	 * The prefix may contain a flag indicating that 
+    	 * a breakpoint is present on this line as well
+    	 * as a caret for the current program counter (PC) position.
+    	 * 
+    	 * Example:
+    	 * 
+    	 * [B] >> 0000: SET a,1
+    	 */
+    	
+    	final Breakpoint breakpoint = emulator.getBreakPoint( realAddress);
+		String prefix1 = breakpoint != null ? breakpoint.isEnabled() ? "[B] " : "[_] " : "    ";
+    	String prefix2 = realAddress.equals( pc ) ? ">> " : "   ";
+    	return prefix1+prefix2;
+    }
+    
+    private DisassembledLine parseDisassembledLine(String text) {
+    	
+    	// [B] >> 0000: 
+    	final Pattern pattern = Pattern.compile( "^(\\[B\\]){0,1}[ ]*(>>){0,1}[ ]*([0-9a-f]+):(.*?);(.*)");
+    	
+    	final Matcher m = pattern.matcher( text );
+    	if ( ! m.matches() ) {
+    		throw new RuntimeException("Unparseable line '"+text+"'");
+    	}
+    	@SuppressWarnings("unused")
+		final String hasBreakpoint = m.group(1);
+    	@SuppressWarnings("unused")
+		final String isAtCurrentPC = m.group(2);
+    	final Address address = Address.wordAddress( Misc.parseHexString( m.group(3) ) );
+    	final String disassembly = m.group(4);
+    	final String instructionWordsHexDump = m.group(5).trim();
+    	final Size instructionSize = Size.words( instructionWordsHexDump.split(" ").length ); 
+    	return new DisassembledLine( address , disassembly , instructionSize );
     }
     
     public void setEmulator(IEmulator emulator)
@@ -187,6 +273,42 @@ public class DisassemblerView extends AbstractView
         setColors( textArea );
         textArea.setFont( getMonospacedFont() );
         textArea.setEditable( false );
+        
+        textArea.addMouseListener( new MouseAdapter() 
+        {
+        	public void mouseClicked(java.awt.event.MouseEvent e) 
+        	{
+        		if ( e.getButton() != MouseEvent.BUTTON3 ) {
+        			return;
+        		}
+        		String text = getTextAtLocation( textArea , e.getX() , e.getY() );
+        		if ( text != null ) {
+        			text = text.replaceAll( Pattern.quote("\n" ) , "" );
+        			
+        			final DisassembledLine line = parseDisassembledLine( text );
+        			toggleBreakpoint( line.getAddress() );
+        		}
+        	}
+        } );
+        
+        textArea.addKeyListener( new PagingKeyAdapter() {
+			
+			@Override
+			protected void onePageUp() {
+			}
+			
+			@Override
+			protected void onePageDown() {
+			}
+			
+			@Override
+			protected void oneLineUp() {
+			}
+			
+			@Override
+			protected void oneLineDown() {
+			}
+		});        
         
         // setup top panel
         final JPanel buttonBar = new JPanel();
@@ -253,7 +375,14 @@ public class DisassemblerView extends AbstractView
         bottomPanel.add( textArea , cnstrs );
         
         // ======== assemble result panel ===========
+        
         final JPanel result = new JPanel();
+        result.addComponentListener( new ComponentAdapter() {
+        	@Override
+        	public void componentResized(ComponentEvent e) {
+        		refreshDisplay();
+        	}
+		});
         setColors( result );
         result.setLayout( new GridBagLayout() );       
         
@@ -266,6 +395,16 @@ public class DisassemblerView extends AbstractView
         return result;
     }
 
+    protected void toggleBreakpoint(Address address) {
+    	
+    	Breakpoint existing = emulator.getBreakPoint( address );
+    	if ( existing == null ) {
+    		emulator.addBreakpoint( new Breakpoint( address ) );
+    	} else {
+    		emulator.deleteBreakpoint( existing );
+    	}
+    }
+    
     @Override
     public JPanel getPanel() {
         if ( panel == null ) {

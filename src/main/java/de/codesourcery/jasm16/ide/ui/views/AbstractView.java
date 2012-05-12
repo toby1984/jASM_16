@@ -21,12 +21,17 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
+import java.awt.Point;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.Action;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.Position;
 
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
@@ -107,11 +112,32 @@ public abstract class AbstractView implements IView
 		return actionId;
 	}
 	
-	protected int calculateVisibleTextRowCount(JComponent component) {
+	protected int calculateVisibleTextRowCount(JTextComponent component) {
 		
 		final Dimension size = component.getSize();
 		final FontMetrics fontMetrics = component.getFontMetrics( component.getFont() );
 		final int height = fontMetrics.getHeight();
 		return size.height / height;
 	}
+	
+    protected String getTextAtLocation(JTextComponent textArea , int x,int y) 
+    {
+		final Point pt = new Point( x , y );
+        final Position.Bias[] biasRet = new Position.Bias[1];
+        final int pos = textArea.getUI().viewToModel(textArea, pt, biasRet);
+		final int elementIndex = textArea.getDocument().getDefaultRootElement().getElementIndex( pos );
+		
+		final Element element = textArea.getDocument().getDefaultRootElement().getElement( elementIndex );
+		if ( element != null ) {
+			final int startOffset = element.getStartOffset();
+			final int endOffset = element.getEndOffset();
+			try {
+				return textArea.getDocument().getText( startOffset , endOffset - startOffset );
+			} 
+			catch (BadLocationException e1) {
+				e1.printStackTrace();
+			}
+		}
+		return null;
+    }	
 }
