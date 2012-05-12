@@ -100,6 +100,9 @@ public class DefaultWorkspace implements IWorkspace
 
 		this.projects.clear();
 		this.projects.addAll( tmp );
+		for ( IAssemblyProject project : tmp ) {
+			addResourceListener( project );
+		}
 
 		opened.set( true );
 	}
