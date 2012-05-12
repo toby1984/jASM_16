@@ -136,6 +136,65 @@ public class LexerTest extends TestHelper {
         assertTrue( lexer.eof() );
     }
     
+    public void testConditional1() 
+    {
+        String source ="1<=2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, "<=" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }    
+    
+    public void testConditional2() 
+    {
+        String source ="1>=2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, ">=" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }     
+    
+    public void testConditional3() 
+    {
+        String source ="1<2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, "<" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    } 
+    
+    public void testConditional4() 
+    {
+        String source ="1>2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, ">" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }      
+    
+    public void testConditional5() 
+    {
+        String source ="1==2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, "==" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }      
+    
+    public void testConditional6() 
+    {
+        String source ="1!=2";
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "1" );
+        assertToken( lexer , TokenType.OPERATOR, "!=" );
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "2" );
+        assertTrue( lexer.eof() );
+    }        
     public void testParseExpressionWithNegativeNumber() throws ParseException 
     {
         String source ="1+-2";

@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.utils;
 
+import static de.codesourcery.jasm16.compiler.io.IResource.ResourceType.SOURCE_CODE;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -98,15 +100,18 @@ import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompiler;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.AbstractResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
+import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 
 /**
  * Crude editor to test the compiler's inner workings.
@@ -910,7 +915,7 @@ public class ASTInspector {
 
 		editorPane.setText( source );
 
-		final IResource resource = new IResource() {
+		final IResource resource = new AbstractResource(SOURCE_CODE) {
 
 			@Override
 			public String readText(ITextRegion range) throws IOException
@@ -949,6 +954,15 @@ public class ASTInspector {
 			public String getIdentifier() {
 				return file.getAbsolutePath();
 			}
+
+            @Override
+            public boolean isSame(IResource other)
+            {
+                if ( other == this ) {
+                    return true;
+                }
+                return false;
+            }
 		};
 
 		this.file = file;
@@ -1191,8 +1205,6 @@ public class ASTInspector {
 		}
 	}
 
-
-
 	private void setupCompiler() 
 	{
 		compiler = new Compiler();
@@ -1204,18 +1216,18 @@ public class ASTInspector {
 		compiler.setResourceResolver( new FileResourceResolver() {
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
 			{
 				if ( parent instanceof FileResource) {
-					return super.resolveRelative(identifier, parent);
+					return super.resolveRelative(identifier, parent, resourceType);
 				}
-				return new FileResource( new File( file.getParentFile() , identifier ) );
+				return new FileResource( new File( file.getParentFile() , identifier ) , ResourceType.UNKNOWN);
 			}
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
 			{
-				return new FileResource( new File(identifier) );
+				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );
 			}
 		} );
 	}

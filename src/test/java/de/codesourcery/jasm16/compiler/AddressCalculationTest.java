@@ -54,7 +54,7 @@ public class AddressCalculationTest extends TestHelper
 				}
 				System.out.println("Symbol-table: "+context.getSymbolTable() );
 				
-				assertEquals( "Label address mismatch" , Address.valueOf( 1 ) , label.getAddress() );  
+				assertEquals( "Label address mismatch" , Address.wordAddress( 1 ) , label.getAddress() );  
 			}
 			
 		};

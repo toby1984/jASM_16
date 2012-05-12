@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.compiler.io;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,13 +30,15 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class StringResource implements IResource
+public class StringResource extends AbstractResource
 {
-    private final String data;
+    private String data;
     private final String identifier;
     
-    public StringResource(String identifier, String data)
+    public StringResource(String identifier, String data,ResourceType type)
     {
+    	super( type );
+    	
 		if (StringUtils.isBlank(identifier)) {
 			throw new IllegalArgumentException(
 					"identifier must not be NULL/blank");
@@ -56,7 +59,15 @@ public class StringResource implements IResource
     @Override
     public OutputStream createOutputStream(boolean append) throws IOException
     {
-        throw new UnsupportedOperationException("not possible");
+        final OutputStream result = new ByteArrayOutputStream() {
+            @Override
+            public void close() throws IOException
+            {
+                super.close();
+                data = new String( toByteArray() );
+            }
+        };
+        return result;
     }
 
     @Override
@@ -84,4 +95,16 @@ public class StringResource implements IResource
 	public String getIdentifier() {
 		return identifier;
 	}
+	
+    @Override
+    public boolean isSame(IResource other)
+    {
+        if ( other == this ) {
+            return true;
+        }
+        if ( other instanceof StringResource) {
+            return this.data.equals( ((StringResource) other).data );
+        }
+        return false;
+    }   	
 }

@@ -31,14 +31,15 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class FileResource implements IResource
+public class FileResource extends AbstractResource 
 {
     private final File file;
     
     private String contents;
     
-    public FileResource(File file)
+    public FileResource(File file,ResourceType type)
     {
+    	super( type );
         if (file == null) {
             throw new IllegalArgumentException("file must not be NULL.");
         }
@@ -53,7 +54,6 @@ public class FileResource implements IResource
         }
         return new ByteArrayInputStream( contents.getBytes() );
     }
-
 
     @Override
     public OutputStream createOutputStream(boolean append) throws IOException
@@ -92,6 +92,21 @@ public class FileResource implements IResource
         return file.getAbsoluteFile();
     }    
 
+    @Override
+    public boolean supportsDelete() {
+    	return true;
+    }
+    
+    @Override
+    public void delete() throws IOException 
+    {
+    	if ( file.exists() ) {
+    		if ( ! file.delete() ) {
+    			throw new IOException("Failed to delete "+file.getAbsolutePath());
+    		}
+    	}
+    }
+
     public File getFile()
     {
         return file;
@@ -102,4 +117,15 @@ public class FileResource implements IResource
 		return file.getAbsolutePath();
 	}
 
+    @Override
+    public boolean isSame(IResource other)
+    {
+        if ( other == this ) {
+            return true;
+        }
+        if ( other instanceof FileResource) {
+            return this.file.getAbsolutePath().equals( ((FileResource) other).file.getAbsolutePath() );
+        }
+        return false;
+    }	
 }

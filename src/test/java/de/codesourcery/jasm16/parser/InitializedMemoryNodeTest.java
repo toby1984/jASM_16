@@ -289,6 +289,12 @@ public class InitializedMemoryNodeTest extends TestHelper
             {
                 throw new UnsupportedOperationException("Not implemented");
             }
+
+            @Override
+            public Address getFirstWriteOffset()
+            {
+                return Address.ZERO;
+            }
         };
         
         

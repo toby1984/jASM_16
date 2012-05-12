@@ -27,11 +27,12 @@ import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
-import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
+import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -69,13 +70,13 @@ public class Parser implements IParser
         final IResourceResolver resolver = new IResourceResolver() {
 
             @Override
-            public IResource resolve(String identifier) throws ResourceNotFoundException
+            public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
             }
 
             @Override
-            public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+            public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
             }
@@ -97,7 +98,14 @@ public class Parser implements IParser
         		resolver , 
         		compilationUnitResolver,
         		this.options );
-		return (AST) new AST().parse( context );
+        final AST result = (AST) new AST().parse( context );
+        if ( ! context.eof() ) {
+        	throw new RuntimeException("Internal error, parsing finished although not at eof?");
+        }
+        if ( context.currentParseIndex() != source.length() ) {
+        	throw new RuntimeException("Internal error, parsing at EOF but not all input tokens consumed ?");
+        }
+        return result;
     }
 
     @Override

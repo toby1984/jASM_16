@@ -20,6 +20,7 @@ import java.util.Collections;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.StringResource;
@@ -49,21 +50,22 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			public IResource resolve(String identifier,ResourceType type) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "../source2".equals( identifier ) ) 
 				{
 					assertSame( unit1.getResource() , parent );
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , resourceType );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
 			}
+
 		});
 
 		c.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
@@ -79,7 +81,7 @@ public class IncludeSourceTest extends TestHelper {
 		
 		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
 		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
-		assertEquals( Address.valueOf( 0 ) , symbol.getAddress() );		
+		assertEquals( Address.wordAddress( 0 ) , symbol.getAddress() );		
 	}
 	
 	public void testInclude() throws ParseException {
@@ -98,16 +100,16 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
 			}
@@ -127,7 +129,7 @@ public class IncludeSourceTest extends TestHelper {
 		
 		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
 		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
-		assertEquals( Address.valueOf( 0 ) , symbol.getAddress() );		
+		assertEquals( Address.wordAddress( 0 ) , symbol.getAddress() );		
 	}
 	
 	public void testCircularInclude() throws ParseException {
@@ -148,18 +150,18 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException 
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
 				} else if ( "source1".equals( identifier ) ) {
-					return new StringResource( identifier , source2 );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");				
 			}

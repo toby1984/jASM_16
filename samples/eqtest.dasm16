@@ -1,0 +1,5 @@
+
+.equ value1 value2
+.equ value2 value1
+
+              .byte value1

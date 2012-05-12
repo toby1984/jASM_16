@@ -77,7 +77,7 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 		if ( value == null ) {
 			this.address = null;
 		} else {
-			this.address = Address.valueOf( value );
+			this.address = Address.wordAddress( value );
 		}
 	}
 	

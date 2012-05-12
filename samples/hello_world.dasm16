@@ -1,0 +1,44 @@
+            set j, 0x4000
+            set pc, run
+     
+:video
+    dat 0x8000
+     
+:print_char
+            set b, [video]          ;ptr to video
+            bor a, 0xf000           ;color
+            set [b], a
+            add [video], 1
+            set pc, pop 
+     
+:print                     
+            set [j+1], a
+            set a, [a]
+            jsr print_char
+            set a, [j+1]
+            add a, 1
+            ifn [a], 0x0000
+            set pc, print
+            set pc, pop
+           
+:newline
+            div     [video], 32
+            mul [video], 32
+            add [video], 32
+            set pc, pop
+     
+:run
+           
+            set a, hello
+            jsr print
+            jsr newline
+            set a, world
+            jsr print
+     
+:end
+            set pc, end
+           
+:hello
+            dat "Hello", 0  
+:world
+            dat ", world!", 0

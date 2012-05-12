@@ -17,7 +17,7 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
@@ -83,7 +83,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 			} 
 			else if ( node instanceof OperatorNode) 
 			{
-				return checkValueInRange( context , (OperatorNode) node , 0L , Address.MAX_ADDRESS );
+				return checkValueInRange( context , (OperatorNode) node , 0L , WordAddress.MAX_ADDRESS );
 			}
 			return true;
 		}
@@ -132,7 +132,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 							{
 								if ( node instanceof OperatorNode) 
 								{
-									return checkValueInRange( compContext , (OperatorNode) node , 0L , Address.MAX_ADDRESS );
+									return checkValueInRange( compContext , (OperatorNode) node , 0L , WordAddress.MAX_ADDRESS );
 								}
 								return true;
 							}

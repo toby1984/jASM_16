@@ -19,12 +19,31 @@ import java.io.File;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 public class FileResourceResolver implements IResourceResolver 
 {
+
+    private File baseDir;
+    public FileResourceResolver() {
+    }
+    
+    public FileResourceResolver(File baseDir) {
+        if (baseDir == null) {
+            throw new IllegalArgumentException("baseDir must not be NULL.");
+        }
+        if ( ! baseDir.exists() ) {
+            throw new IllegalArgumentException("Directory '"+baseDir.getAbsolutePath()+"' does not exist");
+        }
+        if ( baseDir.isDirectory() ) {
+            throw new IllegalArgumentException("'"+baseDir.getAbsolutePath()+"' is no directory?");
+        }        
+        this.baseDir = baseDir;
+    }    
+    
     @Override
-    public IResource resolve(String identifier) throws ResourceNotFoundException
+    public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
     {
         if (StringUtils.isBlank(identifier)) {
             throw new IllegalArgumentException("identifier must not be NULL/blank.");
@@ -39,23 +58,27 @@ public class FileResourceResolver implements IResourceResolver
             throw new ResourceNotFoundException( file.getAbsolutePath()+" is not a regular file." , identifier );
         }        
         
-        return new FileResource( file );
+        return new FileResource( file , resourceType);
     }
 
     @Override
-    public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+    public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
     {
         if ( ! (parent instanceof FileResource) ) {
             throw new IllegalArgumentException("Called with non-file resource "+parent);
         }
         if ( identifier.startsWith( File.pathSeparator ) ) {
-            return resolve( identifier );
+            return resolve( identifier, resourceType );
         }
-        final File parentFile = ((FileResource) parent).getAbsoluteFile().getParentFile();
+        final File parentFile;
+        if ( baseDir == null ) {
+            parentFile= ((FileResource) parent).getAbsoluteFile().getParentFile();
+        } else {
+            parentFile = baseDir;
+        }
         if ( parentFile == null ) {
-            return resolve( identifier );
+            return resolve( identifier, resourceType );
         }
-        return new FileResource( new File( parentFile , identifier ));
+        return new FileResource( new File( parentFile , identifier ) , resourceType );
     }
-
 }

@@ -36,10 +36,10 @@ import de.codesourcery.jasm16.compiler.GenericCompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Label;
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
@@ -129,7 +129,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
 							throw new RuntimeException("Internal error, address of label "+symbol+" is "+
 									byteAddress+" which is not on a 16-bit boundary?");
 						}
-						symbol.setAddress( Address.valueOf( wordAddress ) );
+						symbol.setAddress( Address.wordAddress( wordAddress ) );
 					}
 				} 
 				else if ( n instanceof ObjectCodeOutputNode) 

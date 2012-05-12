@@ -20,13 +20,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
 
-import org.apache.commons.lang.ArrayUtils;
-
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;
 import de.codesourcery.jasm16.utils.Misc;
@@ -39,7 +38,7 @@ public class CompilerTest extends TestHelper
 		final Compiler compiler = new Compiler();
 		compiler.setObjectCodeWriterFactory( NOP_WRITER );
 		
-		final IResource resource = new ClassPathResource("specsample.dasm16");
+		final IResource resource = new ClassPathResource("specsample.dasm16",ResourceType.SOURCE_CODE);
 		final ICompilationUnit unit = CompilationUnit.createInstance("classpath input" ,  resource );
 		
 		final ByteArrayOutputStream[] out = new ByteArrayOutputStream[]{null};
@@ -86,7 +85,7 @@ public class CompilerTest extends TestHelper
 		assertNotNull( out[0] );
 		
 		final byte[] actual = out[0].toByteArray();
-		final byte[] expected = Misc.readBytes( new ClassPathResource("specsample.dcpu16" ) );
+		final byte[] expected = Misc.readBytes( new ClassPathResource("specsample.dcpu16" , ResourceType.SOURCE_CODE ) );
 //		assertTrue("Generated object code does not match expectation" , ArrayUtils.isEquals( expected , actual ) );
 	}
 	

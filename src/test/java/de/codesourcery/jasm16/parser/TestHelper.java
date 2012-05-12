@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -37,12 +38,15 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
+import de.codesourcery.jasm16.compiler.ICompiler;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
-import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -65,17 +69,25 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected static final IResourceResolver RESOURCE_RESOLVER = new IResourceResolver() {
         
         @Override
-        public IResource resolve(String identifier) throws ResourceNotFoundException
+        public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
 
         @Override
-        public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+        public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
     };
+    
+    protected File getTempDir() throws IOException {
+    	File f = File.createTempFile("blubb"," blah");
+    	File parent = f.getParentFile();
+    	assertNotNull( parent );
+    	f.delete();
+    	return parent;
+    }
     
     protected static final IObjectCodeWriterFactory NOP_WRITER = new NullObjectCodeWriterFactory();
     
@@ -151,6 +163,25 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 		return unit;
     }    
     
+    protected byte[] compileToByteCode(String source) 
+    {
+        
+        final ICompiler c = new de.codesourcery.jasm16.compiler.Compiler();
+        final ByteArrayObjectCodeWriterFactory factory = new ByteArrayObjectCodeWriterFactory();
+        c.setObjectCodeWriterFactory( factory );
+        
+        final ICompilationUnit unit = CompilationUnit.createInstance("string" , source );
+        
+        c.compile( Collections.singletonList( unit ) );
+        
+        if ( unit.hasErrors() ) {
+            Misc.printCompilationErrors( unit , source , true );
+            throw new RuntimeException("Internal error, compilation failed.");
+        }
+        
+        return factory.getBytes();
+    }    
+    
     protected final void assertDoesNotCompile(String source) {
 
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
@@ -187,13 +218,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         		new IResourceResolver() {
             
             @Override
-            public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+            public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
             }
             
             @Override
-            public IResource resolve(String identifier) throws ResourceNotFoundException
+            public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
             }
@@ -281,12 +312,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			}
 
 			@Override
-			public IResource resolve(String identifier) throws ResourceNotFoundException {
+			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
+			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
@@ -308,5 +339,9 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     		throws IOException 
     {
     	return CompilationUnit.createInstance( resource.getIdentifier() , resource );
+    }
+    
+    protected void assertEquals(File expected,File actual) {
+    	assertEquals( expected.getAbsolutePath() , actual.getAbsolutePath() );
     }
 }

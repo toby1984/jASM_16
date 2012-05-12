@@ -65,7 +65,7 @@ public class OriginNode extends ObjectCodeOutputNode
         }
         
         try {
-            address = Address.valueOf( number.getValue() );
+            address = Address.wordAddress( number.getValue() );
         } catch(IllegalArgumentException e) {
             context.addCompilationError( "Address value is out-of-range" , number );            
         }

@@ -1,0 +1,46 @@
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.codesourcery.jasm16.ide;
+
+import java.io.File;
+import java.util.List;
+
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+
+public interface IAssemblyProject extends IResourceResolver, IResourceListener
+{
+    public String getName();
+    
+    public ProjectConfiguration getConfiguration();
+    
+    public List<IResource> getResources(ResourceType type);
+    
+    /**
+     * 
+     * @param file
+     * @return resource or <code>null</code> if this resource is currently not being
+     * managed by this project / unknown to this project.
+     */
+    public IResource getResourceForFile(File file);
+    
+    public List<IResource> getAllResources();
+    
+    public IProjectBuilder getBuilder();
+    
+    public IResource lookupResource(String identifier);
+}
