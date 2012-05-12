@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
@@ -77,18 +78,13 @@ public class IDEMain
     		throw new IOException("Unable to create new project '"+projectName+"'");
     	}
     	
+    	final ClassPathResource r = new ClassPathResource("hello_world.dasm16",ResourceType.SOURCE_CODE);
+    	
     	final File sourceFile = new File( sourceFolders.get(0) , "sample.dasm16" );
-
-        final String source = ":label SET a,1\n"+
-                "       ADD b ,1\n"+
-                "       ADD [stuff],1\n"+
-                "       SET c , [stuff]\n"+
-                "       SET PC,label\n"+
-                ":stuff .dat 0x000";
-        
-        Misc.writeFile( sourceFile , source );        
-        
         final IResource file = new FileResource( sourceFile ,ResourceType.SOURCE_CODE );
+        
+    	Misc.copyResource( r , file ); 
+    
         workspace.resourceCreated( project , file );
     }    
 }
