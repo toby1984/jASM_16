@@ -124,6 +124,9 @@ public class DefaultKeyboard implements IDevice {
 	@Override
 	public void afterAddDevice(IEmulator emulator) 
 	{
+		if ( this.emulator != null ) {
+			throw new IllegalStateException("Device "+this+" is already added to emulator "+this.emulator);
+		}
 		this.emulator = emulator;
 		inputComponent.addKeyListener( keyListener );
 	}
