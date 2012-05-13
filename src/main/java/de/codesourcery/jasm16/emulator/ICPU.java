@@ -44,9 +44,17 @@ public interface ICPU
     
     public int getEX();
     
-    public int getInterruptAddress();
+    public Address getInterruptAddress();
     
     public int getCurrentCycleCount();
 
+    public void setRegisterValue(Register reg, int value );
+    
 	public int getRegisterValue(Register reg);
+	
+	public void setQueueInterrupts(boolean yesNo);
+	
+	public boolean isQueueInterrupts();
+	
+	public boolean interruptsEnabled();
 }

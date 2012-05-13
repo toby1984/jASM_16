@@ -39,6 +39,26 @@ public interface IEmulator
     public void loadMemory(Address startingOffset, byte[] data);
 
     // hardware
+    public void addDevice(IDevice device);
+    
+    public List<IDevice> getDevices();
+    
+    public void removeDevice(IDevice device);
+    
+    /**
+     * Triggers an interrupt.
+     * 
+     * <p>If the interrupt queue is empty, the interrupt will be handled
+     * before the next regular instruction execution.If the interrupt queue
+     * is not yet full ( less than 256 interrupts queued), the interrupt
+     * will be added to the queue. If interrupts are currently disabled,
+     * this method will return <code>false</code>.</p>
+     * @param interrupt
+     * @return <code>false</code> if interrupts are disabled (IA is set to 0),
+     * otherwise <code>true</code>
+     */
+    public boolean triggerInterrupt(IInterrupt interrupt);
+    
     public ICPU getCPU();
     
     public IReadOnlyMemory getMemory();
