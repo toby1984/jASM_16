@@ -237,6 +237,7 @@ public class Emulator implements IEmulator {
 	private volatile boolean queueInterrupts = false;
 	
 	// @GuardedBy( interruptQueue )
+	private volatile IInterrupt currentInterrupt = null;
 	private final List<IInterrupt> interruptQueue = new ArrayList<IInterrupt>();
 
 	private volatile int currentCycle = 0;
@@ -637,13 +638,17 @@ public class Emulator implements IEmulator {
 
 	protected void internalExecuteOneInstruction() 
 	{
-		if ( getCPU().interruptsEnabled() && 
-			 ! getCPU().isQueueInterrupts() ) 
-		{
+		if ( getCPU().interruptsEnabled() ) 
+		{ 
 			final IInterrupt irq;
 			synchronized( interruptQueue ) 
 			{
-				if ( ! interruptQueue.isEmpty() ) {
+				if ( currentInterrupt != null ) {
+					irq = currentInterrupt;
+					currentInterrupt = null;
+				} 
+				else  if ( ! interruptQueue.isEmpty() ) 
+				{
 					irq = interruptQueue.remove(0);
 				} else {
 					irq = null;
@@ -2145,12 +2150,10 @@ public class Emulator implements IEmulator {
 
 		synchronized ( interruptQueue ) 
 		{
-			if ( interruptQueue.isEmpty() || 
-				 getCPU().isQueueInterrupts()) 
-			{
-				interruptQueue.add( interrupt );
+			if ( currentInterrupt == null ) {
+				currentInterrupt  = interrupt;
 			} else {
-				return false;
+				interruptQueue.add( interrupt );
 			}
 		}
 		return true;
