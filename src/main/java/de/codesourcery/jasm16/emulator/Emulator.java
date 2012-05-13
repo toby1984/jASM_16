@@ -1545,20 +1545,17 @@ public class Emulator implements IEmulator {
 		 *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
    |      |       | pops PC from the stack
 		 */
-		final int CYCLES = 3;
-		
 		getCPU().setQueueInterrupts( false );
 		
 		// pop a from stack
-		final int valueForA = memory.read( sp );
+		registers.set(REGISTER_A , memory.read( sp ) );
 		sp.incrementByOne( true );
-		final int operandDesc = storeTargetOperand( instructionWord , valueForA , true );
 		
 		// pop PC from stack
 		pc = Address.wordAddress( memory.read( sp ) );
 		sp.incrementByOne( true );
 		
-		return CYCLES+operandDesc;
+		return 3;
 	}
 
 	private int handleIAS(int instructionWord) 
@@ -2143,6 +2140,8 @@ public class Emulator implements IEmulator {
 		if ( ! getCPU().interruptsEnabled() ) {
 			return false;
 		}
+		
+		getCPU().setQueueInterrupts( true );
 
 		synchronized ( interruptQueue ) 
 		{
