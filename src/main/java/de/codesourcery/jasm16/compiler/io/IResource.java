@@ -38,7 +38,7 @@ public interface IResource
 		SOURCE_CODE,
 		OBJECT_FILE,
 		EXECUTABLE,
-		UNKNOWN;
+		UNKNOWN, DIRECTORY;
 	}
 	
 	/**

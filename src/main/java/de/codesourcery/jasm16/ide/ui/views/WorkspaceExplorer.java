@@ -58,6 +58,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
+import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
@@ -291,46 +292,38 @@ public class WorkspaceExplorer extends AbstractView {
 
 	protected void deleteResource(WorkspaceTreeNode selection) 
 	{
-		final IAssemblyProject project;
-		final boolean isDeleteProject;
-		final String title;
-		final String message;
-		final File file;
+		try {
 		if ( selection instanceof FileNode ) 
 		{
-			isDeleteProject=false;
-			project = getProject( selection );
-			file = ((FileNode) selection).getValue();
-			title = "Delete "+file.getName()+" ? ";
-			message = "Do you really want to delete this "+( file.isFile() ? "file ?" : "directory ?" );
-		} 
-		else if ( selection instanceof ProjectNode ) 
-		{
-			isDeleteProject=true;
-			project = ((ProjectNode) selection).getValue();
-			file = project.getConfiguration().getBaseDirectory();
-			title = "Delete project "+project.getName()+" ?";
-			message = "Do you really want to delete this project ?";
-		} else {
-			throw new RuntimeException("Internal error,unhandled node type "+selection);
-		}
-		
-		final DialogResult outCome = UIUtils.showConfirmationDialog( panel , title , message );
-		if ( outCome != DialogResult.YES ) {
+			final File file = ((FileNode) selection).getValue();
+			final String title = "Delete "+file.getName()+" ? ";
+			final String message = "Do you really want to delete this "+( file.isFile() ? "file ?" : "directory ?" );
+			
+			final DialogResult outCome = UIUtils.showConfirmationDialog( panel , title , message );
+			if ( outCome != DialogResult.YES ) {
+				return;
+			}			
+			
+			final IAssemblyProject project = getProject( selection );
+			workspace.deleteFile( project , file );
 			return;
+		} 
+		
+		if ( selection instanceof ProjectNode ) 
+		{
+			final IAssemblyProject project = ((ProjectNode) selection).getValue();
+			final Boolean result = UIUtils.showDeleteProjectDialog( project );
+			if ( result == null ) { // user CANCEL
+				return;
+			}
+			workspace.deleteProject( project , result );
+			return;
+		} 
+		} catch(IOException e) {
+			LOG.error("deleteResource(): Failed to delete "+selection,e);
 		}
 		
-		try 
-		{    	
-			if ( isDeleteProject ) {
-				workspace.deleteProject( project , false );
-			} else {
-				workspace.deleteFile( project , file );
-			}
-		} 
-		catch (IOException e) {
-			LOG.error("deleteAction(): ",e);
-		}
+		throw new RuntimeException("Internal error,unhandled node type "+selection);
 	}
 
 	private IResource getResourceForFile(FileNode resourceNode) 
@@ -449,7 +442,7 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		
 		if ( canCreateFileIn( selectedNode ) ) {
-			addMenuEntry( popup , "New source file", new ActionListener() {
+			addMenuEntry( popup , "New source file...", new ActionListener() {
 
 				@Override
 				public void actionPerformed(ActionEvent e) 
@@ -463,6 +456,23 @@ public class WorkspaceExplorer extends AbstractView {
 			});				
 		}
 		
+		addMenuEntry( popup , "New project...", new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) 
+			{
+				try {
+					createNewProject();
+				} catch (Exception e1) {
+					LOG.error("actionPerformed(): ",e1);
+					UIUtils.showErrorDialog( panel ,
+							"Failed to create project",
+							"Project creation failed: "+e1.getMessage()
+					);
+				}				
+			}
+		});			
+		
 		addMenuEntry( popup , "Delete...", new ActionListener() {
 
 			@Override
@@ -474,6 +484,16 @@ public class WorkspaceExplorer extends AbstractView {
 		});	
 		return popup;
 	}	
+	
+	protected void createNewProject() throws IOException, ProjectAlreadyExistsException {
+		
+		final String projectName = UIUtils.showInputDialog( panel , "Create new project", "Project name" );
+		if ( projectName == null ) {
+			return;
+		}		
+		
+		workspace.createNewProject( projectName );
+	}
 	
 	protected void createNewSourceFile(WorkspaceTreeNode selection ) throws IOException 
 	{

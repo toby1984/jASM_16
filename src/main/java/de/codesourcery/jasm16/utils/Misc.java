@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +48,7 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
+import de.codesourcery.jasm16.exceptions.NoDirectoryException;
 import de.codesourcery.jasm16.scanner.IScanner;
 import de.codesourcery.jasm16.scanner.Scanner;
 
@@ -564,18 +566,35 @@ public class Misc {
         }
     }
 
-    public static void checkFileExistsAndIsDirectory(File f,boolean createIfMissing) throws IOException 
+    /**
+     * Check whether a given file exists and is a directory, optionally
+     * creating it.
+     * 
+     * @param f
+     * @param createIfMissing
+     * @return <code>true</code> if the directory was missing and has been created
+     * @throws FileNotFoundException thrown if the directory does not exist 
+     * @throws IOException thrown if creating the directory failed 
+     * @throws NoDirectoryException thrown if the file exists but is no directory
+     */
+    public static boolean checkFileExistsAndIsDirectory(File f,boolean createIfMissing) throws 
+    FileNotFoundException,IOException,NoDirectoryException 
     {
         if ( ! f.exists() ) 
         {
-            if ( ! createIfMissing || ! f.mkdirs() )
-            {
-                throw new IOException("Non-existant directory "+f.getAbsolutePath() );
-            }
+        	if ( createIfMissing )
+        	{
+        		if ( f.mkdirs() ) {
+        			return true;
+        		} 
+                throw new IOException( "Failed to create missing directory "+f.getAbsolutePath() );
+        	}
+            throw new FileNotFoundException("Non-existant directory "+f.getAbsolutePath() );
         }
         if ( ! f.isDirectory() ) {
             throw new IOException( f.getAbsolutePath()+" is no directory");
         }
+        return false;
     }
 
     public static boolean isSourceFile(File file) 
@@ -642,6 +661,10 @@ public class Misc {
      */
     public static void deleteRecursively(File file,final IFileVisitor visitor) throws IOException {
 
+    	if ( ! file.exists() ) {
+    		return;
+    	}
+    	
         final IFileVisitor deletingVisitor = new IFileVisitor() {
 
             @Override

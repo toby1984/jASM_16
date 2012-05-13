@@ -34,6 +34,7 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
 
 /**
  * Default workspace implementation.
@@ -165,7 +166,7 @@ public class DefaultWorkspace implements IWorkspace
 	}
 
 	@Override
-	public IAssemblyProject createNewProject(String name) throws IOException
+	public IAssemblyProject createNewProject(String name) throws IOException, ProjectAlreadyExistsException
 	{
 		if (StringUtils.isBlank(name)) {
 			throw new IllegalArgumentException("name must not be NULL/blank.");
@@ -174,21 +175,31 @@ public class DefaultWorkspace implements IWorkspace
 		assertWorkspaceOpen();
 
 		if ( doesProjectExist( name ) ) {
-			throw new IllegalArgumentException("A project with this name already exists");
+			throw new ProjectAlreadyExistsException( name );
 		}
 
 		final File baseDir = new File( getBaseDirectory() , name );
-		if ( ! baseDir.exists() ) 
-		{
-			if ( ! baseDir.mkdirs() ) {
-				throw new IOException("Failed to create project base directory "+baseDir.getAbsolutePath());
-			}
+		if ( baseDir.exists() ) {
+			throw new ProjectAlreadyExistsException(name,"Cannot create project '"+name+"' , project directory "+
+					baseDir.getAbsolutePath()+" already exists ?");
+		}
+		
+		if ( ! baseDir.mkdirs() ) {
+			throw new IOException("Failed to create project base directory "+baseDir.getAbsolutePath());
 		}
 
 		LOG.info("createNewProject(): Creating project '"+name+"'");
+		
 		final ProjectConfiguration config = new ProjectConfiguration(baseDir);
 		config.setProjectName( name );
-		config.create();
+		try {
+			config.create();
+		} 
+		catch (IOException e) 
+		{
+			baseDir.delete();
+			throw e;
+		}
 
 		final IAssemblyProject result = new AssemblyProject( this , config );
 		projects.add( result );
@@ -199,6 +210,12 @@ public class DefaultWorkspace implements IWorkspace
 		catch(IOException e) 
 		{
 			LOG.error("createNewProject(): Failed to save metadata",e);
+			try {
+				internalDeleteFile( null , baseDir , false );
+			} catch(Exception e2) {
+				LOG.error("createNewProject(): Caught during rollback ",e2);
+				// ok, can't help it
+			}
 			projects.remove( result );
 			throw e;
 		}
@@ -239,7 +256,7 @@ public class DefaultWorkspace implements IWorkspace
 				it.remove();
 				
 				if ( deletePhyiscally ) {
-					deleteFile( existing , existing.getConfiguration().getBaseDirectory() );					
+					internalDeleteFile( existing , existing.getConfiguration().getBaseDirectory() , true );					
 				}
 				
 				removeResourceListener( existing );
@@ -275,32 +292,57 @@ public class DefaultWorkspace implements IWorkspace
 	@Override
 	public void deleteFile(final IAssemblyProject project, final File file) throws IOException 
 	{
-		if ( project.getConfiguration().getBaseDirectory().equals( file ) ) {
+		if ( project == null ) {
+			throw new IllegalArgumentException("project must not be null");
+		}
+		if ( file == null ) {
+			throw new IllegalArgumentException("file must not be null");
+		}
+		internalDeleteFile(project,file,false);
+	}
+	
+	/**
+	 * 
+	 * @param project project or <code>null</code> if no resource listeners should be notified
+	 * @param file
+	 * @throws IOException
+	 */
+	protected void internalDeleteFile(final IAssemblyProject project, final File file,boolean calledByDeleteProject) throws IOException 
+	{
+		if ( project != null &&
+			 ! calledByDeleteProject && 
+			 project.getConfiguration().getBaseDirectory().equals( file ) ) 
+		{
 			deleteProject(project,true);
 			return;
 		}
 		
 		if ( file.isDirectory() ) {
 			for ( File child : file.listFiles() ) {
-				deleteFile( project , child );
+				internalDeleteFile( project , child , calledByDeleteProject );
 			}
 		} 
+		
 		file.delete();
-		notifyListeners( new IInvoker() {
-			@Override
-			public void invoke(IResourceListener listener) 
-			{
-				IResource resource = project.getResourceForFile( file );
-				if ( resource == null ) {
-					resource = new FileResource( file , ResourceType.UNKNOWN );
+		
+		if ( project != null  ) 
+		{
+			notifyListeners( new IInvoker() {
+				@Override
+				public void invoke(IResourceListener listener) 
+				{
+					IResource resource = project.getResourceForFile( file );
+					if ( resource == null ) {
+						resource = new FileResource( file , ResourceType.UNKNOWN );
+					}
+					listener.resourceDeleted( project , resource );
 				}
-				listener.resourceDeleted( project , resource );
-			}
-			@Override
-			public String toString() {
-				return "RESOURCE-DELETED: "+file.getAbsolutePath();
-			}					
-		});		
+				@Override
+				public String toString() {
+					return "RESOURCE-DELETED: "+file.getAbsolutePath();
+				}					
+			});		
+		}
 	}
 
 	@Override

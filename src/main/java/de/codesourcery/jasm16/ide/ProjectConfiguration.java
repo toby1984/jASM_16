@@ -56,18 +56,18 @@ import de.codesourcery.jasm16.utils.Misc;
 public class ProjectConfiguration 
 {
 	private static final Logger LOG = Logger.getLogger(ProjectConfiguration.class);
-	
+
 	public static final String PROJECT_CONFIG_FILE = "jasm_project.xml";
 
 	public static final String DEFAULT_EXECUTABLE_NAME = "a.out";
-	
+
 	private final File baseDir;
-	
+
 	private final List<String> sourceFolders = new ArrayList<String>();
-	
+
 	private String outputFolder;
 	private String projectName;
-	
+
 	private String executableName;
 
 	/**
@@ -80,21 +80,21 @@ public class ProjectConfiguration
 	{
 		this.baseDir = baseDir;
 	}
-	
+
 	public String getExecutableName() {
 		return executableName;
 	}
-	
+
 	public void setExecutableName(String executableName) {
-		
+
 		if (StringUtils.isBlank(executableName)) {
 			throw new IllegalArgumentException(
 					"executableName must not be NULL/blank");
 		}
-		
+
 		this.executableName = executableName;
 	}
-	
+
 	/**
 	 * (Re-)populates this project configuration instance from
 	 * it's XML file.
@@ -108,9 +108,9 @@ public class ProjectConfiguration
 			LOG.error("load(): File "+xmlFile.getAbsolutePath()+" does not exist?");
 			throw new IOException("File "+xmlFile.getAbsolutePath()+" does not exist?");
 		}
-		
+
 		LOG.info("load(): Loading project configuration from "+xmlFile.getAbsolutePath());
-		
+
 		final Document doc;
 		try {
 			doc = loadXML(xmlFile);
@@ -122,7 +122,7 @@ public class ProjectConfiguration
 			throw new IOException("Failed to load project description from "+
 					xmlFile.getAbsolutePath(),e);
 		}
-		
+
 		try {
 			parseXML( doc );
 		} 
@@ -131,14 +131,14 @@ public class ProjectConfiguration
 			throw new IOException("Failed to load project configuration",e);
 		}
 	}
-	
+
 	/**
 	 * Stores this project's configuration as an XML file.
 	 * 
 	 * @throws IOException
 	 */
 	public void save() throws IOException {
-		
+
 		if ( ! baseDir.exists() ) {
 			LOG.error("save(): Project base directory "+baseDir.getAbsolutePath()+" does not exist ?");
 			throw new IOException("Project base directory "+baseDir.getAbsolutePath()+" does not exist ?");
@@ -150,17 +150,17 @@ public class ProjectConfiguration
 			LOG.error("Failed to save project configuration",e);
 			throw new IOException("Failed to save project configuration",e);
 		}
-		
+
 		final Element root = document.createElement("project");
 		document.appendChild( root );
-		
+
 		root.appendChild( createElement("name" , projectName , document ) );
 		root.appendChild( createElement("outputFolder" , outputFolder , document ) );
 		root.appendChild( createElement("executableName" , executableName , document ) );		
-		
+
 		final Element srcFolderNode = createElement("sourceFolders",document);
 		root.appendChild( srcFolderNode );
-		
+
 		for ( String folder : sourceFolders ) {
 			srcFolderNode.appendChild( createElement("sourceFolder" , folder , document ) );
 		}
@@ -172,26 +172,26 @@ public class ProjectConfiguration
 			throw new IOException("Failed to save project configuration",e);
 		}
 	}	
-	
+
 	private void writeXML(Document doc,File file) throws TransformerFactoryConfigurationError, TransformerException 
 	{
-        final Source source = new DOMSource(doc);
-        final Result result = new StreamResult(file);
-        final Transformer xformer = TransformerFactory.newInstance().newTransformer();
-        xformer.transform(source, result);		
+		final Source source = new DOMSource(doc);
+		final Result result = new StreamResult(file);
+		final Transformer xformer = TransformerFactory.newInstance().newTransformer();
+		xformer.transform(source, result);		
 	}
-	
+
 	private Element createElement(String tagName,String value,Document doc) 
 	{
 		Element result = createElement( tagName , doc );
 		result.appendChild( doc.createTextNode( value ) );
 		return result;
 	}
-	
+
 	private Element createElement(String tagName,Document doc) {
 		return doc.createElement( tagName );
 	}	
-	
+
 	/*
 	 * <project>
 	 *   <name>myProject</name>
@@ -211,14 +211,14 @@ public class ProjectConfiguration
 		final XPathExpression outputFolderExpr = xpath.compile("/project/outputFolder");
 		final XPathExpression executableNameExpr = xpath.compile("/project/executableName");
 		final XPathExpression srcFoldersExpr = xpath.compile("/project/sourceFolders/sourceFolder");
-		
+
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
 		this.executableName = getValue( executableNameExpr , doc );
 		this.sourceFolders.clear();
 		this.sourceFolders.addAll( getValues( srcFoldersExpr , doc ) );
 	}
-	
+
 	private String getValue(XPathExpression expr, Document doc) throws XPathExpressionException 
 	{
 		List<String> values = getValues( expr , doc );
@@ -230,11 +230,11 @@ public class ProjectConfiguration
 		}
 		return values.get(0);
 	}
-	
+
 	private List<String> getValues(XPathExpression expr, Document doc) throws XPathExpressionException {
-		
+
 		final NodeList nodes = (NodeList) expr.evaluate(doc, XPathConstants.NODESET);
-		
+
 		final List<String> result = new ArrayList<String>();
 		for ( int i = 0 ; i < nodes.getLength() ; i++ ) {
 			final Node node = nodes.item( i );
@@ -253,12 +253,12 @@ public class ProjectConfiguration
 		final DocumentBuilderFactory fac = DocumentBuilderFactory.newInstance();
 		return fac.newDocumentBuilder();
 	}
-	
+
 	protected Document loadXML(File xmlFile) throws ParserConfigurationException, SAXException, IOException 
 	{
 		return createDocumentBuilder().parse( xmlFile );
 	}
-	
+
 	/**
 	 * Creates this project's base folder along with all 
 	 * source folders and output folder and saves the configuration
@@ -277,34 +277,61 @@ public class ProjectConfiguration
 			LOG.error("create(): Cannot create project without a name");
 			throw new IllegalStateException("Cannot create project without a name");
 		}
-		
-		if ( sourceFolders.isEmpty() ) {
+
+		if ( sourceFolders.isEmpty() ) 
+		{
 			sourceFolders.add( "src" );
 		}
-		
+
 		if ( outputFolder == null ) {
 			outputFolder = "bin";
 		}
-		
+
 		if ( executableName == null ) {
 			executableName = DEFAULT_EXECUTABLE_NAME;
 		}
-		
-		Misc.checkFileExistsAndIsDirectory( baseDir , true );
-		for ( String src :  sourceFolders ) 
-		{
-			final File absPath = resolveRelativePath( src );
-			Misc.checkFileExistsAndIsDirectory( absPath , true );
+
+		// used to keep track of created folders so we're 
+		// able to remove them if something goes wrong on the way...
+		final List<File> createdFolders = new ArrayList<File>();
+
+		// create / check base directory
+		if ( Misc.checkFileExistsAndIsDirectory( baseDir , true ) ) {
+			createdFolders.add( baseDir );
 		}
-		final File absOutputFolder = resolveRelativePath( outputFolder );
-		Misc.checkFileExistsAndIsDirectory( absOutputFolder , true );
-		save();
+		try 
+		{	
+			// create source folders
+			for ( String src :  sourceFolders ) 
+			{
+				final File absPath = resolveRelativePath( src );
+				if ( Misc.checkFileExistsAndIsDirectory( absPath , true ) ) 
+				{
+					createdFolders.add( absPath );
+				}
+			}
+
+			// create output folder
+			final File absOutputFolder = resolveRelativePath( outputFolder ); // note: creates missing directory
+			if ( Misc.checkFileExistsAndIsDirectory( absOutputFolder , true ) ) {
+				createdFolders.add( absOutputFolder );
+			}
+
+			save();
+		} 
+		catch(IOException e) {
+			for ( File folder : createdFolders ) 
+			{
+				Misc.deleteRecursively( folder );
+			}
+			throw e;
+		}
 	}
-	
+
 	private File resolveRelativePath(String path) {
 		return new File( baseDir , path );
 	}
-	
+
 	/**
 	 * Returns absolute locations of source folders of this project.
 	 * 
@@ -317,7 +344,7 @@ public class ProjectConfiguration
 		}
 		return result;
 	}
-	
+
 	/**
 	 * Adds a source folder.
 	 * 
@@ -332,14 +359,14 @@ public class ProjectConfiguration
 			sourceFolders.add( file.getName() );
 		}
 	}
-	
+
 	/**
 	 * Set's this project's name.
 	 * 
 	 * @param projectName
 	 */
 	public void setProjectName(String projectName) {
-		
+
 		if (StringUtils.isBlank(projectName)) {
 			throw new IllegalArgumentException(
 					"projectName must not be NULL/blank");

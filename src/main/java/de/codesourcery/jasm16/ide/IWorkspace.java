@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
+
 /**
  * A workspace.
  * 
@@ -35,7 +37,7 @@ public interface IWorkspace extends IResourceListener
     
     public IAssemblyProject getProjectByName(String name); // ok
     
-    public IAssemblyProject createNewProject(String name) throws IOException;
+    public IAssemblyProject createNewProject(String name) throws IOException,ProjectAlreadyExistsException;
 
     public List<IAssemblyProject> getAllProjects(); // ok
     

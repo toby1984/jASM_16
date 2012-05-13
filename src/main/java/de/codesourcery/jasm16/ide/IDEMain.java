@@ -25,6 +25,7 @@ import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.Perspective;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer;
@@ -42,12 +43,12 @@ public class IDEMain
 	private final ViewContainerManager viewContainerManager = new ViewContainerManager();
     private IWorkspace workspace;
     
-    public static void main(String[] args) throws IOException
+    public static void main(String[] args) throws IOException, ProjectAlreadyExistsException
     {
         new IDEMain().run();
     }
     
-    private void run() throws IOException
+    private void run() throws IOException, ProjectAlreadyExistsException
     {
     	final File appConfigFile = new File( Misc.getUserHomeDirectory() , ApplicationConfig.FILE_NAME );
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
@@ -63,7 +64,7 @@ public class IDEMain
     	viewContainerManager.addViewContainer( desktop );
     }
     
-    private void createSampleProject(String projectName) throws IOException
+    private void createSampleProject(String projectName) throws IOException, ProjectAlreadyExistsException
     {
     	if ( workspace.doesProjectExist( projectName ) ) 
     	{

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
 import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.utils.Misc;
@@ -46,7 +47,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		workspaceDir.mkdirs();		
 	}
 	
-	public void testLoadWorkspaceWithOneProject() throws IOException {
+	public void testLoadWorkspaceWithOneProject() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
 			@Override
@@ -98,7 +99,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		}
 	}
 	
-	public void testLoadWorkspaceWithTwoProjects() throws IOException {
+	public void testLoadWorkspaceWithTwoProjects() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
 			@Override
@@ -156,7 +157,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		assertSame( project2 , workspace.getProjectByName("project2" ) );		
 	}
 	
-	public void testDeleteProject() throws IOException {
+	public void testDeleteProject() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
 			@Override
@@ -210,7 +211,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		assertEquals( 0 , workspace.getAllProjects().size() );		
 	}	
 	
-	public void testDeleteProjectPhysically() throws IOException {
+	public void testDeleteProjectPhysically() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
 			@Override
