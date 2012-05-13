@@ -448,6 +448,21 @@ public class WorkspaceExplorer extends AbstractView {
 			});		
 		}
 		
+		if ( canCreateFileIn( selectedNode ) ) {
+			addMenuEntry( popup , "New source file", new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) 
+				{
+					try {
+						createNewSourceFile( selectedNode );
+					} catch (IOException e1) {
+						LOG.error("actionPerformed(): ",e1);
+					}
+				}
+			});				
+		}
+		
 		addMenuEntry( popup , "Delete...", new ActionListener() {
 
 			@Override
@@ -456,11 +471,57 @@ public class WorkspaceExplorer extends AbstractView {
 				deleteResource( selectedNode );
 			}
 
-		});		
-
+		});	
 		return popup;
 	}	
-
+	
+	protected void createNewSourceFile(WorkspaceTreeNode selection ) throws IOException 
+	{
+		File parentDir = ((FileNode) selection).getValue();
+		if ( parentDir.isFile() ) {
+			parentDir = parentDir.getParentFile();
+		}
+		
+		final String fileName = UIUtils.showInputDialog( panel , "Create source file", "File name" );
+		if ( fileName == null ) {
+			return;
+		}
+		
+		final File file = new File(parentDir , fileName );
+		Misc.writeFile( file , "" );
+		
+		final IAssemblyProject project = getProject( selection );
+		workspace.resourceCreated( project , new FileResource( file , ResourceType.SOURCE_CODE ) );
+	}
+	
+	protected boolean canCreateFileIn( WorkspaceTreeNode selection ) 
+	{
+		if ( selection instanceof ProjectNode ) {
+			return true;
+		}
+		if ( selection instanceof FileNode) 
+		{
+			final File file = ((FileNode) selection).getValue();
+			final IAssemblyProject project = getProject( selection );
+			
+			if ( isInProjectSourceFolder( project , file ) ) 
+			{
+				return true;
+			} 
+		}
+		return false;
+	}
+	
+	private boolean isInProjectSourceFolder(IAssemblyProject project,File file) {
+		
+		for ( File srcFolder : project.getConfiguration().getSourceFolders() ) {
+			if ( file.getAbsolutePath().startsWith( srcFolder.getAbsolutePath() ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	private void openDebugPerspective(IAssemblyProject project, IResource executable) throws IOException
 	{
 		if ( project == null ) {
@@ -923,6 +984,8 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 
 	}
+	
+	
 
 	@Override
 	public String getTitle() {

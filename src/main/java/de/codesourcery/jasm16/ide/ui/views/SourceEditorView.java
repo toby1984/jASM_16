@@ -1186,7 +1186,9 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	{
 		try {
 			validateSourceCode();
-		} catch (IOException e) {
+		} 
+		catch (IOException e) 
+		{
 			e.printStackTrace();
 		}
 	}

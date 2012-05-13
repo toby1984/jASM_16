@@ -121,11 +121,15 @@ public class AssemblyProject implements IAssemblyProject
 				protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context) 
 				{
 					final File outputFile = getOutputFileForSource( context.getCurrentCompilationUnit().getResource() );
+					System.out.println("createObjectCodeWriter(): Compiling "+
+					context.getCurrentCompilationUnit()+" to object file "+outputFile.getAbsolutePath());
+					
 					final IResource resource = new FileResource( outputFile , ResourceType.OBJECT_FILE );
 					return new FileObjectCodeWriter( outputFile , false ) 
 					{
 						protected void closeHook() throws IOException 
 						{
+							System.out.println("closeHook(): Closing object file "+outputFile.getAbsolutePath());
 							if ( getCurrentWriteOffset().getValue() != 0 ) {
 								objectFiles.add( resource );
 								workspace.resourceCreated( AssemblyProject.this , resource );
@@ -165,6 +169,7 @@ public class AssemblyProject implements IAssemblyProject
 
 				// compile stuff
 				final List<ICompilationUnit> compilationUnits = getCompilationUnits();
+				System.out.println("Compiling: "+compilationUnits);
 				compiler.compile( compilationUnits , listener );
 
 				// create executable
@@ -508,7 +513,9 @@ public class AssemblyProject implements IAssemblyProject
 				}
 				resources.add( resource );
 
-				if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
+				if ( resource.hasType( ResourceType.SOURCE_CODE ) ) 
+				{
+					System.out.println("New source-code resource added.");
 					units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
 				}       	        
 			}

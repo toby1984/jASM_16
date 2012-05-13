@@ -16,23 +16,30 @@
 package de.codesourcery.jasm16.compiler.io;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 
 public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWriterFactory
 {
-    protected IObjectCodeWriter objectCodeWriter;
-    
+	// key is ICompilationUnit#getIdentifier() 
+	protected final Map<String,IObjectCodeWriter> objectCodeWriters = new HashMap<String,IObjectCodeWriter>();
+	
     public AbstractObjectCodeWriterFactory() {
     }
     
     @Override
-    public IObjectCodeWriter getWriter(ICompilationContext context)
+    public final IObjectCodeWriter getWriter(ICompilationContext context)
     {
-        if ( objectCodeWriter == null ) {
-            objectCodeWriter= createObjectCodeWriter(context);
+    	final String identifier = context.getCurrentCompilationUnit().getIdentifier();
+    	IObjectCodeWriter result = objectCodeWriters.get( identifier );
+    	if ( result == null ) {
+            result = createObjectCodeWriter( context );
+            objectCodeWriters.put( identifier , result );
         }
-        return objectCodeWriter;
+        return result;
     }
 
     protected abstract IObjectCodeWriter createObjectCodeWriter(ICompilationContext context);
@@ -40,14 +47,12 @@ public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWrit
     @Override
     public final void closeObjectWriters() throws IOException
     {
-        if ( objectCodeWriter != null ) 
-        {
-            try {
-                objectCodeWriter.close();
-            } finally {
-                objectCodeWriter = null;
-            }
-        }        
+    	for (Iterator<IObjectCodeWriter> it = objectCodeWriters.values().iterator(); it.hasNext();) 
+    	{
+			final IObjectCodeWriter writer = (IObjectCodeWriter) it.next();
+			writer.close();
+			it.remove();
+		}
     }
     
     @Override

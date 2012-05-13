@@ -4,6 +4,8 @@ import java.awt.Component;
 
 import javax.swing.JOptionPane;
 
+import org.apache.commons.lang.StringUtils;
+
 public class UIUtils {
 
 	public static enum DialogResult {
@@ -33,6 +35,19 @@ public class UIUtils {
 		default:
 			throw new RuntimeException("Internal error, unexpected outcome "+outcome);
 		}
-		
+	}
+	
+	public static String showInputDialog(Component parent,String title,String message) {
+		Object[] possibilities = null;
+		String s = (String) JOptionPane.showInputDialog(
+		                    parent,
+		                    message,
+		                    title,
+		                    JOptionPane.PLAIN_MESSAGE,
+		                    null,
+		                    possibilities,
+		                    null);
+
+		return StringUtils.isNotBlank( s ) ? s : null;
 	}
 }
