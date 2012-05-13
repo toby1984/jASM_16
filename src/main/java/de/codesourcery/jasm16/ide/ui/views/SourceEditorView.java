@@ -96,6 +96,9 @@ import de.codesourcery.jasm16.compiler.io.AbstractResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
+import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
@@ -137,6 +140,33 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	private final SimpleAttributeSet defaultStyle;
 
 	// compiler
+	private final IWorkspace workspace;	
+	private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
+		
+		public void projectDeleted(IAssemblyProject deletedProject) 
+		{
+			if ( deletedProject.isSame( project ) )
+			{
+				dispose();
+			}
+		}
+		
+		private void dispose() {
+			if ( getViewContainer() != null ) {
+				getViewContainer().disposeView( SourceEditorView.this );
+			} else {
+				SourceEditorView.this.dispose();
+			}
+		}
+		
+		public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
+		{
+			if ( deletedResource.isSame( fileResource ) ) 
+			{
+				dispose();
+			}
+		}
+	};
 	private IAssemblyProject project;
 	private String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
 	private IResource fileResource; // source code on disk
@@ -145,6 +175,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	private ICompilationUnit compilationUnit;
 
 	private CompilationThread compilationThread = null;
+	
+	
 
 	/*
 	 * 
@@ -481,8 +513,12 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		}
 	};
 
-	public SourceEditorView() 
+	public SourceEditorView(IWorkspace workspace) 
 	{
+		if (workspace == null) {
+			throw new IllegalArgumentException("workspace must not be null");
+		}
+		this.workspace = workspace;
 		defaultStyle = new SimpleAttributeSet();
 		errorStyle = createStyle( Color.RED );
 		registerStyle = createStyle( Color.ORANGE );   
@@ -490,6 +526,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		instructionStyle = createStyle( Color.BLUE );
 		labelStyle = createStyle( Color.GREEN );
 		preProcessorStyle = createStyle( new Color( 200 , 200 , 200 ) ); 
+		workspace.addWorkspaceListener( workspaceListener );
 	}
 
 	private static SimpleAttributeSet createStyle(Color color) 
@@ -1118,6 +1155,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	@Override
 	public void dispose()
 	{
+		workspace.removeWorkspaceListener( workspaceListener );
 		if ( astInspector != null ) 
 		{
 			astInspector.setVisible( false );
@@ -1148,7 +1186,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource) 
 	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView();
+			return new SourceEditorView(this.workspace);
 		}
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
 	}

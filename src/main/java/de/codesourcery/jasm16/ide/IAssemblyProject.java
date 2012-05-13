@@ -38,6 +38,14 @@ public interface IAssemblyProject extends IResourceResolver, IResourceListener
      */
     public IResource getResourceForFile(File file);
     
+    /**
+     * Check whether this project is the same as another.
+     * 
+     * @param other other project, may be <code>null</code>.
+     * @return
+     */
+    public boolean isSame(IAssemblyProject other);
+    
     public List<IResource> getAllResources();
     
     public IProjectBuilder getBuilder();

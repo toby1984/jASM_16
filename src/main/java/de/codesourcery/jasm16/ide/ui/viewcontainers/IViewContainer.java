@@ -55,7 +55,7 @@ public interface IViewContainer {
 	 * 
 	 * @param view
 	 */
-	public void removeView(IView view);
+	public void disposeView(IView view);
 	
 	/**
 	 * Sets the title for a given view (if this view container supports displaying

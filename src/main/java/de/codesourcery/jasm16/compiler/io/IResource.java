@@ -64,7 +64,7 @@ public interface IResource
 	/**
 	 * Check whether this resource is equivalent so some other resource.
 	 * 
-	 * @param other
+	 * @param other other resource , may be <code>null</code>
 	 * @return
 	 */
 	public boolean isSame(IResource other);

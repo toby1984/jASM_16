@@ -199,7 +199,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		assertEquals( 0 , units.size() );
 		assertSame( project , workspace.getProjectByName("project1" ) );
 		
-		workspace.deleteProject( project );
+		workspace.deleteProject( project , false );
 		
 		assertEquals( 0 , workspace.getAllProjects().size() );
 		assertFalse( workspace.doesProjectExist( "project1" ) );
@@ -208,6 +208,59 @@ public class DefaultWorkspaceTest extends TestHelper {
 		workspace = new DefaultWorkspace( config );
 		workspace.open();		
 		assertEquals( 0 , workspace.getAllProjects().size() );		
+	}	
+	
+	public void testDeleteProjectPhysically() throws IOException {
 		
+		final IApplicationConfig config = new IApplicationConfig() {
+			@Override
+			public void setWorkspaceDirectory(File dir) throws IOException { }
+			@Override
+			public void saveConfiguration() { }
+			@Override
+			public File getWorkspaceDirectory() {
+				return workspaceDir;
+			}
+			
+			@Override
+			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
+			
+			@Override
+			public SizeAndLocation getViewCoordinates(String viewId) {
+				// TODO Auto-generated method stub
+				return null;
+			}
+		};
+
+		DefaultWorkspace workspace = new DefaultWorkspace( config );
+
+		workspace.open();
+		workspace.createNewProject("project1");
+		workspace.close();
+		
+		assertEquals( workspaceDir , workspace.getBaseDirectory() );
+		
+		workspace = new DefaultWorkspace( config );
+		workspace.open();
+		
+		final List<IAssemblyProject> projects = workspace.getAllProjects();
+		assertEquals( 1 , projects.size() );
+		assertTrue( workspace.doesProjectExist( "project1" ) );
+
+		final IAssemblyProject project = projects.get(0);
+		assertEquals( "project1" , project.getName() );
+		final List<ICompilationUnit> units = project.getBuilder().getCompilationUnits();
+		assertEquals( 0 , units.size() );
+		assertSame( project , workspace.getProjectByName("project1" ) );
+		
+		workspace.deleteProject( project , true );
+		
+		assertEquals( 0 , workspace.getAllProjects().size() );
+		assertFalse( workspace.doesProjectExist( "project1" ) );
+		
+		assertFalse( new File( workspaceDir, "project1" ).exists() );
+		workspace = new DefaultWorkspace( config );
+		workspace.open();		
+		assertEquals( 0 , workspace.getAllProjects().size() );		
 	}	
 }

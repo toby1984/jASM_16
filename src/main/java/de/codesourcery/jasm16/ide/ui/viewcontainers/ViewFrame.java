@@ -67,7 +67,7 @@ public class ViewFrame extends JFrame implements IViewContainer
             @Override
             public void windowClosing(WindowEvent e)
             {
-            	removeView( component );
+            	disposeView( component );
                 helper.fireViewContainerClosed( ViewFrame.this );
             } 
         } );
@@ -91,7 +91,7 @@ public class ViewFrame extends JFrame implements IViewContainer
     }
 
 	@Override
-	public void removeView(IView view) 
+	public void disposeView(IView view) 
 	{
 		if ( view == component ) {
 			component.dispose();

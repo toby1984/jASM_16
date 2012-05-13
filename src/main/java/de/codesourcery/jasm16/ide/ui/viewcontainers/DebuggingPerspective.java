@@ -27,6 +27,9 @@ import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
+import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
 import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
@@ -41,11 +44,29 @@ public class DebuggingPerspective extends Perspective
 	
     public static final String ID = "debugger";
     
+    private final IWorkspace workspace;
     private final IEmulator emulator;
     
     private IAssemblyProject project;
-    
     private IResource executable;
+    
+    private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
+    	
+    	public void projectDeleted(IAssemblyProject deletedProject) 
+    	{
+    		if ( deletedProject.isSame( project ) ) 
+    		{
+    			dispose();
+    		}
+    	}
+    	
+    	public void resourceDeleted(IAssemblyProject affectedProject, IResource deletedResource) {
+    		
+    		if ( affectedProject.isSame( project ) && deletedResource.isSame( executable ) ) {
+    			dispose();
+    		}
+    	}
+    };
     
     private final IEmulationListener listener = new EmulationListener() 
     {
@@ -61,11 +82,23 @@ public class DebuggingPerspective extends Perspective
     };
     
     
-    public DebuggingPerspective(IApplicationConfig appConfig)
+    public DebuggingPerspective(IWorkspace workspace ,IApplicationConfig appConfig)
     {
         super(ID, appConfig);
+        if ( workspace == null ) {
+			throw new IllegalArgumentException("workspace must not be null");
+		}
+        this.workspace = workspace;
+        this.workspace.addWorkspaceListener( workspaceListener );
         this.emulator = new Emulator();
         this.emulator.addEmulationListener( listener );
+    }
+    
+    @Override
+    public void dispose() 
+    {
+    	workspace.removeWorkspaceListener( workspaceListener );
+    	super.dispose();
     }
     
     public void openExecutable(IAssemblyProject project,IResource executable) throws IOException 

@@ -39,7 +39,20 @@ public interface IWorkspace extends IResourceListener
 
     public List<IAssemblyProject> getAllProjects(); // ok
     
-    public void deleteProject(IAssemblyProject project) throws IOException;
+    public void deleteProject(IAssemblyProject project,boolean deletePhysically) throws IOException;
+    
+    /**
+     * Delete a file.
+     * 
+     * <p>If the file is actually the project's base directory, this method
+     * behaves like invoking {@link #deleteProject(IAssemblyProject, boolean)}
+     * with <code>deletePhysically</code> set to <code>true</code>.</p>
+     * 
+     * @param project
+     * @param fileToDelete
+     * @throws IOException
+     */
+    public void deleteFile(IAssemblyProject project,File fileToDelete) throws IOException;
     
     public void saveMetaData(IAssemblyProject project) throws IOException;
     

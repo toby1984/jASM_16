@@ -103,7 +103,7 @@ public class Perspective extends JFrame implements IViewContainer {
         
 		final List<InternalFrameWithView> views = new ArrayList<InternalFrameWithView>(this.views);
 		for ( InternalFrameWithView v : views) {
-			removeView( v.view );
+			disposeView( v.view );
 		}
 		
 		super.dispose();
@@ -191,7 +191,7 @@ public class Perspective extends JFrame implements IViewContainer {
 	}
 
 	@Override
-	public void removeView(IView view) 
+	public void disposeView(IView view) 
 	{
 		for (Iterator<InternalFrameWithView> it = this.views.iterator(); it.hasNext();) 
 		{
@@ -314,7 +314,7 @@ public class Perspective extends JFrame implements IViewContainer {
 			
 			@Override
 			public void internalFrameClosing(InternalFrameEvent e) {
-				removeView( view );
+				disposeView( view );
 			}
 		};
 		

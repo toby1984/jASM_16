@@ -535,4 +535,20 @@ public class AssemblyProject implements IAssemblyProject
         }
         return null;
     }
+    
+    @Override
+    public boolean isSame(IAssemblyProject other) 
+    {
+    	if ( other == this ) {
+    		return true;
+    	}
+    	if ( other == null ) {
+    		return false;
+    	}    	
+    	if ( this.getName().equals( other.getName() ) ) {
+    		return true;
+    	}
+    	return false;
+    }
+    
 }

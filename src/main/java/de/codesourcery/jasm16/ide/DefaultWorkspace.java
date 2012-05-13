@@ -31,7 +31,9 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 
 /**
  * Default workspace implementation.
@@ -128,7 +130,7 @@ public class DefaultWorkspace implements IWorkspace
 		return result;
 	}
 
-	private void rememberProjectDirectories() throws IOException 
+	private void rememberImportedProjects() throws IOException 
 	{
 		final File configFile = new File( getBaseDirectory() , WORKSPACE_METADATA_FILE );
 		final BufferedWriter writer = new BufferedWriter( new FileWriter( configFile ) );
@@ -192,7 +194,7 @@ public class DefaultWorkspace implements IWorkspace
 		projects.add( result );
 		
 		try {
-			rememberProjectDirectories();
+			rememberImportedProjects();
 		} 
 		catch(IOException e) 
 		{
@@ -221,7 +223,7 @@ public class DefaultWorkspace implements IWorkspace
 	}
 
 	@Override
-	public void deleteProject(final IAssemblyProject project) throws IOException
+	public void deleteProject(final IAssemblyProject project,boolean deletePhyiscally) throws IOException
 	{
 		if (project == null) {
 			throw new IllegalArgumentException("project must not be NULL.");
@@ -236,14 +238,20 @@ public class DefaultWorkspace implements IWorkspace
 			{
 				it.remove();
 				
+				if ( deletePhyiscally ) {
+					deleteFile( existing , existing.getConfiguration().getBaseDirectory() );					
+				}
+				
 				removeResourceListener( existing );
 				
 				try {
-					rememberProjectDirectories();
+					rememberImportedProjects();
 				} 
 				catch (IOException e) {
-					LOG.error("createNewProject(): Failed to save metadata",e);					
-					projects.add( project );
+					LOG.error("createNewProject(): Failed to save metadata",e);		
+					if ( ! deletePhyiscally ) { // no use re-adding the file
+						projects.add( project );
+					}
 					throw e;
 				}
 				
@@ -262,6 +270,37 @@ public class DefaultWorkspace implements IWorkspace
 				return;
 			}
 		}
+	}
+	
+	@Override
+	public void deleteFile(final IAssemblyProject project, final File file) throws IOException 
+	{
+		if ( project.getConfiguration().getBaseDirectory().equals( file ) ) {
+			deleteProject(project,true);
+			return;
+		}
+		
+		if ( file.isDirectory() ) {
+			for ( File child : file.listFiles() ) {
+				deleteFile( project , child );
+			}
+		} 
+		file.delete();
+		notifyListeners( new IInvoker() {
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				IResource resource = project.getResourceForFile( file );
+				if ( resource == null ) {
+					resource = new FileResource( file , ResourceType.UNKNOWN );
+				}
+				listener.resourceDeleted( project , resource );
+			}
+			@Override
+			public String toString() {
+				return "RESOURCE-DELETED: "+file.getAbsolutePath();
+			}					
+		});		
 	}
 
 	@Override
@@ -353,7 +392,7 @@ public class DefaultWorkspace implements IWorkspace
 	@Override
 	public void close() throws IOException {
 		this.opened.set( false );
-		rememberProjectDirectories();
+		rememberImportedProjects();
 	}
 
 	@Override

@@ -146,7 +146,7 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	}
 
 	@Override
-	public void removeView(IView view) 
+	public void disposeView(IView view) 
 	{
 		if (view == null) {
 			throw new IllegalArgumentException("view must not be NULL");
