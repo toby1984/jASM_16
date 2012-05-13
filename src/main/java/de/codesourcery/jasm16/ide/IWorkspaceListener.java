@@ -41,4 +41,7 @@ public interface IWorkspaceListener extends IResourceListener
 	 */
 	public void projectDeleted(IAssemblyProject project);
 	
+	public void buildStarted(IAssemblyProject project);
+	
+	public void buildFinished(IAssemblyProject project,boolean success);
 }

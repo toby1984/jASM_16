@@ -24,4 +24,12 @@ public class WorkspaceListener implements IWorkspaceListener {
 	public void projectDeleted(IAssemblyProject project) {
 	}
 
+	@Override
+	public void buildStarted(IAssemblyProject project) {
+	}
+
+	@Override
+	public void buildFinished(IAssemblyProject project, boolean success) {
+	}
+
 }

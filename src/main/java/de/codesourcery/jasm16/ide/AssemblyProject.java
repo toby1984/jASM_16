@@ -63,30 +63,24 @@ public class AssemblyProject implements IAssemblyProject
 	private final ProjectConfiguration projectConfiguration;
 
 	private final Object RESOURCE_LOCK = new Object();
-	
+
 	// @GuardedBy( RESOURCE_LOCK )
 	private final List<IResource> resources = new ArrayList<IResource>();
-	
+
 	private final List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
 
 	private final IWorkspace workspace;
-	
+
 	private final IProjectBuilder builder = new IProjectBuilder() 
 	{
-		@Override
-		public void build() throws IOException 
-		{
-			build( new CompilationListener() );
-		}
-
 		@Override
 		public ICompilationUnit parse(IResource source, ICompilationListener listener) throws IOException 
 		{
 			final ICompiler compiler = createCompiler();
 			compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
-			
+
 			final List<ICompilationUnit> compUnits = getCompilationUnits();
-			
+
 			final ICompilationUnit result = CompilationUnit.createInstance( source.getIdentifier() , source );
 
 			boolean replaced = false;
@@ -100,17 +94,17 @@ public class AssemblyProject implements IAssemblyProject
 					break;
 				}
 			}
-			
+
 			if ( ! replaced ) 
 			{
 				compUnits.add(  result );
 			}
-			
+
 			compiler.compile( compUnits , listener );
-			
+
 			return result;
 		}
-		
+
 		protected ICompiler createCompiler() {
 			final ICompiler compiler = new de.codesourcery.jasm16.compiler.Compiler();
 
@@ -119,9 +113,9 @@ public class AssemblyProject implements IAssemblyProject
 			compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
 			return compiler;
 		}
-		
+
 		protected void setObjectCodeOutputFactory(ICompiler compiler,final List<IResource> objectFiles) {
-			
+
 			compiler.setObjectCodeWriterFactory( new SimpleFileObjectCodeWriterFactory() {
 
 				protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context) 
@@ -137,7 +131,7 @@ public class AssemblyProject implements IAssemblyProject
 								workspace.resourceCreated( AssemblyProject.this , resource );
 							}
 						}
-						
+
 						protected void deleteOutputHook() throws IOException 
 						{
 							workspace.resourceCreated( AssemblyProject.this , resource );
@@ -145,6 +139,12 @@ public class AssemblyProject implements IAssemblyProject
 					};
 				}
 			} );			
+		}
+
+		@Override
+		public void build() throws IOException 
+		{
+			build( new CompilationListener() );
 		}
 
 		@Override
@@ -157,21 +157,30 @@ public class AssemblyProject implements IAssemblyProject
 
 			setObjectCodeOutputFactory( compiler , objectFiles );
 
-			// clean output directory
-			clean();
+			workspace.buildStarted( AssemblyProject.this );
+			boolean buildSuccessful = false;
+			try {
+				// clean output directory
+				clean();
 
-			// compile stuff
-			final List<ICompilationUnit> compilationUnits = getCompilationUnits();
-			compiler.compile( compilationUnits , listener );
+				// compile stuff
+				final List<ICompilationUnit> compilationUnits = getCompilationUnits();
+				compiler.compile( compilationUnits , listener );
 
-			// create executable
-			if ( isCompilationSuccessful( compilationUnits ) )
-			{
-				final IResource executable = link( objectFiles );
-				workspace.resourceCreated( AssemblyProject.this , executable );
+				// create executable
+				if ( isCompilationSuccessful( compilationUnits ) )
+				{
+					final IResource executable = link( objectFiles );
+					workspace.resourceCreated( AssemblyProject.this , executable );
+					buildSuccessful = true; 
+				} else {
+					buildSuccessful = false;
+				}
+			} finally {
+				workspace.buildFinished( AssemblyProject.this , buildSuccessful );
 			}
 		}
-		
+
 		private boolean isCompilationSuccessful( List<ICompilationUnit> compilationUnits) 
 		{
 			for ( ICompilationUnit unit : compilationUnits ) { 
@@ -228,11 +237,11 @@ public class AssemblyProject implements IAssemblyProject
 			if (source == null) {
 				throw new IllegalArgumentException("source must not be NULL");
 			}
-			
+
 			if ( ! source.hasType( ResourceType.SOURCE_CODE ) ) {
 				throw new IllegalArgumentException("Not a source file: "+source);
 			}
-			
+
 			for ( ICompilationUnit unit : getCompilationUnits() ) {
 				if ( unit.getResource().getIdentifier().equals( source.getIdentifier() ) ) {
 					return unit;
@@ -294,7 +303,7 @@ public class AssemblyProject implements IAssemblyProject
 		this.workspace = workspace;
 		this.projectConfiguration = config;
 		synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
-		    resources.addAll( scanForResources() );
+			resources.addAll( scanForResources() );
 		}
 	}
 
@@ -313,8 +322,8 @@ public class AssemblyProject implements IAssemblyProject
 					if ( ! result.containsKey( file.getAbsolutePath() ) ) 
 					{
 						final FileResource resource = new FileResource( file , ResourceType.SOURCE_CODE );
-                        result.put( file.getAbsolutePath() , resource );
-                        units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
+						result.put( file.getAbsolutePath() , resource );
+						units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
 					}
 				}
 				return true;
@@ -329,32 +338,32 @@ public class AssemblyProject implements IAssemblyProject
 				LOG.warn("scanForResources(): Missing source folder: "+srcFolder.getAbsolutePath());
 			}
 		}
-		
+
 		// scan binary output folder
 		final File outputFolder = projectConfiguration.getOutputFolder();
 		if ( outputFolder.exists() ) 
 		{
-		    final IFileVisitor executableVisitor = new IFileVisitor() {
-                
-                @Override
-                public boolean visit(File file) throws IOException
-                {
-                    if ( file.isFile() ) 
-                    {
-                        if ( file.getName().equals( projectConfiguration.getExecutableName() ) ) {
-                            result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.EXECUTABLE ) );
-                        } else {
-                            result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.OBJECT_FILE ) );                            
-                        }
-                    }
-                    return true;
-                }
-            };
-            Misc.visitDirectoryTreeInOrder( outputFolder , executableVisitor );
+			final IFileVisitor executableVisitor = new IFileVisitor() {
+
+				@Override
+				public boolean visit(File file) throws IOException
+				{
+					if ( file.isFile() ) 
+					{
+						if ( file.getName().equals( projectConfiguration.getExecutableName() ) ) {
+							result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.EXECUTABLE ) );
+						} else {
+							result.put( file.getAbsolutePath() , new FileResource( file , ResourceType.OBJECT_FILE ) );                            
+						}
+					}
+					return true;
+				}
+			};
+			Misc.visitDirectoryTreeInOrder( outputFolder , executableVisitor );
 		}
 		return new ArrayList<IResource>( result.values() );
 	}
-	
+
 	@Override
 	public String getName()
 	{
@@ -364,9 +373,9 @@ public class AssemblyProject implements IAssemblyProject
 	@Override
 	public List<IResource> getAllResources()
 	{
-	    synchronized( RESOURCE_LOCK ) {
-	        return new ArrayList<IResource>( this.resources );
-	    }
+		synchronized( RESOURCE_LOCK ) {
+			return new ArrayList<IResource>( this.resources );
+		}
 	}
 
 	@Override
@@ -391,7 +400,7 @@ public class AssemblyProject implements IAssemblyProject
 		if (type == null) {
 			throw new IllegalArgumentException("type must not be NULL");
 		}
-		
+
 		final List<IResource> result = new ArrayList<IResource>();
 		for ( IResource r : getAllResources() ) {
 			if ( r.hasType( type ) ) {
@@ -412,13 +421,13 @@ public class AssemblyProject implements IAssemblyProject
 			}
 		}
 	}
-	
+
 	protected void handleResourceDeleted(IResource resource) 
 	{
 		if (resource == null) {
 			throw new IllegalArgumentException("resource must not be NULL");
 		}
-		
+
 		for (Iterator<IResource> it = getAllResources().iterator(); it.hasNext();) 
 		{
 			final IResource existing = it.next();
@@ -432,7 +441,7 @@ public class AssemblyProject implements IAssemblyProject
 			}
 		}
 	}	
-	
+
 	protected void cleanOutputFolder() throws IOException 
 	{
 		File folder = getConfiguration().getOutputFolder();
@@ -454,7 +463,7 @@ public class AssemblyProject implements IAssemblyProject
 	public IProjectBuilder getBuilder() {
 		return builder;
 	}
-	
+
 	@Override
 	public IResource lookupResource(String identifier) 
 	{
@@ -469,86 +478,86 @@ public class AssemblyProject implements IAssemblyProject
 	@Override
 	public void resourceChanged(IAssemblyProject project, IResource resource) {
 
-	    // nothing to do yet...
+		// nothing to do yet...
 	}
 
 	@Override
 	public void resourceCreated(IAssemblyProject project, IResource resource) 
 	{
-	    if ( resource instanceof FileResource) 
-	    {
-	        if ( ((FileResource) resource).getFile().isDirectory() ) 
-	        {
-	            return; // we don't care about directories
-	        }
-	        
-	        synchronized( RESOURCE_LOCK ) 
-	        {
-    	        for ( IResource r : getAllResources() ) {
-    	            if ( r.isSame( resource ) ) 
-    	            {
-    	                resources.remove( r );
-   	                    removeCompilationUnitFor( r );
-   	                    
-    	                resources.add( resource );
-                        if ( r.hasType( ResourceType.SOURCE_CODE ) ) {
-                            units.add( CompilationUnit.createInstance( r.getIdentifier() , r  ) );
-                        }    	                
-    	                return;
-    	            }
-    	        }
-    	        resources.add( resource );
-    	        
-                if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-                    units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
-                }       	        
-	        }
-	    }
+		if ( resource instanceof FileResource) 
+		{
+			if ( ((FileResource) resource).getFile().isDirectory() ) 
+			{
+				return; // we don't care about directories
+			}
+
+			synchronized( RESOURCE_LOCK ) 
+			{
+				for ( IResource r : getAllResources() ) {
+					if ( r.isSame( resource ) ) 
+					{
+						resources.remove( r );
+						removeCompilationUnitFor( r );
+
+						resources.add( resource );
+						if ( r.hasType( ResourceType.SOURCE_CODE ) ) {
+							units.add( CompilationUnit.createInstance( r.getIdentifier() , r  ) );
+						}    	                
+						return;
+					}
+				}
+				resources.add( resource );
+
+				if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
+					units.add( CompilationUnit.createInstance( resource.getIdentifier() , resource  ) );
+				}       	        
+			}
+		}
 	}
 
 	@Override
 	public void resourceDeleted(IAssemblyProject project, IResource resource) {
-	    
-        synchronized( RESOURCE_LOCK ) 
-        {
-            for (Iterator<IResource> it = resources.iterator(); it.hasNext();) {
-                IResource existing = it.next();
-                if ( existing.isSame( resource ) ) 
-                {
-                    it.remove();
-                    removeCompilationUnitFor( existing );
-                    return;
-                }
-            }
-        }	    
+
+		synchronized( RESOURCE_LOCK ) 
+		{
+			for (Iterator<IResource> it = resources.iterator(); it.hasNext();) {
+				IResource existing = it.next();
+				if ( existing.isSame( resource ) ) 
+				{
+					it.remove();
+					removeCompilationUnitFor( existing );
+					return;
+				}
+			}
+		}	    
 	}
 
-    @Override
-    public IResource getResourceForFile(File file)
-    {
-        for ( IResource r : getAllResources() ) {
-            if ( r instanceof FileResource) {
-                if ( ((FileResource) r).getFile().getAbsolutePath().equals( file.getAbsolutePath() ) ) {
-                    return r;
-                }
-            }
-        }
-        return null;
-    }
-    
-    @Override
-    public boolean isSame(IAssemblyProject other) 
-    {
-    	if ( other == this ) {
-    		return true;
-    	}
-    	if ( other == null ) {
-    		return false;
-    	}    	
-    	if ( this.getName().equals( other.getName() ) ) {
-    		return true;
-    	}
-    	return false;
-    }
-    
+	@Override
+	public IResource getResourceForFile(File file)
+	{
+		for ( IResource r : getAllResources() ) {
+			if ( r instanceof FileResource) {
+				if ( ((FileResource) r).getFile().getAbsolutePath().equals( file.getAbsolutePath() ) ) {
+					return r;
+				}
+			}
+		}
+		return null;
+	}
+
+	@Override
+	public boolean isSame(IAssemblyProject other) 
+	{
+		if ( other == this ) {
+			return true;
+		}
+		if ( other == null ) {
+			return false;
+		}    	
+		if ( this.getName().equals( other.getName() ) ) {
+			return true;
+		}
+		return false;
+	}
+
 }

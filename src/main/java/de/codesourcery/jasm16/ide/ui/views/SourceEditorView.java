@@ -727,7 +727,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		{
 			clearCompilationErrors();
 			statusModel.clearMessages();
-			compilationUnit = project.getBuilder().parse( documentResource , new CompilationListener() );
+			compilationUnit = project.getBuilder().parse( documentResource ,
+					new CompilationListener() );
 			doHighlighting( compilationUnit , true );
 		} finally {
 			enableDocumentListener();
@@ -1134,6 +1135,10 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	
 	private void saveCurrentFile() {
 		
+		if ( ! hasUnsavedContent() ) {
+			return;
+		}
+		
 		final String source = getTextFromTextPane();
 		try {
 			Misc.writeResource( getCurrentResource() , source );
@@ -1141,6 +1146,18 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			updateTitle();
 		} catch (IOException e1) {
 			LOG.error("save(): Failed to write to "+getCurrentResource());
+			return;
+		}
+		
+		if ( compilationUnit == null || compilationUnit.hasErrors() ) {
+			return;
+		}
+		
+		try {
+			getCurrentProject().getBuilder().build();
+		} 
+		catch (IOException e) {
+			LOG.error("save(): Compilation failed",e);
 		}
 	}
 

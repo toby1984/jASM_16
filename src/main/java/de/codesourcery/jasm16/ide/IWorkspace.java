@@ -71,4 +71,8 @@ public interface IWorkspace extends IResourceListener
     public void close() throws IOException; // ok
     
     public void reloadWorkspace() throws IOException; // ok
+
+	public void buildStarted(AssemblyProject assemblyProject);
+
+	public void buildFinished(AssemblyProject assemblyProject, boolean buildSuccessful);
 }

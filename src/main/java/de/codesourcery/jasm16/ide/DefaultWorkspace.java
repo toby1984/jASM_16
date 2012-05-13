@@ -459,4 +459,42 @@ public class DefaultWorkspace implements IWorkspace
         }         
     }
 
+	@Override
+	public void buildStarted(final AssemblyProject assemblyProject) 
+	{
+		notifyListeners( new IInvoker() {
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				if ( listener instanceof IWorkspaceListener ) {
+					((IWorkspaceListener) listener).buildStarted( assemblyProject );
+				}
+			}
+			
+			@Override
+			public String toString() {
+				return "BUILD-STARTED: "+assemblyProject;
+			}			
+		});		
+	}
+
+	@Override
+	public void buildFinished(final AssemblyProject assemblyProject, final boolean buildSuccessful) 
+	{
+		notifyListeners( new IInvoker() {
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				if ( listener instanceof IWorkspaceListener ) {
+					((IWorkspaceListener) listener).buildFinished( assemblyProject , buildSuccessful );
+				}
+			}
+			
+			@Override
+			public String toString() {
+				return "BUILD-FINISHED: "+assemblyProject+" ( success = "+buildSuccessful+" )";
+			}			
+		});			
+	}
+
 }

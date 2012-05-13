@@ -57,6 +57,7 @@ import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
@@ -78,7 +79,7 @@ public class WorkspaceExplorer extends AbstractView {
 	private JPanel panel = null;
 	private final JTree tree = new JTree();
 
-	private final IWorkspaceListener listener = new IWorkspaceListener() {
+	private final IWorkspaceListener listener = new WorkspaceListener() {
 
 		@Override
 		public void resourceChanged(IAssemblyProject project , IResource resource) {
@@ -180,7 +181,7 @@ public class WorkspaceExplorer extends AbstractView {
 				{
 					final WorkspaceTreeNode selection = getSelectedNode();
 					if ( selection != null ) {
-						deleteAction( selection );
+						deleteResource( selection );
 					}
 				}
 			}
@@ -288,14 +289,16 @@ public class WorkspaceExplorer extends AbstractView {
 		return result;
 	}
 
-	protected void deleteAction(WorkspaceTreeNode selection) 
+	protected void deleteResource(WorkspaceTreeNode selection) 
 	{
 		final IAssemblyProject project;
+		final boolean isDeleteProject;
 		final String title;
 		final String message;
 		final File file;
 		if ( selection instanceof FileNode ) 
 		{
+			isDeleteProject=false;
 			project = getProject( selection );
 			file = ((FileNode) selection).getValue();
 			title = "Delete "+file.getName()+" ? ";
@@ -303,6 +306,7 @@ public class WorkspaceExplorer extends AbstractView {
 		} 
 		else if ( selection instanceof ProjectNode ) 
 		{
+			isDeleteProject=true;
 			project = ((ProjectNode) selection).getValue();
 			file = project.getConfiguration().getBaseDirectory();
 			title = "Delete project "+project.getName()+" ?";
@@ -318,7 +322,11 @@ public class WorkspaceExplorer extends AbstractView {
 		
 		try 
 		{    	
-			workspace.deleteFile( project , file );
+			if ( isDeleteProject ) {
+				workspace.deleteProject( project , false );
+			} else {
+				workspace.deleteFile( project , file );
+			}
 		} 
 		catch (IOException e) {
 			LOG.error("deleteAction(): ",e);
@@ -445,7 +453,7 @@ public class WorkspaceExplorer extends AbstractView {
 			@Override
 			public void actionPerformed(ActionEvent e) 
 			{
-				deleteAction( selectedNode );
+				deleteResource( selectedNode );
 			}
 
 		});		
@@ -741,7 +749,13 @@ public class WorkspaceExplorer extends AbstractView {
 			{
 				n.addChild( new FileNode( f  ) );
 			}
-		}		
+		}
+
+		@Override
+		public void buildStarted(IAssemblyProject project) { /* no-op */ }
+
+		@Override
+		public void buildFinished(IAssemblyProject project, boolean success) { /* no-op */ }
 	}
 
 	private WorkspaceTreeModel createTreeModel() {

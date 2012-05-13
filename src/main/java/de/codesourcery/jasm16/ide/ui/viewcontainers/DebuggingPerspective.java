@@ -16,11 +16,13 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
@@ -52,6 +54,8 @@ public class DebuggingPerspective extends Perspective
     
     private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
     	
+    	private volatile boolean buildRunning = false;
+    	
     	public void projectDeleted(IAssemblyProject deletedProject) 
     	{
     		if ( deletedProject.isSame( project ) ) 
@@ -62,10 +66,55 @@ public class DebuggingPerspective extends Perspective
     	
     	public void resourceDeleted(IAssemblyProject affectedProject, IResource deletedResource) {
     		
-    		if ( affectedProject.isSame( project ) && deletedResource.isSame( executable ) ) {
+    		if ( ! buildRunning && // do not dispose the perspective if executable is deleted as part of the build process 
+    			 affectedProject.isSame( project ) && 
+    			 deletedResource.isSame( executable ) ) 
+    		{
     			dispose();
     		}
     	}
+    	
+    	public void buildStarted(IAssemblyProject p) {
+    		if ( p.isSame( project ) ) {
+    			buildRunning = true;
+    		}
+    	}
+    	
+    	public void buildFinished(IAssemblyProject p , boolean success) 
+    	{
+    		if ( ! p.isSame( project ) ) 
+    		{
+    			return;
+    		}
+			buildRunning = false;
+			final IResource objectFile;
+			if ( success ) 
+			{
+				final List<IResource> objectFiles = project.getResources( ResourceType.EXECUTABLE );
+				if ( objectFiles.size() == 1 ) {
+					objectFile = objectFiles.get(0);
+				} else if ( objectFiles.isEmpty() ) {
+					objectFile = null;
+				} else {
+					throw new RuntimeException("Project "+p+" has more than one executable?");
+				}
+			} else {
+				objectFile = null;
+			}
+			
+			if ( objectFile != null ) 
+			{
+				try {
+					openExecutable( p , objectFile );
+				} catch (IOException e) {
+					LOG.error("buildFinished()",e);
+				}
+			} else {
+				dispose();
+			}
+    	};
+    	
+    	
     };
     
     private final IEmulationListener listener = new EmulationListener() 
