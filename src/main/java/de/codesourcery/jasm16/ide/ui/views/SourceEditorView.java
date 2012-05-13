@@ -93,6 +93,7 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.AbstractResource;
+import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -1196,7 +1197,14 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		if ( getCurrentResource() == null ) {
 			return "source view";
 		}
-		return ( hasUnsavedContent() ? "*" : "" )+getCurrentResource().getIdentifier();
+		final String prefix = hasUnsavedContent() ? "*" : "";
+		final String identifier;
+		if ( getCurrentResource() instanceof FileResource ) {
+			identifier = ((FileResource) getCurrentResource()).getFile().getName();
+		} else {
+			identifier = getCurrentResource().getIdentifier();
+		}
+		return prefix + identifier;
 	}
 
 	@Override

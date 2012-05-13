@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
+import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.ArrayList;
@@ -88,7 +89,8 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		GridBagConstraints cnstrs = constraints(0 , 0 , true , true , GridBagConstraints.BOTH );
 		
 		setColors( result );
-		setColors( tabbedPane );
+		tabbedPane.setBackground( Color.WHITE );
+		tabbedPane.setForeground( Color.black );
 		result.add( tabbedPane ,cnstrs );
 		
 		if ( getViewContainer().getMenuManager() != null ) {
