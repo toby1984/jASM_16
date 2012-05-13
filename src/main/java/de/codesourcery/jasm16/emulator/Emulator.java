@@ -1180,7 +1180,7 @@ public class Emulator implements IEmulator {
 
 		final int acc = target.value << source.value;
 		ex = (( target.value << source.value)>>16 ) & 0xffff;
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
+		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
 	}
 
 	private int handleASR(int instructionWord) {
@@ -1190,7 +1190,7 @@ public class Emulator implements IEmulator {
 
 		final int acc = target.value >> source.value;
 		ex = (( target.value << 16)>>>source.value ) & 0xffff;
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
+		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
 	}
 
 	private int handleSHR(int instructionWord) {
@@ -1201,7 +1201,7 @@ public class Emulator implements IEmulator {
 
 		final int acc = target.value >>> source.value;
 		ex = (( target.value << 16)>>source.value ) & 0xffff;
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
+		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
 	}
 
 	private int handleXOR(int instructionWord) 
@@ -1427,7 +1427,7 @@ public class Emulator implements IEmulator {
 		case 0x0a:
 			return handleIAS( instructionWord );
 		case 0x0b:
-			return handleIAP( instructionWord );
+			return handleRFI( instructionWord );
 		case 0x0c:
 			return handleIAQ( instructionWord );
 		case 0x0d:
@@ -1539,25 +1539,26 @@ public class Emulator implements IEmulator {
 		return 2+operand.cycleCount;
 	}
 
-	private int handleIAP(int instructionWord) 
+	private int handleRFI(int instructionWord) 
 	{
+		/*
+		 *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
+   |      |       | pops PC from the stack
+		 */
 		final int CYCLES = 3;
 		
-		// IAP a 
-		// if IA is 0, does nothing, otherwise pushes IA to the stack, then sets IA to a
+		getCPU().setQueueInterrupts( false );
 		
-		if ( interruptAddress == null || interruptAddress.getValue() == 0 ) {
-			return CYCLES;
-		}
+		// pop a from stack
+		final int valueForA = memory.read( sp );
+		sp.incrementByOne( true );
+		final int operandDesc = storeTargetOperand( instructionWord , valueForA , true );
 		
-		final OperandDesc operand = loadSourceOperand( instructionWord );
+		// pop PC from stack
+		pc = Address.wordAddress( memory.read( sp ) );
+		sp.incrementByOne( true );
 		
-		// push IA to the stack
-		sp.decrementByOne();
-		memory.write( sp , interruptAddress.getValue() );
-		// set IA to a
-		interruptAddress = Address.wordAddress( operand.value );
-		return CYCLES+operand.cycleCount;
+		return CYCLES+operandDesc;
 	}
 
 	private int handleIAS(int instructionWord) 

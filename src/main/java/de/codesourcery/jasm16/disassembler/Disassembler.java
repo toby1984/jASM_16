@@ -351,7 +351,7 @@ public class Disassembler
 		case 0x0a:
 			return handleIAS( it , instructionWord );
 		case 0x0b:
-			return handleIAP( it , instructionWord );
+			return handleRFI( it , instructionWord );
 		case 0x0c:
 			return handleIAQ( it , instructionWord );
 		case 0x0d:
@@ -401,9 +401,9 @@ public class Disassembler
 		return disassembleSpecialInstruction("IAQ",it,instructionWord);
 	}
 
-	private String handleIAP(IMemoryIterator it, int instructionWord)
+	private String handleRFI(IMemoryIterator it, int instructionWord)
 	{
-		return disassembleSpecialInstruction("IAP",it,instructionWord);
+		return disassembleSpecialInstruction("RFI",it,instructionWord);
 	}
 
 	private String handleIAS(IMemoryIterator it, int instructionWord)

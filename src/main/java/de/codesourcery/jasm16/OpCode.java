@@ -210,7 +210,7 @@ public enum OpCode
             return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
         }
     },  
-    IAP( "iap",1,0x0b) 
+    RFI( "rfi",1,0x0b) 
     {
         protected boolean isBasicOpCode() { return false; };
         
