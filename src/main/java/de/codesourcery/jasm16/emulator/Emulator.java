@@ -44,10 +44,55 @@ public class Emulator implements IEmulator {
 
 	private final ClockThread clockThread;
 
-	private static final Integer CMD_TOKEN = new Integer(1);
-
 	private final ListenerHelper listenerHelper = new ListenerHelper();
 
+	private static final AtomicLong cmdId = new AtomicLong(0);
+	
+	protected static final class Command {
+	
+	    private final long id = cmdId.incrementAndGet();
+	    
+	    private final boolean isStopCommand;
+	    
+	    public static Command stopCommand() {
+	        return new Command(true);
+	    }
+	    
+        public static Command startCommand() {
+            return new Command(false);
+        }	    
+	    
+	    protected Command(boolean isStopCommand) {
+	        this.isStopCommand=isStopCommand;
+	    }
+	    
+	    public boolean isStopCommand()
+        {
+            return isStopCommand;
+        }
+	    
+        public boolean isStartCommand()
+        {
+            return ! isStopCommand();
+        }   	    
+	    
+	    public long getId()
+        {
+            return id;
+        }
+	    
+	    @Override
+	    public String toString()
+	    {
+	        if ( isStopCommand ) {
+	            return "STOP( "+id+" )";
+	        } 
+	        return "START( "+id+" )";
+	    } 
+	    
+	    
+	}
+	
 	/**
 	 * Helper to manage IEmulationListeners. 
 	 */
@@ -247,6 +292,7 @@ public class Emulator implements IEmulator {
 
 	private volatile Address interruptAddress;
 
+	private volatile boolean stoppedBecauseOfError = false;
 	private volatile boolean isRunAtRealSpeed = false;
 	private volatile boolean queueInterrupts = false;
 	
@@ -386,7 +432,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void reset(boolean clearMemory)
 	{
-		stop();
+		stop(false);
 		currentCycle = 0;
 		interruptAddress = Address.wordAddress( 0 );
 		pc = Address.wordAddress( 0 );
@@ -416,11 +462,17 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#stop()
 	 */
-	@Override
-	public void stop() 
+    @Override
+    public void stop() {
+        stop( false );
+    }
+    
+	protected void stop(boolean stopBecauseOfError) 
 	{
+	    this.stoppedBecauseOfError = stopBecauseOfError;
+	    
 		clockThread.stopSimulation();
-
+		
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
 			@Override
@@ -445,7 +497,7 @@ public class Emulator implements IEmulator {
 				listener.beforeContinuousExecution( emulator );
 			}
 		});      	
-		clockThread.startSimulation();		
+		clockThread.startSimulation();	
 	}
 
 	public Emulator() {
@@ -457,10 +509,8 @@ public class Emulator implements IEmulator {
 
 		private volatile boolean isRunnable = false;
 
-		private final Object SLEEP_LOCK = new Object();
-
-		private final BlockingQueue<Integer> cmdQueue = new ArrayBlockingQueue<Integer>(1);
-		private final BlockingQueue<Integer> ackQueue = new ArrayBlockingQueue<Integer>(1);
+		private final BlockingQueue<Command> cmdQueue = new ArrayBlockingQueue<Command>(1);
+		private final BlockingQueue<Long> ackQueue = new ArrayBlockingQueue<Long>(1);
 
 		private volatile int delay = -1;
 		private int dummy;		
@@ -475,59 +525,53 @@ public class Emulator implements IEmulator {
 		{
 			if ( isRunnable == false ) 
 			{
-				try {
-					ackQueue.clear();
-					cmdQueue.put( Integer.valueOf(1) );
-					isRunnable = true;
-					synchronized( SLEEP_LOCK ) {
-						SLEEP_LOCK.notifyAll(); // wake up thread
-					}
-					ackQueue.poll();
-				} 
-				catch (Exception e) {
-					LOG.error("startSimulation(): ",e);
-				}
+			    isRunnable = true;
+			    sendAndWaitForAck( Command.startCommand() );
 			}
 		}		
-
-		public synchronized void stopSimulation() 
+		
+        public synchronized void stopSimulation() 
+        {
+            if ( isRunnable == true ) 
+            {               
+                isRunnable = false;
+                sendAndWaitForAck( Command.stopCommand() );
+            }
+        }    		
+		
+		private void sendAndWaitForAck(Command cmd) 
 		{
-			if ( isRunnable == true ) 
-			{			    
-				try 
-				{
-					ackQueue.clear();
-					cmdQueue.add( Integer.valueOf(1) );
-					isRunnable = false;                    
-					ackQueue.poll();
-				} catch (Exception e) {
-					LOG.error("stopSimulation(): ",e);                   
-				}
-			}
-		}	 
-
+		    safePut( cmdQueue , cmd );
+            do 
+            {
+                final Long cmdId = safeTake( ackQueue );
+                if ( cmdId.longValue() == cmd.getId() ) 
+                {
+                    return;
+                }
+                safePut( ackQueue , cmdId );                
+            } while ( true );  		    
+		}
+		
 		public double getRuntimeInSeconds() 
 		{
-			if ( lastStart.get() != 0 && lastStop.get() != 0 ) 
+		    final long start = lastStart.get();
+		    final long stop = lastStop.get();
+		    
+			if ( start != 0 && stop != 0 )
 			{
-				// TODO: The retry loop is actually a hack because of some
-				// TODO: yet-not-understood race condition where the thread executing
-				// TODO: this method sees a negative (stop-start) delta ...
-				int retry = 100 ;
-				do {
-					final long delta = lastStop.get() - lastStart.get();
-					if ( delta >= 0) {
-						return ( (double) delta) / 1000.0d;
-					}
-				} while ( retry-- > 0 );
-				System.out.println("lastStart: "+lastStart);
-				System.out.println("lastStop: "+lastStop);
+				final long delta = stop - start;
+				if ( delta >= 0) {
+					return delta / 1000.0d;
+				}
+				LOG.error("getRuntimeInSeconds(): Negative runtime ? "+delta+" ( lastStart: "+start+" / lastStop: "+stop,new Exception());
 				throw new RuntimeException("Unreachable code reached");				
-			} else if ( lastStart.get() != 0 ) {
-				return ( (double) System.currentTimeMillis() - (double) lastStart.get()) / 1000.0d;
-			} else if ( lastStart.get() == 0 && lastStop.get() == 0 ) {
+			} else if ( start != 0 ) {
+				return ( (double) System.currentTimeMillis() - (double) start) / 1000.0d;
+			} else if ( start == 0 && stop == 0 ) {
 				return 0;
 			}
+			LOG.error("getRuntimeInSeconds(): Unreachable code reached");
 			throw new RuntimeException("Unreachable code reached");
 		}     		
 
@@ -590,43 +634,58 @@ public class Emulator implements IEmulator {
 		{
 			if ( lastStart.get() != 0 )
 			{
-				return ((double)cycleCountAtLastStop - (double) cycleCountAtLastStart ) / getRuntimeInSeconds();
+			    final double runtime = getRuntimeInSeconds();
+			    if ( runtime != 0.0d ) {
+			        return ((double)cycleCountAtLastStop - (double) cycleCountAtLastStart ) / getRuntimeInSeconds();
+			    }
 			}
-			return -1.0d;
-		}		
-
-		private void acknowledgeCommand() 
-		{
-			cmdQueue.poll();
-			try {
-				ackQueue.put( CMD_TOKEN );
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			return 0.0d;
 		}
+		
+        private Command waitForCommand(boolean expectingStartCommand) 
+        {
+            while ( true ) 
+            {
+                final Command result = safeTake( cmdQueue );
+                
+                if ( ( expectingStartCommand && result.isStartCommand() ) ||
+                     ( ! expectingStartCommand && result.isStopCommand() ) ) 
+                {
+                    System.out.println("Got "+(expectingStartCommand?"start":"stop")+" command with ID "+result.getId());                    
+                    return result;
+                }
+                acknowledgeCommand( result );
+            }
+        }		
 
+		private void acknowledgeCommand(Command cmd) 
+		{
+		    safePut( ackQueue , cmd.getId() );
+		}
+		
+        private Command waitForStopCommand()
+        {
+           return waitForCommand(false);
+        }		
+
+        private Command waitForStartCommand()
+        {
+           return waitForCommand(true);
+        }
+        
 		@Override
 		public void run() {
 
-			while( isRunnable == false ) 
-			{
-				try {
-					synchronized( SLEEP_LOCK ) {
-						SLEEP_LOCK.wait();
-					}
-				} 
-				catch (Exception e) 
-				{
-					LOG.error("run(): ",e);
-				}
-			}
+		    stoppedBecauseOfError = false;
+		    
+		    Command cmd = waitForStartCommand();
 
 			lastStart.set( System.currentTimeMillis() );
 			cycleCountAtLastStart=currentCycle;
-			
-			acknowledgeCommand();			
+            System.out.println("Emulator started.");
+            
+			acknowledgeCommand( cmd );			
 
-			System.out.println("Emulator running...");
 			while ( true ) 
 			{
 				if ( isRunnable == false ) 
@@ -642,29 +701,19 @@ public class Emulator implements IEmulator {
 					}
 					
 					System.out.println("Emulator stopped.");
-					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) );
+					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
 					System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
 
-					acknowledgeCommand();
+					acknowledgeCommand( waitForStopCommand() );
+
+					cmd = waitForStartCommand();
 					
-					while ( isRunnable == false ) 
-					{
-						try 
-						{
-							synchronized( SLEEP_LOCK ) {
-								SLEEP_LOCK.wait();
-							}
-						} 
-						catch (Exception e) { 
-							LOG.error("run(): ",e);
-						} 
-					}
+					stoppedBecauseOfError = false;					
 					lastStart.set( System.currentTimeMillis() );   
 					cycleCountAtLastStart=currentCycle;
+		            System.out.println("Emulator started.");					
 					
-					acknowledgeCommand();
-					
-					System.out.println("Emulator running...");
+					acknowledgeCommand(cmd);
 				}
 				
 				internalExecuteOneInstruction();
@@ -676,6 +725,7 @@ public class Emulator implements IEmulator {
 				}
 			}
 		} // END: ClockThread
+
 	}
 
 	protected void internalExecuteOneInstruction() 
@@ -707,12 +757,13 @@ public class Emulator implements IEmulator {
 		int execDurationInCycles=-1; 
 		try 
 		{
+            final Address previousPC = pc;		    
 			execDurationInCycles = executeInstruction();
-			previousPC = pc;
+			this.previousPC = previousPC;
 			currentCycle+=execDurationInCycles;
 		} 
 		catch(Exception e) {
-			stop();
+			stop(true);
 			e.printStackTrace();
 			System.err.println("\n\nERROR: Simulation stopped due to error.");
 			return;
@@ -753,7 +804,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void executeOneInstruction() 
 	{
-		stop();
+		stop(false);
 		internalExecuteOneInstruction();
 	}   
 
@@ -779,7 +830,7 @@ public class Emulator implements IEmulator {
 		}
 		if ( breakpoint != null && breakpoint.matches( this ) ) 
 		{
-			stop();
+			stop(false);
 
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
@@ -1516,7 +1567,7 @@ public class Emulator implements IEmulator {
 		if ( device == null ) 
 		{
 			System.err.println("ERROR: Unknown hardware slot #"+hardwareSlot);
-			stop();
+			stop(true);
 			return 4+operand.cycleCount;
 		}
 		
@@ -1546,7 +1597,7 @@ public class Emulator implements IEmulator {
 		if ( device == null ) 
 		{
 			System.err.println("ERROR: Unknown hardware slot #"+hardwareSlot);
-			stop();
+			stop(true);
 			return 4+operand.cycleCount;
 		}
 		
@@ -1631,7 +1682,7 @@ public class Emulator implements IEmulator {
 	private int handleHCF(int instructionWord) 
 	{
 		final OperandDesc operand = loadSourceOperand( instructionWord );
-		stop();
+		stop(false);
 		return 1+operand.cycleCount;
 	}
 
@@ -1935,7 +1986,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void loadMemory(final Address startingOffset, final byte[] data) 
 	{
-		stop();
+		stop(false);
 
 		memory.clear();
 		MemUtils.bulkLoad( memory , startingOffset , data );
@@ -1964,11 +2015,17 @@ public class Emulator implements IEmulator {
 		if ( isCalibrating.compareAndSet(false,true ) ) 
 		{
 			boolean success = false;
+			// backup this flag because calibration 
+			// with run at both speeds (full and real) and thus
+			// overwrite this flag
+		    final boolean oldValue = this.isRunAtRealSpeed;
 			try {
 				internalCalibrate();
 				success=true;
 			} 
-			finally {
+			finally 
+			{
+			    this.isRunAtRealSpeed = oldValue;
 				isCalibrating.set( false );
 				if ( success ) 
 				{
@@ -2012,11 +2069,14 @@ public class Emulator implements IEmulator {
 
 		final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
 
+		 this.isRunAtRealSpeed = false;
 		/*
 		 * Measure max. cycles/sec on this machine... 
 		 */
-		double actualCyclesPerSecond = measureActualCyclesPerSecond();
+	    double actualCyclesPerSecond = measureActualCyclesPerSecond();
 
+	    this.isRunAtRealSpeed = true; // make sure the clock thread actually uses the delay we've set
+	    
 		/*
 		 * Setup initial delay loop iteration count 
 		 * that we'll be adjusting later
@@ -2079,10 +2139,16 @@ public class Emulator implements IEmulator {
 
 		try {
 			Thread.sleep( 1 * 1000 );
-		} catch(InterruptedException e) {
-			Thread.currentThread().interrupt();
-		} finally {
-			stop();
+		}
+		catch(InterruptedException e) 
+		{
+		} finally 
+		{
+		    if ( clockThread.isRunnable ) {
+		        stop(false);
+		    } else {
+		        throw new RuntimeException("Internal error, emulator stopped unexpectedly");
+		    }
 		}
 		return clockThread.getCyclesPerSecond();
 	}
@@ -2292,12 +2358,14 @@ public class Emulator implements IEmulator {
 	}
 	
 	@Override
-	public void setRunAtRealSpeed(boolean yesNo) 
+	public boolean setRunAtRealSpeed(boolean runAtRealSpeed) 
 	{
-		this.isRunAtRealSpeed = yesNo;		
-		if ( yesNo && ! isCalibrated() ) {
+		if ( runAtRealSpeed && ! isCalibrated() ) {
 			calibrate();
 		}
+        final boolean oldValue = this.isRunAtRealSpeed;
+        this.isRunAtRealSpeed = runAtRealSpeed;  		
+		return oldValue;
 	}
 	
 	@Override
@@ -2309,5 +2377,36 @@ public class Emulator implements IEmulator {
 	public boolean isCalibrating() {
 		return isCalibrating.get();
 	}
-	
+
+	public static void main(String[] args)
+    {
+	    final long start = 1336991917286L;
+	    final long stop = 1336991918286L;
+        System.out.println( stop - start );
+    }
+
+    @Override
+    public boolean isStoppedBecauseOfError()
+    {
+        return stoppedBecauseOfError;
+    }
+    
+    private static <T> T safeTake(BlockingQueue<T> queue) {
+        while(true) 
+        {
+            try {
+                return queue.take();
+            } catch (InterruptedException e) {}
+        }
+    }     
+    
+    private static <T> void safePut(BlockingQueue<T> queue, T value) {
+        while(true) 
+        {
+            try {
+                queue.put(value);
+                return;
+            } catch (InterruptedException e) {}
+        }
+    }    
 }

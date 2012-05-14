@@ -43,7 +43,14 @@ public interface IEmulator
     
     public ICPU getCPU();
     
-    public void setRunAtRealSpeed(boolean yesNo);
+    public boolean isStoppedBecauseOfError();
+    
+    /**
+     * 
+     * @param yesNo
+     * @return previous value of this flag
+     */
+    public boolean setRunAtRealSpeed(boolean yesNo);
     
     public boolean isRunAtRealSpeed();
     

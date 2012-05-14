@@ -54,9 +54,9 @@ public class EmulatorTest extends TestCase
         assertTrue( "bad size: "+objectCode.length , objectCode.length > 0 );
         
         final IEmulator emu = new Emulator();
-        
-        emu.loadMemory(unit.getObjectCodeStartOffset() , objectCode);
-        
+        emu.calibrate();
+        emu.loadMemory(unit.getObjectCodeStartOffset() , objectCode);      
+        emu.setRunAtRealSpeed( true );
         emu.start();
         Thread.sleep( 5 * 1000 );
         emu.stop();

@@ -382,7 +382,7 @@ public class DisassemblerView extends AbstractView
             public void actionPerformed(ActionEvent e)
             {
 				final boolean isSelected = runAtRealSpeed.isSelected();
-				if ( isSelected && ! emulator.isCalibrated() ) 
+				if ( isSelected ) 
 				{
 					if ( isCalibrating.compareAndSet( false , true ) ) 
 					{
@@ -398,6 +398,7 @@ public class DisassemblerView extends AbstractView
 									public void run() 
 									{
 										try {
+										    emulator.calibrate();
 											emulator.setRunAtRealSpeed( true );
 										} 
 										finally {
