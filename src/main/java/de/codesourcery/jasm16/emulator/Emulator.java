@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -31,6 +32,10 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
+import de.codesourcery.jasm16.compiler.io.ClassPathResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.disassembler.DisassembledLine;
+import de.codesourcery.jasm16.disassembler.Disassembler;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class Emulator implements IEmulator {
@@ -651,7 +656,6 @@ public class Emulator implements IEmulator {
                 if ( ( expectingStartCommand && result.isStartCommand() ) ||
                      ( ! expectingStartCommand && result.isStopCommand() ) ) 
                 {
-                    System.out.println("Got "+(expectingStartCommand?"start":"stop")+" command with ID "+result.getId());                    
                     return result;
                 }
                 acknowledgeCommand( result );
@@ -682,7 +686,6 @@ public class Emulator implements IEmulator {
 
 			lastStart.set( System.currentTimeMillis() );
 			cycleCountAtLastStart=currentCycle;
-            System.out.println("Emulator started.");
             
 			acknowledgeCommand( cmd );			
 
@@ -711,7 +714,6 @@ public class Emulator implements IEmulator {
 					stoppedBecauseOfError = false;					
 					lastStart.set( System.currentTimeMillis() );   
 					cycleCountAtLastStart=currentCycle;
-		            System.out.println("Emulator started.");					
 					
 					acknowledgeCommand(cmd);
 				}
@@ -950,7 +952,6 @@ public class Emulator implements IEmulator {
 		 * 
 		 * The value (a) is in the same six bit format as defined earlier.
 		 */
-
 		final int operandBits;
 		if ( position == OperandPosition.SOURCE_OPERAND || isSpecialOpCode ) { // SET b , a ==> a
 			operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32); // SET b,a ==> b            
@@ -1157,6 +1158,14 @@ public class Emulator implements IEmulator {
 
 	private int handleUnknownOpCode(int instructionWord) 
 	{
+	    final Disassembler dis = new Disassembler();
+	    
+	    // assume worst-case , each instruction only is one word
+	    final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , previousPC ).toSizeInWords().getValue();
+	    List<DisassembledLine> lines = dis.disassemble( getMemory() , Address.wordAddress( 0 ) , instructionCount , true );
+	    for (DisassembledLine line : lines) {
+            System.out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents());
+        }
 		System.err.println("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() ) );
 		System.err.println("Previously executed instruction was at "+Misc.toHexString( previousPC ) );
 		throw new RuntimeException("Unknown opcode");
@@ -1988,6 +1997,8 @@ public class Emulator implements IEmulator {
 	{
 		stop(false);
 
+		new Exception().printStackTrace();
+		
 		memory.clear();
 		MemUtils.bulkLoad( memory , startingOffset , data );
 
@@ -2131,8 +2142,15 @@ public class Emulator implements IEmulator {
 		 * loop: (0x0000)   ADD A,1     ; (1000100000000010) 8802 
          *                  SET PC,loop ; (1000011110000001) 8781
 		 */
-		final byte[] program = new byte[] {(byte) 0x88,0x02,(byte) 0x87,(byte) 0x81};
-
+		final byte[] program;
+        try {
+            program = Misc.readBytes( new ClassPathResource("matrix.dcpu16",ResourceType.EXECUTABLE) );
+        } 
+        catch (IOException e1) {
+            LOG.error("measureActualCyclesPerSecond(): Failed to load calibration program",e1);
+            throw new RuntimeException("Failed to load calibration program?");
+        }
+        
 		loadMemory(  Address.ZERO  , program );
 
 		start();
