@@ -229,6 +229,10 @@ public class Emulator implements IEmulator {
 	private final AtomicIntegerArray registers=new AtomicIntegerArray(8);
 
 	private volatile Address pc = Address.wordAddress( 0 );
+	
+	// used to print a backtrace when the CPU reached an unknown upcode
+	private volatile Address previousPC = Address.wordAddress( 0 );
+	
 	private volatile Address sp = Address.wordAddress( 0 );
 	private volatile int ex;
 
@@ -631,7 +635,12 @@ public class Emulator implements IEmulator {
 					lastStart = System.currentTimeMillis();   
 					cycleCountAtLastStart=currentCycle;                    
 				}
+				
 				internalExecuteOneInstruction();
+				
+				for ( int j = delay ; j > 0 ; j-- ) {
+					dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
+				}					
 			}
 		} // END: ClockThread
 	}
@@ -666,10 +675,11 @@ public class Emulator implements IEmulator {
 		try 
 		{
 			execDurationInCycles = executeInstruction();
-
+			previousPC = pc;
 			currentCycle+=execDurationInCycles;
 		} 
 		catch(Exception e) {
+			stop();
 			e.printStackTrace();
 			System.err.println("\n\nERROR: Simulation stopped due to error.");
 			return;
@@ -1061,9 +1071,11 @@ public class Emulator implements IEmulator {
 		return 3+storeTargetOperand( instructionWord , acc)+source.cycleCount;
 	}
 
-	private int handleUnknownOpCode(int instructionWord) {
-		throw new RuntimeException("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+
-				"0x"+Misc.toHexString( pc.decrementByOne() ) );
+	private int handleUnknownOpCode(int instructionWord) 
+	{
+		System.err.println("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() ) );
+		System.err.println("Previously executed instruction was at "+Misc.toHexString( previousPC ) );
+		throw new RuntimeException("Unknown opcode");
 	}
 
 	private int handleIFU(int instructionWord) {
@@ -1666,7 +1678,7 @@ public class Emulator implements IEmulator {
 		switch( operandBits ) {
 		case 0x18:
 			// PUSH / [--SP]
-					sp = sp.decrementByOne();
+			sp = sp.decrementByOne();
 			memory.write( sp.getValue() , value);
 			return 1;
 		case 0x19:
@@ -1729,7 +1741,7 @@ public class Emulator implements IEmulator {
 		switch( operandBits ) {
 		case 0x18:
 			// POP / [SP++]
-					final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
+			final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
 			sp = sp.incrementByOne(true);                
 			return tmp;
 		case 0x19:
@@ -1812,7 +1824,7 @@ public class Emulator implements IEmulator {
 			} else {
 				nextWord = memory.read( pc );                
 			}
-			return operandDesc( memory.read( registers.get( operandBits - 0x17 )+nextWord ) ,1 );
+			return operandDesc( memory.read( registers.get( operandBits - 0x10 )+nextWord ) ,1 );
 		}
 
 		switch( operandBits ) {
@@ -1962,14 +1974,14 @@ public class Emulator implements IEmulator {
 		 * Incrementally adjust the delay loop iteration count until
 		 * we reach clock rate (deviation).
 		 */
-		double increment = 30;
+		double increment = 400;
 		do 
 		{
 			actualCyclesPerSecond = measureActualCyclesPerSecond();
 
 			final double deltaPercentage = 100.0d* ( ( actualCyclesPerSecond - EXPECTED_CYCLES_PER_SECOND ) / EXPECTED_CYCLES_PER_SECOND );
 
-			if (deltaPercentage < 0.0d || deltaPercentage > 0.9d )
+			if (deltaPercentage < 0.0d || deltaPercentage > 10.0d )
 			{
 				if ( increment < 1 ) {
 					increment = 1;
@@ -1979,7 +1991,14 @@ public class Emulator implements IEmulator {
 				} else {
 					clockThread.delay -= increment;
 				}
-				increment = increment*0.7;
+				double scalingFactor;
+				if ( Math.abs( deltaPercentage ) >= 100.0d) {
+					scalingFactor = 1;
+				} else {
+					scalingFactor = 0.9*(Math.abs( deltaPercentage ) / 100.0d);
+				}
+				System.out.println("Delay: "+clockThread.delay+" (increment: "+increment+" / scaling: "+scalingFactor+" )");				
+				increment = increment*scalingFactor;
 			} else {
 				break;
 			}
@@ -1989,7 +2008,11 @@ public class Emulator implements IEmulator {
 
 	private double measureActualCyclesPerSecond() 
 	{
-		final byte[] program = new byte[] {(byte) 0x84,0x01,(byte) 0x81,(byte) 0xc1};
+		/*
+		 * loop: (0x0000)   ADD A,1     ; (1000100000000010) 8802 
+         *                  SET PC,loop ; (1000011110000001) 8781
+		 */
+		final byte[] program = new byte[] {(byte) 0x88,0x02,(byte) 0x87,(byte) 0x81};
 
 		loadMemory(  Address.ZERO  , program );
 

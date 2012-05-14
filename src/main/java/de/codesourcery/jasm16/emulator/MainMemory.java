@@ -23,6 +23,7 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * DCPU-16 main memory emulation.

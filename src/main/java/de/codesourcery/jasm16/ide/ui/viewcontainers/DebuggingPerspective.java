@@ -139,7 +139,9 @@ public class DebuggingPerspective extends Perspective
 		}
         this.workspace = workspace;
         this.workspace.addWorkspaceListener( workspaceListener );
-        this.emulator = new Emulator();
+        final Emulator emu = new Emulator();
+        emu.calibrate();
+        this.emulator = emu;
         this.emulator.addEmulationListener( listener );
     }
     

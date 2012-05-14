@@ -1,0 +1,2 @@
+loop: ADD A , 1
+      SET PC,loop
