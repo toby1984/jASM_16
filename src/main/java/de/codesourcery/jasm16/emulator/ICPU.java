@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.util.List;
+
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
 
@@ -57,4 +59,6 @@ public interface ICPU
 	public boolean isQueueInterrupts();
 	
 	public boolean interruptsEnabled();
+	
+	public List<IInterrupt> getInterruptQueue();
 }

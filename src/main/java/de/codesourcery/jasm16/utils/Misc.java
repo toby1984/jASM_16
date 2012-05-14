@@ -204,19 +204,27 @@ public class Misc {
     {
         if ( val > 0xffff && val <= 0xffffff )
         {
-            return toHexString( (byte) ( (val >>16 ) & 0x00ff ) )+toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );             
+            return toHexString( (byte) ( (val >>> 16 ) & 0x00ff ) )+toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );             
         } 
         
         if ( val <= 0xffff ) {
-            return toHexString( (byte) ( (val >>8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );
+            return toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );
         }
         return "Value out-of-range: "+val;
-    }       
+    }    
+    
+    public static String toHexString(long val) 
+    {
+    	return toHexString( (byte) ( (val >>> 32 ) & 0x00ff ) )+
+    		   toHexString( (byte) ( (val >>> 16 ) & 0x00ff ) )+
+    		   toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+
+    		   toHexString( (byte) ( val & 0x00ff ) );             
+    }
 
     public static String toHexString(byte val) 
     {
         final int lo = ( val & 0x0f );
-        final int hi = ( val >> 4) & 0x0f;
+        final int hi = ( val >>> 4) & 0x0f;
         return ""+HEX_CHARS[ hi ]+HEX_CHARS[ lo ];
     }	
 

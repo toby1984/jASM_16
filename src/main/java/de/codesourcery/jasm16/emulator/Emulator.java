@@ -321,6 +321,13 @@ public class Emulator implements IEmulator {
 			return result;
 		}
 		
+		@Override
+		public List<IInterrupt> getInterruptQueue() {
+			synchronized( interruptQueue ) {
+				return new ArrayList<IInterrupt>( interruptQueue );
+			}
+		}
+		
 		public void setRegisterValue(Register reg, int value) 
 		{
 			switch( reg ) 
@@ -438,7 +445,9 @@ public class Emulator implements IEmulator {
 	public void reset(boolean clearMemory)
 	{
 		stop(false);
+		
 		currentCycle = 0;
+		queueInterrupts = false;
 		interruptAddress = Address.wordAddress( 0 );
 		pc = Address.wordAddress( 0 );
 		sp = Address.wordAddress( 0 );
@@ -741,7 +750,7 @@ public class Emulator implements IEmulator {
 					irq = currentInterrupt;
 					currentInterrupt = null;
 				} 
-				else  if ( ! interruptQueue.isEmpty() ) 
+				else  if ( ! interruptQueue.isEmpty() && ! getCPU().isQueueInterrupts() ) 
 				{
 					irq = interruptQueue.remove(0);
 				} else {
@@ -786,18 +795,19 @@ public class Emulator implements IEmulator {
 		 * - set the PC to IA
 		 * - set A to the interrupt message
 		 * 
-		 * A well formed interrupt handler must pop
-		 * A from the stack before returning (popping PC from the stack)    	 
+		 * A well formed interrupt handler must 
+		 * - pop A from the stack 
+		 * - popping PC from the stack
+		 * 
+		 * when returning.     	 
 		 */
 		
 		// push PC to stack
 		// SET [ --SP ] , PC
-		sp.decrementByOne();
-		memory.write( sp , pc.getValue() );
+		push( pc.getValue() );
 		
 		// push A to stack
-		sp.decrementByOne();
-		memory.write( sp , registers.get(REGISTER_A) );
+		push( registers.get(REGISTER_A));
 		
 		pc = interruptAddress;
 		registers.set( REGISTER_A, irq.getMessage() );
@@ -1308,7 +1318,6 @@ public class Emulator implements IEmulator {
 		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
-
 		final int acc = target.value >>> source.value;
 		ex = (( target.value << 16)>>source.value ) & 0xffff;
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
@@ -1417,7 +1426,7 @@ public class Emulator implements IEmulator {
 
 	private int signed( int value) 
 	{
-		if ( ( value & ( 1 << 16 ) ) != 0 ) { // MSB set => negative value
+		if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
 			return value | 0xffff0000;
 		}
 		return value;
@@ -1657,16 +1666,25 @@ public class Emulator implements IEmulator {
 		 */
 		getCPU().setQueueInterrupts( false );
 		
-		// pop a from stack
-		registers.set(REGISTER_A , memory.read( sp ) );
-		sp.incrementByOne( true );
-		
-		// pop PC from stack
-		pc = Address.wordAddress( memory.read( sp ) );
-		sp.incrementByOne( true );
-		
+		registers.set(REGISTER_A , pop() ); // pop a from stack
+		pc = Address.wordAddress( pop() ); // pop PC from stack
 		return 3;
 	}
+	
+	private int pop() 
+	{
+		// SET a, [SP++]
+		final int result = memory.read( sp ) & 0xffff;
+		sp=sp.incrementByOne(true);
+		return result;
+	}
+	
+	private void push(int value) 
+	{
+		// SET [--SP] , blubb
+		sp = sp.decrementByOne();
+		memory.write( sp , value & 0xffff );
+	}	
 
 	private int handleIAS(int instructionWord) 
 	{
@@ -1699,8 +1717,7 @@ public class Emulator implements IEmulator {
 	{
 		// pushes the address of the next instruction to the stack, then sets PC to a
 		OperandDesc source= loadSourceOperand( instructionWord );
-		sp = sp.decrementByOne();
-		memory.write( sp , pc.getValue() );
+		push( pc.getValue() );
 		pc = Address.wordAddress( source.value );
 		return 3+source.cycleCount;
 	}
@@ -1769,10 +1786,8 @@ public class Emulator implements IEmulator {
 			return 1;
 		}
 		switch( operandBits ) {
-		case 0x18:
-			// PUSH / [--SP]
-			sp = sp.decrementByOne();
-			memory.write( sp.getValue() , value);
+		case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
+			push( value );
 			return 1;
 		case 0x19:
 			return handleIllegalTargetOperand(instructionWord);
@@ -1832,8 +1847,7 @@ public class Emulator implements IEmulator {
 		}
 
 		switch( operandBits ) {
-		case 0x18:
-			// POP / [SP++]
+		case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
 			final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
 			sp = sp.incrementByOne(true);                
 			return tmp;
@@ -1873,8 +1887,6 @@ public class Emulator implements IEmulator {
 	 * @return
 	 */
 	protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
-
-
 		/* 
 		 * SET b,a
 		 * 
@@ -1921,10 +1933,10 @@ public class Emulator implements IEmulator {
 		}
 
 		switch( operandBits ) {
-		case 0x18:
-			// POP / [SP++]
-					sp = sp.incrementByOne(true);
-			return operandDesc( memory.read( sp ) , 1 );
+		case 0x18: // (POP / [SP++]) if in a
+			final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
+			sp = sp.incrementByOne(true);
+			return tmp;
 		case 0x19:
 			return operandDesc( memory.read( sp ) , 1 );
 		case 0x1a:
@@ -1997,8 +2009,9 @@ public class Emulator implements IEmulator {
 	{
 		stop(false);
 
-		new Exception().printStackTrace();
-		
+		if ( clockThread.isRunnable ) {
+			throw new IllegalStateException("Emulation not stopped?");
+		}
 		memory.clear();
 		MemUtils.bulkLoad( memory , startingOffset , data );
 
@@ -2312,15 +2325,14 @@ public class Emulator implements IEmulator {
 			return false;
 		}
 		
-		getCPU().setQueueInterrupts( true );
-
 		synchronized ( interruptQueue ) 
 		{
-			if ( currentInterrupt == null ) {
+			if ( currentInterrupt == null && ! getCPU().isQueueInterrupts() ) {
 				currentInterrupt  = interrupt;
 			} else {
+				getCPU().setQueueInterrupts( true );
 				interruptQueue.add( interrupt );
-			}
+			} 
 		}
 		return true;
 	}
@@ -2337,6 +2349,7 @@ public class Emulator implements IEmulator {
 			}
 			devices.add( device );
 		}
+		System.out.println("Device added: "+device);
 		device.afterAddDevice( this );
 	}
 
@@ -2360,6 +2373,7 @@ public class Emulator implements IEmulator {
 		}
 		
 		if ( isRegistered ) {
+			System.out.println("Device removed: "+device);			
 			device.beforeRemoveDevice( this );
 		} else {
 			return;

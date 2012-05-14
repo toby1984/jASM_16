@@ -22,6 +22,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
@@ -103,7 +105,16 @@ public class CPUView extends AbstractView
         builder.append("\n");
         
         builder.append("EX: "+Misc.toHexString( cpu.getEX() )).append("\n");
-        builder.append("IA: "+Misc.toHexString( cpu.getInterruptAddress() )).append("\n");        
+        builder.append("IA: "+Misc.toHexString( cpu.getInterruptAddress() )).append("\n");
+        
+        String text="Interrupt queueing is ";
+        if ( cpu.isQueueInterrupts() ) {
+        	text += "ON";
+        } else {
+        	text += "OFF";
+        }
+        builder.append("IQ: "+text+"\n");   
+        builder.append("IRQs: "+StringUtils.join( cpu.getInterruptQueue() , "," )).append("\n");
         builder.append("SP: "+Misc.toHexString( cpu.getSP().getValue() )).append("\n");
         
         SwingUtilities.invokeLater( new Runnable() {

@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.ide.ui.views;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.font.LineMetrics;
 import java.awt.geom.Rectangle2D;
 
 import javax.swing.JPanel;
@@ -28,6 +27,7 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.MemoryRegion;
+import de.codesourcery.jasm16.emulator.devices.DefaultKeyboard;
 
 public class ScreenView extends AbstractView
 {
@@ -66,6 +66,7 @@ public class ScreenView extends AbstractView
     }; 
     
     private final IEmulator emulator;
+    private final DefaultKeyboard keyboard = new DefaultKeyboard(); 
     
     public ScreenView(IEmulator emulator) {
         if (emulator == null) {
@@ -73,12 +74,14 @@ public class ScreenView extends AbstractView
         }
         this.emulator = emulator;
         this.emulator.mapRegion( videoRAM );
+		this.emulator.addDevice( keyboard );
     }
     
     @Override
     public void dispose()
     {
         this.emulator.unmapRegion( videoRAM );
+        this.emulator.removeDevice( keyboard );
     }
 
     @Override
@@ -104,8 +107,10 @@ public class ScreenView extends AbstractView
     @Override
     protected JPanel getPanel()
     {
-    	if ( panel == null ) {
+    	if ( panel == null ) 
+    	{
     		panel=createPanel();
+    		keyboard.setInputComponent( panel );
     	}
     	return panel;
     }
@@ -153,7 +158,8 @@ public class ScreenView extends AbstractView
         
         panel.setDoubleBuffered( true );
         panel.setPreferredSize( new Dimension(400,200 ) );
-        panel.setSize( new Dimension(400,200 ) );        
+        panel.setSize( new Dimension(400,200 ) );       
+        panel.setFocusable( true );
         setColors( panel );
         return panel;
     }

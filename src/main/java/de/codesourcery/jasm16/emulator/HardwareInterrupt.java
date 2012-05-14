@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import de.codesourcery.jasm16.utils.Misc;
+
 public final class HardwareInterrupt implements IInterrupt {
 
 	private final IDevice device;
@@ -47,4 +49,8 @@ public final class HardwareInterrupt implements IInterrupt {
 		return true;
 	}
 
+	@Override
+	public String toString() {
+		return "HW{"+Misc.toHexString( message )+"}";
+	}
 }
