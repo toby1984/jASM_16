@@ -22,7 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
@@ -148,6 +150,10 @@ public class Emulator implements IEmulator {
 
 		public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
 		{
+			if ( isCalibrating.get() ) { // do not invoke any listeners while calibrating
+				return;
+			}
+			
 			final List<IEmulationListener> copy;
 			synchronized( emuListeners ) 
 			{
@@ -190,9 +196,10 @@ public class Emulator implements IEmulator {
 		}        
 	}
 
-	private volatile long lastStart;
+	private final AtomicLong lastStart = new AtomicLong(0);
+	
 	private volatile int cycleCountAtLastStart=0;
-	private volatile long lastStop;
+	private final AtomicLong lastStop = new AtomicLong(0);
 	private volatile int cycleCountAtLastStop=0;
 
 	// ============ BreakPoints =======
@@ -211,6 +218,8 @@ public class Emulator implements IEmulator {
 	// @GuardedBy( devices )
 	private final List<IDevice> devices = new ArrayList<IDevice>();
 
+	private final AtomicBoolean isCalibrating = new AtomicBoolean(false);
+	
 	// ============ CPU =============== 
 
 	// a,b,c,x,y,z,i,j
@@ -238,6 +247,7 @@ public class Emulator implements IEmulator {
 
 	private volatile Address interruptAddress;
 
+	private volatile boolean isRunAtRealSpeed = false;
 	private volatile boolean queueInterrupts = false;
 	
 	// @GuardedBy( interruptQueue )
@@ -457,7 +467,7 @@ public class Emulator implements IEmulator {
 
 		public ClockThread() 
 		{
-			setName("simulation-thread");
+			setName("emulation-clock-thread");
 			setDaemon(true);
 		}
 
@@ -466,6 +476,7 @@ public class Emulator implements IEmulator {
 			if ( isRunnable == false ) 
 			{
 				try {
+					ackQueue.clear();
 					cmdQueue.put( Integer.valueOf(1) );
 					isRunnable = true;
 					synchronized( SLEEP_LOCK ) {
@@ -483,7 +494,9 @@ public class Emulator implements IEmulator {
 		{
 			if ( isRunnable == true ) 
 			{			    
-				try {
+				try 
+				{
+					ackQueue.clear();
 					cmdQueue.add( Integer.valueOf(1) );
 					isRunnable = false;                    
 					ackQueue.poll();
@@ -493,16 +506,29 @@ public class Emulator implements IEmulator {
 			}
 		}	 
 
-		public double getRuntimeInSeconds() {
-			if ( lastStart != 0 && lastStop != 0 ) 
+		public double getRuntimeInSeconds() 
+		{
+			if ( lastStart.get() != 0 && lastStop.get() != 0 ) 
 			{
-				if ( lastStop >= lastStart ) {
-					return (lastStop - lastStart)/1000.0f;
-				}
-			} else if ( lastStart != 0 ) {
-				return ( System.currentTimeMillis() - lastStart) / 1000.0f;
+				// TODO: The retry loop is actually a hack because of some
+				// TODO: yet-not-understood race condition where the thread executing
+				// TODO: this method sees a negative (stop-start) delta ...
+				int retry = 100 ;
+				do {
+					final long delta = lastStop.get() - lastStart.get();
+					if ( delta >= 0) {
+						return ( (double) delta) / 1000.0d;
+					}
+				} while ( retry-- > 0 );
+				System.out.println("lastStart: "+lastStart);
+				System.out.println("lastStop: "+lastStop);
+				throw new RuntimeException("Unreachable code reached");				
+			} else if ( lastStart.get() != 0 ) {
+				return ( (double) System.currentTimeMillis() - (double) lastStart.get()) / 1000.0d;
+			} else if ( lastStart.get() == 0 && lastStop.get() == 0 ) {
+				return 0;
 			}
-			return -1; 
+			throw new RuntimeException("Unreachable code reached");
 		}     		
 
 		protected final double measureDelayLoopInNanos() 
@@ -562,9 +588,9 @@ public class Emulator implements IEmulator {
 
 		public double getCyclesPerSecond() 
 		{
-			if ( lastStart != 0 )
+			if ( lastStart.get() != 0 )
 			{
-				return (cycleCountAtLastStop - cycleCountAtLastStart ) / getRuntimeInSeconds();
+				return ((double)cycleCountAtLastStop - (double) cycleCountAtLastStart ) / getRuntimeInSeconds();
 			}
 			return -1.0d;
 		}		
@@ -595,20 +621,18 @@ public class Emulator implements IEmulator {
 				}
 			}
 
-			acknowledgeCommand();
-
-			lastStart = System.currentTimeMillis();
+			lastStart.set( System.currentTimeMillis() );
 			cycleCountAtLastStart=currentCycle;
+			
+			acknowledgeCommand();			
 
+			System.out.println("Emulator running...");
 			while ( true ) 
 			{
 				if ( isRunnable == false ) 
 				{
-					lastStop = System.currentTimeMillis();
+					lastStop.set( System.currentTimeMillis() );
 					cycleCountAtLastStop=currentCycle;
-
-					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) );
-					System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
 
 					if ( DEBUG_LISTENER_PERFORMANCE ) 
 					{
@@ -616,8 +640,13 @@ public class Emulator implements IEmulator {
 							System.out.println( entry.getKey()+" = "+entry.getValue()+" millis" );	
 						}
 					}
-					acknowledgeCommand();
+					
+					System.out.println("Emulator stopped.");
+					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) );
+					System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
 
+					acknowledgeCommand();
+					
 					while ( isRunnable == false ) 
 					{
 						try 
@@ -630,17 +659,21 @@ public class Emulator implements IEmulator {
 							LOG.error("run(): ",e);
 						} 
 					}
+					lastStart.set( System.currentTimeMillis() );   
+					cycleCountAtLastStart=currentCycle;
+					
 					acknowledgeCommand();
-
-					lastStart = System.currentTimeMillis();   
-					cycleCountAtLastStart=currentCycle;                    
+					
+					System.out.println("Emulator running...");
 				}
 				
 				internalExecuteOneInstruction();
 				
-				for ( int j = delay ; j > 0 ; j-- ) {
-					dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
-				}					
+				if ( isRunAtRealSpeed ) {
+					for ( int j = delay ; j > 0 ; j-- ) {
+						dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
+					}					
+				}
 			}
 		} // END: ClockThread
 	}
@@ -1928,6 +1961,31 @@ public class Emulator implements IEmulator {
 	@Override
 	public void calibrate() 
 	{
+		if ( isCalibrating.compareAndSet(false,true ) ) 
+		{
+			boolean success = false;
+			try {
+				internalCalibrate();
+				success=true;
+			} 
+			finally {
+				isCalibrating.set( false );
+				if ( success ) 
+				{
+					listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+						
+						@Override
+						public void invoke(IEmulator emulator, IEmulationListener listener) {
+							listener.calibrationFinished( emulator );
+						}
+					});
+				}
+			}
+		}
+	}
+	
+	protected void internalCalibrate() 
+	{	
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
 		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
@@ -1981,10 +2039,11 @@ public class Emulator implements IEmulator {
 
 			final double deltaPercentage = 100.0d* ( ( actualCyclesPerSecond - EXPECTED_CYCLES_PER_SECOND ) / EXPECTED_CYCLES_PER_SECOND );
 
+			System.out.println("Offset: "+deltaPercentage+"% ("+actualCyclesPerSecond+" cycles/s)");
 			if (deltaPercentage < 0.0d || deltaPercentage > 10.0d )
 			{
-				if ( increment < 1 ) {
-					increment = 1;
+				if ( increment < 10 ) {
+					increment = 10;
 				}
 				if ( deltaPercentage > 0 ) {
 					clockThread.delay += increment;
@@ -1995,7 +2054,7 @@ public class Emulator implements IEmulator {
 				if ( Math.abs( deltaPercentage ) >= 100.0d) {
 					scalingFactor = 1;
 				} else {
-					scalingFactor = 0.9*(Math.abs( deltaPercentage ) / 100.0d);
+					scalingFactor = 0.9*( Math.abs( deltaPercentage ) / 100.0d )*1.5;
 				}
 				System.out.println("Delay: "+clockThread.delay+" (increment: "+increment+" / scaling: "+scalingFactor+" )");				
 				increment = increment*scalingFactor;
@@ -2226,4 +2285,29 @@ public class Emulator implements IEmulator {
 			devices.remove( device );
 		}
 	}
+	
+	@Override
+	public boolean isRunAtRealSpeed() {
+		return isRunAtRealSpeed;
+	}
+	
+	@Override
+	public void setRunAtRealSpeed(boolean yesNo) 
+	{
+		this.isRunAtRealSpeed = yesNo;		
+		if ( yesNo && ! isCalibrated() ) {
+			calibrate();
+		}
+	}
+	
+	@Override
+	public boolean isCalibrated() {
+		return clockThread.delay != -1;
+	}
+	
+	@Override
+	public boolean isCalibrating() {
+		return isCalibrating.get();
+	}
+	
 }

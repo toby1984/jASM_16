@@ -24,6 +24,8 @@ import de.codesourcery.jasm16.Address;
  */
 public interface IEmulationListener
 {
+	public void calibrationFinished(IEmulator emulator);
+	
 	/**
 	 * Invoked before the emulation starts running
 	 * at full speed.

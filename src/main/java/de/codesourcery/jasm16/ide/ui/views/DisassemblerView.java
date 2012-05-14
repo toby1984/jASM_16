@@ -25,10 +25,14 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -42,6 +46,7 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -54,7 +59,8 @@ public class DisassemblerView extends AbstractView
     private final JButton singleStepButton = new JButton("Step");
     private final JButton runButton = new JButton("Run");
     private final JButton stopButton = new JButton("Stop");   
-    private final JButton resetButton = new JButton("Reset");                               
+    private final JButton resetButton = new JButton("Reset");
+    private JCheckBox runAtRealSpeed;
     
     private final DebuggingPerspective perspective;
     private IEmulator emulator;
@@ -364,8 +370,54 @@ public class DisassemblerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 3 , 0 , true , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( 3 , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( resetButton , cnstrs );
+        
+        // =========== "Run at full speed" checkbox ============
+        runAtRealSpeed = new JCheckBox("Run at real speed",emulator.isRunAtRealSpeed());
+        final AtomicBoolean isCalibrating = new AtomicBoolean(false);
+        runAtRealSpeed.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+				final boolean isSelected = runAtRealSpeed.isSelected();
+				if ( isSelected && ! emulator.isCalibrated() ) 
+				{
+					if ( isCalibrating.compareAndSet( false , true ) ) 
+					{
+						new Thread() {
+							@Override
+							public void run() 
+							{
+								final JDialog dialog = UIUtils.createMessageDialog( null, "Hang on..." , "Calibrating emulation speed...");
+								dialog.setModal(true);
+								
+								new Thread() {
+									@Override
+									public void run() 
+									{
+										try {
+											emulator.setRunAtRealSpeed( true );
+										} 
+										finally {
+											isCalibrating.set( false );											
+											dialog.dispose();
+										}
+									}
+								}.start();
+								dialog.setVisible( true );
+							}
+						}.start();
+					}
+				} else {
+					emulator.setRunAtRealSpeed( isSelected );
+				}
+            }
+        });
+        
+        cnstrs = constraints( 4 , 0 , true , true , GridBagConstraints.NONE );          
+        buttonBar.add( runAtRealSpeed , cnstrs );        
         
         // setup bottom panel        
         final JPanel bottomPanel = new JPanel();

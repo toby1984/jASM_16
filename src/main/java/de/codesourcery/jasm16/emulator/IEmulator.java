@@ -21,29 +21,59 @@ import de.codesourcery.jasm16.Address;
 
 public interface IEmulator
 {
+    public void addBreakpoint(Breakpoint bp);
+    
+    public void addDevice(IDevice device);   
+    
     public void addEmulationListener(IEmulationListener listener);
+
+    public void breakpointChanged(Breakpoint breakpoint);
+
+    public void calibrate();
     
-    public void removeEmulationListener(IEmulationListener listener);   
+    public boolean isCalibrating();
+
+    public void deleteBreakpoint(Breakpoint bp);
     
-    // emulator control
-    public abstract void reset(boolean clearMemory);
-
-    public abstract void stop();
-
-    public abstract void start();
-
     public void executeOneInstruction();
     
-    public void skipCurrentInstruction();
-    
-    public void loadMemory(Address startingOffset, byte[] data);
+    public Breakpoint getBreakPoint(Address address);
 
-    // hardware
-    public void addDevice(IDevice device);
+    public List<Breakpoint> getBreakPoints();
+    
+    public ICPU getCPU();
+    
+    public void setRunAtRealSpeed(boolean yesNo);
+    
+    public boolean isRunAtRealSpeed();
     
     public List<IDevice> getDevices();
     
+    public IReadOnlyMemory getMemory();
+    
+    public void loadMemory(Address startingOffset, byte[] data);
+    
+    /**
+     * Maps main memory to a specific region.
+     * 
+     * @param region
+     * @see #unmapRegion(IMemoryRegion)
+     * @see MainMemory#mapRegion(IMemoryRegion)
+     */
+    public void mapRegion(IMemoryRegion region);
+    
     public void removeDevice(IDevice device);
+    
+    public void removeEmulationListener(IEmulationListener listener);     
+    
+    // emulator control
+    public void reset(boolean clearMemory);
+    
+    public void skipCurrentInstruction();
+    
+    public void start();
+
+    public void stop();
     
     /**
      * Triggers an interrupt.
@@ -57,11 +87,7 @@ public interface IEmulator
      * @return <code>false</code> if interrupts are disabled (IA is set to 0),
      * otherwise <code>true</code>
      */
-    public boolean triggerInterrupt(IInterrupt interrupt);
-    
-    public ICPU getCPU();
-    
-    public IReadOnlyMemory getMemory();
+    public boolean triggerInterrupt(IInterrupt interrupt);      
     
     /**
      * Replaces a mapped memory region with plain (unmapped) main-memory.
@@ -70,27 +96,6 @@ public interface IEmulator
      * @see MainMemory#unmapRegion(IMemoryRegion)
      */
     public void unmapRegion(IMemoryRegion region);
-    
-    /**
-     * Maps main memory to a specific region.
-     * 
-     * @param region
-     * @see #unmapRegion(IMemoryRegion)
-     * @see MainMemory#mapRegion(IMemoryRegion)
-     */
-    public void mapRegion(IMemoryRegion region);     
-    
-    // breakpoint handling
-    public void addBreakpoint(Breakpoint bp);
-    
-    public Breakpoint getBreakPoint(Address address);
-    
-    public void deleteBreakpoint(Breakpoint bp);
 
-    public List<Breakpoint> getBreakPoints();
-    
-    public void breakpointChanged(Breakpoint breakpoint);      
-    
-    // misc
-    public void calibrate();    
+	public boolean isCalibrated();    
 }

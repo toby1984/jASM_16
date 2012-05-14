@@ -160,6 +160,46 @@ public class UIUtils {
 		return checkbox.isSelected();
 	}	
 	
+	public static JDialog createMessageDialog(Window parent,String title,String msg) {
+
+		final JDialog dialog = new JDialog( parent , title );
+		
+		final JTextArea message = createMultiLineLabel( msg );
+
+		final JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout( new FlowLayout() );
+		
+		final JPanel messagePanel = new JPanel();
+		messagePanel.setLayout( new GridBagLayout() );
+		
+		GridBagConstraints cnstrs = constraints(0,0,true,false, GridBagConstraints.NONE );
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		cnstrs.weighty=0;
+		cnstrs.gridheight = 1;
+		messagePanel.add( message , cnstrs );
+		
+		final JPanel panel = new JPanel();
+		panel.setLayout( new GridBagLayout() );
+		
+		cnstrs = constraints(0,0,true,false , GridBagConstraints.NONE );	
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		cnstrs.gridheight = 1;
+		cnstrs.weighty=0;
+        cnstrs.insets = new Insets(5,2,5,2); // top,left,bottom,right			
+		panel.add( messagePanel , cnstrs );
+		
+		cnstrs = constraints(0,1,true,true, GridBagConstraints.HORIZONTAL );	
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		cnstrs.gridheight = 1;
+		cnstrs.weighty=0;
+        cnstrs.insets = new Insets(0,2,10,2); // top,left,bottom,right		
+		panel.add( buttonPanel , cnstrs );
+		
+		dialog.getContentPane().add( panel );
+		dialog.pack();
+		return dialog;
+	}
+	
 	public static String showInputDialog(Component parent,String title,String message) {
 		Object[] possibilities = null;
 		String s = (String) JOptionPane.showInputDialog(
