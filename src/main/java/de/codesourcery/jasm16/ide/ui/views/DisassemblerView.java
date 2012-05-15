@@ -17,21 +17,15 @@ package de.codesourcery.jasm16.ide.ui.views;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -45,7 +39,6 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
-import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -55,12 +48,8 @@ public class DisassemblerView extends AbstractView
     
     private JPanel panel;
     private final JTextArea textArea = new JTextArea();
-    private final JButton singleStepButton = new JButton("Step");
-    private final JButton runButton = new JButton("Run");
-    private final JButton stopButton = new JButton("Stop");   
-    private final JButton resetButton = new JButton("Reset");
-    private JCheckBox runAtRealSpeed;
     
+    private EmulatorControllerView emulatorController;
     private final DebuggingPerspective perspective;
     private IEmulator emulator;
     
@@ -105,18 +94,11 @@ public class DisassemblerView extends AbstractView
         @Override
         public void afterReset(IEmulator emulator)
         {
-        	updateButtonStates( false );          	
        		refreshDisplay();
         }
         
-        @Override
-        protected void beforeContinuousExecutionHook() {
-        	updateButtonStates( true );        	
-        };
-        
 		@Override
 		public void afterContinuousExecutionHook() {
-			updateButtonStates( false );
 			refreshDisplay();
 		}        
      };
@@ -127,26 +109,6 @@ public class DisassemblerView extends AbstractView
 		}
     	this.perspective = perspective;
         setEmulator( emulator );
-    }
-    
-    private void updateButtonStates(final boolean emulatorRunningContinously) {
-
-    	final Runnable runnable = new Runnable() {
-
-			@Override
-			public void run() {
-		   	    singleStepButton.setEnabled( ! emulatorRunningContinously );
-		   	    runButton.setEnabled( ! emulatorRunningContinously );
-		   	    stopButton.setEnabled( emulatorRunningContinously );
-			    resetButton.setEnabled( true );  
-			}
-		};
-
-    	if ( SwingUtilities.isEventDispatchThread() ) {
-    		runnable.run();
-    	} else {
-    		SwingUtilities.invokeLater( runnable );
-    	}
     }
     
     @Override
@@ -246,7 +208,7 @@ public class DisassemblerView extends AbstractView
     	return new DisassembledLine( address , disassembly , instructionSize );
     }
     
-    public void setEmulator(IEmulator emulator)
+    private void setEmulator(IEmulator emulator)
     {
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
@@ -260,14 +222,18 @@ public class DisassemblerView extends AbstractView
         }
         this.emulator = emulator;
         
+        this.emulatorController = new EmulatorControllerView( perspective , emulator );
+        
         emulator.addEmulationListener( listener );
     }
     
     @Override
     public void dispose() 
     {
-        if ( this.emulator != null ) {
+        if ( this.emulator != null ) 
+        {
             this.emulator.removeEmulationListener( listener );
+            this.emulatorController.dispose();
             this.emulator = null;
         }
     }
@@ -316,117 +282,16 @@ public class DisassemblerView extends AbstractView
 		});        
         
         // setup top panel
-        final JPanel buttonBar = new JPanel();
-        buttonBar.setLayout( new GridBagLayout() );        
+        final JPanel controlPanel = emulatorController.getPanel();
 
-        // =========== "SINGLE STEP" button ============        
-        singleStepButton.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-                emulator.executeOneInstruction();
-            }
-        });
-        
-        GridBagConstraints cnstrs = constraints( 0 , 0 , false , true , GridBagConstraints.NONE );          
-        buttonBar.add( singleStepButton , cnstrs );
-        
-        // =========== "RUN" button ============        
-        runButton.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-                emulator.start();
-                System.out.println("Simulation started!");
-            }
-        });
-        
-        cnstrs = constraints( 1 , 0 , false , true , GridBagConstraints.NONE );          
-        buttonBar.add( runButton , cnstrs );   
-        
-        // =========== "STOP" button ============        
-        stopButton.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-                emulator.stop();
-            }
-        });
-        
-        cnstrs = constraints( 2 , 0 , false , true , GridBagConstraints.NONE );          
-        buttonBar.add( stopButton , cnstrs );          
-        
-        // =========== "RESET" button ============
-        resetButton.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-            	perspective.resetEmulator();
-            }
-        });
-        
-        cnstrs = constraints( 3 , 0 , false , true , GridBagConstraints.NONE );          
-        buttonBar.add( resetButton , cnstrs );
-        
-        // =========== "Run at full speed" checkbox ============
-        runAtRealSpeed = new JCheckBox("Run at real speed",emulator.isRunAtRealSpeed());
-        final AtomicBoolean isCalibrating = new AtomicBoolean(false);
-        runAtRealSpeed.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-				final boolean isSelected = runAtRealSpeed.isSelected();
-				if ( isSelected ) 
-				{
-					if ( isCalibrating.compareAndSet( false , true ) ) 
-					{
-						new Thread() {
-							@Override
-							public void run() 
-							{
-								final JDialog dialog = UIUtils.createMessageDialog( null, "Calibrating emulation speed" , "Please wait, benchmarking your system...");
-								dialog.setModal(true);
-								
-								new Thread() {
-									@Override
-									public void run() 
-									{
-										try {
-										    emulator.calibrate();
-											emulator.setRunAtRealSpeed( true );
-										} 
-										finally {
-											isCalibrating.set( false );											
-											dialog.dispose();
-										}
-									}
-								}.start();
-								dialog.setVisible( true );
-							}
-						}.start();
-					}
-				} else {
-					emulator.setRunAtRealSpeed( isSelected );
-				}
-            }
-        });
-        
-        cnstrs = constraints( 4 , 0 , true , true , GridBagConstraints.NONE );          
-        buttonBar.add( runAtRealSpeed , cnstrs );        
-        
         // setup bottom panel        
         final JPanel bottomPanel = new JPanel();
         setColors( bottomPanel );
         bottomPanel.setLayout( new GridBagLayout() );        
-        cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
+        GridBagConstraints cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
         bottomPanel.add( textArea , cnstrs );
         
-        // ======== assemble result panel ===========
+        // ======== setup result panel ===========
         
         final JPanel result = new JPanel();
         result.addComponentListener( new ComponentAdapter() {
@@ -439,11 +304,9 @@ public class DisassemblerView extends AbstractView
         result.setLayout( new GridBagLayout() );       
         
         cnstrs = constraints( 0 , 0 , true, false , GridBagConstraints.HORIZONTAL );
-        result.add( buttonBar  , cnstrs );
+        result.add( controlPanel  , cnstrs );
         cnstrs = constraints( 0 , 1 , true , true , GridBagConstraints.BOTH);
         result.add( bottomPanel  , cnstrs );        
-        
-        updateButtonStates( false );
         return result;
     }
 
