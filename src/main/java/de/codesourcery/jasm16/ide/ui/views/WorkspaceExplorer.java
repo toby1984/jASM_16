@@ -49,6 +49,7 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
@@ -137,7 +138,7 @@ public class WorkspaceExplorer extends AbstractView {
 	}
 
 	@Override
-	public void dispose() 
+	public void disposeHook() 
 	{
 		if ( panel != null ) {
 			panel = null;
@@ -552,7 +553,28 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( executable == null ) {
 			throw new IllegalArgumentException("executable must not be NULL.");
 		}
+		
+		// source level view depends on AST being available for  
+		// compilation units and we want the debugger to run
+		// the latest changes anyway... rebuild if necessary
+		boolean buildRequired = false;
+		for ( ICompilationUnit unit : project.getBuilder().getCompilationUnits() ) {
+		    if ( unit.getAST() == null ) {
+		        buildRequired = true;
+		        break;
+		    }
+		}
 
+		if ( buildRequired ) 
+		{
+            System.out.println("Building "+project.getName()+" before opening debug perspective");		    
+		    if ( ! project.getBuilder().build() ) 
+		    {
+		        System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
+		        return;
+		    }
+		}
+		
 		final List<? extends IViewContainer> perspectives = perspectivesManager.getPerspectives( DebuggingPerspective.ID );
 
 		for ( IViewContainer existing : perspectives ) {
@@ -565,7 +587,7 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 			}
 		}
-
+		
 		// perspective not visible yet, create it
 		final DebuggingPerspective p=new DebuggingPerspective( workspace , applicationConfig );
 		p.openExecutable( project , executable );

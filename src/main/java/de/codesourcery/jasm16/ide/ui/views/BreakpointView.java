@@ -240,7 +240,7 @@ public class BreakpointView extends AbstractView {
 	}
 	
 	@Override
-	public void dispose() 
+	public void disposeHook() 
 	{
 		emulator.removeEmulationListener( listener );
 	}

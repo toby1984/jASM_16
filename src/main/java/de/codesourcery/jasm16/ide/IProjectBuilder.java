@@ -30,9 +30,20 @@ import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
  */
 public interface IProjectBuilder {
 
-	public void build() throws IOException;
+    /**
+     *
+     * @return <code>true</code> if build was successful, otherwise <code>false</code>     
+     * @throws IOException
+     */
+	public boolean build() throws IOException;
 	
-	public void build(ICompilationListener listener) throws IOException;
+	/**
+	 * 
+	 * @param listener
+	 * @return <code>true</code> if build was successful, otherwise <code>false</code>
+	 * @throws IOException
+	 */
+	public boolean build(ICompilationListener listener) throws IOException;
 	
 	/**
 	 * Parses/compiles a source code file in context of any other

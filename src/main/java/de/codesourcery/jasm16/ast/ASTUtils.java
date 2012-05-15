@@ -337,25 +337,37 @@ public class ASTUtils {
      * an address assigned to yet.
      */
     public static Address getEarliestMemoryLocation(ASTNode node) {
-    	
-    	final Address[] result = {null};
-    	final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
-			
-			@Override
-			public boolean visit(ASTNode node) 
-			{
-				if ( node instanceof ObjectCodeOutputNode) {
-					final Address adr = ((ObjectCodeOutputNode) node).getAddress();
-					if ( adr != null && ( result[0] == null || adr.isLessThan( result[0] ) ) )
-					{
-						result[0] = adr;
-					}
-				}
-				return true;
-			}
-		};
-		visitInOrder(node , visitor );
-    	return result[0];
-    	
+        return findMemoryLocation( node , true );
+    }
+    
+    public static Address getLatestMemoryLocation(ASTNode node) {
+        return findMemoryLocation( node , false );
+    }  
+    
+    private static Address findMemoryLocation(ASTNode node,final boolean findEarliest) {
+        final Address[] result = {null};
+        final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
+            
+            @Override
+            public boolean visit(ASTNode node) 
+            {
+                if ( node instanceof ObjectCodeOutputNode) {
+                    final Address adr = ((ObjectCodeOutputNode) node).getAddress();
+                    if ( adr != null ) 
+                    {
+                        if ( result[0] == null ) { 
+                          result[0] = adr;
+                        } 
+                        else if ( (findEarliest && adr.isLessThan( result[0] ) ) || (!findEarliest && adr.isGreaterThan( result[0] ) ) ) 
+                        {
+                            result[0] = adr;
+                        }
+                    }
+                }
+                return true;
+            }
+        };
+        visitInOrder(node , visitor );
+        return result[0];        
     }
 }

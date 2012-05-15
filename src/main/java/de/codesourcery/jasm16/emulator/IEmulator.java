@@ -31,6 +31,18 @@ import de.codesourcery.jasm16.emulator.memory.MainMemory;
  */
 public interface IEmulator
 {
+    public enum EmulationSpeed 
+    {
+        /**
+         * Run the emulation as fast as possible.
+         */        
+        MAX_SPEED,
+        /**
+         * Try to run emulation at the DCPU-16s native speed (~100 kHz).
+         */
+        REAL_SPEED;
+    }
+    
     public void addBreakpoint(Breakpoint bp);
     
     public void addDevice(IDevice device);   
@@ -53,14 +65,9 @@ public interface IEmulator
     
     public boolean isStoppedBecauseOfError();
     
-    /**
-     * 
-     * @param yesNo
-     * @return previous value of this flag
-     */
-    public boolean setRunAtRealSpeed(boolean yesNo);
+    public void setEmulationSpeed(EmulationSpeed speed);
     
-    public boolean isRunAtRealSpeed();
+    public EmulationSpeed getEmulationSpeed();
     
     public List<IDevice> getDevices();
     

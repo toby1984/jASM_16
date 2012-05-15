@@ -144,7 +144,7 @@ public class CPUView extends AbstractView
     }
     
     @Override
-    public void dispose() 
+    public void disposeHook() 
     {
         if ( this.emulator != null ) {
             this.emulator.removeEmulationListener( listener );

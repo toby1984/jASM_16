@@ -22,6 +22,9 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.Action;
@@ -33,10 +36,14 @@ import javax.swing.text.Element;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.Position;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
 public abstract class AbstractView implements IView
 {
+    private static final Logger LOG = Logger.getLogger(AbstractView.class);
+    
     public static final Color DEFAULT_TEXT_COLOR = Color.GREEN;
     public static final Color DEFAULT_BACKGROUND_COLOR = Color.BLACK;
     public static final Font DEFAULT_FONT=new Font( "Courier", Font.PLAIN , 13 );
@@ -44,10 +51,30 @@ public abstract class AbstractView implements IView
 	private static final AtomicLong ACTION_ID = new AtomicLong(0);    
     
     private IViewContainer container;
+    
+    private final List<IView> children = new ArrayList<IView>(); 
 
     public final JPanel getPanel(IViewContainer container) {
     	this.container = container;
     	return getPanel();
+    }
+    
+    @Override
+    public final void dispose()
+    {
+        for (Iterator<IView> it = children.iterator(); it.hasNext();) {
+            IView child = it.next();
+            it.remove();
+            try {
+                child.dispose();
+            } catch(Exception e) {
+                LOG.error("dispose(): child view: "+child,e);
+            }
+        }
+        disposeHook();
+    }
+    
+    protected void disposeHook() {
     }
     
     protected final IViewContainer getViewContainer() {
@@ -59,6 +86,13 @@ public abstract class AbstractView implements IView
     protected final Font getMonospacedFont() 
     {
         return DEFAULT_FONT;
+    }
+    
+    protected final void addChild(IView child) {
+        if (child == null) {
+            throw new IllegalArgumentException("child must not be NULL.");
+        }
+        this.children.add( child );
     }
     
     protected final int getMinimumWidth() {

@@ -37,6 +37,7 @@ import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
 import de.codesourcery.jasm16.ide.ui.views.HexDumpView;
 import de.codesourcery.jasm16.ide.ui.views.ScreenView;
+import de.codesourcery.jasm16.ide.ui.views.SourceLevelDebugView;
 import de.codesourcery.jasm16.ide.ui.views.StackView;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -153,10 +154,16 @@ public class DebuggingPerspective extends Perspective
     public void openExecutable(IAssemblyProject project,IResource executable) throws IOException 
     {
     	emulator.reset( true );
+        
+    	// set project & executable BEFORE loading object code
+    	// so any IEmulationListener that implements #afterMemoryLoad() 
+    	// can query the DebuggingPerspective for the current project
+    	
+    	this.project = project;
+        this.executable = executable;
+        
         final byte[] objectCode = Misc.readBytes( executable );
         emulator.loadMemory( Address.wordAddress( 0 ) , objectCode ); // will trigger IEmulationListener
-        this.project = project;
-        this.executable = executable;
     }
     
     public IAssemblyProject getCurrentProject()
@@ -216,8 +223,18 @@ public class DebuggingPerspective extends Perspective
             final BreakpointView view = new BreakpointView( getDisassemblerView() , emulator );
             addView( view );
             view.refreshDisplay();
-        }         
+        }    
+        
+        if ( getSourceLevelDebugView() == null ) {
+            final SourceLevelDebugView view = new SourceLevelDebugView( workspace , this , emulator );
+            addView( view );
+            view.refreshDisplay();            
+        }
     }
+    
+    private SourceLevelDebugView getSourceLevelDebugView() {
+        return (SourceLevelDebugView) getViewByID( SourceLevelDebugView.VIEW_ID );
+    }      
     
     private BreakpointView getBreakpointView() {
         return (BreakpointView) getViewByID( BreakpointView.VIEW_ID );

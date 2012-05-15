@@ -122,7 +122,7 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	}
 
 	@Override
-	public void dispose() 
+	public void disposeHook() 
 	{
 		final List<ViewWithPanel> copy = new ArrayList<ViewWithPanel>(this.views);
 		for ( ViewWithPanel v : copy ) {

@@ -15,97 +15,45 @@ package de.codesourcery.jasm16.ide.ui.views;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.JTextPane;
 import javax.swing.JToolBar;
 import javax.swing.JTree;
-import javax.swing.JViewport;
-import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
-import javax.swing.event.CaretListener;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentEvent.EventType;
-import javax.swing.event.DocumentListener;
-import javax.swing.event.UndoableEditEvent;
-import javax.swing.event.UndoableEditListener;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.text.AbstractDocument.DefaultDocumentEvent;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DefaultStyledDocument.AttributeUndoableEdit;
-import javax.swing.text.Document;
-import javax.swing.text.SimpleAttributeSet;
-import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
-import javax.swing.undo.UndoManager;
-import javax.swing.undo.UndoableEdit;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
-import de.codesourcery.jasm16.ast.CommentNode;
-import de.codesourcery.jasm16.ast.EquationNode;
-import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
-import de.codesourcery.jasm16.ast.InitializedMemoryNode;
-import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
-import de.codesourcery.jasm16.ast.OriginNode;
-import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.ast.SymbolReferenceNode;
-import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
-import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
-import de.codesourcery.jasm16.compiler.io.AbstractResource;
-import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -116,123 +64,30 @@ import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
-import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Crude editor to test the compiler's inner workings.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class SourceEditorView extends AbstractView implements IEditorView {
-
-	private static final Logger LOG = Logger.getLogger(SourceEditorView.class);
-
-	// time to wait until recompiling after the user edited the source code
-	private static final int RECOMPILATION_DELAY_MILLIS = 300;
+public class SourceEditorView extends SourceCodeView {
 
 	// UI widgets
 
 	private volatile JPanel panel;
+	
 	private JFrame astInspector;
 	private final JTree astTree = new JTree();
+	
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
 	
-	private final UndoManager undoManager = new UndoManager();
-	
-	private final UndoableEditListener undoListener = new  UndoableEditListener() 
-	{
-		public void undoableEditHappened(UndoableEditEvent e) 
-		{
-			UndoableEdit edit = e.getEdit();
-			if ( edit instanceof AttributeUndoableEdit) {
-				return;
-			}
-			else if ( edit instanceof DefaultDocumentEvent) {
-				if ( ((DefaultDocumentEvent) edit).getType() == EventType.CHANGE ) {
-					return;
-				}
-			}
-			undoManager.addEdit(e.getEdit());
-			undoAction.updateUndoState();
-			redoAction.updateRedoState();
-		}
-	};
-	
-	protected abstract class UndoRedoAction extends AbstractAction {
-		
-        public void updateUndoState() {
-            if (undoManager.canUndo()) {
-                setEnabled(true);
-                putValue(Action.NAME, undoManager.getUndoPresentationName());
-            } else {
-                setEnabled(false);
-                putValue(Action.NAME, "Undo");
-            }
-        }	
-        
-        public void updateRedoState() 
-        {
-            if (undoManager.canRedo()) {
-                setEnabled(true);
-                putValue(Action.NAME, undoManager.getRedoPresentationName() );
-            } else {
-                setEnabled(false);
-                putValue(Action.NAME, "Redo");
-            }
-        }	        
-	}
-	
-	private final UndoRedoAction undoAction = new UndoRedoAction() {
-
-		@Override
-		public void actionPerformed(ActionEvent e) {
-            try {
-                undoManager.undo();
-            } catch (CannotUndoException ex) {
-                LOG.error("Unable to undo: " + ex,ex);
-            }
-            updateUndoState();
-            redoAction.updateRedoState();			
-		}
-	};
-	
-	private final UndoRedoAction redoAction = new UndoRedoAction() {
-
-		@Override
-		public void actionPerformed(ActionEvent e) {
-            try {
-                undoManager.redo();
-            } catch (CannotRedoException ex) {
-                LOG.error("Unable to redo: " + ex,ex);
-            }
-            updateRedoState();
-            undoAction.updateUndoState();
-		}
-	
-	};
-	
-	private final JTextField cursorPosition = new JTextField(); 
-	private final JTextPane editorPane = new JTextPane();
-	private volatile int documentListenerDisableCount = 0; 
-	private JScrollPane editorScrollPane;  
-
-	private final SimpleAttributeSet registerStyle;    
-	private final SimpleAttributeSet commentStyle;     
-	private final SimpleAttributeSet instructionStyle;     
-	private final SimpleAttributeSet labelStyle;
-	private final SimpleAttributeSet preProcessorStyle;
-
-	private final SimpleAttributeSet errorStyle;
-	private final SimpleAttributeSet defaultStyle;
-
 	// compiler
-	private final IWorkspace workspace;	
 	private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
 		
 		public void projectDeleted(IAssemblyProject deletedProject) 
 		{
-			if ( deletedProject.isSame( project ) )
+			if ( deletedProject.isSame( getCurrentProject() ) )
 			{
 				dispose();
 			}
@@ -254,32 +109,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			}
 		}
 	};
-	private IAssemblyProject project;
-	private String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
-	private IResource fileResource; // source code on disk
-	private IResource documentResource; // possibly edited source code (in RAM / JEditorPane)
 	
-	private ICompilationUnit compilationUnit;
-
-	private CompilationThread compilationThread = null;
-	
-	
-
-	/*
-	 * 
-	 *  WAIT_FOR_EDIT-------> WAIT_FOR_TIMEOUT ------>( do compilation ) ----+
-	 *     ^    ^                     |                                      |
-	 *     |    |                     |                                      |
-	 *     |    +---RESTART_TIMEOUT---+                                      |
-	 *     +-----------------------------------------------------------------+
-	 * 
-	 */
-	private enum WaitState {
-		WAIT_FOR_EDIT,
-		WAIT_FOR_TIMEOUT,
-		RESTART_TIMEOUT;
-	}
-
 	protected  static final class StatusMessage 
 	{
 		private final Severity severity;
@@ -475,171 +305,20 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 
 	}
 
-	protected class CompilationThread extends Thread {
-
-		private final Object LOCK = new Object();
-
-		// @GuardedBy( LOCK )
-		private WaitState currentState = WaitState.WAIT_FOR_EDIT;
-
-		public CompilationThread() {
-			setDaemon( true );
-		}
-
-		@Override
-		public void run()
-		{
-			while( true )
-			{
-				try {
-					internalRun();
-				} 
-				catch(Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-
-		private void internalRun() throws InterruptedException, InvocationTargetException
-		{
-			synchronized( LOCK ) 
-			{
-				switch( currentState ) 
-				{
-				case WAIT_FOR_EDIT:
-					LOCK.wait();
-					return;
-				case RESTART_TIMEOUT:
-					currentState = WaitState.WAIT_FOR_TIMEOUT; // $FALL-THROUGH$
-					return;
-				case WAIT_FOR_TIMEOUT:
-					LOCK.wait( RECOMPILATION_DELAY_MILLIS );
-					if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
-						return;
-					}
-					try {
-						SwingUtilities.invokeAndWait( new Runnable() {
-
-							@Override
-							public void run()
-							{
-								try {
-									validateSourceCode();
-								} catch (IOException e) {
-									e.printStackTrace();
-								} finally {
-
-								}
-							}
-						} );
-					} finally {
-						currentState = WaitState.WAIT_FOR_EDIT;
-					}                        
-				} 
-			}
-		}
-
-		public void documentChanged() 
-		{
-			synchronized( LOCK ) 
-			{
-				currentState = WaitState.RESTART_TIMEOUT;
-				LOCK.notifyAll();
-			}
-		}
+	protected void onCaretUpdate(CaretEvent e) 
+	{
+        ASTNode n = getCurrentCompilationUnit().getAST().getNodeInRange( e.getDot() );
+        if ( n != null && astInspector != null && astInspector.isVisible() ) {
+            TreePath path = new TreePath( n.getPathToRoot() );
+            astTree.setSelectionPath( path );
+            astTree.scrollPathToVisible( path );
+        }
 	}
-
-	private DocumentListener recompilationListener = new DocumentListener() {
-
-		private void textChanged(DocumentEvent e) 
-		{
-			updateTitle();
-			
-			if ( compilationThread == null ) 
-			{
-				compilationThread = new CompilationThread();
-				compilationThread.start();
-			} 
-			compilationThread.documentChanged();
-		}
-
-		@Override
-		public void removeUpdate(DocumentEvent e) { textChanged(e); }        
-
-		@Override
-		public void insertUpdate(DocumentEvent e) { textChanged(e); }
-
-		@Override
-		public void changedUpdate(DocumentEvent e)  { /* do nothing, style change only */ }
-	};
-
-	private final CaretListener listener = new CaretListener() {
-
-		@Override
-		public void caretUpdate(CaretEvent e) 
-		{
-			if ( compilationUnit != null && compilationUnit.getAST() != null && compilationUnit.getAST().getTextRegion() != null ) 
-			{
-				try {
-					final SourceLocation location = getSourceLocation( e.getDot() );
-					cursorPosition.setHorizontalAlignment( JTextField.RIGHT );
-					cursorPosition.setText( "Line "+location.getLineNumber()+" , column "+location.getColumnNumber()+" (offset "+e.getDot()+")");
-				} catch(NoSuchElementException e2) {
-					// ok, user clicked on unknown location
-				}
-				ASTNode n = compilationUnit.getAST().getNodeInRange( e.getDot() );
-				if ( n != null && astInspector != null && astInspector.isVisible() ) {
-					TreePath path = new TreePath( n.getPathToRoot() );
-					astTree.setSelectionPath( path );
-					astTree.scrollPathToVisible( path );
-				}
-			}
-		}
-	};
-
+	
 	public SourceEditorView(IWorkspace workspace) 
 	{
-		if (workspace == null) {
-			throw new IllegalArgumentException("workspace must not be null");
-		}
-		this.workspace = workspace;
-		defaultStyle = new SimpleAttributeSet();
-		errorStyle = createStyle( Color.RED );
-		registerStyle = createStyle( Color.ORANGE );   
-		commentStyle = createStyle( Color.DARK_GRAY );
-		instructionStyle = createStyle( Color.BLUE );
-		labelStyle = createStyle( Color.GREEN );
-		preProcessorStyle = createStyle( new Color( 200 , 200 , 200 ) ); 
+	    super( workspace , true );
 		workspace.addWorkspaceListener( workspaceListener );
-	}
-
-	private static SimpleAttributeSet createStyle(Color color) 
-	{
-		SimpleAttributeSet result = new SimpleAttributeSet();
-		StyleConstants.setForeground( result , color );
-		return result;
-	}
-
-	private SourceLocation getSourceLocation(ITextRegion range) {
-		return getSourceLocation( range.getStartingOffset() );
-	}
-
-	private SourceLocation getSourceLocation(int offset) {
-		final Line line = compilationUnit.getLineForOffset( offset);
-		return new SourceLocation( compilationUnit , line , new TextRegion( offset , 0 ) );
-	}
-
-	private GridBagConstraints constraints(int x,int y,int fill) {
-		GridBagConstraints result = new GridBagConstraints();
-		result.fill=fill;
-		result.weightx=1.0;
-		result.weighty=1.0;
-		result.gridheight=1;
-		result.gridwidth=1;
-		result.gridx=x;
-		result.gridy=y;
-		result.insets = new Insets(1,1,1,1);
-		return result;
 	}
 
 	protected void setStatusMessage(String message) {
@@ -700,14 +379,14 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		{
 			String name = n.getClass().getSimpleName();
 			ITextRegion range = n.getTextRegion();
-			String source = range == null ? "<no source location>" : compilationUnit.getSource( range );
+			String source = range == null ? "<no source location>" : getCurrentCompilationUnit().getSource( range );
 			String txt = name+" "+source+" ( "+n.getTextRegion()+" )";  
 
 			final Address address  = ASTUtils.getEarliestMemoryLocation( n );		
 			final String sAddress = address == null ? "" : "0x"+Misc.toHexString( address );
 			if ( n instanceof StatementNode ) 
 			{
-				final List<Line> linesForRange = compilationUnit.getLinesForRange( n.getTextRegion() );
+				final List<Line> linesForRange = getCurrentCompilationUnit().getLinesForRange( n.getTextRegion() );
 				return sAddress+": Statement "+StringUtils.join( linesForRange , ",");
 			} else if ( n instanceof AST ) {
 				return "AST";
@@ -720,321 +399,25 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		}
 	} 
 
-	protected String getTextFromTextPane() 
+	@Override
+	protected void onSourceCodeValidation()
 	{
-		final int len = editorPane.getDocument().getLength();
-		if ( len == 0 ) {
-			return "";
-		}
-		try {
-			return editorPane.getDocument().getText( 0 , len );
-		} catch (BadLocationException e) {
-			throw new RuntimeException("bad location: ",e);
-		}
+	    statusModel.clearMessages();
 	}
 
-	private void openFile(IAssemblyProject project, final IResource sourceFile) throws IOException 
+	@Override
+	protected void onHighlightingStart()
 	{
-		if ( project == null ) {
-			throw new IllegalArgumentException("project must not be NULL");
-		}
-		if (sourceFile == null) {
-			throw new IllegalArgumentException("sourceFile must not be NULL");
-		}
-		if ( ! sourceFile.hasType( ResourceType.SOURCE_CODE ) ) {
-			throw new IllegalArgumentException("Not a source file: "+sourceFile);
-		}
-		this.project = project;
-		this.fileResource = sourceFile;
-
-		final String source = Misc.readSource( sourceFile );
-		this.initialHashCode = Misc.calcHash( source );
-		
-		documentResource = new AbstractResource(ResourceType.SOURCE_CODE) {
-
-			@Override
-			public String readText(ITextRegion range) throws IOException
-			{
-				return range.apply( getTextFromTextPane() );
-			}
-
-			@Override
-			public String getIdentifier()
-			{
-				return sourceFile.getIdentifier();
-			}
-
-			@Override
-			public long getAvailableBytes() throws IOException
-			{
-				return editorPane.getDocument().getLength();
-			}
-
-			@Override
-			public OutputStream createOutputStream(boolean append) throws IOException
-			{
-				throw new UnsupportedOperationException("Cannot save to "+this);
-			}
-
-			@Override
-			public InputStream createInputStream() throws IOException
-			{
-				return new ByteArrayInputStream( getTextFromTextPane().getBytes() );
-			}
-
-            @Override
-            public boolean isSame(IResource other)
-            {
-                if ( other == this ) {
-                    return true;
-                }
-                return false;
-            }
-		};
-
-		disableDocumentListener();
-
-		final Document doc = editorPane.getDocument();
-		doc.putProperty(Document.StreamDescriptionProperty, null);
-
-		editorPane.setText( source );
-
-		if ( panel != null ) {
-			validateSourceCode();
-		}
-
-		enableDocumentListener();		
+        final ASTTableModelWrapper astModel = new ASTTableModelWrapper( getCurrentCompilationUnit().getAST() ) ;
+        astTree.setModel( astModel );
 	}
 
-	private void validateSourceCode() throws IOException {
-
-		disableDocumentListener();
-		try 
-		{
-			clearCompilationErrors();
-			statusModel.clearMessages();
-			compilationUnit = project.getBuilder().parse( documentResource ,
-					new CompilationListener() );
-			doHighlighting( compilationUnit , true );
-		} finally {
-			enableDocumentListener();
-		}
-	}
-
-	protected void doHighlighting(ICompilationUnit unit,boolean addStatusMessages) 
+	
+	
+	@Override
+	protected void onCompilationError(ICompilationError error)
 	{
-		if ( panel == null ) {
-			return;
-		}
-
-		if ( unit.getAST() != null ) 
-		{
-			final ASTTableModelWrapper astModel = new ASTTableModelWrapper( compilationUnit.getAST() ) ;
-			astTree.setModel( astModel );
-
-			doSemanticHighlighting( unit );
-		}
-
-		if ( unit.hasErrors() ) {
-			statusModel.addInfo("Compilation stopped with errors");
-			showCompilationErrors( compilationUnit , addStatusMessages );
-		}  
-	}
-
-	private void doSemanticHighlighting(ICompilationUnit unit)
-	{
-		if ( unit.getAST() == null ) {
-			return;
-		}
-
-		// changing character styles triggers
-		// change events that in turn would
-		// again trigger recompilation...we don't want that...
-		disableDocumentListener();
-
-		try {
-			final ITextRegion visible = getVisibleTextRegion();
-			if ( visible != null ) {
-				final List<ASTNode> nodes = unit.getAST().getNodesInRange( visible );
-				for ( ASTNode child : nodes ) 
-				{
-					doSemanticHighlighting( unit , child );
-				}
-			}
-		} finally {
-			enableDocumentListener();
-		}
-	}
-
-	private void doSemanticHighlighting(ICompilationUnit unit, ASTNode node)
-	{
-		highlight( node );
-		for ( ASTNode child : node.getChildren() ) {
-			doSemanticHighlighting( unit , child );
-		}
-	}
-
-	private void highlight(ASTNode node) 
-	{
-		if ( node instanceof InstructionNode ) 
-		{
-			ITextRegion children = null;
-			for ( ASTNode child : node.getChildren() ) 
-			{
-				if ( children == null ) {
-					children = child.getTextRegion();
-				} else {
-					children.merge( child.getTextRegion() );
-				}
-			}
-			ITextRegion whole = new TextRegion( node.getTextRegion() );
-			whole.subtract( children );
-			highlight( whole , instructionStyle );
-		} 
-		else if ( node instanceof EquationNode || 
-				node instanceof UninitializedMemoryNode ||
-				node instanceof InitializedMemoryNode ||
-				node instanceof OriginNode ||
-				node instanceof IncludeBinaryFileNode) 
-		{
-			highlight( node , preProcessorStyle );
-		}
-
-		if ( node instanceof SymbolReferenceNode ) {
-			highlight( node , labelStyle );
-		} else if ( node instanceof CommentNode ) {
-			highlight( node , commentStyle );
-		} else if ( node instanceof RegisterReferenceNode ) {
-			highlight( node , registerStyle );
-		}
-	}
-
-	private void highlight(ASTNode node, AttributeSet attributes) 
-	{
-		highlight( node.getTextRegion() , attributes );
-	}
-
-	private void highlight(ITextRegion range, AttributeSet attributes) 
-	{
-		editorPane.getStyledDocument().setCharacterAttributes( range.getStartingOffset() , range.getLength() , attributes , true );
-	}
-
-	private void moveCursorTo(ITextRegion location) 
-	{
-		if ( compilationUnit == null || compilationUnit.getAST() == null ) {
-			return;
-		}
-		editorPane.setCaretPosition( location.getStartingOffset() );
-		centerCurrentLineInScrollPane();
-		editorPane.requestFocus();
-	}
-
-	public void centerCurrentLineInScrollPane()
-	{
-		final Container container = SwingUtilities.getAncestorOfClass(JViewport.class, editorPane);
-
-		if (container == null) {
-			return;
-		}
-
-		try {
-			final Rectangle r = editorPane.modelToView(editorPane.getCaretPosition());
-			final JViewport viewport = (JViewport) container;
-			final int extentHeight = viewport.getExtentSize().height;
-			final int viewHeight = viewport.getViewSize().height;
-
-			int y = Math.max(0, r.y - (extentHeight / 2));
-			y = Math.min(y, viewHeight - extentHeight);
-
-			viewport.setViewPosition(new Point(0, y));
-		} 
-		catch (BadLocationException ble) {
-		}
-	}
-
-	private ITextRegion getVisibleTextRegion() 
-	{
-		final Point startPoint = editorScrollPane.getViewport().getViewPosition();
-		final Dimension size = editorScrollPane.getViewport().getExtentSize();
-
-		final Point endPoint = new Point(startPoint.x + size.width, startPoint.y + size.height);
-		try {
-			final int start = editorPane.viewToModel( startPoint );
-			final int end = editorPane.viewToModel( endPoint );
-			final int len = end-start;
-			if ( len < 0  || start < 0) {
-				return null;
-			}
-			return new TextRegion( start , len );
-		} 
-		catch(NullPointerException e) 
-		{
-			System.out.println("startPoint: "+startPoint+" / size: "+size);
-			e.printStackTrace();
-			return null;
-		}
-	}
-
-	private void clearCompilationErrors() 
-	{
-		disableDocumentListener();		
-		try {
-			final StyledDocument doc = editorPane.getStyledDocument();
-			doc.setCharacterAttributes( 0 , doc.getLength() , defaultStyle , true );
-		} finally {
-			enableDocumentListener();
-		}
-	}
-
-	private void disableDocumentListener() 
-	{
-		documentListenerDisableCount++;		
-		editorPane.getDocument().removeDocumentListener( recompilationListener );
-	}
-
-	private void enableDocumentListener() 
-	{
-		documentListenerDisableCount--;		
-		if ( documentListenerDisableCount == 0) 
-		{
-			editorPane.getDocument().addDocumentListener( recompilationListener );
-		}
-	}   
-
-	private void showCompilationErrors(ICompilationUnit unit,boolean addStatusMessages) 
-	{
-		disableDocumentListener();
-
-		try 
-		{
-			for ( ICompilationError error : unit.getErrors() ) 
-			{
-				final ITextRegion location;
-				if ( error.getLocation() != null ) {
-					location = error.getLocation();
-				} 
-				else 
-				{
-					if ( error.getErrorOffset() != -1 ) {
-						location = new TextRegion( error.getErrorOffset(), 1 );
-					} else {
-						location = null;
-					}
-				}
-
-				if ( location != null ) 
-				{
-					System.out.println("Highlighting error at "+location);
-					highlight( location , errorStyle );
-				}
-
-				if ( addStatusMessages ) {
-					statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
-				}
-			}
-		} finally {
-			enableDocumentListener();
-		}
+       statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
 	}
 
 	// ============= view creation ===================
@@ -1044,57 +427,15 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	{
 		if ( panel == null ) {
 			panel = createPanel();
-			if ( this.fileResource != null ) {
-				try {
-					validateSourceCode();
-				} catch (IOException e) {
-					LOG.error("getPanel(): ",e);
-				}
-			}
 		}
 		return panel;
 	}
 
 	protected JPanel createPanel() 
 	{
-		disableDocumentListener(); // necessary because setting colors on editor pane triggers document change listeners (is considered a style change...)
-		try {
-			editorPane.getDocument().addUndoableEditListener( undoListener );
-			editorPane.setCaretColor( Color.WHITE );
-			setupKeyBindings( editorPane );
-			setColors( editorPane );
-			editorScrollPane = new JScrollPane(editorPane);
-			setColors( editorScrollPane );
-			editorPane.addCaretListener( listener );
-		} finally {
-			enableDocumentListener();
-		}
-
-		editorScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-		editorScrollPane.setPreferredSize( new Dimension(400,600 ) );
-		editorScrollPane.setMinimumSize(new Dimension(100, 100));
-
-		final AdjustmentListener adjustmentListener = new AdjustmentListener() {
-
-			@Override
-			public void adjustmentValueChanged(AdjustmentEvent e) 
-			{
-				if ( ! e.getValueIsAdjusting() ) 
-				{
-					if ( compilationUnit != null ) {
-						doHighlighting( compilationUnit , false );
-					}
-				}
-			}
-		};
-		editorScrollPane.getVerticalScrollBar().addAdjustmentListener( adjustmentListener );
-		editorScrollPane.getHorizontalScrollBar().addAdjustmentListener( adjustmentListener );
-
 		// button panel
-		final JPanel topPanel = new JPanel();
-
 		final JToolBar toolbar = new JToolBar();
-
+        toolbar.setLayout( new GridBagLayout() );
 		setColors( toolbar );
 
 		final JButton showASTButton = new JButton("Show AST" );
@@ -1120,11 +461,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			}
 		} );
 
-		toolbar.add( showASTButton );
-
-		cursorPosition.setSize( new Dimension(400,15) );
-		cursorPosition.setEditable( false );
-		setColors( cursorPosition ); 
+        GridBagConstraints cnstrs = constraints( 0, 0 , GridBagConstraints.NONE );		
+		toolbar.add( showASTButton , cnstrs );
 
 		statusArea.setPreferredSize( new Dimension(400, 100 ) );
 		statusArea.setModel( statusModel );
@@ -1136,25 +474,19 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		 * cursor position
 		 * status area 
 		 */
+        final JPanel topPanel = new JPanel();		
 		topPanel.setLayout( new GridBagLayout() );
 
-		GridBagConstraints cnstrs = constraints( 0, 0 , GridBagConstraints.HORIZONTAL );
+		cnstrs = constraints( 0, 0 , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
 		cnstrs.weighty = 0;
 		topPanel.add( toolbar , cnstrs );
-
-		cnstrs = constraints( 0, 1 , GridBagConstraints.BOTH );
-		cnstrs.gridwidth = GridBagConstraints.REMAINDER;        
-		topPanel.add( editorScrollPane , cnstrs );
-
-		cnstrs = constraints( 0, 2 , GridBagConstraints.HORIZONTAL);
-		cnstrs.gridwidth = GridBagConstraints.REMAINDER;        
-		cnstrs.weighty = 0;
-		topPanel.add( cursorPosition , cnstrs ); 
-
-		cnstrs = constraints( 0, 3 , GridBagConstraints.HORIZONTAL);
-		cnstrs.gridwidth = GridBagConstraints.REMAINDER;      
-		cnstrs.weighty = 0;
+		
+        cnstrs = constraints( 0, 1 , GridBagConstraints.BOTH );
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.weighty=1.0;
+        topPanel.add( super.getPanel() , cnstrs );
+        
 
 		final JPanel bottomPanel = new JPanel();
 		bottomPanel.setLayout( new GridBagLayout() );
@@ -1206,67 +538,8 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		return panel;
 	}
 
-	private void setupKeyBindings(JTextPane editor) 
-	{
-		// 'Save' action 
-		addKeyBinding( editor , 
-				KeyStroke.getKeyStroke(KeyEvent.VK_S,Event.CTRL_MASK),
-				new AbstractAction() 
-		{
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				saveCurrentFile();
-			}
-		});
-		
-		// "Undo" action
-		addKeyBinding( editor , 
-				KeyStroke.getKeyStroke(KeyEvent.VK_Z,Event.CTRL_MASK),
-				undoAction );
-		
-		addKeyBinding( editor , 
-				KeyStroke.getKeyStroke(KeyEvent.VK_Y,Event.CTRL_MASK),
-				redoAction );		
-	}
-	
-	private void saveCurrentFile() {
-		
-		if ( ! hasUnsavedContent() ) {
-			return;
-		}
-		
-		final String source = getTextFromTextPane();
-		try {
-			Misc.writeResource( getCurrentResource() , source );
-			this.initialHashCode = Misc.calcHash( source );
-			updateTitle();
-		} catch (IOException e1) {
-			LOG.error("save(): Failed to write to "+getCurrentResource());
-			return;
-		}
-		
-		if ( compilationUnit == null || compilationUnit.hasErrors() ) {
-			return;
-		}
-		
-		try {
-			getCurrentProject().getBuilder().build();
-		} 
-		catch (IOException e) {
-			LOG.error("save(): Compilation failed",e);
-		}
-	}
-
-	public IAssemblyProject getCurrentProject() {
-		return project;
-	}
-
-	public IResource getCurrentResource() {
-		return this.fileResource;
-	}
-
 	@Override
-	public void dispose()
+	public void disposeHook2()
 	{
 		workspace.removeWorkspaceListener( workspaceListener );
 		if ( astInspector != null ) 
@@ -1277,68 +550,12 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	}
 
 	@Override
-	public void refreshDisplay()
-	{
-		try {
-			validateSourceCode();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public String getTitle() 
-	{
-		if ( getCurrentResource() == null ) {
-			return "source view";
-		}
-		final String prefix = hasUnsavedContent() ? "*" : "";
-		final String identifier;
-		if ( getCurrentResource() instanceof FileResource ) {
-			identifier = ((FileResource) getCurrentResource()).getFile().getName();
-		} else {
-			identifier = getCurrentResource().getIdentifier();
-		}
-		return prefix + identifier;
-	}
-
-	@Override
 	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource) 
 	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
 			return new SourceEditorView(this.workspace);
 		}
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
-	}
-
-	@Override
-	public boolean hasUnsavedContent() 
-	{
-		if ( this.fileResource == null ) {
-			return false;
-		}
-		return ! initialHashCode.equals( Misc.calcHash( getTextFromTextPane() ) );
-	}
-
-	@Override
-	public boolean mayBeDisposed() {
-		return ! hasUnsavedContent();
-	}
-
-	@Override
-	public void openResource(IAssemblyProject project, IResource resource) throws IOException 
-	{
-		if ( this.project != project || this.fileResource != resource ) {
-			openFile( project , resource );
-		}
-	}
-
-	private void updateTitle() 
-	{
-		final String title = ( hasUnsavedContent() ? "*" : "")+getCurrentResource().getIdentifier();
-		getViewContainer().setTitle( SourceEditorView.this , title );				
 	}
 
 	@Override

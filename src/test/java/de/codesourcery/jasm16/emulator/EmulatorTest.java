@@ -22,6 +22,7 @@ import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
+import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
 
 public class EmulatorTest extends TestCase
 {
@@ -56,7 +57,7 @@ public class EmulatorTest extends TestCase
         final Emulator emu = new Emulator();
         emu.calibrate();
         emu.loadMemory(unit.getObjectCodeStartOffset() , objectCode);      
-        emu.setRunAtRealSpeed( true );
+        emu.setEmulationSpeed( EmulationSpeed.REAL_SPEED );
         emu.start();
         Thread.sleep( 5 * 1000 );
         emu.stop();

@@ -68,16 +68,27 @@ public class Emulator implements IEmulator {
 	    
 	    private final boolean isStopCommand;
 	    
+	    private final boolean requiresACK; 
+	    
+        public static Command stopCommandWithoutACK() {
+            return new Command(true,false);
+        }
+        
 	    public static Command stopCommand() {
-	        return new Command(true);
+	        return new Command(true,true);
 	    }
 	    
         public static Command startCommand() {
-            return new Command(false);
+            return new Command(false,true);
         }	    
 	    
-	    protected Command(boolean isStopCommand) {
+	    protected Command(boolean isStopCommand,boolean requiresACK) {
 	        this.isStopCommand=isStopCommand;
+	        this.requiresACK = requiresACK;
+	    }
+	    
+	    public boolean requiresACK() {
+	        return requiresACK;
 	    }
 	    
 	    public boolean isStopCommand()
@@ -301,7 +312,7 @@ public class Emulator implements IEmulator {
 	private volatile Address interruptAddress;
 
 	private volatile boolean stoppedBecauseOfError = false;
-	private volatile boolean isRunAtRealSpeed = false;
+	private volatile EmulationSpeed emulationSpeed = EmulationSpeed.MAX_SPEED;
 	private volatile boolean queueInterrupts = false;
 	
 	// @GuardedBy( interruptQueue )
@@ -545,7 +556,7 @@ public class Emulator implements IEmulator {
 			if ( isRunnable == false ) 
 			{
 			    isRunnable = true;
-			    sendAndWaitForAck( Command.startCommand() );
+			    sendToClockThread( Command.startCommand() );
 			}
 		}		
 		
@@ -554,13 +565,20 @@ public class Emulator implements IEmulator {
             if ( isRunnable == true ) 
             {               
                 isRunnable = false;
-                sendAndWaitForAck( Command.stopCommand() );
+                if ( Thread.currentThread() == clockThread ) { 
+                    sendToClockThread( Command.stopCommandWithoutACK() ); // no point in sending an ACK since the clock thread itself triggered the stop()
+                } else {
+                    sendToClockThread( Command.stopCommand() );
+                }
             }
         }    		
 		
-		private void sendAndWaitForAck(Command cmd) 
+		private void sendToClockThread(Command cmd) 
 		{
 		    safePut( cmdQueue , cmd );
+		    if ( ! cmd.requiresACK() ) { // don't wait , we'll never receive this one anyway
+		        return;
+		    }
             do 
             {
                 final Long cmdId = safeTake( ackQueue );
@@ -678,7 +696,9 @@ public class Emulator implements IEmulator {
 
 		private void acknowledgeCommand(Command cmd) 
 		{
-		    safePut( ackQueue , cmd.getId() );
+		    if ( cmd.requiresACK() ) {
+		        safePut( ackQueue , cmd.getId() );
+		    }
 		}
 		
         private Command waitForStopCommand()
@@ -733,7 +753,7 @@ public class Emulator implements IEmulator {
 				}
 				
 				final int durationInCycles = internalExecuteOneInstruction();
-				if ( isRunAtRealSpeed ) 
+				if ( emulationSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
 				    if ( ( currentCycle % 10000 ) == 0 ) {
 				        final double cyclesPerSecond = (currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart.get() ) / 1000d);
@@ -841,7 +861,7 @@ public class Emulator implements IEmulator {
 	{
 		listenerHelper.invokeBeforeCommandExecutionListeners( this.clockThread.isRunnable );
 	}
-
+	
 	/**
 	 * 
 	 * @param executedCommandDuration duration (in cycles) of last command or -1 if execution failed with an internal emulator error
@@ -857,9 +877,10 @@ public class Emulator implements IEmulator {
 		{
 			breakpoint = breakpoints.get( pc ); 
 		}
+		
 		if ( breakpoint != null && breakpoint.matches( this ) ) 
 		{
-			stop(false);
+		    stop(false);
 
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
@@ -2307,19 +2328,36 @@ public class Emulator implements IEmulator {
 	}
 	
 	@Override
-	public boolean isRunAtRealSpeed() {
-		return isRunAtRealSpeed;
+	public EmulationSpeed getEmulationSpeed() {
+		return emulationSpeed;
 	}
 	
 	@Override
-	public boolean setRunAtRealSpeed(boolean runAtRealSpeed) 
+	public void setEmulationSpeed(final EmulationSpeed newSpeed) 
 	{
-		if ( runAtRealSpeed && ! isCalibrated() ) {
+	    if (newSpeed == null) {
+            throw new IllegalArgumentException("speed must not be NULL.");
+        }
+	    
+	    if ( this.emulationSpeed == newSpeed ) {
+	        return;
+	    }
+	    
+		if ( newSpeed == EmulationSpeed.REAL_SPEED && ! isCalibrated() ) {
 			calibrate();
 		}
-        final boolean oldValue = this.isRunAtRealSpeed;
-        this.isRunAtRealSpeed = runAtRealSpeed;  		
-		return oldValue;
+		
+		final EmulationSpeed oldSpeed = this.emulationSpeed;
+        this.emulationSpeed = newSpeed;  		
+        
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.onEmulationSpeedChange( oldSpeed , newSpeed );
+            }
+        });           
 	}
 	
 	@Override

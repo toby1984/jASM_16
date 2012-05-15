@@ -30,6 +30,7 @@ import javax.swing.SwingUtilities;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 
@@ -49,6 +50,13 @@ public class EmulatorControllerView extends AbstractView
     
     private final IEmulationListener listener = new EmulationListener() {
 
+        public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed) {
+        
+            if ( runAtRealSpeed != null ) {
+                runAtRealSpeed.setSelected( newSpeed == EmulationSpeed.REAL_SPEED );
+            }
+        }
+        
         @Override
         public void afterReset(IEmulator emulator)
         {
@@ -117,7 +125,7 @@ public class EmulatorControllerView extends AbstractView
     }
     
     @Override
-    public void dispose() 
+    public void disposeHook() 
     {
         if ( this.emulator != null ) {
             this.emulator.removeEmulationListener( listener );
@@ -185,7 +193,7 @@ public class EmulatorControllerView extends AbstractView
         buttonBar.add( resetButton , cnstrs );
         
         // =========== "Run at full speed" checkbox ============
-        runAtRealSpeed = new JCheckBox("Run at real speed",emulator.isRunAtRealSpeed());
+        runAtRealSpeed = new JCheckBox("Run at real speed",emulator.getEmulationSpeed() == IEmulator.EmulationSpeed.REAL_SPEED);
         final AtomicBoolean isCalibrating = new AtomicBoolean(false);
         runAtRealSpeed.addActionListener( new ActionListener() {
             
@@ -210,7 +218,7 @@ public class EmulatorControllerView extends AbstractView
                                     {
                                         try {
                                             emulator.calibrate();
-                                            emulator.setRunAtRealSpeed( true );
+                                            emulator.setEmulationSpeed( IEmulator.EmulationSpeed.REAL_SPEED );
                                         } 
                                         finally {
                                             isCalibrating.set( false );                                         
@@ -223,7 +231,7 @@ public class EmulatorControllerView extends AbstractView
                         }.start();
                     }
                 } else {
-                    emulator.setRunAtRealSpeed( isSelected );
+                    emulator.setEmulationSpeed( isSelected ? EmulationSpeed.REAL_SPEED : EmulationSpeed.MAX_SPEED );
                 }
             }
         });

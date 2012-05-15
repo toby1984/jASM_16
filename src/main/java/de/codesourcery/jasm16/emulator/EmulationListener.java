@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
 
 /**
  * Abstract base-class for implementing {@link IEmulationListener}s.
@@ -40,6 +41,9 @@ public class EmulationListener implements IEmulationListener {
 	
 	protected void beforeContinuousExecutionHook() {
 	}
+	
+    public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed) {
+    }
 	
 	protected final boolean isFullSpeedMode() {
 		return fullSpeedMode;

@@ -146,13 +146,13 @@ public class AssemblyProject implements IAssemblyProject
 		}
 
 		@Override
-		public void build() throws IOException 
+		public boolean build() throws IOException 
 		{
-			build( new CompilationListener() );
+			return build( new CompilationListener() );
 		}
 
 		@Override
-		public void build(ICompilationListener listener) throws IOException 
+		public boolean build(ICompilationListener listener) throws IOException 
 		{
 			final ICompiler compiler = createCompiler();
 
@@ -184,6 +184,7 @@ public class AssemblyProject implements IAssemblyProject
 			} finally {
 				workspace.buildFinished( AssemblyProject.this , buildSuccessful );
 			}
+			return buildSuccessful;
 		}
 
 		private boolean isCompilationSuccessful( List<ICompilationUnit> compilationUnits) 

@@ -78,7 +78,7 @@ public class ScreenView extends AbstractView
     }
     
     @Override
-    public void dispose()
+    public void disposeHook()
     {
         this.emulator.unmapRegion( videoRAM );
         this.emulator.removeDevice( keyboard );
