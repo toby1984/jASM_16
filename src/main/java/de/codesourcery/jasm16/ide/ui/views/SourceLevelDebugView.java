@@ -75,7 +75,7 @@ public class SourceLevelDebugView extends SourceCodeView
         }
         
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes) {
-            refreshDisplayHook();
+            scrollToVisible( emulator.getCPU().getPC() , true ,true);
         }
     };
     
@@ -178,16 +178,16 @@ public class SourceLevelDebugView extends SourceCodeView
     }
     
     public void scrollToVisible(Address address) {
-        scrollToVisible(address,false);
+        scrollToVisible(address,false,false);
     }
     
-    protected void scrollToVisible(Address address,boolean highlight) {
+    protected void scrollToVisible(Address address,boolean highlight,boolean reloadSource) {
 
         if ( perspective.getCurrentProject() == null ) {
             return;
         }
         
-        final boolean updateParentView  = perspective.getCurrentProject() != this.currentProject;
+        final boolean updateParentView  = reloadSource || perspective.getCurrentProject() != this.currentProject;
         if ( updateParentView ) {
             this.currentProject = perspective.getCurrentProject();
         }
@@ -241,7 +241,7 @@ public class SourceLevelDebugView extends SourceCodeView
     @Override
     protected void refreshDisplayHook()
     {
-        scrollToVisible( emulator.getCPU().getPC() , true );
+        scrollToVisible( emulator.getCPU().getPC() , true ,false);
     }
     
     private void highlightBreakpoints() 
