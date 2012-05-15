@@ -229,7 +229,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         
         public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
         {
-            if ( deletedResource.isSame( fileResource ) ) 
+            if ( deletedResource.isSame( sourceFileOnDisk ) ) 
             {
                 dispose();
             }
@@ -238,8 +238,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     
     private IAssemblyProject project;
     protected String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
-    protected IResource fileResource; // source code on disk
-    protected IResource documentResource; // possibly edited source code (in RAM / JEditorPane)
+    protected IResource sourceFileOnDisk; // source code on disk
+    protected IResource sourceInMemory; // possibly edited source code (in RAM / JEditorPane)
     private ICompilationUnit compilationUnit;
 
     private CompilationThread compilationThread = null;
@@ -659,12 +659,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             throw new IllegalArgumentException("Not a source file: "+sourceFile);
         }
         this.project = project;
-        this.fileResource = sourceFile;
+        this.sourceFileOnDisk = sourceFile;
 
         final String source = Misc.readSource( sourceFile );
         this.initialHashCode = Misc.calcHash( source );
         
-        documentResource = new AbstractResource(ResourceType.SOURCE_CODE) {
+        sourceInMemory = new AbstractResource(ResourceType.SOURCE_CODE) {
 
             @Override
             public String readText(ITextRegion range) throws IOException
@@ -729,7 +729,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             
             onSourceCodeValidation();
             
-            compilationUnit = project.getBuilder().parse( documentResource ,
+            compilationUnit = project.getBuilder().parse( sourceInMemory ,
                     new CompilationListener() );
             doHighlighting( compilationUnit , true );
         } finally {
@@ -982,7 +982,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     {
         if ( panel == null ) {
             panel = createPanel();
-            if ( this.fileResource != null ) {
+            if ( this.sourceFileOnDisk != null ) {
                 try {
                     validateSourceCode();
                 } catch (IOException e) {
@@ -1132,7 +1132,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     }
 
     public final IResource getCurrentResource() {
-        return this.fileResource;
+        return this.sourceFileOnDisk;
     }
 
     @Override
@@ -1192,7 +1192,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     @Override
     public final boolean hasUnsavedContent() 
     {
-        if ( this.fileResource == null ) {
+        if ( this.sourceFileOnDisk == null ) {
             return false;
         }
         return ! initialHashCode.equals( Misc.calcHash( getTextFromTextPane() ) );
@@ -1206,7 +1206,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     @Override
     public final void openResource(IAssemblyProject project, IResource resource) throws IOException 
     {
-        if ( this.project != project || this.fileResource != resource ) {
+        if ( this.project != project || this.sourceFileOnDisk != resource ) {
             openFile( project , resource );
         }
     }

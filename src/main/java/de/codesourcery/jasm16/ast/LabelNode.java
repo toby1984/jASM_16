@@ -32,11 +32,12 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class LabelNode extends ASTNode
 {
+    private Identifier identifier;
     private Label label;
     
     public Identifier getIdentifier()
     {
-        return label.getIdentifier();
+        return identifier;
     }
     
     public Label getLabel()
@@ -56,7 +57,7 @@ public class LabelNode extends ASTNode
     	    leadingCharacterFound = true;
     	} 
         
-        final Identifier identifier = context.parseIdentifier( range );
+        identifier = context.parseIdentifier( range );
         if ( range == null ) {
             range = new TextRegion( startIndex , context.currentParseIndex() - startIndex );
         }

@@ -26,7 +26,9 @@ import de.codesourcery.jasm16.parser.Identifier;
  * @author tobias.gierke@code-sourcery.de
  */
 public interface ISymbolTable {
-
+    
+    public int getSize();
+    
 	/**
 	 * Look up a symbol by identifier.
 	 * 
@@ -48,6 +50,20 @@ public interface ISymbolTable {
 	 * @throws DuplicateSymbolException if this symbol already exists.
 	 */
 	public void defineSymbol(ISymbol symbol) throws DuplicateSymbolException;		
+	
+	/**
+	 * Returns the parent of this symbol table.
+	 * 
+	 * @return parent symbol table or <code>null</code>.
+	 */
+	public IParentSymbolTable getParent();
+	
+	/**
+	 * Sets the parent symbol table.
+	 * 
+	 * @param table parent or <code>null</code> if this is the top-most symbol table.
+	 */
+	public void setParent(IParentSymbolTable table);
 	
 	/**
 	 * Check whether there is a symbol with a given identifier.

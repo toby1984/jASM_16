@@ -22,7 +22,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
- * A valid identifier in the assembler source code.
+ * A valid , IMMUTABLE identifier in the assembler source code.
  * 
  * <p>Currently this assembler only supports labels.</p>
  * 
@@ -33,7 +33,7 @@ public class Identifier
 {
     private static final char[] VALID_CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$".toCharArray();
     
-    private final String identifier;
+    private final String identifier; // client code relies on identifiers being immutable !!!
     
     /**
      * Create identifier.

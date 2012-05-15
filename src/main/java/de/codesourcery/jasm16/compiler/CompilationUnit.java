@@ -57,6 +57,7 @@ public class CompilationUnit implements ICompilationUnit {
     private AST ast;
     private Address objectCodeStartAddress = Address.ZERO;
     private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
+    private final ISymbolTable symbolTable = new SymbolTable();
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
@@ -64,6 +65,8 @@ public class CompilationUnit implements ICompilationUnit {
     public void beforeCompilationStart() {
         this.lines.clear();
         this.ast = null;
+        this.symbolTable.clear();
+        this.symbolTable.setParent( null );
         this.markers.remove( IMarker.TYPE_COMPILATION_ERROR );
         this.markers.remove( IMarker.TYPE_GENERIC_COMPILATION_ERROR );
         this.objectCodeStartAddress=Address.ZERO;
@@ -365,4 +368,11 @@ public class CompilationUnit implements ICompilationUnit {
 	public List<ICompilationUnit> getDependencies() {
 		return new ArrayList<ICompilationUnit>( this.dependencies );
 	}
+	
+	@Override
+	public ISymbolTable getSymbolTable()
+	{
+	    return symbolTable;
+	}
+	
 }

@@ -161,7 +161,7 @@ public class Compiler implements ICompiler {
 
     // subclassing hook
 	protected ISymbolTable createSymbolTable() {
-		return new SymbolTable();
+		return new ParentSymbolTable();
 	}
 
     protected List<ICompilerPhase> setupCompilerPhases()

@@ -32,6 +32,11 @@ public class SymbolTable implements ISymbolTable {
 
 	private final Map<Identifier,ISymbol> symbols = new HashMap<Identifier,ISymbol>();
 
+	private IParentSymbolTable parent;
+	
+	public SymbolTable() {
+	}
+	
 	@Override
 	public void defineSymbol( ISymbol symbol) throws DuplicateSymbolException
 	{
@@ -93,4 +98,21 @@ public class SymbolTable implements ISymbolTable {
 		return new ArrayList<ISymbol>( symbols.values() );
 	}
 
+    @Override
+    public IParentSymbolTable getParent()
+    {
+        return parent;
+    }
+
+    @Override
+    public void setParent(IParentSymbolTable table)
+    {
+        this.parent = table;
+    }
+
+    @Override
+    public int getSize()
+    {
+        return symbols.size();
+    }
 }

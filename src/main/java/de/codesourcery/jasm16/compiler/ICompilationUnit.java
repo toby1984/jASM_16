@@ -46,6 +46,13 @@ public interface ICompilationUnit {
 	 * @return
 	 */
 	public String getIdentifier();	
+
+	/**
+	 * Returns the symbol table of this compilation unit.
+	 * 
+	 * @return symbol table for this compilation unit.
+	 */
+	public ISymbolTable getSymbolTable();
 	
 	/**
 	 * Returns the AST of this compilation unit.
