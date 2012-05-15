@@ -18,14 +18,12 @@ package de.codesourcery.jasm16.emulator;
 import de.codesourcery.jasm16.Address;
 
 /**
- * 
+ * Listener that gets called by the {@link IEmulator} whenever important events happen.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
 public interface IEmulationListener
 {
-	public void calibrationFinished(IEmulator emulator);
-	
 	/**
 	 * Invoked before the emulation starts running
 	 * at full speed.

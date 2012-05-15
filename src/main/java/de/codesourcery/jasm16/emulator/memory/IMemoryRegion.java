@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.memory;
 
 import java.util.List;
 
@@ -22,7 +22,7 @@ import de.codesourcery.jasm16.AddressRange;
 /**
  * A memory region.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public interface IMemoryRegion extends IMemory
 {

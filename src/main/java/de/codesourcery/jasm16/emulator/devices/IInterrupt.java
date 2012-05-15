@@ -13,29 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.devices;
 
-public interface IDevice {
+/**
+ * A hardware or software interrupt.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ * @see HardwareInterrupt 
+ * @see SoftwareInterrupt
+ */
+public interface IInterrupt {
 
-	/**
-	 * Invoked after this device has been added to an emulator.
-	 * @param emulator
-	 */
-	public void afterAddDevice(IEmulator emulator);
+    /**
+     * Returns this interrupt's message.
+     * 
+     * @return interrupt message (only the lower 16 bit are used)  
+     */
+	public int getMessage();
 	
 	/**
-	 * Invoked before this device is removed from
-	 * an emulator.
+	 * Returns whether this interrupt was triggered by software.
 	 * 
-	 * @param emulator
+	 * @return
 	 */
-	public void beforeRemoveDevice(IEmulator emulator);
+	public boolean isSoftwareInterrupt();
 	
-	public DeviceDescriptor getDeviceDescriptor(); 
-	
-	/**
-	 * Handle a software interrupt triggered by the application.
-	 * @param emulator
-	 */
-	public void handleInterrupt(IEmulator emulator);
+    /**
+     * Returns whether this interrupt was triggered by hardware.
+     * 
+     * @return
+     */	
+	public boolean isHardwareInterrupt();
 }

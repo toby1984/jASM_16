@@ -25,9 +25,9 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.IEmulator;
-import de.codesourcery.jasm16.emulator.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.MemoryRegion;
-import de.codesourcery.jasm16.emulator.devices.DefaultKeyboard;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 
 public class ScreenView extends AbstractView
 {

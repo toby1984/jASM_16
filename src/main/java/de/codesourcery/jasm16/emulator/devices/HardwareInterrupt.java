@@ -13,14 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.devices;
 
-public class SoftwareInterrupt implements IInterrupt {
+import de.codesourcery.jasm16.utils.Misc;
 
+/**
+ * An interrupt triggered by a hardware device.
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
+public final class HardwareInterrupt implements IInterrupt {
+
+	private final IDevice device;
 	private final int message;
 	
-	public SoftwareInterrupt(int message) {
+	public HardwareInterrupt(IDevice device,int message) {
+		if (device == null) {
+			throw new IllegalArgumentException("device must not be null");
+		}
+		this.device = device;
 		this.message = message & 0xffff;
+	}
+	
+	public IDevice getDevice() {
+		return device;
 	}
 	
 	@Override
@@ -30,11 +46,16 @@ public class SoftwareInterrupt implements IInterrupt {
 
 	@Override
 	public boolean isSoftwareInterrupt() {
-		return true;
+		return false;
 	}
 
 	@Override
 	public boolean isHardwareInterrupt() {
-		return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "HW{"+Misc.toHexString( message )+"}";
 	}
 }

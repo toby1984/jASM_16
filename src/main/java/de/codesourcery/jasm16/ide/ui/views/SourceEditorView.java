@@ -93,7 +93,6 @@ import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.NumberNode;
-import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;

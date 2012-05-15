@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.memory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -23,7 +23,6 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
-import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * DCPU-16 main memory emulation.
@@ -31,7 +30,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * <p>Note that the DCPU-16 only supports word-sized addressing. This memory implementation supports
  * overlay memory (see {@link IMemoryRegion} to enable features like video RAM etc.</p>
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class MainMemory implements IMemory
 {

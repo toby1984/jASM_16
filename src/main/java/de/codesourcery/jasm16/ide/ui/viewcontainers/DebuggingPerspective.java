@@ -119,16 +119,6 @@ public class DebuggingPerspective extends Perspective
     
     private final IEmulationListener listener = new EmulationListener() 
     {
-    	public void calibrationFinished(IEmulator emulator) {
-    		if ( project != null && executable != null ) {
-    			try {
-					openExecutable( project , executable );
-				} catch (IOException e) {
-					LOG.error("calibrationFinished(): ",e);
-				}
-    		}
-    	}
-    	
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {

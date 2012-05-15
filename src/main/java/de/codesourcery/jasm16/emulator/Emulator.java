@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -23,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -32,12 +30,23 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
-import de.codesourcery.jasm16.compiler.io.ClassPathResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
+import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.MainMemory;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
+/**
+ * DCPU-16 emulator.
+ * 
+ * @author tobias.gierke@voipfuture.com
+ */
 public class Emulator implements IEmulator {
 
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
@@ -200,10 +209,6 @@ public class Emulator implements IEmulator {
 
 		public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
 		{
-			if ( isCalibrating.get() ) { // do not invoke any listeners while calibrating
-				return;
-			}
-			
 			final List<IEmulationListener> copy;
 			synchronized( emuListeners ) 
 			{
@@ -268,8 +273,6 @@ public class Emulator implements IEmulator {
 	// @GuardedBy( devices )
 	private final List<IDevice> devices = new ArrayList<IDevice>();
 
-	private final AtomicBoolean isCalibrating = new AtomicBoolean(false);
-	
 	// ============ CPU =============== 
 
 	// a,b,c,x,y,z,i,j
@@ -526,7 +529,9 @@ public class Emulator implements IEmulator {
 		private final BlockingQueue<Command> cmdQueue = new ArrayBlockingQueue<Command>(1);
 		private final BlockingQueue<Long> ackQueue = new ArrayBlockingQueue<Long>(1);
 
-		private volatile int delay = -1;
+		private volatile double adjustmentFactor = 1.0d;
+		private volatile int oneCycleDelay = -1;
+		
 		private int dummy;		
 
 		public ClockThread() 
@@ -602,14 +607,14 @@ public class Emulator implements IEmulator {
 
 		protected final double measureDelayLoop() 
 		{
-			final int oldValue = clockThread.delay;
+			final int oldValue = clockThread.oneCycleDelay;
 
 			final int LOOP_COUNT = 1000000;
-			delay = LOOP_COUNT;
+			oneCycleDelay = LOOP_COUNT;
 
 			final long nanoStart = System.nanoTime();
 
-			for ( int j = delay ; j > 0 ; j-- ) {
+			for ( int j = oneCycleDelay ; j > 0 ; j-- ) {
 				dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
 			}
 
@@ -617,7 +622,7 @@ public class Emulator implements IEmulator {
 			if ( durationNanos < 0) {
 				durationNanos = -durationNanos;
 			}
-			delay = oldValue;
+			oneCycleDelay = oldValue;
 			return ( (double) durationNanos / (double) LOOP_COUNT);
 		}	    
 
@@ -727,10 +732,17 @@ public class Emulator implements IEmulator {
 					acknowledgeCommand(cmd);
 				}
 				
-				internalExecuteOneInstruction();
-				
-				if ( isRunAtRealSpeed ) {
-					for ( int j = delay ; j > 0 ; j-- ) {
+				final int durationInCycles = internalExecuteOneInstruction();
+				if ( isRunAtRealSpeed ) 
+				{
+				    if ( ( currentCycle % 10000 ) == 0 ) {
+				        final double cyclesPerSecond = (currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart.get() ) / 1000d);
+    				    // NOTE: 0.1 is a magic number determined on my i7 with JDK1.7.3 (32-bit) that accounts for the overhead of the if () condition and 
+				        //       calculation of the actual delay loop iteration count
+				        adjustmentFactor = ( cyclesPerSecond / 100000.0d ) - 0.1d; ; 
+				    }
+				    int j = (int) (oneCycleDelay*durationInCycles*adjustmentFactor);
+					for (  ; j > 0 ; j-- ) {
 						dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
 					}					
 				}
@@ -739,7 +751,11 @@ public class Emulator implements IEmulator {
 
 	}
 
-	protected void internalExecuteOneInstruction() 
+	/**
+	 * 
+	 * @return number of DCPU-16 cycles the command execution took 
+	 */
+	protected int internalExecuteOneInstruction() 
 	{
 		if ( getCPU().interruptsEnabled() ) 
 		{ 
@@ -777,12 +793,13 @@ public class Emulator implements IEmulator {
 			stop(true);
 			e.printStackTrace();
 			System.err.println("\n\nERROR: Simulation stopped due to error.");
-			return;
+			return 0;
 		} 
 		finally 
 		{
 			afterCommandExecution( execDurationInCycles );
 		}
+		return execDurationInCycles;
 	}     
 
 	private void handleInterrupt(IInterrupt irq) 
@@ -1631,7 +1648,7 @@ public class Emulator implements IEmulator {
 		
 		registers.set( REGISTER_A , (int) descriptor.getID() & 0xffff );
 		registers.set( REGISTER_B , (int) ( ( descriptor.getID() >>> 16 ) & 0xffff ) );
-		registers.set( REGISTER_C , (int) descriptor.getVersion() & 0xffff );
+		registers.set( REGISTER_C , descriptor.getVersion() & 0xffff );
 		
 		registers.set( REGISTER_X , (int) descriptor.getManufacturer() & 0xffff );
 		registers.set( REGISTER_Y , (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff ) );		
@@ -2036,42 +2053,12 @@ public class Emulator implements IEmulator {
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#calibrate()
 	 */
 	@Override
-	public void calibrate() 
+	public synchronized void calibrate() 
 	{
-		if ( isCalibrating.compareAndSet(false,true ) ) 
-		{
-			boolean success = false;
-			// backup this flag because calibration 
-			// with run at both speeds (full and real) and thus
-			// overwrite this flag
-		    final boolean oldValue = this.isRunAtRealSpeed;
-			try {
-				internalCalibrate();
-				success=true;
-			} 
-			finally 
-			{
-			    this.isRunAtRealSpeed = oldValue;
-				isCalibrating.set( false );
-				if ( success ) 
-				{
-					listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-						
-						@Override
-						public void invoke(IEmulator emulator, IEmulationListener listener) {
-							listener.calibrationFinished( emulator );
-						}
-					});
-				}
-			}
-		}
-	}
-	
-	protected void internalCalibrate() 
-	{	
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
 		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
+		System.out.print("Measuring delay loop...");
 		/*
 		 * Warm-up JVM / JIT.
 		 */
@@ -2094,96 +2081,13 @@ public class Emulator implements IEmulator {
 		}
 
 		final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
-
-		 this.isRunAtRealSpeed = false;
-		/*
-		 * Measure max. cycles/sec on this machine... 
-		 */
-	    double actualCyclesPerSecond = measureActualCyclesPerSecond();
-
-	    this.isRunAtRealSpeed = true; // make sure the clock thread actually uses the delay we've set
-	    
-		/*
-		 * Setup initial delay loop iteration count 
-		 * that we'll be adjusting later
-		 */
-		final double actualNanosPerCycle =   (1000.0d * 1000000.0d) / actualCyclesPerSecond;
-		final double delayNanosAccurate= expectedNanosPerCycle - actualNanosPerCycle;
-
-		double adjustmentFactor = 1.0d;
-		double adjustedNanosPerDelayLoopExecution = nanosPerDelayLoopExecution * adjustmentFactor;        
-		clockThread.delay = (int) Math.round( delayNanosAccurate / adjustedNanosPerDelayLoopExecution );
-
-		/*
-		 * Incrementally adjust the delay loop iteration count until
-		 * we reach clock rate (deviation).
-		 */
-		double increment = 400;
-		do 
-		{
-			actualCyclesPerSecond = measureActualCyclesPerSecond();
-
-			final double deltaPercentage = 100.0d* ( ( actualCyclesPerSecond - EXPECTED_CYCLES_PER_SECOND ) / EXPECTED_CYCLES_PER_SECOND );
-
-			System.out.println("Offset: "+deltaPercentage+"% ("+actualCyclesPerSecond+" cycles/s)");
-			if (deltaPercentage < 0.0d || deltaPercentage > 10.0d )
-			{
-				if ( increment < 10 ) {
-					increment = 10;
-				}
-				if ( deltaPercentage > 0 ) {
-					clockThread.delay += increment;
-				} else {
-					clockThread.delay -= increment;
-				}
-				double scalingFactor;
-				if ( Math.abs( deltaPercentage ) >= 100.0d) {
-					scalingFactor = 1;
-				} else {
-					scalingFactor = 0.9*( Math.abs( deltaPercentage ) / 100.0d )*1.5;
-				}
-				System.out.println("Delay: "+clockThread.delay+" (increment: "+increment+" / scaling: "+scalingFactor+" )");				
-				increment = increment*scalingFactor;
-			} else {
-				break;
-			}
-		} while ( true );
-
-	}
-
-	private double measureActualCyclesPerSecond() 
-	{
-		/*
-		 * loop: (0x0000)   ADD A,1     ; (1000100000000010) 8802 
-         *                  SET PC,loop ; (1000011110000001) 8781
-		 */
-		final byte[] program;
-        try {
-            program = Misc.readBytes( new ClassPathResource("matrix.dcpu16",ResourceType.EXECUTABLE) );
-        } 
-        catch (IOException e1) {
-            LOG.error("measureActualCyclesPerSecond(): Failed to load calibration program",e1);
-            throw new RuntimeException("Failed to load calibration program?");
-        }
-        
-		loadMemory(  Address.ZERO  , program );
-
-		start();
-
-		try {
-			Thread.sleep( 1 * 1000 );
-		}
-		catch(InterruptedException e) 
-		{
-		} finally 
-		{
-		    if ( clockThread.isRunnable ) {
-		        stop(false);
-		    } else {
-		        throw new RuntimeException("Internal error, emulator stopped unexpectedly");
-		    }
-		}
-		return clockThread.getCyclesPerSecond();
+		System.out.println(" one iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
+		final double loopIterationsPerCycle = expectedNanosPerCycle / nanosPerDelayLoopExecution;
+		
+		clockThread.adjustmentFactor = 1.0d;
+		clockThread.oneCycleDelay = (int) Math.round( loopIterationsPerCycle );
+		
+		System.out.println(" one cycle = "+clockThread.oneCycleDelay+" loop iterations.");
 	}
 
 	@Override
@@ -2420,21 +2324,9 @@ public class Emulator implements IEmulator {
 	
 	@Override
 	public boolean isCalibrated() {
-		return clockThread.delay != -1;
+		return clockThread.oneCycleDelay != -1;
 	}
 	
-	@Override
-	public boolean isCalibrating() {
-		return isCalibrating.get();
-	}
-
-	public static void main(String[] args)
-    {
-	    final long start = 1336991917286L;
-	    final long stop = 1336991918286L;
-        System.out.println( stop - start );
-    }
-
     @Override
     public boolean isStoppedBecauseOfError()
     {

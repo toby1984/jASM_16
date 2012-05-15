@@ -35,7 +35,7 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
-import de.codesourcery.jasm16.emulator.MemUtils;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
 import de.codesourcery.jasm16.utils.Misc;
 

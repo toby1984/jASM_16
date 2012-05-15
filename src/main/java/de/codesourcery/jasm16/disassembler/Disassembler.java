@@ -28,9 +28,9 @@ import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
-import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
-import de.codesourcery.jasm16.emulator.MemUtils;
-import de.codesourcery.jasm16.emulator.MemoryIterator;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.emulator.memory.MemoryIterator;
 import de.codesourcery.jasm16.utils.IMemoryIterator;
 import de.codesourcery.jasm16.utils.Misc;
 

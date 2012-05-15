@@ -18,7 +18,17 @@ package de.codesourcery.jasm16.emulator;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.MainMemory;
 
+/**
+ * DCPU-16 emulator abstraction.
+ * 
+ * @author tobias.gierke@voipfuture.com
+ */
 public interface IEmulator
 {
     public void addBreakpoint(Breakpoint bp);
@@ -31,8 +41,6 @@ public interface IEmulator
 
     public void calibrate();
     
-    public boolean isCalibrating();
-
     public void deleteBreakpoint(Breakpoint bp);
     
     public void executeOneInstruction();

@@ -22,6 +22,7 @@ import static org.easymock.classextension.EasyMock.verify;
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.exceptions.ParseException;
 
 public class BreakpointTest extends TestCase {

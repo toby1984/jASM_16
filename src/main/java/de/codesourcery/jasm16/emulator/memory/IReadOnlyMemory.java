@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.memory;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;

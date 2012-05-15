@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator.devices;
+package de.codesourcery.jasm16.emulator.devices.impl;
 
 import java.awt.Component;
 import java.awt.event.KeyEvent;
@@ -22,12 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.emulator.DeviceDescriptor;
-import de.codesourcery.jasm16.emulator.HardwareInterrupt;
-import de.codesourcery.jasm16.emulator.IDevice;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
+import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.utils.Misc;
 
+/**
+ * Default keyboard device.
+ * 
+ * @author tobias.gierke@voipfuture.com
+ */
 public class DefaultKeyboard implements IDevice {
 
 	private volatile Component inputComponent;
@@ -45,7 +50,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
 	
-	private final DeviceDescriptor desc = new DeviceDescriptor( 0x30cf7406 , 0x01 , 0x00 );	
+	private final DeviceDescriptor desc = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , 0x00 );	
 
 	private final KeyListener keyListener = new KeyListener() {
 

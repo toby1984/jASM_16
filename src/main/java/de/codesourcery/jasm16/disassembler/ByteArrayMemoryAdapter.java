@@ -17,7 +17,7 @@ package de.codesourcery.jasm16.disassembler;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.emulator.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**

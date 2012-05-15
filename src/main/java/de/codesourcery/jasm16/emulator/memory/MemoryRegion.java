@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.memory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ import de.codesourcery.jasm16.Size.SizeInWords;
  * <p>Each region has a (non-unique) name for informational purposes along with
  * the address range covered by this memory region.</p>
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class MemoryRegion implements IMemoryRegion {
     

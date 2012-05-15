@@ -19,7 +19,13 @@ import java.util.List;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 
+/**
+ * DCPU-16 CPU.
+ * 
+ * @author tobias.gierke@voipfuture.com
+ */
 public interface ICPU
 {
     public static final int COMMON_REGISTER_COUNT=8;

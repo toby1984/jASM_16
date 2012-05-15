@@ -32,7 +32,6 @@ import java.util.regex.Pattern;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -390,7 +389,7 @@ public class DisassemblerView extends AbstractView
 							@Override
 							public void run() 
 							{
-								final JDialog dialog = UIUtils.createMessageDialog( null, "Hang on..." , "Calibrating emulation speed...");
+								final JDialog dialog = UIUtils.createMessageDialog( null, "Calibrating emulation speed" , "Please wait, benchmarking your system...");
 								dialog.setModal(true);
 								
 								new Thread() {

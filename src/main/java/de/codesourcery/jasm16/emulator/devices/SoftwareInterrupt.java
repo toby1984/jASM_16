@@ -13,13 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.codesourcery.jasm16.emulator;
+package de.codesourcery.jasm16.emulator.devices;
 
-public interface IInterrupt {
+/**
+ * An interrupt triggered by software.
+ * 
+ * @author tobias.gierke@voipfuture.com
+ */
+public class SoftwareInterrupt implements IInterrupt {
 
-	public int getMessage();
+	private final int message;
 	
-	public boolean isSoftwareInterrupt();
+	public SoftwareInterrupt(int message) {
+		this.message = message & 0xffff;
+	}
 	
-	public boolean isHardwareInterrupt();
+	@Override
+	public int getMessage() {
+		return message;
+	}
+
+	@Override
+	public boolean isSoftwareInterrupt() {
+		return true;
+	}
+
+	@Override
+	public boolean isHardwareInterrupt() {
+		return false;
+	}
 }

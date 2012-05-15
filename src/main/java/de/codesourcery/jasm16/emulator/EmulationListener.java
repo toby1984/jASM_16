@@ -104,9 +104,4 @@ public class EmulationListener implements IEmulationListener {
 	public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode() {
 		return false;
 	}
-
-	@Override
-	public void calibrationFinished(IEmulator emulator) {
-		
-	}
 }
