@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -59,16 +60,25 @@ import javax.swing.SwingUtilities;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentEvent.EventType;
 import javax.swing.event.DocumentListener;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.text.AbstractDocument.DefaultDocumentEvent;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultStyledDocument.AttributeUndoableEdit;
 import javax.swing.text.Document;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
+import javax.swing.undo.CannotRedoException;
+import javax.swing.undo.CannotUndoException;
+import javax.swing.undo.UndoManager;
+import javax.swing.undo.UndoableEdit;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -125,7 +135,81 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	private final JTree astTree = new JTree();
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
+	
+	private final UndoManager undoManager = new UndoManager();
+	
+	private final UndoableEditListener undoListener = new  UndoableEditListener() 
+	{
+		public void undoableEditHappened(UndoableEditEvent e) 
+		{
+			UndoableEdit edit = e.getEdit();
+			if ( edit instanceof AttributeUndoableEdit) {
+				return;
+			}
+			else if ( edit instanceof DefaultDocumentEvent) {
+				if ( ((DefaultDocumentEvent) edit).getType() == EventType.CHANGE ) {
+					return;
+				}
+			}
+			undoManager.addEdit(e.getEdit());
+			undoAction.updateUndoState();
+			redoAction.updateRedoState();
+		}
+	};
+	
+	protected abstract class UndoRedoAction extends AbstractAction {
+		
+        public void updateUndoState() {
+            if (undoManager.canUndo()) {
+                setEnabled(true);
+                putValue(Action.NAME, undoManager.getUndoPresentationName());
+            } else {
+                setEnabled(false);
+                putValue(Action.NAME, "Undo");
+            }
+        }	
+        
+        public void updateRedoState() 
+        {
+            if (undoManager.canRedo()) {
+                setEnabled(true);
+                putValue(Action.NAME, undoManager.getRedoPresentationName() );
+            } else {
+                setEnabled(false);
+                putValue(Action.NAME, "Redo");
+            }
+        }	        
+	}
+	
+	private final UndoRedoAction undoAction = new UndoRedoAction() {
 
+		@Override
+		public void actionPerformed(ActionEvent e) {
+            try {
+                undoManager.undo();
+            } catch (CannotUndoException ex) {
+                LOG.error("Unable to undo: " + ex,ex);
+            }
+            updateUndoState();
+            redoAction.updateRedoState();			
+		}
+	};
+	
+	private final UndoRedoAction redoAction = new UndoRedoAction() {
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+            try {
+                undoManager.redo();
+            } catch (CannotRedoException ex) {
+                LOG.error("Unable to redo: " + ex,ex);
+            }
+            updateRedoState();
+            undoAction.updateUndoState();
+		}
+	
+	};
+	
 	private final JTextField cursorPosition = new JTextField(); 
 	private final JTextPane editorPane = new JTextPane();
 	private volatile int documentListenerDisableCount = 0; 
@@ -484,10 +568,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 		public void insertUpdate(DocumentEvent e) { textChanged(e); }
 
 		@Override
-		public void changedUpdate(DocumentEvent e) 
-		{
-			// do nothing, style change only
-		}
+		public void changedUpdate(DocumentEvent e)  { /* do nothing, style change only */ }
 	};
 
 	private final CaretListener listener = new CaretListener() {
@@ -974,6 +1055,7 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 	{
 		disableDocumentListener(); // necessary because setting colors on editor pane triggers document change listeners (is considered a style change...)
 		try {
+			editorPane.getDocument().addUndoableEditListener( undoListener );
 			editorPane.setCaretColor( Color.WHITE );
 			setupKeyBindings( editorPane );
 			setColors( editorPane );
@@ -1132,6 +1214,15 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 				saveCurrentFile();
 			}
 		});
+		
+		// "Undo" action
+		addKeyBinding( editor , 
+				KeyStroke.getKeyStroke(KeyEvent.VK_Z,Event.CTRL_MASK),
+				undoAction );
+		
+		addKeyBinding( editor , 
+				KeyStroke.getKeyStroke(KeyEvent.VK_Y,Event.CTRL_MASK),
+				redoAction );		
 	}
 	
 	private void saveCurrentFile() {

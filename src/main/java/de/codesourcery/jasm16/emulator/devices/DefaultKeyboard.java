@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.emulator.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.IDevice;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -43,6 +44,8 @@ public class DefaultKeyboard implements IDevice {
 	private volatile Integer interruptMessage = null; 
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
+	
+	private final DeviceDescriptor desc = new DeviceDescriptor( 0x30cf7406 , 0x01 , 0x00 );	
 
 	private final KeyListener keyListener = new KeyListener() {
 
@@ -233,18 +236,8 @@ public class DefaultKeyboard implements IDevice {
 	}
 
 	@Override
-	public long getHardwareID() {
-		return 0x30cf7406;
-	}
-
-	@Override
-	public int getHardwareVersion() {
-		return 1;
-	}
-
-	@Override
-	public long getManufacturer() {
-		return 0;
+	public DeviceDescriptor getDeviceDescriptor() {
+		return desc;
 	}
 
 	@Override

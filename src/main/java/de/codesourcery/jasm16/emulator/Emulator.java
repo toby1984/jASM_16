@@ -1627,12 +1627,14 @@ public class Emulator implements IEmulator {
          * X = LSB manufacturer ID (16 bit)
          * Y = MSB manufacturer ID (16 bit)
 		 */
-		registers.set( REGISTER_A , (int) device.getHardwareID() & 0xffff );
-		registers.set( REGISTER_B , (int) ( ( device.getHardwareID() >>> 16 ) & 0xffff ) );
-		registers.set( REGISTER_C , (int) device.getHardwareVersion() & 0xffff );
+		final DeviceDescriptor descriptor = device.getDeviceDescriptor();
 		
-		registers.set( REGISTER_X , (int) device.getManufacturer() & 0xffff );
-		registers.set( REGISTER_Y , (int) ( ( device.getManufacturer() >>> 16 ) & 0xffff ) );		
+		registers.set( REGISTER_A , (int) descriptor.getID() & 0xffff );
+		registers.set( REGISTER_B , (int) ( ( descriptor.getID() >>> 16 ) & 0xffff ) );
+		registers.set( REGISTER_C , (int) descriptor.getVersion() & 0xffff );
+		
+		registers.set( REGISTER_X , (int) descriptor.getManufacturer() & 0xffff );
+		registers.set( REGISTER_Y , (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff ) );		
 		
 		return 4+operand.cycleCount;
 	}
@@ -2348,9 +2350,23 @@ public class Emulator implements IEmulator {
 				throw new IllegalStateException("Already 65535 devices registered");
 			}
 			devices.add( device );
+			// TODO: remove debug output
+			System.out.println("Device added - configuration is now:\n");
+			printDevices();
 		}
-		System.out.println("Device added: "+device);
 		device.afterAddDevice( this );
+	}
+	
+	private void printDevices() 
+	{
+		synchronized( devices ) {
+
+			int slot = 0;
+			for ( IDevice d : devices ) {
+				System.out.println("Slot #"+slot+":");
+				System.out.println( d.getDeviceDescriptor().toString("    ",true));
+			}		
+		}
 	}
 
 	@Override
@@ -2373,7 +2389,9 @@ public class Emulator implements IEmulator {
 		}
 		
 		if ( isRegistered ) {
-			System.out.println("Device removed: "+device);			
+			// TODO: remove debug output
+			System.out.println("Device removed - configuration is now:\n");
+			printDevices();			
 			device.beforeRemoveDevice( this );
 		} else {
 			return;

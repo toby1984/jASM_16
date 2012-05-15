@@ -473,15 +473,17 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		});			
 		
-		addMenuEntry( popup , "Delete...", new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) 
-			{
-				deleteResource( selectedNode );
-			}
-
-		});	
+		if ( selectedNode != null ) {
+			addMenuEntry( popup , "Delete...", new ActionListener() {
+	
+				@Override
+				public void actionPerformed(ActionEvent e) 
+				{
+					deleteResource( selectedNode );
+				}
+	
+			});	
+		}
 		return popup;
 	}	
 	
@@ -594,13 +596,16 @@ public class WorkspaceExplorer extends AbstractView {
 			if (e.isPopupTrigger()) 
 			{
 				final TreePath path = tree.getPathForLocation( e.getX() , e.getY() );
+				final WorkspaceTreeNode node;
 				if ( path != null ) 
 				{
-					final WorkspaceTreeNode node = (WorkspaceTreeNode) path.getLastPathComponent();
-					final JPopupMenu menu = createPopupMenu( node );
-					if ( menu != null ) {
-						menu.show(e.getComponent(),e.getX(), e.getY());
-					}
+					node = (WorkspaceTreeNode) path.getLastPathComponent();
+				} else {
+					node = null;
+				}
+				final JPopupMenu menu = createPopupMenu( node );
+				if ( menu != null ) {
+					menu.show(e.getComponent(),e.getX(), e.getY());
 				}
 			}
 		}
