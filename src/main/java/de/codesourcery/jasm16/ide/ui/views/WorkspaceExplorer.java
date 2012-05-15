@@ -408,30 +408,6 @@ public class WorkspaceExplorer extends AbstractView {
 		final JPopupMenu popup = new JPopupMenu();
 
 		// open debugger
-		if ( selectedNode instanceof FileNode) 
-		{
-			final IResource resource = getResourceForFile( (FileNode) selectedNode );
-
-			if ( resource != null && resource.hasType( ResourceType.EXECUTABLE ) ) 
-			{
-				addMenuEntry( popup , "Open in debugger", new ActionListener() {
-
-					@Override
-					public void actionPerformed(ActionEvent e) 
-					{
-						final IAssemblyProject project = getProject( selectedNode);
-						try {
-							openDebugPerspective( project , resource );
-						} 
-						catch (IOException e1) {
-							LOG.error("Failed to open debug perspective for "+project+" , resource "+resource,e1);
-						}
-					}
-
-				});
-			}
-		}
-
 		final IAssemblyProject project = getProject( selectedNode );
 		if ( project != null ) 
 		{
@@ -446,6 +422,25 @@ public class WorkspaceExplorer extends AbstractView {
 					}
 				}
 			});		
+			
+			final IResource executable = project.getBuilder().getExecutable();
+			if ( executable != null ) 
+			{
+                addMenuEntry( popup , "Open in debugger", new ActionListener() {
+    
+                    @Override
+                    public void actionPerformed(ActionEvent e) 
+                    {
+                        try {
+                            openDebugPerspective( project , executable );
+                        } 
+                        catch (IOException e1) {
+                            LOG.error("Failed to open debug perspective for "+project+" , resource "+executable,e1);
+                        }
+                    }
+                }); 	
+			}
+			
 		}
 		
 		if ( canCreateFileIn( selectedNode ) ) {
