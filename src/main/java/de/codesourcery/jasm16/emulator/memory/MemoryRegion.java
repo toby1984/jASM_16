@@ -51,7 +51,7 @@ public class MemoryRegion implements IMemoryRegion {
         }
         final SizeInWords sizeInWords = range.getSize().toSizeInWords();
         if ( sizeInWords.getValue() < 1 ) {
-            throw new IllegalArgumentException("Memory size must be >= 1 word(s)");
+            throw new IllegalArgumentException("Memory size must be >= 1 word(s), invalid address range passed: "+range);
         }
         this.memory = new  AtomicIntegerArray( sizeInWords.getValue() );
         this.addressRange = range;
@@ -95,7 +95,7 @@ public class MemoryRegion implements IMemoryRegion {
         return regionName;
     }
     
-    private IMemoryRegion slice(AddressRange range) {
+    private IMemoryRegion createCopy(AddressRange range) {
         
         final MemoryRegion result = new MemoryRegion( regionName , range );
 
@@ -116,7 +116,7 @@ public class MemoryRegion implements IMemoryRegion {
         final List<IMemoryRegion> result = new ArrayList<>();
         
         for ( AddressRange region : regions ) {
-            result.add( slice( region ) );
+            result.add( createCopy( region ) );
         }
         return result;
     }

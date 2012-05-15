@@ -2240,8 +2240,14 @@ public class Emulator implements IEmulator {
 	}
 
 	@Override
-	public void mapRegion(IMemoryRegion region) {
+	public void mapRegion(IMemoryRegion region) 
+	{
+	    System.out.println("Before adding new memory region: "+region);
+	       // TODO: Remove debug code
+        this.memory.dumpMemoryLayout();
+        
 		this.memory.mapRegion( region );
+		// TODO: Remove debug code
 		this.memory.dumpMemoryLayout();
 	}
 
@@ -2314,9 +2320,6 @@ public class Emulator implements IEmulator {
 		}
 		
 		if ( isRegistered ) {
-			// TODO: remove debug output
-			System.out.println("Device removed - configuration is now:\n");
-			printDevices();			
 			device.beforeRemoveDevice( this );
 		} else {
 			return;
@@ -2324,6 +2327,12 @@ public class Emulator implements IEmulator {
 		
 		synchronized( devices ) {
 			devices.remove( device );
+		}
+		
+        // TODO: remove debug output
+		if ( isRegistered ) {
+		    System.out.println("Device removed - configuration is now:\n");
+		    printDevices();
 		}
 	}
 	

@@ -92,12 +92,12 @@ public class MainMemory implements IMemory
     /**
      * Maps main memory to a specific region.
      * 
-     * @param region
+     * @param newRegion
      * @see #unmapRegion(IMemoryRegion)
      */
-    public void mapRegion(IMemoryRegion region) 
+    public void mapRegion(IMemoryRegion newRegion) 
     {
-        if (region == null) {
+        if (newRegion == null) {
             throw new IllegalArgumentException("region must not be NULL.");
         }
         boolean intersects = false;
@@ -107,10 +107,16 @@ public class MainMemory implements IMemory
             int index = 0;
             for ( IMemoryRegion existing : regions ) 
             {
-                if ( existing.getAddressRange().intersectsWith( region.getAddressRange() ) ) 
+                if ( existing.getAddressRange().intersectsWith( newRegion.getAddressRange() ) ) 
                 {
-                    regions.remove( index );
-                    regions.addAll( index , existing.subtract( region.getAddressRange() ) );
+                    regions.remove( index ); // remove existing region
+                    
+                    if ( existing.getAddressRange().equals( newRegion.getAddressRange() ) ) {
+                        // exactly the same address range, just copy memory contents from existing => new region
+                        MemUtils.memCopy( existing , newRegion , Address.wordAddress( 0 ) , existing.getSize() );
+                    } else {
+                        regions.addAll( index , existing.subtract( newRegion.getAddressRange() ) );
+                    }
                     intersects = true;
                     break;
                 }
@@ -122,13 +128,13 @@ public class MainMemory implements IMemory
         int index = 0;
         for ( IMemoryRegion existing : regions ) 
         {
-            if ( region.getAddressRange().getStartAddress().isLessThan( existing.getAddressRange().getStartAddress() ) ) {
-                regions.add( index , region );
+            if ( newRegion.getAddressRange().getStartAddress().isLessThan( existing.getAddressRange().getStartAddress() ) ) {
+                regions.add( index , newRegion );
                 return;
             }
             index++;
         }
-        regions.add( region );
+        regions.add( newRegion );
     }
 
     @Override

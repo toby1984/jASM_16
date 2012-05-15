@@ -19,14 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * An address range denoted by starting address and size.
+ * An (immutable) address range made up of starting address and size.
  * 
  * @author tobias.gierke@voipfuture.com
  */
-public class AddressRange
+public final class AddressRange
 {
-    private Address start;
-    private Size size;
+    private final Address start;
+    private final Size size;
 
     public AddressRange(Address start, Address end) {
         if ( start == null ) {
@@ -41,6 +41,28 @@ public class AddressRange
         this.start = start;
         this.size = Size.bytes( end.toByteAddress().getValue() - start.toByteAddress().getValue() );
     }    
+    
+    @Override
+    public final boolean equals(Object obj)
+    {
+        if ( this == obj ) {
+            return true;
+        }
+        if ( obj instanceof AddressRange) {
+            final AddressRange other = (AddressRange) obj;
+            return this.getStartAddress().equals( other.getStartAddress() ) &&
+                   this.getSize().equals( other.getSize() );
+        }
+        return false;
+    }
+    
+    @Override
+    public final int hashCode()
+    {
+        int result = 31 + start.hashCode();
+        result += 31*result + size.hashCode();
+        return result;
+    }
 
     public AddressRange(Address start, Size size) {
         if ( start == null ) {

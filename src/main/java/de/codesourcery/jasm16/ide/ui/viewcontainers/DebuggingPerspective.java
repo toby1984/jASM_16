@@ -218,18 +218,19 @@ public class DebuggingPerspective extends Perspective
             view.refreshDisplay();
         }     
         
-        // setup screen view
-        if ( getBreakpointView() == null ) {
-            final BreakpointView view = new BreakpointView( getDisassemblerView() , emulator );
-            addView( view );
-            view.refreshDisplay();
-        }    
-        
+        // setup source level debug view
         if ( getSourceLevelDebugView() == null ) {
             final SourceLevelDebugView view = new SourceLevelDebugView( workspace , this , emulator );
             addView( view );
             view.refreshDisplay();            
         }
+        
+        // setup screen view
+        if ( getBreakpointView() == null ) {
+            final BreakpointView view = new BreakpointView( getDisassemblerView() , getSourceLevelDebugView() , emulator );
+            addView( view );
+            view.refreshDisplay();
+        }    
     }
     
     private SourceLevelDebugView getSourceLevelDebugView() {

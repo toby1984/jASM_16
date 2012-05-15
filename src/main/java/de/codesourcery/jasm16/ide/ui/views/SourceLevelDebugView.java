@@ -166,18 +166,23 @@ public class SourceLevelDebugView extends SourceCodeView
         addChild( controller );
         
         GridBagConstraints cnstrs = constraints( 0 , 0, true , false , GridBagConstraints.HORIZONTAL );
+        cnstrs.weighty=0.0;
         result.add( controller.getPanel() , cnstrs );
         
         final JPanel sourceView = super.getPanel();
         cnstrs = constraints( 0 , 1, true , true, GridBagConstraints.BOTH );
+        cnstrs.weighty=1.0;
         result.add( sourceView , cnstrs );        
         
         return result;
     }
     
-    @Override
-    protected void refreshDisplayHook()
-    {
+    public void scrollToVisible(Address address) {
+        scrollToVisible(address,false);
+    }
+    
+    protected void scrollToVisible(Address address,boolean highlight) {
+
         if ( perspective.getCurrentProject() == null ) {
             return;
         }
@@ -187,14 +192,13 @@ public class SourceLevelDebugView extends SourceCodeView
             this.currentProject = perspective.getCurrentProject();
         }
         
-        final Address pc = emulator.getCPU().getPC();
-        final ICompilationUnit unit = getCompilationUnitForAddress( pc );
+        final ICompilationUnit unit = getCompilationUnitForAddress( address );
         if ( unit == null ) {
-            System.out.println("Found no source for address "+pc);
+            System.out.println("Found no source for address "+address);
             return;
         }
         
-        final StatementNode node = getStatementNodeForAddress( unit , pc );
+        final StatementNode node = getStatementNodeForAddress( unit , address );
         if ( node != null ) 
         {
             if ( updateParentView || this.currentUnit == null || ! this.currentUnit.getResource().isSame( unit.getResource() ) ) 
@@ -208,26 +212,36 @@ public class SourceLevelDebugView extends SourceCodeView
             // scroll to current location
             gotoLocation( region.getStartingOffset() );
             
-            // highlight location
-            try 
-            {            
-                if ( currentHighlight == null ) 
-                {
-                    currentHighlight = getHighlighter().addHighlight( 
-                            region.getStartingOffset() , 
-                            region.getEndOffset() , 
-                            new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
-                } else {
-                    getHighlighter().changeHighlight( currentHighlight ,
-                            region.getStartingOffset() ,
-                            region.getEndOffset() );
-                }
-            } catch (BadLocationException e) {
-                LOG.error("refreshDisplayHook(): ",e);
-            }            
+            if ( highlight ) 
+            {
+                // highlight location
+                try 
+                {            
+                    if ( currentHighlight == null ) 
+                    {
+                        currentHighlight = getHighlighter().addHighlight( 
+                                region.getStartingOffset() , 
+                                region.getEndOffset() , 
+                                new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
+                    } else {
+                        getHighlighter().changeHighlight( currentHighlight ,
+                                region.getStartingOffset() ,
+                                region.getEndOffset() );
+                    }
+                } catch (BadLocationException e) {
+                    LOG.error("refreshDisplayHook(): ",e);
+                }      
+            }
         } else {
-            System.out.println("Failed to locate AST node for address "+pc);
+            System.out.println("Failed to locate AST node for address "+address);
         }
+            
+    }
+    
+    @Override
+    protected void refreshDisplayHook()
+    {
+        scrollToVisible( emulator.getCPU().getPC() , true );
     }
     
     private void highlightBreakpoints() 

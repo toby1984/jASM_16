@@ -44,7 +44,10 @@ public class BreakpointView extends AbstractView {
 
 	public static final String VIEW_ID = "breakpoints-view";
 	
+	private final SourceLevelDebugView sourceLevelDebugView;
 	private final DisassemblerView disView;	
+	
+	
 	private final IEmulator emulator;
 	private JPanel panel;
 
@@ -227,13 +230,14 @@ public class BreakpointView extends AbstractView {
 		}
 	};	
 
-	public BreakpointView(DisassemblerView disView , IEmulator emulator) {
+	public BreakpointView(DisassemblerView disView , SourceLevelDebugView sourceLevelDebugView, IEmulator emulator) {
 		if ( emulator == null ) {
 			throw new IllegalArgumentException("emulator must not be null");
 		}
 		if ( disView == null ) {
 			throw new IllegalArgumentException("disView must not be null");
 		}
+		this.sourceLevelDebugView = sourceLevelDebugView; // may be NULL if we're debugging a plain object file without the source
 		this.disView = disView;
 		this.emulator = emulator;
 		emulator.addEmulationListener( listener );
@@ -283,7 +287,11 @@ public class BreakpointView extends AbstractView {
 					if ( viewRow != -1 ) {
 						final int modelRow = table.convertRowIndexToModel( viewRow );
 						final Breakpoint breakPoint = tableModel.getBreakpoint( modelRow );
+						
 						disView.setViewStartingAddress( breakPoint.getAddress() );
+						if ( sourceLevelDebugView != null ) { // may be NULL when debugging a plain object file without attached source
+						    sourceLevelDebugView.scrollToVisible( breakPoint.getAddress() );
+						}
 					}
 				}
 			};
