@@ -16,8 +16,10 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,6 +30,9 @@ import javax.swing.JTabbedPane;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.ide.EditorFactory;
+import de.codesourcery.jasm16.ide.IAssemblyProject;
+import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
@@ -59,13 +64,19 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 
 	protected final class ViewWithPanel 
 	{
+	    public final int tabIndex;
 		public final IView view;
 		public final JPanel panel;
 		
-		public ViewWithPanel(IView view) 
+		public ViewWithPanel(IView view,int tabIndex) 
 		{
 			this.view = view;
+			this.tabIndex = tabIndex;
 			this.panel = view.getPanel( EditorContainer.this );
+		}
+		
+		public void toFront() {
+		    tabbedPane.setSelectedIndex( tabIndex );
 		}
 	}
 	
@@ -102,15 +113,27 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	@Override
 	public void addView(IView view) 
 	{
-		final ViewWithPanel newView = new ViewWithPanel( view );
+	    final int index = tabbedPane.getTabCount();
+		final ViewWithPanel newView = new ViewWithPanel( view , index );
 		views.add( newView );
 		tabbedPane.add( view.getTitle() , newView.panel );
+	}
+	
+	protected void selectTab(IView view) 
+	{
+	    for ( ViewWithPanel v : views ) {
+	        if ( v.view == view ) {
+	            v.toFront();
+	            return;
+	        }
+	    }
 	}
 	
 	@Override
 	public void setTitle(IView view, String title) 
 	{
-		for ( ViewWithPanel p : this.views ) {
+		for ( ViewWithPanel p : this.views ) 
+		{
 			if ( p.view == view ) {
 				final int index = tabbedPane.indexOfComponent( p.panel );
 				if ( index != -1 ) {
@@ -188,7 +211,7 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		for ( ViewWithPanel p : this.views ) 
 		{
 			if ( p.view instanceof IEditorView) {
-				if ( ((IEditorView) p.view).getCurrentResource() == resource ) {
+				if ( ((IEditorView) p.view).getCurrentResource().isSame( resource ) ) {
 					return (IEditorView) p.view;
 				}
 			}
@@ -245,5 +268,20 @@ public class EditorContainer extends AbstractView implements IViewContainer {
     public void removeViewContainerListener(IViewContainerListener listener)
     {
         helper.removeViewContainerListener( listener );
+    }
+    
+    public IEditorView openResource(IWorkspace workspace , IAssemblyProject project,IResource resource) throws IOException 
+    {
+        IEditorView editor = getEditor( resource );
+        if ( editor != null ) {
+            editor.refreshDisplay();
+            selectTab( editor );
+            return editor;
+        }
+        
+        editor = EditorFactory.createEditor( workspace , project , resource );
+        addView( editor );
+        editor.openResource( project , resource );
+        return editor;
     }
 }

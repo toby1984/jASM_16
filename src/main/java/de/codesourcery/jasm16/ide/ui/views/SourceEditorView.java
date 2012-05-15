@@ -45,6 +45,7 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.AST;
@@ -67,6 +68,7 @@ import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
@@ -78,6 +80,8 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class SourceEditorView extends SourceCodeView {
 
+    private static final Logger LOG = Logger.getLogger(SourceEditorView.class);
+    
 	// UI widgets
 
 	private volatile JPanel panel;
@@ -322,7 +326,12 @@ public class SourceEditorView extends SourceCodeView {
 
 	protected void onCaretUpdate(CaretEvent e) 
 	{
-        ASTNode n = getCurrentCompilationUnit().getAST().getNodeInRange( e.getDot() );
+	    final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
+        if ( ast == null ) {
+            return;
+        }
+        
+        final ASTNode n = ast.getNodeInRange( e.getDot() );
         if ( n != null && isASTInspectorVisible() ) {
             TreePath path = new TreePath( n.getPathToRoot() );
             astTree.setSelectionPath( path );
@@ -482,8 +491,23 @@ public class SourceEditorView extends SourceCodeView {
 		                final int modelRow = symbolTable.convertRowIndexToModel( viewRow );
 		                final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
 		                
+		                IEditorView editor = null;
 		                if ( symbol.getCompilationUnit().getResource().isSame( sourceInMemory ) ) {
-		                    moveCursorTo( symbol.getLocation() );
+		                    editor = SourceEditorView.this;
+		                } 
+		                else if ( getViewContainer() instanceof EditorContainer) 
+		                {
+		                    final EditorContainer parent = (EditorContainer) getViewContainer();
+		                    try {
+                                editor = parent.openResource( workspace , getCurrentProject() , symbol.getCompilationUnit().getResource() );
+                            } 
+		                    catch (IOException e1) {
+                                LOG.error("mouseClicked(): Failed top open "+symbol.getCompilationUnit().getResource(),e1);
+                                return;
+                            }
+		                }
+		                if ( editor instanceof SourceCodeView) {
+		                    ((SourceCodeView) editor).moveCursorTo( symbol.getLocation() );
 		                }
 		            }
 		        }

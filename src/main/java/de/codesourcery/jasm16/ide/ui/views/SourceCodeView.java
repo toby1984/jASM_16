@@ -717,7 +717,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             validateSourceCode();
         }
 
-        enableDocumentListener();       
+        enableDocumentListener();   
+        
+        updateTitle();
     }
 
     protected final void validateSourceCode() throws IOException {
