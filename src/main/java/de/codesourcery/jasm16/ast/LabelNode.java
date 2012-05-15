@@ -95,6 +95,7 @@ public class LabelNode extends ASTNode
     {
         final LabelNode result = new LabelNode();
         result.label = label;
+        result.identifier = identifier;
         return result;
     }
     
