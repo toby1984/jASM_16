@@ -1,0 +1,52 @@
+.equ VIDEO_RAM 0x8000
+.equ ID_LOW 0xb402
+.equ ID_HI 0x12d0
+.equ CLOCK_IRQ_MSG 0x42
+
+   HWN i
+loop:
+   IFE 0,i
+   SET PC , no_clock
+   SUB i,1
+   HWQ i
+   IFE a, ID_LOW ; A+(B<<16) is a 32 bit word identifying the hardware id
+   IFE b, ID_HI
+   SET PC , clock_found
+   SET PC , loop
+
+:clock_found
+; hw slot # is in i
+    SET [clock_slot],i
+
+    SET b , CLOCK_IRQ_MSG
+    SET a,2
+    HWI [clock_slot] ; configure IRQ message
+
+    SET b,30 ; 60/30 => 2 ticks / second
+    SET a,0 ; 
+    HWI [clock_slot] ; turn on clock
+
+    IAS interrupt_handler ; enable interrupts by setting IA to point to our interrupt handler
+
+wait_for_irqs:
+    SET PC , wait_for_irqs
+
+no_clock:
+    SET PC,no_clock
+
+interrupt_handler:
+; A will hold the interrupt msg
+         IFN a, CLOCK_IRQ_MSG
+         SET PC, return_from_irq
+
+         SET a , [tick_count]
+         ADD a,1
+         MOD a , 0x0a
+         SET [tick_count],a
+         ADD a, "0"
+         SET [ VIDEO_RAM ] , a
+return_from_irq:
+          RFI 0
+
+:clock_slot .dat 0
+:tick_count .dat 0

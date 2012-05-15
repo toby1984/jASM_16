@@ -53,13 +53,15 @@ public class IDEMain
     	final File appConfigFile = new File( Misc.getUserHomeDirectory() , ApplicationConfig.FILE_NAME );
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
 		
+		final EmulatorFactory emulatorFactory = new EmulatorFactory();
+		
 		workspace = new DefaultWorkspace( appConfig );
 		workspace.open();
 		
 		createSampleProject( "sample-project" );
 		
 		final Perspective desktop = new Perspective( "desktop" , appConfig );
-		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , appConfig ) );
+		desktop.addView( new WorkspaceExplorer( emulatorFactory , workspace , viewContainerManager , appConfig ) );
     	desktop.setVisible( true );
     	viewContainerManager.addViewContainer( desktop );
     }

@@ -68,37 +68,48 @@ public class Emulator implements IEmulator {
 	    
 	    private final boolean isStopCommand;
 	    
+	    private final boolean isTerminateCommand;
 	    private final boolean requiresACK; 
 	    
+        public static Command terminateClockThread() {
+            return new Command(true,false,true);
+        }
+        
         public static Command stopCommandWithoutACK() {
-            return new Command(true,false);
+            return new Command(true,false,false);
         }
         
 	    public static Command stopCommand() {
-	        return new Command(true,true);
+	        return new Command(true,true,false);
 	    }
 	    
         public static Command startCommand() {
-            return new Command(false,true);
+            return new Command(false,true,false);
         }	    
 	    
-	    protected Command(boolean isStopCommand,boolean requiresACK) {
+	    protected Command(boolean isStopCommand,boolean requiresACK,boolean isTerminateCommand) {
 	        this.isStopCommand=isStopCommand;
 	        this.requiresACK = requiresACK;
+	        this.isTerminateCommand = isTerminateCommand;
 	    }
 	    
 	    public boolean requiresACK() {
 	        return requiresACK;
 	    }
 	    
+        public boolean isTerminateCommand()
+        {
+            return isTerminateCommand;
+        }	    
+        
 	    public boolean isStopCommand()
         {
-            return isStopCommand;
+            return isStopCommand|| isTerminateCommand();
         }
 	    
         public boolean isStartCommand()
         {
-            return ! isStopCommand();
+            return ! isStopCommand() || isTerminateCommand();
         }   	    
 	    
 	    public long getId()
@@ -237,7 +248,7 @@ public class Emulator implements IEmulator {
 						invoker.invoke( Emulator.this , l );
 					}
 					catch(Exception e) {
-						e.printStackTrace();
+						LOG.error("notifyListeners(): Listener "+l+" failed",e);
 					} finally {
 						execTime += System.currentTimeMillis();
 					}
@@ -255,11 +266,32 @@ public class Emulator implements IEmulator {
 						invoker.invoke( Emulator.this , l );
 					}
 					catch(Exception e) {
-						e.printStackTrace();
+                        LOG.error("notifyListeners(): Listener "+l+" failed",e);					    
 					}
 				}       
 			}
-		}        
+		}
+
+        public void emulatorDisposed()
+        {
+            notifyListeners( new IEmulationListenerInvoker() {
+
+                @Override
+                public void invoke(IEmulator emulator, IEmulationListener listener)
+                {
+                    listener.beforeEmulatorIsDisposed( emulator );
+                }
+            }); 
+            
+            final List<IEmulationListener> copy;
+            synchronized( emuListeners ) 
+            {
+                copy = new ArrayList<IEmulationListener>( emuListeners );
+            }              
+            for ( IEmulationListener l : copy ) {
+                removeEmulationListener( l );
+            }
+        }        
 	}
 
 	private final AtomicLong lastStart = new AtomicLong(0);
@@ -718,6 +750,10 @@ public class Emulator implements IEmulator {
 		    
 		    Command cmd = waitForStartCommand();
 
+            if ( cmd.isTerminateCommand() ) {
+                System.out.println("Emulator thread terminated.");
+                return;
+            }		   
 			lastStart.set( System.currentTimeMillis() );
 			cycleCountAtLastStart=currentCycle;
             
@@ -741,9 +777,16 @@ public class Emulator implements IEmulator {
 					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
 					System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
 
-					acknowledgeCommand( waitForStopCommand() );
+					cmd = waitForStopCommand();
+					if ( cmd.isTerminateCommand() ) {
+					    break;
+					}
+					acknowledgeCommand( cmd );
 
 					cmd = waitForStartCommand();
+		            if ( cmd.isTerminateCommand() ) {
+		                break;
+		            }   					
 					
 					stoppedBecauseOfError = false;					
 					lastStart.set( System.currentTimeMillis() );   
@@ -767,6 +810,8 @@ public class Emulator implements IEmulator {
 					}					
 				}
 			}
+			
+            System.out.println("Emulator thread terminated.");
 		} // END: ClockThread
 
 	}
@@ -2303,7 +2348,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public List<IDevice> getDevices() {
 		synchronized( devices ) {
-			return new ArrayList<IDevice>();
+			return new ArrayList<IDevice>( devices );
 		}
 	}
 
@@ -2397,5 +2442,30 @@ public class Emulator implements IEmulator {
                 return;
             } catch (InterruptedException e) {}
         }
-    }    
+    }
+    
+    @Override
+    public synchronized void dispose()
+    {
+        System.out.println("Disposing Emulator ...");
+        stop();
+
+        // terminate clock thread
+        clockThread.sendToClockThread( Command.terminateClockThread() );
+        
+        // notify listeners and remove them afterwards
+        listenerHelper.emulatorDisposed();
+        
+        // remove all devices
+        for ( IDevice d : getDevices() ) 
+        {
+            try {
+                removeDevice( d );
+            } 
+            catch(Exception e) {
+                LOG.error("dispose(): Failed to remove "+d);
+            }
+        }
+        System.out.println("Emulator disposed.");
+    }
 }

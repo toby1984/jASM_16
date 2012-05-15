@@ -15,6 +15,15 @@ public class DeviceDescriptor {
 	private final int version;
 	private final long manufacturer;
 	
+	/**
+     * Create instance.
+     *  
+	 * @param name informal name
+	 * @param description informal description
+	 * @param hardwareId 32-bit hardware ID
+	 * @param hardwareVersion 16-bit version number
+	 * @param manufacturer 32-bit hardware ID
+	 */
 	public DeviceDescriptor(String name,String description,long hardwareId,int hardwareVersion,long manufacturer) {
 		this.id = hardwareId;
 		this.version = hardwareVersion;

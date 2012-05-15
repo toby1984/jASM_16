@@ -53,6 +53,8 @@ public interface IEmulator
 
     public void calibrate();
     
+    public void dispose();
+    
     public void deleteBreakpoint(Breakpoint bp);
     
     public void executeOneInstruction();

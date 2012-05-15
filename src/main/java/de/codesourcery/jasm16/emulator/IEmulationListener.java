@@ -25,6 +25,8 @@ import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
  */
 public interface IEmulationListener
 {
+    public void beforeEmulatorIsDisposed(IEmulator emulator);
+    
     public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed);
     
 	/**

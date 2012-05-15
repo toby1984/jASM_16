@@ -50,7 +50,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
 	
-	private final DeviceDescriptor desc = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , 0x00 );	
+	private final DeviceDescriptor desc = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
 
 	private final KeyListener keyListener = new KeyListener() {
 

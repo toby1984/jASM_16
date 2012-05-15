@@ -54,6 +54,7 @@ import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.EditorFactory;
+import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -72,6 +73,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 	private static final Logger LOG = Logger.getLogger(WorkspaceExplorer.class);
 
+	private final EmulatorFactory emulatorFactory;
 	private final ViewContainerManager perspectivesManager;
 	private final IWorkspace workspace;
 	private final IApplicationConfig applicationConfig;
@@ -121,8 +123,11 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 	};
 
-	public WorkspaceExplorer(IWorkspace workspace,ViewContainerManager perspectivesManager,IApplicationConfig appConfig) 
+	public WorkspaceExplorer(EmulatorFactory emulatorFactory , IWorkspace workspace,ViewContainerManager perspectivesManager,IApplicationConfig appConfig) 
 	{
+	    if ( emulatorFactory == null ) {
+            throw new IllegalArgumentException("emulatorFactory must not be NULL.");
+        }
 		if (workspace == null) {
 			throw new IllegalArgumentException("workspace must not be NULL");
 		}
@@ -132,6 +137,7 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( appConfig == null ) {
 			throw new IllegalArgumentException("appConfig must not be NULL.");
 		}
+		this.emulatorFactory = emulatorFactory;
 		this.applicationConfig = appConfig;
 		this.perspectivesManager = perspectivesManager;
 		this.workspace = workspace;
@@ -589,7 +595,7 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		
 		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( workspace , applicationConfig );
+		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , workspace , applicationConfig );
 		p.openExecutable( project , executable );
 		p.setVisible( true );
 		p.toFront();            
