@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.ast;
 import java.io.IOException;
 import java.util.List;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.OpCode;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
@@ -36,6 +37,7 @@ public class InstructionNode extends ObjectCodeOutputNode
 {
     private OpCode opCode;
     private int sizeInBytes = UNKNOWN_SIZE;
+    private Address address;
     
     private TokenType[] errorRecoveryTokenTypes = DEFAULT_ERROR_RECOVERY_TOKEN;
 
@@ -191,6 +193,7 @@ public class InstructionNode extends ObjectCodeOutputNode
     {
         final InstructionNode result= new InstructionNode();
         result.opCode = opCode;
+        result.address = address;
         result.sizeInBytes = sizeInBytes;
         return result;
     }
@@ -210,6 +213,8 @@ public class InstructionNode extends ObjectCodeOutputNode
 	@Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {	
+		this.address = writer.getCurrentWriteOffset();
+		
         final byte[] objectCode = getOpCode().generateObjectCode( compContext  , this );		
         if ( objectCode == null ) {
             throw new IllegalStateException("writeObjectCode() called on "+this+" although no object code generated?");
@@ -230,5 +235,10 @@ public class InstructionNode extends ObjectCodeOutputNode
     
     protected TokenType[] getParseRecoveryTokenTypes() {
         return errorRecoveryTokenTypes;
-    }    
+    }
+
+    @Override
+    public Address getAddress() {
+		return address;
+	}
 }

@@ -20,6 +20,7 @@ import java.io.InputStream;
 
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
@@ -42,12 +43,16 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     private IResource resource;
     private String resourceIdentifier;
     private int resourceSize = UNKNOWN_SIZE;
+    private Address address;
     
     @Override
     public ASTNode copySingleNode()
     {
         final IncludeBinaryFileNode result= new IncludeBinaryFileNode();
         result.resourceIdentifier = resourceIdentifier;
+        result.address = address;
+        result.resource = resource;
+        result.resourceSize = resourceSize;
         return result;
     }
 
@@ -100,6 +105,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     @Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException, ParseException
     {
+    	address = writer.getCurrentWriteOffset();
         final InputStream inputStream = resource.createInputStream();
         try {
             byte[] buffer = new byte[1024];
@@ -112,4 +118,8 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
         }
     }
 
+    @Override
+    public Address getAddress() {
+    	return address;
+    }
 }

@@ -59,6 +59,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		}
 	}
 
+	private Address address;
 	private byte[] parsedData;
 	private AllowedSize allowedSize;
 
@@ -264,6 +265,11 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	{
 		final InitializedMemoryNode  result = new InitializedMemoryNode();
 		result.allowedSize = allowedSize;
+		result.address = address;
+		if ( parsedData != null ) {
+			result.parsedData = new byte[ this.parsedData.length ];
+			System.arraycopy( this.parsedData , 0 , result.parsedData , 0 , this.parsedData.length );
+		}
 		return result;
 	}
 
@@ -271,6 +277,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	@Override
 	public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
 	{
+		this.address = writer.getCurrentWriteOffset();
 		writer.writeObjectCode( this.parsedData );
 	}
 
@@ -315,5 +322,10 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	@Override
 	public boolean supportsChildNodes() {
 		return true;
-	}    
+	}
+	
+	@Override
+	public Address getAddress() {
+		return address;
+	}
 }
