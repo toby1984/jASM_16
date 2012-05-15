@@ -25,6 +25,7 @@ import java.util.Stack;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 
 /**
@@ -326,4 +327,35 @@ public class ASTUtils {
     {
         return ASTUtils.getNodesByType( node , RegisterReferenceNode.class , false ).size();
     }    
+    
+    /**
+     * Returns the earliest memory location from a given subtree.
+     * 
+     * @param node
+     * @return earliest memory location or <code>null</code> if the subtree either
+     * did not contain any {@link ObjectCodeOutputNode}s or none of the nodes had
+     * an address assigned to yet.
+     */
+    public static Address getEarliestMemoryLocation(ASTNode node) {
+    	
+    	final Address[] result = {null};
+    	final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
+			
+			@Override
+			public boolean visit(ASTNode node) 
+			{
+				if ( node instanceof ObjectCodeOutputNode) {
+					final Address adr = ((ObjectCodeOutputNode) node).getAddress();
+					if ( adr != null && ( result[0] == null || adr.isLessThan( result[0] ) ) )
+					{
+						result[0] = adr;
+					}
+				}
+				return true;
+			}
+		};
+		visitInOrder(node , visitor );
+    	return result[0];
+    	
+    }
 }

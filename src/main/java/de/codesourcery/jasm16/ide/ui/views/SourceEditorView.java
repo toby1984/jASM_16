@@ -83,14 +83,17 @@ import javax.swing.undo.UndoableEdit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.CommentNode;
 import de.codesourcery.jasm16.ast.EquationNode;
 import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.NumberNode;
+import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
@@ -701,17 +704,19 @@ public class SourceEditorView extends AbstractView implements IEditorView {
 			String source = range == null ? "<no source location>" : compilationUnit.getSource( range );
 			String txt = name+" "+source+" ( "+n.getTextRegion()+" )";  
 
+			final Address address  = ASTUtils.getEarliestMemoryLocation( n );		
+			final String sAddress = address == null ? "" : "0x"+Misc.toHexString( address );
 			if ( n instanceof StatementNode ) 
 			{
 				final List<Line> linesForRange = compilationUnit.getLinesForRange( n.getTextRegion() );
-				return "Statement "+StringUtils.join( linesForRange , ",");
+				return sAddress+": Statement "+StringUtils.join( linesForRange , ",");
 			} else if ( n instanceof AST ) {
 				return "AST";
 			} else if ( n instanceof OperatorNode ) {
 				return "Operator "+((OperatorNode) n).getOperator();
 			} else if ( n instanceof NumberNode ) {
 				return "Number ("+((NumberNode) n).getValue()+")";
-			}
+			} 
 			return txt;
 		}
 	} 
