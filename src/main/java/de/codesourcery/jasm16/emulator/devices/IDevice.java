@@ -45,8 +45,9 @@ public interface IDevice {
 	public DeviceDescriptor getDeviceDescriptor(); 
 	
 	/**
-	 * Handle a software interrupt triggered by the application.
+	 * Handle a hardware interrupt triggered by the application.
 	 * @param emulator
+	 * @return number of CPU cycles the device consumed to handle the interrupt
 	 */
-	public void handleInterrupt(IEmulator emulator);
+	public int handleInterrupt(IEmulator emulator);
 }

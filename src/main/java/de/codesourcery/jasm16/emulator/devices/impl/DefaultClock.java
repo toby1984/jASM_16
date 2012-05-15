@@ -1,5 +1,7 @@
 package de.codesourcery.jasm16.emulator.devices.impl;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
@@ -9,6 +11,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DefaultClock implements IDevice
 {
+	private static final Logger LOG = Logger.getLogger(DefaultClock.class);
+	
     private final DeviceDescriptor DESC = new DeviceDescriptor("generic clock","jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
 
     private volatile IEmulator emulator;
@@ -145,7 +149,7 @@ public class DefaultClock implements IDevice
     }
 
     @Override
-    public void handleInterrupt(IEmulator emulator)
+    public int handleInterrupt(IEmulator emulator)
     {
         /*
          * Name: Generic Clock (compatible)
@@ -173,7 +177,7 @@ public class DefaultClock implements IDevice
                 int b = emulator.getCPU().getRegisterValue(Register.B) & 0xffff;
                 if ( b == 0 ) {
                     stopClock();
-                    return;
+                    return 0;
                 } 
                 if ( b < 0 ) {
                     clockThread.setTicksPerSecond( 60 );                    
@@ -200,8 +204,9 @@ public class DefaultClock implements IDevice
                 }
                 break;
             default:
-                System.err.println("Clock received unknown interrupt msg "+Misc.toHexString( a ));
+                LOG.warn("handleInterrupt(): Clock received unknown interrupt msg "+Misc.toHexString( a ));
         }
+        return 0;
     }
 
 }

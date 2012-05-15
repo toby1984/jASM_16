@@ -215,10 +215,10 @@ public class Misc {
     
     public static String toHexString(long val) 
     {
-    	return toHexString( (byte) ( (val >>> 32 ) & 0x00ff ) )+
-    		   toHexString( (byte) ( (val >>> 16 ) & 0x00ff ) )+
-    		   toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+
-    		   toHexString( (byte) ( val & 0x00ff ) );             
+    	return toHexString( (byte) ( (val >>> 24 ) & 0xff ) )+
+    		   toHexString( (byte) ( (val >>> 16 ) & 0xff ) )+
+    		   toHexString( (byte) ( (val >>> 8 ) & 0xff ) )+
+    		   toHexString( (byte) ( val & 0xff ) );             
     }
 
     public static String toHexString(byte val) 

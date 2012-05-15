@@ -15,72 +15,43 @@
  */
 package de.codesourcery.jasm16.ide.ui.views;
 
-import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.geom.Rectangle2D;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 
 import javax.swing.JPanel;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
 
 public class ScreenView extends AbstractView
 {
     public static final String VIEW_ID="screen-view";
     
     private volatile JPanel panel;
-    
-    private final IMemoryRegion videoRAM = new MemoryRegion("video RAM",
-    		new AddressRange(Address.wordAddress( 0x8000 ) , 
-    				Size.words( 384 ) ) // 32x12 words 
-    		) 
-    {
-    	@Override
-    	public void clear() {
-    		super.clear();
-        	if ( panel != null ) {
-        		panel.repaint();        		
-        	}    		
-    	};
-    	
-    	@Override
-    	public void write(Address address, int value) {
-    		super.write( address, value);
-        	if ( panel != null ) {
-        		panel.repaint();
-        	}    		
-    	};
-    	
-    	@Override
-    	public void write(int wordAddress, int value) {
-    		super.write( wordAddress , value );
-        	if ( panel != null ) {
-        		panel.repaint();
-        	}    		
-    	};
-    }; 
-    
+
+    private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
     private final DefaultKeyboard keyboard = new DefaultKeyboard(); 
     
-    public ScreenView(IEmulator emulator) {
+    public ScreenView(IEmulator emulator) 
+    {
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
         this.emulator = emulator;
-        this.emulator.mapRegion( videoRAM );
 		this.emulator.addDevice( keyboard );
     }
     
     @Override
     public void disposeHook()
     {
-        this.emulator.unmapRegion( videoRAM );
+    	if ( screen != null ) {
+    		this.emulator.removeDevice( screen );
+    		this.screen = null;
+    	}
         this.emulator.removeDevice( keyboard );
     }
 
@@ -110,6 +81,9 @@ public class ScreenView extends AbstractView
     	if ( panel == null ) 
     	{
     		panel=createPanel();
+    		screen = new DefaultScreen(true);
+    		this.emulator.addDevice( screen );
+    		screen.attach( panel );
     		keyboard.setInputComponent( panel );
     	}
     	return panel;
@@ -119,41 +93,13 @@ public class ScreenView extends AbstractView
     {
         panel = new JPanel() 
         {
-        
         	public void paint(java.awt.Graphics g) 
              {
-                 g.setColor( Color.BLACK );
-                 super.paint( g );
-                 g.setColor( Color.GREEN );
-                 
-                 /*
-         The LEM1802 is a 128x96 pixel color display compatible with the DCPU-16.
-         The display is made up of 32x12 16 bit cells. Each cell displays one
-         monochrome 4x8 pixel character out of 128 available. Each cell has its own
-         foreground and background color out of a palette of 16 colors.             
-                  */
-                 Rectangle2D metrics = g.getFontMetrics().getStringBounds("X" , g );
-                 
-                 final int maxCharHeight = (int) Math.round( metrics.getHeight() );
-                 final int maxCharWidth = (int) Math.round( metrics.getWidth() );
-                 
-                 int videoRam = 0;
-                 for ( int row = 0 ; row < 12 ; row++ ) 
-                 {
-                     for ( int column = 0 ; column < 32 ; column++ ) 
-                     {
-                         final int currentMemLocation = videoRam+( 32 * row ) + column;
-                         @SuppressWarnings("deprecation")
-						final int value = videoRAM.read( currentMemLocation ) & 0x00ff;
-                         final char c = (char) value;
-                         
-                         final int x = 15+(maxCharWidth * column);
-                         final int y = 15+(maxCharHeight * row);
-                         g.drawString( ""+c , x , y );
-                     }
-                 }
-                 
-             };        	
+        		super.paint(g);
+        		BufferedImage original = screen.screen();
+        		final Image scaled = original.getScaledInstance( getWidth() , getHeight() , Image.SCALE_FAST );
+                ((Graphics2D) g).drawImage(  scaled , 0,0, null );
+             }        	
         };
         
         panel.setDoubleBuffered( true );
