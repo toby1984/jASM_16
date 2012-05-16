@@ -192,6 +192,16 @@ public class DefaultKeyboard implements IDevice {
 	public DefaultKeyboard() {
 	}
 	
+	@Override
+	public void reset() {
+	    synchronized (BUFFER_LOCK) {
+	        keysTyped.clear();
+	        keysPressed.clear();
+	        interruptMessage = null;
+	        receivedAtLeastOneInterrupt = false;
+        }
+	}
+	
 	public void setInputComponent(Component comp) 
 	{
 		if ( this.inputComponent != null ) {

@@ -31,6 +31,11 @@ public interface IDevice {
 	public void afterAddDevice(IEmulator emulator);
 	
 	/**
+	 * Reset this device to it's initial state.
+	 */
+	public void reset();
+	
+	/**
 	 * Invoked before this device is removed from
 	 * an emulator.
 	 * 

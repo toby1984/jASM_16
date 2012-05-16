@@ -168,7 +168,7 @@ public class DebuggingPerspective extends Perspective
         this.executable = executable;
 
         final byte[] objectCode = Misc.readBytes( executable );
-        emulator.loadMemory( Address.wordAddress( 0 ) , objectCode ); // will trigger IEmulationListener
+        emulator.loadMemory( Address.wordAddress( 0 ) , objectCode ); // triggers IEmulationListener#afterMemoryLoad()
     }
 
     public IAssemblyProject getCurrentProject()

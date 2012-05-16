@@ -13,11 +13,23 @@ public class DefaultClock implements IDevice
 {
 	private static final Logger LOG = Logger.getLogger(DefaultClock.class);
 	
+    private static final int INITIAL_TICKS_PER_SECOND = (int) Math.round( 1000.0 / 60.0d);	
+	
     private final DeviceDescriptor DESC = new DeviceDescriptor("generic clock","jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
 
     private volatile IEmulator emulator;
     
     private final ClockThread clockThread = new ClockThread();
+    
+    @Override
+    public void reset()
+    {
+        stopClock();
+        clockThread.sleepDelay = INITIAL_TICKS_PER_SECOND;
+        clockThread.irqEnabled = false;
+        clockThread.irqMessage = 0;
+        clockThread.tickCounter = 0;
+    }
     
     protected final class ClockThread extends Thread {
 
@@ -25,7 +37,7 @@ public class DefaultClock implements IDevice
         
         private volatile int tickCounter = 0;
         private volatile boolean terminate = false;
-        private volatile int sleepDelay=(int) Math.round( 1000.0 / 60.0d); // 60 HZ
+        private volatile int sleepDelay=INITIAL_TICKS_PER_SECOND; // 60 HZ
 
         private volatile boolean irqEnabled = false;
         private volatile int irqMessage = 0;
@@ -120,7 +132,7 @@ public class DefaultClock implements IDevice
     
     protected synchronized void stopClock() 
     {
-        if ( clockThread == null || ! clockThread.isAlive() ) {
+        if ( ! clockThread.isAlive() ) {
             return;
         }
         clockThread.stopClock();

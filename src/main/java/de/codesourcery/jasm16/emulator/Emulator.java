@@ -491,22 +491,17 @@ public class Emulator implements IEmulator {
 	public void reset(boolean clearMemory)
 	{
 		stop(false);
-		
-		currentCycle = 0;
-		queueInterrupts = false;
-		interruptAddress = Address.wordAddress( 0 );
-		pc = Address.wordAddress( 0 );
-		sp = Address.wordAddress( 0 );
-		ex = 0;
 
-		final int regCount = registers.length();
-		for ( int i = 0 ; i < regCount ; i++ ) {
-			registers.set( i, 0 );
-		}
-		if ( clearMemory ) 
-		{
-			memory.clear();
-		}
+		// reset memory BEFORE resetting devices
+		// because if a device uses MMIO, doing the
+		// resetMemory() call after resetDevices() may 
+		// trigger the device again and thus pollute
+		// the reset state
+        resetMemory(clearMemory);		
+		
+		resetDevices();
+		
+		resetCPU();
 
 		// notify listeners
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
@@ -518,6 +513,40 @@ public class Emulator implements IEmulator {
 			}
 		});
 	}
+
+    private void resetMemory(boolean clearMemory)
+    {
+        if ( clearMemory ) 
+		{
+			memory.clear();
+		}
+    }
+
+    private void resetDevices()
+    {
+        for ( IDevice device : getDevices() ) {
+		    try {
+		        device.reset();
+		    } catch(Exception e) {
+		        LOG.error("reset(): Device "+device+" failed during reset",e);
+		    }
+		}
+    }
+
+    private void resetCPU()
+    {
+        currentCycle = 0;
+		queueInterrupts = false;
+		interruptAddress = Address.wordAddress( 0 );
+		pc = Address.wordAddress( 0 );
+		sp = Address.wordAddress( 0 );
+		ex = 0;
+
+		final int regCount = registers.length();
+		for ( int i = 0 ; i < regCount ; i++ ) {
+			registers.set( i, 0 );
+		}
+    }
 
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#stop()

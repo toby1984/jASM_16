@@ -96,7 +96,7 @@ public class ScreenView extends AbstractView
         	public void paint(java.awt.Graphics g) 
              {
         		super.paint(g);
-        		BufferedImage original = screen.screen();
+        		BufferedImage original = screen.getScreenImage();
         		final Image scaled = original.getScaledInstance( getWidth() , getHeight() , Image.SCALE_FAST );
                 ((Graphics2D) g).drawImage(  scaled , 0,0, null );
              }        	
