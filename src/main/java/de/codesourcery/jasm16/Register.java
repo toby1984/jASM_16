@@ -47,7 +47,7 @@ public enum Register
         }    	
     },
     PC("PC"),
-    EX("O");
+    EX("EX");
     
     private final String identifier;
     
