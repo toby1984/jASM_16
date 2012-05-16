@@ -34,7 +34,7 @@ public class ScreenView extends AbstractView
 
     private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
-    private final DefaultKeyboard keyboard = new DefaultKeyboard(); 
+    private final DefaultKeyboard keyboard = new DefaultKeyboard(false); 
     
     public ScreenView(IEmulator emulator) 
     {

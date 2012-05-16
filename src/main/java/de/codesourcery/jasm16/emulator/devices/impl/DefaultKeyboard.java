@@ -23,11 +23,15 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -50,12 +54,36 @@ public class DefaultKeyboard implements IDevice {
 	private final List<Integer> keysPressed = new ArrayList<Integer>();	
 
 	private volatile IEmulator emulator;
+	private final boolean useLegacyMemoryBuffer; // use keyboard buffer at 0x9000
+	private volatile IMemoryRegion legacyMemoryBuffer;
 	private volatile Integer interruptMessage = null; 
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
 	
 	private final DeviceDescriptor desc = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
 
+	protected final class LegacyKeyboardBuffer extends MemoryRegion {
+
+        public LegacyKeyboardBuffer(AddressRange range)
+        {
+            super("keyboard buffer (legacy)", range);
+        }
+	
+        @Override
+        public void write(Address address, int value)
+        {
+            super.write(address, value);
+            
+        }
+        
+        @Override
+        public void write(int wordAddress, int value)
+        {
+            super.write(wordAddress, value);
+        }
+	}
+	
+	
 	private final KeyListener keyListener = new KeyListener() {
 
 		@Override
@@ -181,7 +209,8 @@ public class DefaultKeyboard implements IDevice {
 		}
 	};
 
-	public DefaultKeyboard() {
+	public DefaultKeyboard(boolean useLegacyMemoryBuffer) {
+	    this.useLegacyMemoryBuffer = useLegacyMemoryBuffer;
 	}
 	
 	@Override
