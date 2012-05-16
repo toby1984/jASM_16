@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -61,6 +62,8 @@ public class Emulator implements IEmulator {
 	private final ListenerHelper listenerHelper = new ListenerHelper();
 
 	private static final AtomicLong cmdId = new AtomicLong(0);
+	
+	private PrintStream out = System.out;
 	
 	protected static final class Command {
 	
@@ -751,7 +754,7 @@ public class Emulator implements IEmulator {
 		    Command cmd = waitForStartCommand();
 
             if ( cmd.isTerminateCommand() ) {
-                System.out.println("Emulator thread terminated.");
+                out.println("Emulator thread terminated.");
                 return;
             }		   
 			lastStart.set( System.currentTimeMillis() );
@@ -769,13 +772,13 @@ public class Emulator implements IEmulator {
 					if ( DEBUG_LISTENER_PERFORMANCE ) 
 					{
 						for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
-							System.out.println( entry.getKey()+" = "+entry.getValue()+" millis" );	
+							out.println( entry.getKey()+" = "+entry.getValue()+" millis" );	
 						}
 					}
 					
-					System.out.println("Emulator stopped.");
-					System.out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
-					System.out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
+					out.println("Emulator stopped.");
+					out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
+					out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
 
 					cmd = waitForStopCommand();
 					if ( cmd.isTerminateCommand() ) {
@@ -811,7 +814,7 @@ public class Emulator implements IEmulator {
 				}
 			}
 			
-            System.out.println("Emulator thread terminated.");
+            out.println("Emulator thread terminated.");
 		} // END: ClockThread
 
 	}
@@ -857,7 +860,7 @@ public class Emulator implements IEmulator {
 		catch(Exception e) {
 			stop(true);
 			e.printStackTrace();
-			System.err.println("\n\nERROR: Simulation stopped due to error.");
+			out.println("\n\nERROR: Simulation stopped due to error.");
 			return 0;
 		} 
 		finally 
@@ -1257,10 +1260,10 @@ public class Emulator implements IEmulator {
 	    final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , previousPC ).toSizeInWords().getValue();
 	    List<DisassembledLine> lines = dis.disassemble( getMemory() , Address.wordAddress( 0 ) , instructionCount , true );
 	    for (DisassembledLine line : lines) {
-            System.out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents());
+            out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents());
         }
-		System.err.println("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() ) );
-		System.err.println("Previously executed instruction was at "+Misc.toHexString( previousPC ) );
+		out.println("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() ) );
+		out.println("Previously executed instruction was at "+Misc.toHexString( previousPC ) );
 		throw new RuntimeException("Unknown opcode");
 	}
 
@@ -1667,7 +1670,7 @@ public class Emulator implements IEmulator {
 		final IDevice device = getDeviceForSlot( hardwareSlot );
 		if ( device == null ) 
 		{
-			System.err.println("ERROR: Unknown hardware slot #"+hardwareSlot);
+			out.println("ERROR: Unknown hardware slot #"+hardwareSlot);
 			stop(true);
 			return 4+operand.cycleCount;
 		}
@@ -1697,7 +1700,7 @@ public class Emulator implements IEmulator {
 		final IDevice device = getDeviceForSlot( hardwareSlot );
 		if ( device == null ) 
 		{
-			System.err.println("ERROR: Unknown hardware slot #"+hardwareSlot);
+			out.println("ERROR: Unknown hardware slot #"+hardwareSlot);
 			stop(true);
 			return 4+operand.cycleCount;
 		}
@@ -2124,7 +2127,7 @@ public class Emulator implements IEmulator {
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
 		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
-		System.out.print("Measuring delay loop...");
+		out.print("Measuring delay loop...");
 		/*
 		 * Warm-up JVM / JIT.
 		 */
@@ -2147,13 +2150,13 @@ public class Emulator implements IEmulator {
 		}
 
 		final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
-		System.out.println(" one iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
+		out.println(" one iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
 		final double loopIterationsPerCycle = expectedNanosPerCycle / nanosPerDelayLoopExecution;
 		
 		clockThread.adjustmentFactor = 1.0d;
 		clockThread.oneCycleDelay = (int) Math.round( loopIterationsPerCycle );
 		
-		System.out.println(" one cycle = "+clockThread.oneCycleDelay+" loop iterations.");
+		out.println(" one cycle = "+clockThread.oneCycleDelay+" loop iterations.");
 	}
 
 	@Override
@@ -2287,7 +2290,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void mapRegion(IMemoryRegion region) 
 	{
-	    System.out.println("Before adding new memory region: "+region);
+	    out.println("Before adding new memory region: "+region);
 	       // TODO: Remove debug code
         this.memory.dumpMemoryLayout();
         
@@ -2327,7 +2330,7 @@ public class Emulator implements IEmulator {
 			}
 			devices.add( device );
 			// TODO: remove debug output
-			System.out.println("Device added - configuration is now:\n");
+			out.println("Device added - configuration is now:\n");
 			printDevices();
 		}
 		device.afterAddDevice( this );
@@ -2339,8 +2342,8 @@ public class Emulator implements IEmulator {
 
 			int slot = 0;
 			for ( IDevice d : devices ) {
-				System.out.println("Slot #"+slot+":");
-				System.out.println( d.getDeviceDescriptor().toString("    ",true));
+				out.println("Slot #"+slot+":");
+				out.println( d.getDeviceDescriptor().toString("    ",true));
 				slot++;
 			}		
 		}
@@ -2377,7 +2380,7 @@ public class Emulator implements IEmulator {
 		
         // TODO: remove debug output
 		if ( isRegistered ) {
-		    System.out.println("Device removed - configuration is now:\n");
+		    out.println("Device removed - configuration is now:\n");
 		    printDevices();
 		}
 	}
@@ -2448,7 +2451,7 @@ public class Emulator implements IEmulator {
     @Override
     public synchronized void dispose()
     {
-        System.out.println("Disposing Emulator ...");
+        out.println("Disposing Emulator ...");
         stop();
 
         // terminate clock thread
@@ -2467,6 +2470,17 @@ public class Emulator implements IEmulator {
                 LOG.error("dispose(): Failed to remove "+d);
             }
         }
-        System.out.println("Emulator disposed.");
+        out.println("Emulator disposed.");
+    }
+
+    @Override
+    public void setOutput(PrintStream out)
+    {
+        this.out = out;
+    }
+
+    public PrintStream getOutput()
+    {
+        return out;
     }
 }
