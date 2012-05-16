@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.io.PrintStream;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
@@ -122,4 +123,8 @@ public interface IEmulator
     public void unmapRegion(IMemoryRegion region);
 
 	public boolean isCalibrated();    
+	
+	public void setOutput(PrintStream out);
+	
+	public PrintStream getOutput();
 }
