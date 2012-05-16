@@ -21,6 +21,8 @@ import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
@@ -35,6 +37,8 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class DefaultKeyboard implements IDevice {
 
+	private static final Logger LOG = Logger.getLogger(DefaultKeyboard.class);
+	
 	private volatile Component inputComponent;
 
 	private final Object BUFFER_LOCK = new Object();
@@ -118,6 +122,25 @@ public class DefaultKeyboard implements IDevice {
 			}
 			return -1;
 		}
+		
+		private boolean isSpecialKey(int mappedKey) 
+		{
+			switch(mappedKey) {
+				 case 0x10: // Backspace
+				 case 0x11: // Return
+				 case 0x12: // Insert
+				 case 0x13: // Delete
+				 case 0x80: // Arrow up
+				 case 0x81: // Arrow down
+				 case 0x82: // Arrow left
+				 case 0x83: // Arrow right
+				 case 0x90: // Shift
+				 case 0x91: // Control */
+					 return true;
+				default:
+					return false;
+			}
+		}
 
 		@Override
 		public void keyReleased(KeyEvent e) 
@@ -130,6 +153,10 @@ public class DefaultKeyboard implements IDevice {
 				final int mapped = mapKeyCode( e );
 				if ( mapped != -1 ) {				
 					keysPressed.remove( Integer.valueOf( mapped ) );
+					if ( isSpecialKey( mapped ) ) 
+					{
+						keysTyped.add( mapped );
+					}
 				}
 			}
 			sendInterrupt();
@@ -246,7 +273,7 @@ public class DefaultKeyboard implements IDevice {
 	}
 
 	@Override
-	public void handleInterrupt(IEmulator emulator) 
+	public int handleInterrupt(IEmulator emulator) 
 	{
 		receivedAtLeastOneInterrupt = true;
 		
@@ -271,17 +298,17 @@ public class DefaultKeyboard implements IDevice {
 		switch( value ) {
 		case 0:
 			clearKeyboardBuffers();
-			return;
+			return 0;
 		case 1:
 			Integer keyCode = readTypedKey();
 			final int msg = keyCode != null ? keyCode.intValue() : 0;
 			System.out.println("Returning typed key: "+msg);
 			emulator.getCPU().setRegisterValue( Register.C , msg );
-			return;
+			return 0;
 		case 2:
 			final int key = emulator.getCPU().getRegisterValue( Register.B );
 			emulator.getCPU().setRegisterValue( Register.C , isKeyPressed( key ) ? 1 : 0 );
-			return;
+			return 0;
 		case 3:
 			final int irqMsg = emulator.getCPU().getRegisterValue( Register.B );
 			interruptMessage = irqMsg != 0 ? irqMsg : null;
@@ -290,9 +317,10 @@ public class DefaultKeyboard implements IDevice {
 			} else {
 				System.out.println("Keyboard: interrupts disabled.");
 			}
-			return;
+			return 0;
 		default:
-			return;
+			LOG.warn("handleInterrupt(): Received unknown interrupt msg "+Misc.toHexString( value ) );
+			return 0;
 		}
 	}
 

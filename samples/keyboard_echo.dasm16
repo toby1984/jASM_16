@@ -4,20 +4,20 @@
 .equ ID_HI 0x30cf
 .equ KB_IRQ_MSG 0x42
 
-   HWN x
+   HWN i
 loop:
-   IFE 0,x
+   IFE 0,i
    SET PC , no_keyboard
-   SUB x,1
-   HWQ x
+   SUB i,1
+   HWQ i
    IFE a, ID_LOW ; A+(B<<16) is a 32 bit word identifying the hardware id
    IFE b, ID_HI
    SET PC , keyboard_found
    SET PC , loop
 
 :keyboard_found 
-; hw slot # is in X
-    SET [keyboard_slot],X
+; hw slot # is in I
+    SET [keyboard_slot],i
     SET a,0 ; CLEAR KEYBOARD BUFFER
     HWI [keyboard_slot] ; enable keyboard
     IAS interrupt_handler ; set IA to point to our interrupt handler

@@ -1672,9 +1672,9 @@ public class Emulator implements IEmulator {
 			return 4+operand.cycleCount;
 		}
 		
-		device.handleInterrupt( this );
+		final int cyclesConsumed = device.handleInterrupt( this );
 		
-		return 4+operand.value;
+		return 4+operand.value+cyclesConsumed;
 	}
 	
 	private IDevice getDeviceForSlot(int hardwareSlot) 
@@ -2341,6 +2341,7 @@ public class Emulator implements IEmulator {
 			for ( IDevice d : devices ) {
 				System.out.println("Slot #"+slot+":");
 				System.out.println( d.getDeviceDescriptor().toString("    ",true));
+				slot++;
 			}		
 		}
 	}

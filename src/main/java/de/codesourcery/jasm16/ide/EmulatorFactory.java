@@ -6,7 +6,7 @@ import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 public class EmulatorFactory
 {
     public Emulator createEmulator() {
-        Emulator result = new Emulator();
+        final Emulator result = new Emulator();
         result.addDevice( new DefaultClock() );
         return result;
     }

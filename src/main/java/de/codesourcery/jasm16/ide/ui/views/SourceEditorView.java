@@ -682,11 +682,13 @@ public class SourceEditorView extends SourceCodeView {
 			{
 				if ( e.getButton() == MouseEvent.BUTTON1 ) {
 					final int viewRow = statusArea.rowAtPoint( e.getPoint() );
-					final int modelRow = statusArea.convertRowIndexToModel( viewRow );
-					StatusMessage message = statusModel.getMessage( modelRow );
-					if ( message.getLocation() != null ) 
-					{
-						moveCursorTo( message.getLocation() );
+					if ( viewRow != -1 ) {
+						final int modelRow = statusArea.convertRowIndexToModel( viewRow );
+						StatusMessage message = statusModel.getMessage( modelRow );
+						if ( message.getLocation() != null ) 
+						{
+							moveCursorTo( message.getLocation() );
+						}
 					}
 				}
 			};
