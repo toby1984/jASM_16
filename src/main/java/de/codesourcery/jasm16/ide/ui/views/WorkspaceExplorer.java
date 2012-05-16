@@ -53,7 +53,6 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -191,6 +190,8 @@ public class WorkspaceExplorer extends AbstractView {
 					if ( selection != null ) {
 						deleteResource( selection );
 					}
+				} else if ( e.getKeyCode() == KeyEvent.VK_F5) {
+				    refreshWorkspace(null);
 				}
 			}
 		});
@@ -483,8 +484,26 @@ public class WorkspaceExplorer extends AbstractView {
 	
 			});	
 		}
+		
+        addMenuEntry( popup , "Refresh", new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) 
+            {
+                refreshWorkspace( project );
+            }
+
+        }); 		
 		return popup;
 	}	
+	
+	protected void refreshWorkspace(IAssemblyProject project) {
+        try {
+            workspace.refreshProjects( project != null ? Collections.singletonList( project ) : workspace.getAllProjects() );
+        } catch (IOException e1) {
+            LOG.error("rescanWorkspace(): Failed ",e1);
+        }
+	}
 	
 	protected void createNewProject() throws IOException, ProjectAlreadyExistsException {
 		

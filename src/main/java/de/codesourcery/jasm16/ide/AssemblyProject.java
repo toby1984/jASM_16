@@ -310,6 +310,48 @@ public class AssemblyProject implements IAssemblyProject
 			resources.addAll( scanForResources() );
 		}
 	}
+	
+	@Override
+	public void rescanResources() throws IOException
+	{
+        final List<IResource> deletedResources=new ArrayList<IResource>();   
+        final List<IResource> newResources= scanForResources();
+        synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
+            
+            // find deleted resources
+outer:            
+            for ( IResource existing : resources )
+            {
+                for ( IResource r : newResources ) 
+                {
+                    if ( existing.isSame( r ) ) {
+                        continue outer;
+                    }
+                }
+                deletedResources.add( existing );
+            }      
+        
+            // remove existing (=unchanged) resources
+            for ( Iterator<IResource> it=newResources.iterator() ; it.hasNext() ; ) 
+            {
+                final IResource newResource = it.next();
+                for ( IResource existingResource : resources ) {
+                    if ( existingResource.isSame( newResource ) ) {
+                        it.remove();
+                        break;
+                    }
+                }
+            }        
+        }
+        
+        for ( IResource deleted : deletedResources ) {
+            workspace.resourceDeleted( this , deleted );
+        }
+        
+        for ( IResource added : newResources ) {
+            workspace.resourceCreated( this  , added );
+        }
+	}
 
 	protected List<IResource> scanForResources() throws IOException {
 

@@ -22,6 +22,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -538,5 +539,17 @@ public class DefaultWorkspace implements IWorkspace
 			}			
 		});			
 	}
+
+    @Override
+    public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException
+    {
+        if (projects == null) {
+            throw new IllegalArgumentException("project must not be NULL.");
+        }
+        for ( IAssemblyProject p : projects ) {
+            LOG.info("refreshProjects(): Refreshing "+p);
+            p.rescanResources();
+        }
+    }
 
 }

@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.ide;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
@@ -45,6 +46,8 @@ public interface IAssemblyProject extends IResourceResolver, IResourceListener
      * @return
      */
     public boolean isSame(IAssemblyProject other);
+    
+    public void rescanResources() throws IOException;
     
     public List<IResource> getAllResources();
     

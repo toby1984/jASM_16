@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ide;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
@@ -42,6 +43,8 @@ public interface IWorkspace extends IResourceListener
     public List<IAssemblyProject> getAllProjects(); // ok
     
     public void deleteProject(IAssemblyProject project,boolean deletePhysically) throws IOException;
+    
+    public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException;
     
     /**
      * Delete a file.
