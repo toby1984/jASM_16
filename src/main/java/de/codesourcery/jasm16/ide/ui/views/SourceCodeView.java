@@ -16,7 +16,6 @@ package de.codesourcery.jasm16.ide.ui.views;
  * limitations under the License.
  */
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Event;
@@ -28,8 +27,9 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -75,6 +75,7 @@ import javax.swing.undo.UndoableEdit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.CommentNode;
 import de.codesourcery.jasm16.ast.EquationNode;
@@ -88,6 +89,8 @@ import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.AbstractResource;
@@ -99,6 +102,7 @@ import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
+import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
@@ -119,11 +123,11 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     // UI widgets
 
     private volatile JPanel panel;
-    
+
     private volatile boolean editable;
-    
+
     private final UndoManager undoManager = new UndoManager();
-    
+
     private final UndoableEditListener undoListener = new  UndoableEditListener() 
     {
         public void undoableEditHappened(UndoableEditEvent e) 
@@ -142,9 +146,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             redoAction.updateRedoState();
         }
     };
-    
+
     protected abstract class UndoRedoAction extends AbstractAction {
-        
+
         public void updateUndoState() {
             if (undoManager.canUndo()) {
                 setEnabled(true);
@@ -154,7 +158,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 putValue(Action.NAME, "Undo");
             }
         }   
-        
+
         public void updateRedoState() 
         {
             if (undoManager.canRedo()) {
@@ -166,7 +170,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             }
         }           
     }
-    
+
     private final UndoRedoAction undoAction = new UndoRedoAction() {
 
         @Override
@@ -180,7 +184,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             redoAction.updateRedoState();           
         }
     };
-    
+
     private final UndoRedoAction redoAction = new UndoRedoAction() {
 
         @Override
@@ -193,9 +197,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             updateRedoState();
             undoAction.updateUndoState();
         }
-    
+
     };
-    
+
     private final JTextField cursorPosition = new JTextField(); 
     private final JTextPane editorPane = new JTextPane();
     private volatile int documentListenerDisableCount = 0; 
@@ -213,7 +217,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     // compiler
     protected final IWorkspace workspace; 
     private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
-        
+
         public void projectDeleted(IAssemblyProject deletedProject) 
         {
             if ( deletedProject.isSame( project ) )
@@ -221,7 +225,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 dispose();
             }
         }
-        
+
         private void dispose() {
             if ( getViewContainer() != null ) {
                 getViewContainer().disposeView( SourceCodeView.this );
@@ -229,7 +233,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 SourceCodeView.this.dispose();
             }
         }
-        
+
         public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
         {
             if ( deletedResource.isSame( sourceFileOnDisk ) ) 
@@ -238,7 +242,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             }
         }
     };
-    
+
     private IAssemblyProject project;
     private String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
     private IResource sourceFileOnDisk; // source code on disk
@@ -246,8 +250,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     private ICompilationUnit compilationUnit;
 
     private CompilationThread compilationThread = null;
-    
-    
+
+
 
     /*
      * 
@@ -338,7 +342,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     protected final Highlighter getHighlighter() {
         return editorPane.getHighlighter();
     }
-    
+
     protected class StatusModel extends AbstractTableModel 
     {
         private final List<StatusMessage> messages = new ArrayList<StatusMessage>();
@@ -390,14 +394,14 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         public String getColumnName(int columnIndex)
         {
             switch(columnIndex) {
-            case COL_SEVERITY:
-                return "Severity";
-            case COL_LOCATION:
-                return "Location";
-            case COL_MESSAGE:
-                return "Message";
-            default:
-                return "no column name?";
+                case COL_SEVERITY:
+                    return "Severity";
+                case COL_LOCATION:
+                    return "Location";
+                case COL_MESSAGE:
+                    return "Message";
+                default:
+                    return "no column name?";
             }
         }
 
@@ -418,23 +422,23 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         {
             final StatusMessage msg = messages.get( rowIndex );
             switch(columnIndex) {
-            case COL_SEVERITY:
-                return msg.getSeverity().toString(); 
-            case COL_LOCATION:
-                if ( msg.getLocation() != null ) {
-                    SourceLocation location;
-                    try {
-                        location = getSourceLocation(msg.getLocation());
-                        return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
-                    } catch (NoSuchElementException e) {
-                        // ok, can't help it
-                    }
-                } 
-                return "<unknown>";
-            case COL_MESSAGE:
-                return msg.getMessage();
-            default:
-                return "no column name?";
+                case COL_SEVERITY:
+                    return msg.getSeverity().toString(); 
+                case COL_LOCATION:
+                    if ( msg.getLocation() != null ) {
+                        SourceLocation location;
+                        try {
+                            location = getSourceLocation(msg.getLocation());
+                            return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
+                        } catch (NoSuchElementException e) {
+                            // ok, can't help it
+                        }
+                    } 
+                    return "<unknown>";
+                case COL_MESSAGE:
+                    return msg.getMessage();
+                default:
+                    return "no column name?";
             }
         }
 
@@ -493,35 +497,35 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             {
                 switch( currentState ) 
                 {
-                case WAIT_FOR_EDIT:
-                    LOCK.wait();
-                    return;
-                case RESTART_TIMEOUT:
-                    currentState = WaitState.WAIT_FOR_TIMEOUT; // $FALL-THROUGH$
-                    return;
-                case WAIT_FOR_TIMEOUT:
-                    LOCK.wait( RECOMPILATION_DELAY_MILLIS );
-                    if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
+                    case WAIT_FOR_EDIT:
+                        LOCK.wait();
                         return;
-                    }
-                    try {
-                        SwingUtilities.invokeAndWait( new Runnable() {
+                    case RESTART_TIMEOUT:
+                        currentState = WaitState.WAIT_FOR_TIMEOUT; // $FALL-THROUGH$
+                        return;
+                    case WAIT_FOR_TIMEOUT:
+                        LOCK.wait( RECOMPILATION_DELAY_MILLIS );
+                        if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
+                            return;
+                        }
+                        try {
+                            SwingUtilities.invokeAndWait( new Runnable() {
 
-                            @Override
-                            public void run()
-                            {
-                                try {
-                                    validateSourceCode();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                } finally {
+                                @Override
+                                public void run()
+                                {
+                                    try {
+                                        validateSourceCode();
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    } finally {
 
+                                    }
                                 }
-                            }
-                        } );
-                    } finally {
-                        currentState = WaitState.WAIT_FOR_EDIT;
-                    }                        
+                            } );
+                        } finally {
+                            currentState = WaitState.WAIT_FOR_EDIT;
+                        }                        
                 } 
             }
         }
@@ -542,7 +546,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         {
             System.out.println("DOC-EVENT: "+e);
             updateTitle();
-            
+
             if ( compilationThread == null ) 
             {
                 compilationThread = new CompilationThread();
@@ -569,7 +573,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             if ( ! isEditable() ) {
                 return;
             }
-            
+
             if ( compilationUnit != null && compilationUnit.getAST() != null && compilationUnit.getAST().getTextRegion() != null ) 
             {
                 try {
@@ -583,9 +587,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             onCaretUpdate( e );
         }
     };
-    
+
     protected void onCaretUpdate(CaretEvent e) {
-        
+
     }
 
     public SourceCodeView(IWorkspace workspace,boolean isEditable) 
@@ -667,7 +671,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         final String source = Misc.readSource( sourceFile );
         this.initialHashCode = Misc.calcHash( source );
-        
+
         sourceInMemory = new AbstractResource(ResourceType.SOURCE_CODE) {
 
             @Override
@@ -716,9 +720,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         {
             final Document doc = editorPane.getDocument();
             doc.putProperty(Document.StreamDescriptionProperty, null);
-    
+
             editorPane.setText( source );
-    
+
             if ( panel != null ) {
                 validateSourceCode();
             }
@@ -726,7 +730,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         } finally {
             enableDocumentListener();
         }
-        
+
         updateTitle();
     }
 
@@ -736,9 +740,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         try 
         {
             clearCompilationErrors();
-            
+
             onSourceCodeValidation();
-            
+
             try {
                 compilationUnit = project.getBuilder().parse( sourceInMemory , new CompilationListener() );
             } catch(Exception e) {
@@ -746,7 +750,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             } finally {
                 doHighlighting( compilationUnit , true );                
             }
-            
+
             for ( ICompilationError error : compilationUnit.getErrors() ) 
             {
                 onCompilationError( error );
@@ -755,9 +759,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             enableDocumentListener();
         }
     }
-    
+
     protected void onSourceCodeValidation() {
-        
+
     }
 
     protected final void doHighlighting(ICompilationUnit unit,boolean called) 
@@ -769,7 +773,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         if ( unit.getAST() != null ) 
         {
             onHighlightingStart();
-            
+
             doSemanticHighlighting( unit );
         }
 
@@ -778,7 +782,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             highlightCompilationErrors( compilationUnit );
         }  
     }
-    
+
     protected void onHighlightingStart() {
     }
 
@@ -901,7 +905,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         editorPane.setCaretPosition( offset );
         centerCurrentLineInScrollPane();
     }
-    
+
     protected final ITextRegion getVisibleTextRegion() 
     {
         final Point startPoint = editorScrollPane.getViewport().getViewPosition();
@@ -981,9 +985,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             enableDocumentListener();
         }
     }
-    
+
     protected void onCompilationError(ICompilationError error) {
-        
+
     }
 
     // ============= view creation ===================
@@ -1003,11 +1007,37 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         }
         return panel;
     }
+    
+    private final MouseListener mouseListener = new MouseAdapter() {
+        
+        public void mouseClicked(java.awt.event.MouseEvent e) {
+            
+            if ( e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1 ) 
+            {
+                // navigate to symbol definition
+                final ASTNode node = getASTNodeForLocation( e.getPoint() );
+                if ( node instanceof SymbolReferenceNode) 
+                {
+                    final SymbolReferenceNode ref = (SymbolReferenceNode) node;
+                    Identifier identifier = ref.getIdentifier();
+                    if ( getCurrentCompilationUnit() != null ) {
+                        final ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
+                        if ( table.containsSymbol( identifier ) ) {
+                            final ITextRegion location = table.getSymbol( identifier ).getLocation();
+                            gotoLocation( location.getStartingOffset() );
+                        } else {
+                            // TODO: navigate to labels in other source files as well...
+                        }
+                    }
+                }
+            }
+        };
+    };
 
     private final JPanel createPanel() 
     {
         disableDocumentListener(); // necessary because setting colors on editor pane triggers document change listeners (is considered a style change...)
-        
+
         try {
             editorPane.setEditable( editable );
             editorPane.getDocument().addUndoableEditListener( undoListener );
@@ -1017,10 +1047,11 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             editorScrollPane = new JScrollPane(editorPane);
             setColors( editorScrollPane );
             editorPane.addCaretListener( listener );
+            editorPane.addMouseListener( mouseListener );
         } finally {
             enableDocumentListener();
         }
-        
+
         EditorContainer.addEditorCloseKeyListener( editorPane , this );
 
         editorScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
@@ -1101,23 +1132,23 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 saveCurrentFile();
             }
         });
-        
+
         // "Undo" action
         addKeyBinding( editor , 
                 KeyStroke.getKeyStroke(KeyEvent.VK_Z,Event.CTRL_MASK),
                 undoAction );
-        
+
         addKeyBinding( editor , 
                 KeyStroke.getKeyStroke(KeyEvent.VK_Y,Event.CTRL_MASK),
                 redoAction );       
     }
-    
+
     protected final void saveCurrentFile() {
-        
+
         if ( ! hasUnsavedContent() ) {
             return;
         }
-        
+
         final String source = getTextFromTextPane();
         try {
             Misc.writeResource( getCurrentResource() , source );
@@ -1127,11 +1158,11 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             LOG.error("save(): Failed to write to "+getCurrentResource());
             return;
         }
-        
+
         if ( compilationUnit == null || compilationUnit.hasErrors() ) {
             return;
         }
-        
+
         try {
             getCurrentProject().getBuilder().build();
         } 
@@ -1147,7 +1178,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     public final IResource getCurrentResource() {
         return this.sourceFileOnDisk;
     }
-    
+
     public final IResource getSourceFromMemory() {
         return this.sourceInMemory;
     }
@@ -1161,7 +1192,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     protected void disposeHook2() {
     }
-    
+
     @Override
     public final void refreshDisplay()
     {
@@ -1176,9 +1207,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         }
         refreshDisplayHook();
     }
-    
+
     protected void refreshDisplayHook() {
-        
+
     }
 
     @Override
@@ -1243,28 +1274,39 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     {
         return editable;
     }
-    
+
     public void setEditable(boolean editable)
     {
         this.editable = editable;
         editorPane.setEditable( editable );       
     }
-    
+
     protected final ICompilationUnit getCurrentCompilationUnit() {
         return compilationUnit;
     }
-    
+
     protected final void addMouseListener(MouseListener listener) {
         editorPane.addMouseListener( listener );
     }    
-    
+
     protected final void removeMouseListener(MouseListener listener) {
         editorPane.addMouseListener( listener );
     }
-    
+
     protected final int getModelOffsetForLocation(Point p) {
         return editorPane.viewToModel( p );
     }
-    
-    
+
+    protected final ASTNode getASTNodeForLocation(Point p) {
+        final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
+        if ( ast == null ) {
+            return null;
+        }
+
+        int offset = editorPane.viewToModel( p );
+        if ( offset != -1 ) {
+            return ast.getNodeInRange( offset );
+        }
+        return null;
+    }    
 }

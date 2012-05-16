@@ -338,7 +338,7 @@ public class SourceEditorView extends SourceCodeView {
             astTree.scrollPathToVisible( path );
         }
 	}
-	
+	   
 	private boolean isASTInspectorVisible() {
 	    return astInspector != null && astInspector.isVisible();
 	}
