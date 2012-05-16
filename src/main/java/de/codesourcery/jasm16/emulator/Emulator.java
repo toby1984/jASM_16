@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
@@ -886,7 +887,7 @@ public class Emulator implements IEmulator {
 		catch(Exception e) {
 			stop(true);
 			e.printStackTrace();
-			System.err.println("\n\nERROR: Simulation stopped due to error.");
+			System.err.println("\n\nERROR: Simulation stopped due to error ( at address ."+this.previousPC+")");
 			return 0;
 		} 
 		finally 
@@ -1896,15 +1897,16 @@ public class Emulator implements IEmulator {
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = memory.read( pc );
 			pc = pc.incrementByOne(true);
-			memory.write( registers.get( operandBits - 0x10 )+nextWord , value);
+			writeMemoryWithOffsetAndWrapAround( registers.get( operandBits - 0x10 ) , nextWord , value);
 			return 1;
 		}
 		switch( operandBits ) {
 		case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
 			push( value );
-			return 1;
-		case 0x19:
-			return handleIllegalTargetOperand(instructionWord);
+			return 0;
+		case 0x19: // PEEK/[SP]
+	        memory.write( sp , value );
+			return 0;
 		case 0x1a:
 			int nextWord = memory.read( pc );
 			pc = pc.incrementByOne(true);
@@ -1957,7 +1959,7 @@ public class Emulator implements IEmulator {
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = memory.read( pc );
 			pc = pc.incrementByOne(true);
-			return operandDesc( memory.read( registers.get( operandBits - 0x10 )+nextWord ) ,1 );
+			return operandDesc( readMemoryWithOffsetAndWrapAround( registers.get( operandBits - 0x10 ) , nextWord ) ,1 );
 		}
 
 		switch( operandBits ) {
@@ -1991,6 +1993,16 @@ public class Emulator implements IEmulator {
 		// literal value: -1...30 ( 0x20 - 0x3f )
 		return operandDesc( operandBits - 0x21 , 0 ); 
 	}	
+	
+	private int readMemoryWithOffsetAndWrapAround(int address,int offset) {
+	    int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
+	    return memory.read( realAddress );
+	}
+	
+    private void writeMemoryWithOffsetAndWrapAround(int address,int offset,int value) {
+        int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
+        memory.write( realAddress , value );
+    }	
 
 	/**
 	 * 
@@ -2043,7 +2055,7 @@ public class Emulator implements IEmulator {
 			} else {
 				nextWord = memory.read( pc );                
 			}
-			return operandDesc( memory.read( registers.get( operandBits - 0x10 )+nextWord ) ,1 );
+			return operandDesc( readMemoryWithOffsetAndWrapAround(  registers.get( operandBits - 0x10 ) , nextWord ) ,1 );
 		}
 
 		switch( operandBits ) {

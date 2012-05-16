@@ -77,8 +77,12 @@ public abstract class AbstractView implements IView
     protected void disposeHook() {
     }
     
-    protected final IViewContainer getViewContainer() {
+    public final IViewContainer getViewContainer() {
     	return container;
+    }
+    
+    public final boolean hasViewContainer() {
+        return container != null;
     }
     
     protected abstract JPanel getPanel();

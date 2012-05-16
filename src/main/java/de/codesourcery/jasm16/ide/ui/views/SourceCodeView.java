@@ -16,6 +16,7 @@ package de.codesourcery.jasm16.ide.ui.views;
  * limitations under the License.
  */
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Event;
@@ -27,6 +28,7 @@ import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseListener;
 import java.io.ByteArrayInputStream;
@@ -96,6 +98,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
@@ -237,9 +240,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     };
     
     private IAssemblyProject project;
-    protected String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
-    protected IResource sourceFileOnDisk; // source code on disk
-    protected IResource sourceInMemory; // possibly edited source code (in RAM / JEditorPane)
+    private String initialHashCode; // hash code used to check whether current editor content differs from the one on disk
+    private IResource sourceFileOnDisk; // source code on disk
+    private IResource sourceInMemory; // possibly edited source code (in RAM / JEditorPane)
     private ICompilationUnit compilationUnit;
 
     private CompilationThread compilationThread = null;
@@ -537,6 +540,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         private void textChanged(DocumentEvent e) 
         {
+            System.out.println("DOC-EVENT: "+e);
             updateTitle();
             
             if ( compilationThread == null ) 
@@ -708,16 +712,20 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         disableDocumentListener();
 
-        final Document doc = editorPane.getDocument();
-        doc.putProperty(Document.StreamDescriptionProperty, null);
+        try 
+        {
+            final Document doc = editorPane.getDocument();
+            doc.putProperty(Document.StreamDescriptionProperty, null);
+    
+            editorPane.setText( source );
+    
+            if ( panel != null ) {
+                validateSourceCode();
+            }
 
-        editorPane.setText( source );
-
-        if ( panel != null ) {
-            validateSourceCode();
+        } finally {
+            enableDocumentListener();
         }
-
-        enableDocumentListener();   
         
         updateTitle();
     }
@@ -1012,6 +1020,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         } finally {
             enableDocumentListener();
         }
+        
+        EditorContainer.addEditorCloseKeyListener( editorPane , this );
 
         editorScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         editorScrollPane.setPreferredSize( new Dimension(400,600 ) );
@@ -1137,6 +1147,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     public final IResource getCurrentResource() {
         return this.sourceFileOnDisk;
     }
+    
+    public final IResource getSourceFromMemory() {
+        return this.sourceInMemory;
+    }
 
     @Override
     public final void disposeHook()
@@ -1250,6 +1264,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     
     protected final int getModelOffsetForLocation(Point p) {
         return editorPane.viewToModel( p );
-    }    
+    }
+    
     
 }

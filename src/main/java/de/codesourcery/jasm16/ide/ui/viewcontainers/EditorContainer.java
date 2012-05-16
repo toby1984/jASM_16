@@ -19,6 +19,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,6 +40,7 @@ import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
+import de.codesourcery.jasm16.ide.ui.views.SourceCodeView;
 
 public class EditorContainer extends AbstractView implements IViewContainer {
 
@@ -64,7 +67,7 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 
 	protected final class ViewWithPanel 
 	{
-	    public final int tabIndex;
+	    public int tabIndex;
 		public final IView view;
 		public final JPanel panel;
 		
@@ -107,8 +110,39 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 		if ( getViewContainer().getMenuManager() != null ) {
 			getViewContainer().getMenuManager().addEntry( saveCurrent );
 		}
+		
+		tabbedPane.addKeyListener( new KeyAdapter() 
+        {
+            public void keyReleased(KeyEvent e) {
+                if ( e.getKeyCode() == KeyEvent.VK_W && ( e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK ) != 0 ) 
+                {
+                    int idx = tabbedPane.getSelectedIndex();
+                    if ( idx != -1 ) {
+                        disposeView( getViewForTabIndex( idx ) );
+                    }
+                }
+            }
+        } );		
 		return result;
 	}
+	
+    public static final void addEditorCloseKeyListener(Component comp,final IEditorView view) 
+    {
+        comp.addKeyListener( new KeyAdapter() 
+        {
+            public void keyReleased(KeyEvent e) 
+            {
+                if ( e.getKeyCode() == KeyEvent.VK_W && ( e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK ) != 0 ) 
+                {
+                    if ( view.hasViewContainer() ) {
+                        view.getViewContainer().disposeView( view );
+                    } else {
+                        view.dispose();
+                    }
+                }
+            }
+        } );              
+    }	
 	
 	@Override
 	public void addView(IView view) 
@@ -127,6 +161,17 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 	            return;
 	        }
 	    }
+	}
+	
+	protected IView getViewForTabIndex(int tabIndex) 
+	{
+       for ( ViewWithPanel v : views ) 
+       {
+            if ( v.tabIndex == tabIndex ) {
+                return v.view;
+            }
+        }
+       throw new IllegalArgumentException("Invalid tab index: "+tabIndex);
 	}
 	
 	@Override
@@ -177,15 +222,43 @@ public class EditorContainer extends AbstractView implements IViewContainer {
 			throw new IllegalArgumentException("view must not be NULL");
 		}
 		
+		int disposedTabIndex = -1;
 		final List<ViewWithPanel> copy = new ArrayList<ViewWithPanel>(this.views);
 		for (Iterator<ViewWithPanel> it = copy.iterator(); it.hasNext();) 
 		{
 			final ViewWithPanel viewWithPanel = it.next();
 			if ( viewWithPanel.view == view ) {
+			    this.views.remove( viewWithPanel );
+			    disposedTabIndex = viewWithPanel.tabIndex;
 				this.tabbedPane.remove( viewWithPanel.panel );
 				viewWithPanel.view.dispose();
-				return;
+				break;
 			}
+		}
+		
+		if ( disposedTabIndex != -1 ) 
+		{
+		    // adjust tab indices
+            int previousTabToFocus = -1;		    
+		    int nextTabToFocus = -1;
+		    for ( ViewWithPanel v : this.views ) 
+		    {
+		        if ( v.tabIndex >= disposedTabIndex ) {
+		            v.tabIndex--;
+		            if ( nextTabToFocus == -1 ) {
+		                nextTabToFocus = v.tabIndex;
+		            }
+		        } else {
+		            previousTabToFocus = v.tabIndex;
+		        }
+		    }
+		    
+		    // focus next/previous tab
+		    if ( nextTabToFocus != -1 ) {
+		        tabbedPane.setSelectedIndex( nextTabToFocus );
+		    } else if ( previousTabToFocus != -1 ) {
+	            tabbedPane.setSelectedIndex( previousTabToFocus );
+		    }
 		}
 	}
 

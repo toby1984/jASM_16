@@ -289,8 +289,6 @@ public final class DefaultScreen implements IDevice {
             return;
         }
 
-        new Exception().printStackTrace();
-        System.out.println("-------- doFullVRAMRendering ---------");
         screen.fillScreen(Color.BLACK);
         for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
             renderMemoryValue( i , videoRAM.read( i ) );

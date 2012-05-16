@@ -116,7 +116,7 @@ public class SourceEditorView extends SourceCodeView {
 		
 		public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
 		{
-			if ( deletedResource.isSame( sourceFileOnDisk ) ) 
+			if ( deletedResource.isSame( getCurrentResource() ) ) 
 			{
 				dispose();
 			}
@@ -492,7 +492,7 @@ public class SourceEditorView extends SourceCodeView {
 		                final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
 		                
 		                IEditorView editor = null;
-		                if ( symbol.getCompilationUnit().getResource().isSame( sourceInMemory ) ) {
+		                if ( symbol.getCompilationUnit().getResource().isSame( getSourceFromMemory() ) ) {
 		                    editor = SourceEditorView.this;
 		                } 
 		                else if ( getViewContainer() instanceof EditorContainer) 
@@ -566,7 +566,7 @@ public class SourceEditorView extends SourceCodeView {
 			String txt = name+" "+source+" ( "+n.getTextRegion()+" )";  
 
 			final Address address  = ASTUtils.getEarliestMemoryLocation( n );		
-			final String sAddress = address == null ? "" : "0x"+Misc.toHexString( address );
+			final String sAddress = address == null ? "" : "0x"+Misc.toHexString( address.toWordAddress() );
 			if ( n instanceof StatementNode ) 
 			{
 				final List<Line> linesForRange = getCurrentCompilationUnit().getLinesForRange( n.getTextRegion() );
@@ -668,7 +668,6 @@ public class SourceEditorView extends SourceCodeView {
         cnstrs.weighty=1.0;
         topPanel.add( super.getPanel() , cnstrs );
         
-
 		final JPanel bottomPanel = new JPanel();
 		bottomPanel.setLayout( new GridBagLayout() );
 
@@ -692,6 +691,8 @@ public class SourceEditorView extends SourceCodeView {
 			};
 		} );
 
+        EditorContainer.addEditorCloseKeyListener( statusArea , this );
+        
 		statusArea.setFillsViewportHeight( true );
 		statusArea.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 

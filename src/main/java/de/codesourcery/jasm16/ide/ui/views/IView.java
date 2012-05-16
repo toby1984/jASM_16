@@ -21,6 +21,10 @@ import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
 public interface IView
 {
+    public IViewContainer getViewContainer();
+    
+    public boolean hasViewContainer();
+    
     public JPanel getPanel(IViewContainer container);
     
     public boolean mayBeDisposed();
