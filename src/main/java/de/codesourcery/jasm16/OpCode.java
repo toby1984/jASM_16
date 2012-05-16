@@ -133,8 +133,11 @@ public enum OpCode
         @Override
         public boolean isValidAddressingMode(OperandPosition position , AddressingMode type) 
         {
-            if ( position == OperandPosition.TARGET_OPERAND && type.equals( AddressingMode.IMMEDIATE ) ) {
-                return false;
+            if ( position == OperandPosition.TARGET_OPERAND ) 
+            {
+                if ( type.equals( AddressingMode.IMMEDIATE ) ) {
+                    return false;
+                }
             }
             return true;
         }
@@ -157,7 +160,7 @@ public enum OpCode
     // EXTENDED opcodes / control flow
     JSR( "jsr",1,0x01) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -173,7 +176,7 @@ public enum OpCode
     },
     HCF( "hcf",1,0x07) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -183,7 +186,7 @@ public enum OpCode
     },    
     INT( "int",1,0x08) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -193,7 +196,7 @@ public enum OpCode
     },    
     IAG( "iag",1,0x09) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -202,7 +205,7 @@ public enum OpCode
     },  
     IAS( "ias",1,0x0a) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -212,7 +215,7 @@ public enum OpCode
     },  
     RFI( "rfi",1,0x0b) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -222,7 +225,7 @@ public enum OpCode
     },   
     IAQ( "iaq",1,0x0c) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -232,7 +235,7 @@ public enum OpCode
     },  
     HWN( "hwn",1,0x10) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -242,7 +245,7 @@ public enum OpCode
     },  
     HWQ( "hwq",1,0x11) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -252,7 +255,7 @@ public enum OpCode
     }, 
     HWI( "hwi",1,0x12) 
     {
-        protected boolean isBasicOpCode() { return false; };
+        public boolean isBasicOpCode() { return false; };
         
         public boolean isOperandValidInPosition(OperandPosition pos,AddressingMode mode, Register register) 
         {
@@ -365,7 +368,13 @@ public enum OpCode
         return LOWER_CASE_MAP;
     }
 
-    protected boolean isBasicOpCode() {
+    /**
+     * Returns whether this is a basic (two-operand) opcode.
+     * 
+     * @return
+     * @see #isSpecialOpCode()
+     */
+    public boolean isBasicOpCode() {
         return true;
     }
 
@@ -375,8 +384,9 @@ public enum OpCode
      * In binary, they have the format: aaaaaaoooooo0000
      * The value (a) is in the same six bit format as defined earlier.
      * @return
+     * @see #isBasicOpCode()
      */
-    private final boolean isExtendedOpCode() {
+    public final boolean isSpecialOpCode() {
         return ! isBasicOpCode();
     }    
 
@@ -477,7 +487,7 @@ public enum OpCode
         
         final int OPCODE_BITS = 5;
 
-        if ( isExtendedOpCode() ) 
+        if ( isSpecialOpCode() ) 
         {
             if ( targetOperand == null ) {
                 throw new RuntimeException("Extended instruction "+this+" requires a single operand, got none");

@@ -731,9 +731,18 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             
             onSourceCodeValidation();
             
-            compilationUnit = project.getBuilder().parse( sourceInMemory ,
-                    new CompilationListener() );
-            doHighlighting( compilationUnit , true );
+            try {
+                compilationUnit = project.getBuilder().parse( sourceInMemory , new CompilationListener() );
+            } catch(Exception e) {
+                LOG.error("validateSourceCode(): ",e);
+            } finally {
+                doHighlighting( compilationUnit , true );                
+            }
+            
+            for ( ICompilationError error : compilationUnit.getErrors() ) 
+            {
+                onCompilationError( error );
+            }
         } finally {
             enableDocumentListener();
         }
@@ -743,7 +752,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         
     }
 
-    protected final void doHighlighting(ICompilationUnit unit,boolean addStatusMessages) 
+    protected final void doHighlighting(ICompilationUnit unit,boolean called) 
     {
         if ( panel == null ) {
             return;
@@ -758,7 +767,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         if ( unit.hasErrors() ) 
         {
-            showCompilationErrors( compilationUnit );
+            highlightCompilationErrors( compilationUnit );
         }  
     }
     
@@ -934,10 +943,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         }
     }   
 
-    protected final void showCompilationErrors(ICompilationUnit unit) 
+    protected final void highlightCompilationErrors(ICompilationUnit unit) 
     {
-        beforeShowCompilationErrors( unit );
-        
         disableDocumentListener();
 
         try 
@@ -959,19 +966,13 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
                 if ( location != null ) 
                 {
-                    System.out.println("Highlighting error at "+location);
                     highlight( location , errorStyle );
                 }
-                
-                onCompilationError( error );
             }
         } finally {
             enableDocumentListener();
         }
     }
-    
-    protected void beforeShowCompilationErrors(ICompilationUnit unit) {
-    }   
     
     protected void onCompilationError(ICompilationError error) {
         

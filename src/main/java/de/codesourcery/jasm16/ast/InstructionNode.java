@@ -19,7 +19,9 @@ import java.io.IOException;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.OpCode;
+import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
@@ -121,14 +123,35 @@ public class InstructionNode extends ObjectCodeOutputNode
         errorRecoveryTokenTypes = new TokenType[] {TokenType.COMMA };
         for ( int i = 0 ; i < opCode.getOperandCount() ; i++ ) 
         {
+            ASTNode operandNode = null;
             try {
                 context.mark();
-                parseOperand( opCode , i , context );
+                operandNode = parseOperand( opCode , i , context );
             } catch(ParseException e) {
                 addCompilationErrorAndAdvanceParser( e , new TokenType[] {TokenType.COMMA} , context );
             } finally {
                 context.clearMark();
             }
+            
+            if ( opCode.isBasicOpCode() && i == 0 ) // target operand of basic instruction 
+            {
+                /*
+                 * SET [SP++] , a is not possible because the instruction bitmask uses the same value for PUSH/POP
+                 * and the meaning only depends on whether is the source or target operand                 
+                 */
+                if ( operandNode instanceof OperandNode ) 
+                {
+                    final OperandNode opNode = (OperandNode) operandNode;
+                    if ( opNode.getAddressingMode() == AddressingMode.INDIRECT_REGISTER_POSTINCREMENT &&
+                         opNode.getRegister() == Register.SP ) 
+                    {
+                        if ( opNode.getRegisterReferenceNode().hasPostIncrement() ) { 
+                            context.addCompilationError("POP cannot be used as TARGET operand",opNode); 
+                        }
+                    }
+                }
+            }
+            
             if ( (i+1) < opCode.getOperandCount() ) {
                 parseArgumentSeparator( context );
             }
@@ -136,7 +159,7 @@ public class InstructionNode extends ObjectCodeOutputNode
         return this;
     }
 
-    protected void parseOperand(OpCode opcode, int index , IParseContext context) throws ParseException 
+    protected ASTNode parseOperand(OpCode opcode, int index , IParseContext context) throws ParseException 
     {
         final OperandPosition position;
         switch( index ) {
@@ -159,7 +182,7 @@ public class InstructionNode extends ObjectCodeOutputNode
                 throw new ParseException("Opcode "+opcode+" does not support addressing mode "+
                         op.getAddressingMode()+" for parameter "+(index+1) , op.getTextRegion() );
             }
-
+            
             /*
              * getRegister() chokes on 1+ register references but 
              * this case is already flagged as an error by
@@ -172,6 +195,7 @@ public class InstructionNode extends ObjectCodeOutputNode
             }
         }
         addChild( node , context );
+        return node;
     }
 
     protected void parseArgumentSeparator(IParseContext context) throws ParseException {

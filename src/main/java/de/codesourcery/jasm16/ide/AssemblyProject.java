@@ -99,9 +99,7 @@ public class AssemblyProject implements IAssemblyProject
 			{
 				compUnits.add(  result );
 			}
-
-			compiler.compile( compUnits , listener );
-
+		    compiler.compile( compUnits , listener );
 			return result;
 		}
 

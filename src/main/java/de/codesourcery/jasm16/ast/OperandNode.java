@@ -172,17 +172,22 @@ public class OperandNode extends ASTNode
 		result.addChild( input , context );
 		return result;
 	}
+	
+	public RegisterReferenceNode getRegisterReferenceNode() {
+	       final List<RegisterReferenceNode> result = 
+	               ASTUtils.getNodesByType( this , RegisterReferenceNode.class , true );
+	           if ( result.size() == 1 ) {
+	               return result.get(0);
+	           } else if ( result.size() > 1 ) {
+	               throw new RuntimeException("Operand with more than one RegisterReferenceNode? "+this);
+	           }
+	           return null;
+	}
 
 	public Register getRegister() 
 	{
-		final List<RegisterReferenceNode> result = 
-			ASTUtils.getNodesByType( this , RegisterReferenceNode.class , true );
-		if ( result.size() == 1 ) {
-			return result.get(0).getRegister();
-		} else if ( result.size() > 1 ) {
-			throw new RuntimeException("Operand with more than one RegisterReferenceNode? "+this);
-		}
-		return null;
+	    final RegisterReferenceNode regNode = getRegisterReferenceNode();
+	    return regNode != null ? regNode.getRegister() : null;
 	}
 
 	public Long getLiteralValue(ISymbolTable symbolTable) 

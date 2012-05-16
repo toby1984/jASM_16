@@ -594,8 +594,6 @@ public class SourceEditorView extends SourceCodeView {
         final ASTTableModelWrapper astModel = new ASTTableModelWrapper( getCurrentCompilationUnit().getAST() ) ;
         astTree.setModel( astModel );
 	}
-
-	
 	
 	@Override
 	protected void onCompilationError(ICompilationError error)

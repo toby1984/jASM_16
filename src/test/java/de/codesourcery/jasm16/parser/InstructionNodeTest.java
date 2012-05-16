@@ -273,6 +273,10 @@ public class InstructionNodeTest extends TestHelper
         assertSourceCode( "SET a,pop" , result );
     }  
     
+    public void testPop2() throws Exception {
+        assertDoesNotCompile("SET POP,o");
+    }     
+    
     public void testNoOperandInlining() throws Exception {
 
         final String source = "SET [0x1000], 0x20";
