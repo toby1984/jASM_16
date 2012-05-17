@@ -15,11 +15,7 @@
  */
 package de.codesourcery.jasm16.ide;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,7 +24,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -36,6 +31,7 @@ import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Default workspace implementation.
@@ -53,10 +49,9 @@ public class DefaultWorkspace implements IWorkspace
 	private final List<IAssemblyProject> projects = new ArrayList<IAssemblyProject>();
 	private final List<IResourceListener> listeners = new ArrayList<IResourceListener>();
 
-	public static final String WORKSPACE_METADATA_FILE=".jasm16_metadata";
-
 	private final AtomicBoolean opened = new AtomicBoolean(false);
 	private final IApplicationConfig appConfig;
+	private WorkspaceConfig workspaceConfig;
 
 	public DefaultWorkspace(IApplicationConfig appConfig) throws IOException 
 	{
@@ -64,6 +59,15 @@ public class DefaultWorkspace implements IWorkspace
 			throw new IllegalArgumentException("appConfig must not be NULL");
 		}
 		this.appConfig = appConfig;
+	}
+	
+	private synchronized WorkspaceConfig getWorkspaceConfig() throws IOException 
+	{
+		if ( workspaceConfig == null ) {
+			workspaceConfig = new WorkspaceConfig( new File( getBaseDirectory() ,
+					WorkspaceConfig.FILE_NAME ) );
+		}
+		return workspaceConfig;
 	}
 
 	@Override
@@ -89,7 +93,7 @@ public class DefaultWorkspace implements IWorkspace
 		opened.set( false );
 
 		final List<IAssemblyProject> tmp = new ArrayList<IAssemblyProject>();
-		for ( File dir : loadProjectDirectories() ) 
+		for ( File dir : getWorkspaceConfig().getProjectsBaseDirectories() ) 
 		{
 			if ( ! dir.isDirectory() ) {
 				LOG.error("loadProjects(): Project directory "+dir.getName()+" no longer exists");
@@ -111,46 +115,14 @@ public class DefaultWorkspace implements IWorkspace
 		opened.set( true );
 	}
 
-	private List<File> loadProjectDirectories() throws IOException {
-
-		final List<File> result = new ArrayList<File>();
-
-		final File configFile = new File( getBaseDirectory() , WORKSPACE_METADATA_FILE );
-		if ( configFile.exists() ) 
-		{
-			final BufferedReader reader = new BufferedReader( new FileReader( configFile ) );
-			try {
-				String line=null;
-				while( ( line = reader.readLine() ) != null ) {
-					result.add( new File( getBaseDirectory() , line ) );
-				}
-			} finally {
-				IOUtils.closeQuietly( reader );
-			}
-		} 
-
-		return result;
-	}
-
-	private void rememberImportedProjects() throws IOException 
-	{
-		final File configFile = new File( getBaseDirectory() , WORKSPACE_METADATA_FILE );
-		final BufferedWriter writer = new BufferedWriter( new FileWriter( configFile ) );
-		try {
-			for ( IAssemblyProject project : projects ) 
-			{
-				writer.write( project.getConfiguration().getBaseDirectory().getName()+"\n");
-			}
-		} finally {
-			IOUtils.closeQuietly( writer);
-		}
-	}
-
 	private IAssemblyProject loadProject(File baseDir) throws IOException 
 	{
 		final ProjectConfiguration config = new ProjectConfiguration( baseDir );
 		config.load();
-		return new AssemblyProject( this , config );
+		
+		final boolean isProjectOpen = getWorkspaceConfig().isProjectOpen( config.getProjectName() );
+		final IAssemblyProject result = new AssemblyProject( this , config , isProjectOpen );
+		return result;
 	}
 
 	@Override
@@ -202,22 +174,30 @@ public class DefaultWorkspace implements IWorkspace
 			throw e;
 		}
 
-		final IAssemblyProject result = new AssemblyProject( this , config );
+		 return internalAddProject( config , true );
+	}
+	
+	private IAssemblyProject internalAddProject(ProjectConfiguration config,boolean deleteProjectFilesOnError) throws IOException 
+	{
+		final IAssemblyProject result = new AssemblyProject( this , config , true );
 		projects.add( result );
 		
 		try {
-			rememberImportedProjects();
+			getWorkspaceConfig().projectAdded( result );
+			getWorkspaceConfig().saveConfiguration();
 		} 
 		catch(IOException e) 
 		{
-			LOG.error("createNewProject(): Failed to save metadata",e);
-			try {
-				internalDeleteFile( null , baseDir , false );
-			} catch(Exception e2) {
-				LOG.error("createNewProject(): Caught during rollback ",e2);
-				// ok, can't help it
+			LOG.error("internalAddProject(): Failed to save metadata",e);
+			if ( deleteProjectFilesOnError ) {
+				try {
+					internalDeleteFile( null , config.getBaseDirectory() , false );
+				} catch(Exception e2) {
+					LOG.error("internalAddProject(): Caught during rollback ",e2);
+					// ok, can't help it
+				}
+				projects.remove( result );
 			}
-			projects.remove( result );
 			throw e;
 		}
 		
@@ -237,7 +217,7 @@ public class DefaultWorkspace implements IWorkspace
 				return "PROJECT-CREATED: "+result;
 			}			
 		});			
-		return result;
+		return result;		
 	}
 
 	@Override
@@ -263,7 +243,8 @@ public class DefaultWorkspace implements IWorkspace
 				removeResourceListener( existing );
 				
 				try {
-					rememberImportedProjects();
+					getWorkspaceConfig().projectDeleted( project );
+					getWorkspaceConfig().saveConfiguration();
 				} 
 				catch (IOException e) {
 					LOG.error("createNewProject(): Failed to save metadata",e);		
@@ -347,7 +328,7 @@ public class DefaultWorkspace implements IWorkspace
 	}
 
 	@Override
-	public void saveMetaData(IAssemblyProject project) throws IOException
+	public void saveProjectConfiguration(IAssemblyProject project) throws IOException
 	{
 		if (project == null) {
 			throw new IllegalArgumentException("project must not be NULL.");
@@ -435,7 +416,7 @@ public class DefaultWorkspace implements IWorkspace
 	@Override
 	public void close() throws IOException {
 		this.opened.set( false );
-		rememberImportedProjects();
+		getWorkspaceConfig().saveConfiguration();		
 	}
 
 	@Override
@@ -486,8 +467,19 @@ public class DefaultWorkspace implements IWorkspace
             throw new IllegalArgumentException("listener must not be NULL.");
         }
 
-        synchronized (listeners) {
-            listeners.add( listener );
+        synchronized (listeners) 
+        {
+        	if ( listener instanceof IAssemblyProject) 
+        	{
+        		// add projects BEFORE any other listeners because
+        		// IAssemblyProject#projectOpened() and
+        		// IAssemblyProject#projectClosed() update internal state
+        		// that may be checked by other IWorkspaceListener implementations
+        		// when their projectOpened() / projectClosed() methods are invoked 
+        		listeners.add( 0 , listener );
+        	} else {
+        		listeners.add( listener );
+        	}
         }        
     }
 
@@ -546,10 +538,92 @@ public class DefaultWorkspace implements IWorkspace
         if (projects == null) {
             throw new IllegalArgumentException("project must not be NULL.");
         }
-        for ( IAssemblyProject p : projects ) {
-            LOG.info("refreshProjects(): Refreshing "+p);
-            p.rescanResources();
+        for ( IAssemblyProject p : projects ) 
+        {
+        	if ( p.isOpen() ) {
+        		LOG.info("refreshProjects(): Refreshing "+p);
+        		p.rescanResources();
+        	}
         }
     }
+
+	@Override
+	public void openProject(final IAssemblyProject project) {
+		
+		try {
+			getWorkspaceConfig().projectOpened( project );
+			getWorkspaceConfig().saveConfiguration();
+		} catch (IOException e) {
+			LOG.error("closeProject(): Failed to update workspace configuration");
+		}
+		
+		// nothing to do here since IAssemblyProject
+		// implements IWorkspaceListener#projectOpened() and
+		// will update it's internal state when it receives the message
+		notifyListeners( new IInvoker() {
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				if ( listener instanceof IWorkspaceListener ) {
+					((IWorkspaceListener) listener).projectOpened( project );
+				}
+			}
+			
+			@Override
+			public String toString() {
+				return "PROJECT-OPENED: "+project;
+			}			
+		});			
+	}
+
+	@Override
+	public void closeProject(final IAssemblyProject project) 
+	{
+		try {
+			getWorkspaceConfig().projectClosed( project );
+			getWorkspaceConfig().saveConfiguration();
+		} catch (IOException e) {
+			LOG.error("closeProject(): Failed to update workspace configuration");
+		}
+		
+		// nothing to do here since IAssemblyProject
+		// implements IWorkspaceListener#projectClosed() and
+		// will update it's internal state when it receives the message
+		notifyListeners( new IInvoker() {
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				if ( listener instanceof IWorkspaceListener ) {
+					((IWorkspaceListener) listener).projectClosed( project );
+				}
+			}
+			
+			@Override
+			public String toString() {
+				return "PROJECT-CLOSED: "+project;
+			}			
+		});			
+	}
+
+	@Override
+	public IAssemblyProject importProject(File baseDirectory) throws IOException, ProjectAlreadyExistsException 
+	{
+		if (baseDirectory == null) {
+			throw new IllegalArgumentException("baseDirectory must not be null");
+		}
+		
+		Misc.checkFileExistsAndIsDirectory( baseDirectory , false );
+		
+		if ( ! baseDirectory.getAbsolutePath().startsWith( getBaseDirectory().getAbsolutePath() ) ) 
+		{
+			throw new IllegalArgumentException("Folder "+baseDirectory.getAbsolutePath()+
+					" is not within the workspace folder "+getBaseDirectory().getAbsolutePath());
+		}
+
+		final ProjectConfiguration config = new ProjectConfiguration(baseDirectory);
+		config.load();
+		
+		return internalAddProject( config , false );
+	}
 
 }

@@ -34,6 +34,10 @@ public interface IWorkspaceListener extends IResourceListener
 	 */
 	public void projectCreated(IAssemblyProject project);
 	
+	public void projectClosed(IAssemblyProject project);
+	
+	public void projectOpened(IAssemblyProject project);	
+	
 	/**
 	 * Invoked after a project has been removed from a workspace.
 	 * 

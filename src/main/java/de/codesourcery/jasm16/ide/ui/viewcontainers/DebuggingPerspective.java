@@ -65,6 +65,13 @@ public class DebuggingPerspective extends Perspective
                 dispose();
             }
         }
+        
+        public void projectClosed(IAssemblyProject closedProject) {
+            if ( closedProject.isSame( project ) ) 
+            {
+                dispose();
+            }
+        }
 
         public void resourceDeleted(IAssemblyProject affectedProject, IResource deletedResource) {
 

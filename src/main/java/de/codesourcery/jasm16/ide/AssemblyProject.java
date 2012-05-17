@@ -66,11 +66,10 @@ public class AssemblyProject implements IAssemblyProject
 
 	// @GuardedBy( RESOURCE_LOCK )
 	private final List<IResource> resources = new ArrayList<IResource>();
-
 	private final List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
-
 	private final IWorkspace workspace;
-
+	private boolean isOpen;
+	
 	private final IProjectBuilder builder = new IProjectBuilder() 
 	{
 		@Override
@@ -296,7 +295,7 @@ public class AssemblyProject implements IAssemblyProject
 		return StringUtils.join( ArrayUtils.subarray( dots , 0 , dots.length-1) );
 	}	
 
-	public AssemblyProject(IWorkspace workspace , ProjectConfiguration config) throws IOException 
+	public AssemblyProject(IWorkspace workspace , ProjectConfiguration config,boolean isOpen) throws IOException 
 	{
 		if (config == null) {
 			throw new IllegalArgumentException("config must not be NULL");
@@ -304,6 +303,7 @@ public class AssemblyProject implements IAssemblyProject
 		if ( workspace == null ) {
 			throw new IllegalArgumentException("workspace must not be NULL");
 		}
+		this.isOpen = isOpen;
 		this.workspace = workspace;
 		this.projectConfiguration = config;
 		synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
@@ -608,4 +608,40 @@ outer:
 		return false;
 	}
 
+	@Override
+	public boolean isOpen() {
+		return isOpen;
+	}
+
+	@Override
+	public boolean isClosed() {
+		return !isOpen;
+	}
+
+	@Override
+	public void projectCreated(IAssemblyProject project) { /* sooo not interested */ }
+
+	@Override
+	public void projectClosed(IAssemblyProject project) {
+		if ( project == this ) {
+			this.isOpen = false;
+		}		
+	}
+
+	@Override
+	public void projectOpened(IAssemblyProject project) 
+	{
+		if ( project == this ) {
+			this.isOpen = true;
+		}
+	}
+
+	@Override
+	public void projectDeleted(IAssemblyProject project) { /* sooo not interested */ }
+
+	@Override
+	public void buildStarted(IAssemblyProject project) { /* sooo not interested */ }
+
+	@Override
+	public void buildFinished(IAssemblyProject project, boolean success) { /* sooo not interested */ }
 }

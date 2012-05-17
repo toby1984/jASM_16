@@ -38,9 +38,15 @@ public interface IWorkspace extends IResourceListener
     
     public IAssemblyProject getProjectByName(String name); // ok
     
+    public IAssemblyProject importProject(File baseDirectory) throws IOException,ProjectAlreadyExistsException;
+    
     public IAssemblyProject createNewProject(String name) throws IOException,ProjectAlreadyExistsException;
 
     public List<IAssemblyProject> getAllProjects(); // ok
+    
+    public void openProject(IAssemblyProject project);
+    
+    public void closeProject(IAssemblyProject project);
     
     public void deleteProject(IAssemblyProject project,boolean deletePhysically) throws IOException;
     
@@ -59,7 +65,7 @@ public interface IWorkspace extends IResourceListener
      */
     public void deleteFile(IAssemblyProject project,File fileToDelete) throws IOException;
     
-    public void saveMetaData(IAssemblyProject project) throws IOException;
+    public void saveProjectConfiguration(IAssemblyProject project) throws IOException;
     
     // workspace listeners
     public void addWorkspaceListener(IWorkspaceListener listener);
@@ -76,7 +82,7 @@ public interface IWorkspace extends IResourceListener
     public void close() throws IOException; // ok
     
     public void reloadWorkspace() throws IOException; // ok
-
+    
 	public void buildStarted(AssemblyProject assemblyProject);
 
 	public void buildFinished(AssemblyProject assemblyProject, boolean buildSuccessful);

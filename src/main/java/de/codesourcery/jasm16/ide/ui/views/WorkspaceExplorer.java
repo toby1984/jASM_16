@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -41,6 +42,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
@@ -82,51 +84,11 @@ public class WorkspaceExplorer extends AbstractView {
 	private JPanel panel = null;
 	private final JTree tree = new JTree();
 
-	private final IWorkspaceListener listener = new WorkspaceListener() {
-
-		@Override
-		public void resourceChanged(IAssemblyProject project , IResource resource) {
-			if ( treeModel != null ) {
-				treeModel.resourceChanged(project, resource);
-			}
-		}
-
-		@Override
-		public void projectCreated(IAssemblyProject project) {
-			if ( treeModel != null ) {
-				treeModel.projectCreated(project);
-			}			
-		}
-
-		@Override
-		public void projectDeleted(IAssemblyProject project) {
-			if ( treeModel != null ) {
-				treeModel.projectDeleted(project);
-			}			
-		}
-
-		@Override
-		public void resourceCreated(IAssemblyProject project, IResource resource) 
-		{
-			if ( treeModel != null ) {
-				treeModel.resourceCreated(project, resource);
-			}			
-		}
-
-		@Override
-		public void resourceDeleted(IAssemblyProject project, IResource resource) 
-		{
-			if ( treeModel != null ) {
-				treeModel.resourceDeleted(project,resource);
-			}			
-		}
-	};
-
 	public WorkspaceExplorer(EmulatorFactory emulatorFactory , IWorkspace workspace,ViewContainerManager perspectivesManager,IApplicationConfig appConfig) 
 	{
-	    if ( emulatorFactory == null ) {
-            throw new IllegalArgumentException("emulatorFactory must not be NULL.");
-        }
+		if ( emulatorFactory == null ) {
+			throw new IllegalArgumentException("emulatorFactory must not be NULL.");
+		}
 		if (workspace == null) {
 			throw new IllegalArgumentException("workspace must not be NULL");
 		}
@@ -147,7 +109,9 @@ public class WorkspaceExplorer extends AbstractView {
 	{
 		if ( panel != null ) {
 			panel = null;
-			workspace.removeWorkspaceListener( listener );
+			if ( treeModel != null ) {
+				workspace.removeWorkspaceListener( treeModel);
+			}
 		}
 	}
 
@@ -156,7 +120,7 @@ public class WorkspaceExplorer extends AbstractView {
 	{
 		if ( panel == null ) {
 			panel = createPanel();
-			workspace.addWorkspaceListener( listener );
+			workspace.addWorkspaceListener( treeModel );
 		}
 		return panel;
 	}
@@ -191,7 +155,7 @@ public class WorkspaceExplorer extends AbstractView {
 						deleteResource( selection );
 					}
 				} else if ( e.getKeyCode() == KeyEvent.VK_F5) {
-				    refreshWorkspace(null);
+					refreshWorkspace(null);
 				}
 			}
 		});
@@ -301,36 +265,36 @@ public class WorkspaceExplorer extends AbstractView {
 	protected void deleteResource(WorkspaceTreeNode selection) 
 	{
 		try {
-		if ( selection instanceof FileNode ) 
-		{
-			final File file = ((FileNode) selection).getValue();
-			final String title = "Delete "+file.getName()+" ? ";
-			final String message = "Do you really want to delete this "+( file.isFile() ? "file ?" : "directory ?" );
-			
-			final DialogResult outCome = UIUtils.showConfirmationDialog( panel , title , message );
-			if ( outCome != DialogResult.YES ) {
+			if ( selection instanceof FileNode ) 
+			{
+				final File file = ((FileNode) selection).getValue();
+				final String title = "Delete "+file.getName()+" ? ";
+				final String message = "Do you really want to delete this "+( file.isFile() ? "file ?" : "directory ?" );
+
+				final DialogResult outCome = UIUtils.showConfirmationDialog( panel , title , message );
+				if ( outCome != DialogResult.YES ) {
+					return;
+				}			
+
+				final IAssemblyProject project = getProject( selection );
+				workspace.deleteFile( project , file );
 				return;
-			}			
-			
-			final IAssemblyProject project = getProject( selection );
-			workspace.deleteFile( project , file );
-			return;
-		} 
-		
-		if ( selection instanceof ProjectNode ) 
-		{
-			final IAssemblyProject project = ((ProjectNode) selection).getValue();
-			final Boolean result = UIUtils.showDeleteProjectDialog( project );
-			if ( result == null ) { // user CANCEL
+			} 
+
+			if ( selection instanceof ProjectNode ) 
+			{
+				final IAssemblyProject project = ((ProjectNode) selection).getValue();
+				final Boolean result = UIUtils.showDeleteProjectDialog( project );
+				if ( result == null ) { // user CANCEL
+					return;
+				}
+				workspace.deleteProject( project , result );
 				return;
-			}
-			workspace.deleteProject( project , result );
-			return;
-		} 
+			} 
 		} catch(IOException e) {
 			LOG.error("deleteResource(): Failed to delete "+selection,e);
 		}
-		
+
 		throw new RuntimeException("Internal error,unhandled node type "+selection);
 	}
 
@@ -409,6 +373,25 @@ public class WorkspaceExplorer extends AbstractView {
 		final IAssemblyProject project = getProject( selectedNode );
 		if ( project != null ) 
 		{
+
+			if ( project.isOpen() ) {
+				addMenuEntry( popup , "Close project", new ActionListener() {
+
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						workspace.closeProject( project );
+					}
+				});	
+			} else {
+				addMenuEntry( popup , "Open project", new ActionListener() {
+
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						workspace.openProject( project );
+					}
+				});					
+			}
+
 			addMenuEntry( popup , "Build project", new ActionListener() {
 
 				@Override
@@ -420,27 +403,27 @@ public class WorkspaceExplorer extends AbstractView {
 					}
 				}
 			});		
-			
+
 			final IResource executable = project.getBuilder().getExecutable();
 			if ( executable != null ) 
 			{
-                addMenuEntry( popup , "Open in debugger", new ActionListener() {
-    
-                    @Override
-                    public void actionPerformed(ActionEvent e) 
-                    {
-                        try {
-                            openDebugPerspective( project , executable );
-                        } 
-                        catch (IOException e1) {
-                            LOG.error("Failed to open debug perspective for "+project+" , resource "+executable,e1);
-                        }
-                    }
-                }); 	
+				addMenuEntry( popup , "Open in debugger", new ActionListener() {
+
+					@Override
+					public void actionPerformed(ActionEvent e) 
+					{
+						try {
+							openDebugPerspective( project , executable );
+						} 
+						catch (IOException e1) {
+							LOG.error("Failed to open debug perspective for "+project+" , resource "+executable,e1);
+						}
+					}
+				}); 	
 			}
-			
+
 		}
-		
+
 		if ( canCreateFileIn( selectedNode ) ) {
 			addMenuEntry( popup , "New source file...", new ActionListener() {
 
@@ -455,7 +438,7 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 			});				
 		}
-		
+
 		addMenuEntry( popup , "New project...", new ActionListener() {
 
 			@Override
@@ -468,72 +451,93 @@ public class WorkspaceExplorer extends AbstractView {
 					UIUtils.showErrorDialog( panel ,
 							"Failed to create project",
 							"Project creation failed: "+e1.getMessage()
-					);
+							);
 				}				
 			}
 		});			
-		
+
 		if ( selectedNode != null ) {
 			addMenuEntry( popup , "Delete...", new ActionListener() {
-	
+
 				@Override
 				public void actionPerformed(ActionEvent e) 
 				{
 					deleteResource( selectedNode );
 				}
-	
+
 			});	
 		}
-		
-        addMenuEntry( popup , "Refresh", new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e) 
-            {
-                refreshWorkspace( project );
-            }
 
-        }); 		
+		addMenuEntry( popup , "Refresh", new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) 
+			{
+				refreshWorkspace( project );
+			}
+
+		}); 	
+
+		addMenuEntry( popup , "Import existing project...", new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) 
+			{
+				final JFileChooser fc = new JFileChooser( workspace.getBaseDirectory() );
+				fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				final int returnVal = fc.showOpenDialog(null);
+				if (returnVal == JFileChooser.APPROVE_OPTION) 
+				{
+					final File directory = fc.getSelectedFile();
+					try {
+						workspace.importProject( directory );
+					} catch (Exception e1) {
+						UIUtils.showErrorDialog( null , "Failed to import project","Error while importing project: "+e1.getMessage());
+					}
+				} 
+			}
+
+		});         
 		return popup;
 	}	
-	
+
 	protected void refreshWorkspace(IAssemblyProject project) {
-        try {
-            workspace.refreshProjects( project != null ? Collections.singletonList( project ) : workspace.getAllProjects() );
-        } catch (IOException e1) {
-            LOG.error("rescanWorkspace(): Failed ",e1);
-        }
+		try {
+			workspace.refreshProjects( project != null ? Collections.singletonList( project ) : workspace.getAllProjects() );
+		} catch (IOException e1) {
+			LOG.error("rescanWorkspace(): Failed ",e1);
+		}
 	}
-	
+
 	protected void createNewProject() throws IOException, ProjectAlreadyExistsException {
-		
+
 		final String projectName = UIUtils.showInputDialog( panel , "Create new project", "Project name" );
 		if ( projectName == null ) {
 			return;
 		}		
-		
+
 		workspace.createNewProject( projectName );
 	}
-	
+
 	protected void createNewSourceFile(WorkspaceTreeNode selection ) throws IOException 
 	{
 		File parentDir = ((FileNode) selection).getValue();
 		if ( parentDir.isFile() ) {
 			parentDir = parentDir.getParentFile();
 		}
-		
+
 		final String fileName = UIUtils.showInputDialog( panel , "Create source file", "File name" );
 		if ( fileName == null ) {
 			return;
 		}
-		
+
 		final File file = new File(parentDir , fileName );
 		Misc.writeFile( file , "" );
-		
+
 		final IAssemblyProject project = getProject( selection );
 		workspace.resourceCreated( project , new FileResource( file , ResourceType.SOURCE_CODE ) );
 	}
-	
+
 	protected boolean canCreateFileIn( WorkspaceTreeNode selection ) 
 	{
 		if ( selection instanceof ProjectNode ) {
@@ -543,7 +547,7 @@ public class WorkspaceExplorer extends AbstractView {
 		{
 			final File file = ((FileNode) selection).getValue();
 			final IAssemblyProject project = getProject( selection );
-			
+
 			if ( isInProjectSourceFolder( project , file ) ) 
 			{
 				return true;
@@ -551,9 +555,9 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		return false;
 	}
-	
+
 	private boolean isInProjectSourceFolder(IAssemblyProject project,File file) {
-		
+
 		for ( File srcFolder : project.getConfiguration().getSourceFolders() ) {
 			if ( file.getAbsolutePath().startsWith( srcFolder.getAbsolutePath() ) ) {
 				return true;
@@ -561,7 +565,7 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		return false;
 	}
-	
+
 	private void openDebugPerspective(IAssemblyProject project, IResource executable) throws IOException
 	{
 		if ( project == null ) {
@@ -570,28 +574,28 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( executable == null ) {
 			throw new IllegalArgumentException("executable must not be NULL.");
 		}
-		
+
 		// source level view depends on AST being available for  
 		// compilation units and we want the debugger to run
 		// the latest changes anyway... rebuild if necessary
 		boolean buildRequired = false;
 		for ( ICompilationUnit unit : project.getBuilder().getCompilationUnits() ) {
-		    if ( unit.getAST() == null ) {
-		        buildRequired = true;
-		        break;
-		    }
+			if ( unit.getAST() == null ) {
+				buildRequired = true;
+				break;
+			}
 		}
 
 		if ( buildRequired ) 
 		{
-            System.out.println("Building "+project.getName()+" before opening debug perspective");		    
-		    if ( ! project.getBuilder().build() ) 
-		    {
-		        System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
-		        return;
-		    }
+			System.out.println("Building "+project.getName()+" before opening debug perspective");		    
+			if ( ! project.getBuilder().build() ) 
+			{
+				System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
+				return;
+			}
 		}
-		
+
 		final List<? extends IViewContainer> perspectives = perspectivesManager.getPerspectives( DebuggingPerspective.ID );
 
 		for ( IViewContainer existing : perspectives ) {
@@ -604,7 +608,7 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 			}
 		}
-		
+
 		// perspective not visible yet, create it
 		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , workspace , applicationConfig );
 		p.openExecutable( project , executable );
@@ -833,7 +837,9 @@ public class WorkspaceExplorer extends AbstractView {
 			final ProjectNode n = new ProjectNode( p );
 			result.addChild( n );
 
-			addDirectory( p.getConfiguration().getBaseDirectory() , n ); 
+			if ( p.isOpen() ) {
+				addDirectory( p.getConfiguration().getBaseDirectory() , n );
+			}
 		}
 
 		private void addDirectory(File dir, WorkspaceTreeNode n) 
@@ -881,6 +887,42 @@ public class WorkspaceExplorer extends AbstractView {
 
 		@Override
 		public void buildFinished(IAssemblyProject project, boolean success) { /* no-op */ }
+
+		@Override
+		public void projectClosed(IAssemblyProject project) {
+
+			ProjectNode node = findProjectNode( project );
+			if ( node != null ) 
+			{
+				List<WorkspaceTreeNode> formerChildren = node.removeChildren();
+				final int [] indices = new int[ formerChildren.size() ];
+				for ( int i = 0 ; i < indices.length ; i++ ) {
+					indices[i]=i;
+				}
+				fireTreeNodesRemoved( this , node.getPathToRoot() , indices , 
+						formerChildren.toArray( new Object[ formerChildren.size() ] ) );
+			}
+		}
+
+		@Override
+		public void projectOpened(IAssemblyProject project) 
+		{
+			ProjectNode node = findProjectNode( project );
+			if ( node != null ) 
+			{
+				if ( node.getChildCount() != 0 ) {
+					return;
+				}
+				addDirectory( project.getConfiguration().getBaseDirectory() , node ); 
+
+				final int [] indices = new int[ node.getChildCount() ];
+				for ( int i = 0 ; i < indices.length ; i++ ) {
+					indices[i]=i;
+				}
+				final Object[] children = node.getChildren().toArray();
+				fireTreeNodesInserted( this , node.getPathToRoot() , indices , children );
+			}
+		}
 	}
 
 	private WorkspaceTreeModel createTreeModel() {
@@ -899,6 +941,16 @@ public class WorkspaceExplorer extends AbstractView {
 
 		public void removeChild(FileNode fn) {
 			children.remove( fn );
+		}
+
+		public List<WorkspaceTreeNode> getChildren() {
+			return children;
+		}
+
+		public List<WorkspaceTreeNode> removeChildren() {
+			List<WorkspaceTreeNode> copy = new ArrayList<WorkspaceTreeNode>( children );
+			children.clear();
+			return copy;
 		}
 
 		public Object[] getPathToRoot() 
@@ -1048,8 +1100,8 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 
 	}
-	
-	
+
+
 
 	@Override
 	public String getTitle() {

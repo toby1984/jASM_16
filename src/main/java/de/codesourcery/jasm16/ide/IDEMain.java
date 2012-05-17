@@ -73,6 +73,10 @@ public class IDEMain
     		return;
     	}
     	
+    	if ( new File( workspace.getBaseDirectory() , projectName ).exists() ) {
+    		return;
+    	}
+    	
     	final IAssemblyProject project = workspace.createNewProject( projectName );
     	
     	final List<File> sourceFolders = project.getConfiguration().getSourceFolders();

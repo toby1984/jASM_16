@@ -224,6 +224,14 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 dispose();
             }
         }
+        
+        public void projectClosed(IAssemblyProject closedProject) 
+        {
+            if ( closedProject.isSame( project ) )
+            {
+                dispose();
+            }
+        }        
 
         private void dispose() {
             if ( getViewContainer() != null ) {

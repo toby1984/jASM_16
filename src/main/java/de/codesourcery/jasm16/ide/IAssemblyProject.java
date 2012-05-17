@@ -23,7 +23,7 @@ import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
-public interface IAssemblyProject extends IResourceResolver, IResourceListener
+public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener
 {
     public String getName();
     
@@ -46,6 +46,10 @@ public interface IAssemblyProject extends IResourceResolver, IResourceListener
      * @return
      */
     public boolean isSame(IAssemblyProject other);
+    
+    public boolean isOpen();
+    
+    public boolean isClosed();
     
     public void rescanResources() throws IOException;
     
