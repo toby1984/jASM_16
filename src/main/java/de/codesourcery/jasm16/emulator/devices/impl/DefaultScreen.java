@@ -56,10 +56,13 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public final class DefaultScreen implements IDevice {
 
-    private static final int SCREEN_ROWS = 12;
-    private static final int SCREEN_COLUMNS = 32;
+    public static final int STANDARD_SCREEN_ROWS = 12;
+    public static final int STANDARD_SCREEN_COLUMNS = 32;
+    
+    private final int SCREEN_ROWS;
+    private final int SCREEN_COLUMNS;    
 
-    private static final int VIDEO_RAM_SIZE_IN_WORDS = SCREEN_ROWS*SCREEN_COLUMNS;	
+    private final int VIDEO_RAM_SIZE_IN_WORDS;
 
     private static final int GLYPH_WIDTH = 4;
     private static final int GLYPH_HEIGHT = 8;
@@ -70,11 +73,36 @@ public final class DefaultScreen implements IDevice {
     
     private static final int BORDER_WIDTH=10;
     
-    private static final int SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+20;
-    private static final int SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+10;
+    private final int SCREEN_WIDTH;
+    private final int SCREEN_HEIGHT;
 
     private static final Logger LOG = Logger.getLogger(DefaultScreen.class);
 
+    public DefaultScreen(boolean connectUponAddDevice) {
+    	this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice );
+    }
+    
+    public DefaultScreen(int screenColumns,int screenRows, boolean connectUponAddDevice) 
+    {
+    	if ( screenColumns < STANDARD_SCREEN_COLUMNS ) {
+    		throw new IllegalArgumentException("Illegal column count "+screenColumns+", must be at least "+
+    	STANDARD_SCREEN_COLUMNS);
+    	}
+    	if ( screenRows < STANDARD_SCREEN_ROWS ) {
+    		throw new IllegalArgumentException("Illegal row count "+screenRows+", must be at least "+
+    	STANDARD_SCREEN_ROWS);
+    	}    
+    	
+    	this.SCREEN_COLUMNS = screenColumns;
+    	this.SCREEN_ROWS = screenRows;
+    	this.VIDEO_RAM_SIZE_IN_WORDS = SCREEN_ROWS*SCREEN_COLUMNS;
+        this.SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+20;
+        this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+10;
+        
+        this.connectUponAddDevice = connectUponAddDevice;
+        setupDefaultPaletteRAM();
+    }
+    
     private final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
             "jASM16 default screen" , 
             0x7349f615,
@@ -82,7 +110,7 @@ public final class DefaultScreen implements IDevice {
             0x1c6c8b36 );
 
     private BufferedImage defaultFontImage;
-
+    
     private synchronized BufferedImage getDefaultFontImage(Graphics2D target) throws IOException 
     {
         if ( defaultFontImage == null ) 
@@ -220,11 +248,6 @@ public final class DefaultScreen implements IDevice {
             super.write( wordAddress , value );
             vramMemoryUpdated( wordAddress , value );
         }		
-    }
-
-    public DefaultScreen(boolean connectUponAddDevice) {
-        this.connectUponAddDevice = connectUponAddDevice;
-        setupDefaultPaletteRAM();
     }
 
     protected boolean isUseCustomPaletteRAM() {

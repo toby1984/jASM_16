@@ -26,10 +26,12 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
@@ -55,7 +57,7 @@ public class DefaultKeyboard implements IDevice {
 
 	private volatile IEmulator emulator;
 	private final boolean useLegacyMemoryBuffer; // use keyboard buffer at 0x9000
-	private volatile IMemoryRegion legacyMemoryBuffer;
+	private volatile LegacyKeyboardBuffer legacyKeyboardBuffer;
 	private volatile Integer interruptMessage = null; 
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
@@ -64,43 +66,59 @@ public class DefaultKeyboard implements IDevice {
 
 	protected final class LegacyKeyboardBuffer extends MemoryRegion {
 
-        public LegacyKeyboardBuffer(AddressRange range)
+        public LegacyKeyboardBuffer(Address range)
         {
-            super("keyboard buffer (legacy)", range);
+            super("keyboard buffer (legacy)", new AddressRange( range , Size.words( 1 ) ) );
         }
 	
-        @Override
-        public void write(Address address, int value)
+        public void writeKeyEvent(int keyCode) 
         {
-            super.write(address, value);
-            
+        	final IMemory mem = emulator.getMemory();
+        	final Address address = getStartAddress();
+        	
+        	if ( mem.read( address ) == 0 ) {
+        		mem.write(  address , keyCode );
+        	}
         }
         
-        @Override
-        public void write(int wordAddress, int value)
-        {
-            super.write(wordAddress, value);
+        private Address getStartAddress() {
+        	return getAddressRange().getStartAddress();        	
+        }
+        
+        public void reset() {
+        	emulator.getMemory().write( getStartAddress() , 0 );
         }
 	}
-	
 	
 	private final KeyListener keyListener = new KeyListener() {
 
 		@Override
 		public void keyTyped(KeyEvent e) 
 		{
+			final int c = e.getKeyChar();
+			if ( c >= 0x20 && c <= 0x7f ) {
+				keyTyped( c , true );
+			}
+		}
+		
+		private void keyTyped(int mappedKeyCode,boolean sendInterrupt) 
+		{
+			if ( useLegacyMemoryBuffer && legacyKeyboardBuffer != null ) {
+				legacyKeyboardBuffer.writeKeyEvent( mappedKeyCode );
+			}
+			
 			if ( ! receivedAtLeastOneInterrupt ) {
 				return;
 			}
+			
 			synchronized( BUFFER_LOCK ) 
 			{
-				final int c = e.getKeyChar();
-				if ( c >= 0x20 && c <= 0x7f ) {
-					keysTyped.add( c ); 
-				}
+				keysTyped.add( mappedKeyCode ); 
 			}	
 
-			sendInterrupt();
+			if ( sendInterrupt ) {
+				sendInterrupt();
+			}
 		}
 		
 		private int mapKeyCode(KeyEvent e) {
@@ -167,19 +185,22 @@ public class DefaultKeyboard implements IDevice {
 		@Override
 		public void keyReleased(KeyEvent e) 
 		{
+			final int mapped = mapKeyCode(e);
+			
+			if ( mapped == -1 ) {
+				return;
+			}
+			
+			if ( isSpecialKey( mapped ) ) {
+				keyTyped( mapped , false );				
+			}
+			
 			if ( ! receivedAtLeastOneInterrupt ) {
 				return;
 			}
 			
 			synchronized(BUFFER_LOCK ) {
-				final int mapped = mapKeyCode(e);
-				if ( mapped != -1 ) {				
-					keysPressed.remove( Integer.valueOf( mapped ) );
-					if ( isSpecialKey( mapped ) ) 
-					{
-						keysTyped.add( mapped );
-					}
-				}
+				keysPressed.remove( Integer.valueOf( mapped ) );
 			}
 			sendInterrupt();
 		}
@@ -220,6 +241,9 @@ public class DefaultKeyboard implements IDevice {
 	        keysPressed.clear();
 	        interruptMessage = null;
 	        receivedAtLeastOneInterrupt = false;
+	        if ( legacyKeyboardBuffer != null ) {
+	        	legacyKeyboardBuffer.reset();
+	        }
         }
 	}
 	
@@ -286,6 +310,10 @@ public class DefaultKeyboard implements IDevice {
 			throw new IllegalStateException("Device "+this+" is already added to emulator "+this.emulator);
 		}
 		this.emulator = emulator;
+		if ( useLegacyMemoryBuffer ) {
+			legacyKeyboardBuffer = new LegacyKeyboardBuffer(Address.wordAddress( 0x9000 ) );
+			emulator.mapRegion( legacyKeyboardBuffer );
+		}
 	}
 
 	@Override
@@ -293,6 +321,9 @@ public class DefaultKeyboard implements IDevice {
 		if ( inputComponent != null ) {
 			inputComponent.removeKeyListener( keyListener );
 			this.inputComponent = null;
+		}
+		if ( legacyKeyboardBuffer != null ) {
+			emulator.unmapRegion( legacyKeyboardBuffer );
 		}
 		this.emulator = null;
 	}

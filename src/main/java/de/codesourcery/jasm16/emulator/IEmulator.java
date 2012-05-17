@@ -20,8 +20,8 @@ import java.util.List;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
 
 /**
@@ -73,7 +73,7 @@ public interface IEmulator
     
     public List<IDevice> getDevices();
     
-    public IReadOnlyMemory getMemory();
+    public IMemory getMemory();
     
     public void loadMemory(Address startingOffset, byte[] data);
     

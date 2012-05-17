@@ -25,6 +25,7 @@ import javax.swing.JPanel;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
+import de.codesourcery.jasm16.ide.EmulatorFactory;
 
 public class ScreenView extends AbstractView
 {
@@ -34,14 +35,20 @@ public class ScreenView extends AbstractView
 
     private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
-    private final DefaultKeyboard keyboard = new DefaultKeyboard(false); 
+    private final DefaultKeyboard keyboard;
+    private final EmulatorFactory emulatorFactory;
     
-    public ScreenView(IEmulator emulator) 
+    public ScreenView(EmulatorFactory emulatorFactory , IEmulator emulator) 
     {
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
+        if ( emulatorFactory == null ) {
+			throw new IllegalArgumentException("emulatorFactory must not be null");
+		}
         this.emulator = emulator;
+        this.emulatorFactory = emulatorFactory;
+        this.keyboard = emulatorFactory.createKeyboardDevice();
 		this.emulator.addDevice( keyboard );
     }
     
@@ -81,7 +88,7 @@ public class ScreenView extends AbstractView
     	if ( panel == null ) 
     	{
     		panel=createPanel();
-    		screen = new DefaultScreen(true);
+    		screen = emulatorFactory.createScreenDevice();
     		this.emulator.addDevice( screen );
     		screen.attach( panel );
     		keyboard.setInputComponent( panel );

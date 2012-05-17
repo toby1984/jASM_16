@@ -22,7 +22,7 @@ import static org.easymock.classextension.EasyMock.verify;
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.exceptions.ParseException;
 
 public class BreakpointTest extends TestCase {
@@ -78,7 +78,7 @@ public class BreakpointTest extends TestCase {
 		expect( cpu.getRegisterValue( Register.A ) ).andReturn( 42 );
 		replay( cpu );
 		
-		final IReadOnlyMemory memory = createMock(IReadOnlyMemory.class);
+		final IMemory memory = createMock(IMemory.class);
 		
 		expect( memory.read( 42 ) ).andReturn( 1 );
 		replay( memory );
@@ -99,7 +99,7 @@ public class BreakpointTest extends TestCase {
 		
 		final Breakpoint bp = new Breakpoint( Address.wordAddress( 1 ) , "1+[0x4000]" );
 		
-		final IReadOnlyMemory memory = createMock(IReadOnlyMemory.class);
+		final IMemory memory = createMock(IMemory.class);
 		
 		expect( memory.read( 0x4000 ) ).andReturn( 42 );
 		replay( memory );
@@ -124,7 +124,7 @@ public class BreakpointTest extends TestCase {
 		expect( cpu.getRegisterValue( Register.X ) ).andReturn( 43 );
 		replay( cpu );
 		
-		final IReadOnlyMemory memory = createMock(IReadOnlyMemory.class);
+		final IMemory memory = createMock(IMemory.class);
 		
 		expect( memory.read( 42 ) ).andReturn( 1 );
 		expect( memory.read( 0x4000 ) ).andReturn( 49 );

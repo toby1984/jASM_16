@@ -48,6 +48,7 @@ public class DebuggingPerspective extends Perspective
 
     public static final String ID = "debugger";
 
+    private final EmulatorFactory emulatorFactory;
     private final IWorkspace workspace;
     private final IEmulator emulator;
 
@@ -139,6 +140,10 @@ public class DebuggingPerspective extends Perspective
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }
+        if ( emulatorFactory == null ) {
+			throw new IllegalArgumentException("emulatorFactory must not be null");
+		}
+        this.emulatorFactory = emulatorFactory;
         this.workspace = workspace;
         this.workspace.addWorkspaceListener( workspaceListener );
         this.emulator = emulatorFactory.createEmulator();
@@ -218,7 +223,7 @@ public class DebuggingPerspective extends Perspective
 
         // setup screen view
         if ( getScreenView() == null ) {
-            final ScreenView view = new ScreenView( emulator );
+            final ScreenView view = new ScreenView( emulatorFactory , emulator );
             addView( view );
             view.refreshDisplay();
         }     

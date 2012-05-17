@@ -16,7 +16,10 @@
 package de.codesourcery.jasm16.ide;
 
 import de.codesourcery.jasm16.emulator.Emulator;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
 
 public class EmulatorFactory
 {
@@ -24,5 +27,13 @@ public class EmulatorFactory
         final Emulator result = new Emulator();
         result.addDevice( new DefaultClock() );
         return result;
+    }
+    
+    public DefaultKeyboard createKeyboardDevice() {
+    	return new DefaultKeyboard( true );
+    }
+    
+    public DefaultScreen createScreenDevice() {
+    	return new DefaultScreen( 32 , 16 , true );
     }
 }

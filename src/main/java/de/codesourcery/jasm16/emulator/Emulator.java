@@ -37,8 +37,8 @@ import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
@@ -2204,7 +2204,7 @@ public class Emulator implements IEmulator {
 	}
 
 	@Override
-	public IReadOnlyMemory getMemory()
+	public IMemory getMemory()
 	{
 		return memory;
 	}
