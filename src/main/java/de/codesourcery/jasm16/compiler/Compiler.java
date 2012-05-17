@@ -87,6 +87,7 @@ public class Compiler implements ICompiler {
     	}
     	return NO_VERSION_NUMBER;    	
     }
+    
     public Compiler() 
     {
     	compilerPhases.addAll( setupCompilerPhases() );

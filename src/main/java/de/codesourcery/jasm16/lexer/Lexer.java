@@ -308,7 +308,7 @@ public final class Lexer implements ILexer {
             return ;
         }		
         
-        if ( ".org".equalsIgnoreCase( buffer )  || ".origin".equalsIgnoreCase( buffer ) ) {
+        if ( "org".equalsIgnoreCase( buffer )  || ".org".equalsIgnoreCase( buffer )  || ".origin".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.ORIGIN , buffer , startIndex ) );
             return ;
         }

@@ -32,6 +32,9 @@ import javax.swing.JTabbedPane;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -40,8 +43,9 @@ import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
+import de.codesourcery.jasm16.ide.ui.views.SourceCodeView;
 
-public class EditorContainer extends AbstractView implements IViewContainer {
+public class EditorContainer extends AbstractView implements IViewContainer , IResourceResolver {
 
 	public static final String VIEW_ID = "editor-container";
 	private JPanel panel;
@@ -353,7 +357,41 @@ public class EditorContainer extends AbstractView implements IViewContainer {
         
         editor = EditorFactory.createEditor( workspace , project , resource );
         addView( editor );
+        // open resource AFTER IView has been added to this container,
+        // view may rely on methods of this container
         editor.openResource( project , resource );
         return editor;
     }
+
+    private List<SourceCodeView> getSourceCodeViews() {
+    	List<SourceCodeView> result = new ArrayList<SourceCodeView>();
+    	for ( ViewWithPanel view : this.views ) {
+    		if ( view.view instanceof SourceCodeView) {
+    			result.add( (SourceCodeView) view.view );
+    		}
+    	}
+    	return result;
+    }
+    
+	@Override
+	public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
+	{
+		for ( SourceCodeView v : getSourceCodeViews() ) {
+			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
+				return v.getSourceFromMemory();
+			}
+		}
+		throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);
+	}
+
+	@Override
+	public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
+	{
+		for ( SourceCodeView v : getSourceCodeViews() ) {
+			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
+				return v.getSourceFromMemory();
+			}
+		}		
+		throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);		
+	}
 }

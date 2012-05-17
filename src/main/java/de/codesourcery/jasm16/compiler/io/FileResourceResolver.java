@@ -36,7 +36,7 @@ public class FileResourceResolver implements IResourceResolver
         if ( ! baseDir.exists() ) {
             throw new IllegalArgumentException("Directory '"+baseDir.getAbsolutePath()+"' does not exist");
         }
-        if ( baseDir.isDirectory() ) {
+        if ( ! baseDir.isDirectory() ) {
             throw new IllegalArgumentException("'"+baseDir.getAbsolutePath()+"' is no directory?");
         }        
         this.baseDir = baseDir;
@@ -71,8 +71,10 @@ public class FileResourceResolver implements IResourceResolver
             return resolve( identifier, resourceType );
         }
         final File parentFile;
-        if ( baseDir == null ) {
-            parentFile= ((FileResource) parent).getAbsoluteFile().getParentFile();
+        if ( baseDir == null ) 
+        {
+        	final FileResource fr = (FileResource) parent;
+            parentFile= fr.getAbsoluteFile().getParentFile();
         } else {
             parentFile = baseDir;
         }

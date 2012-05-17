@@ -17,6 +17,8 @@ package de.codesourcery.jasm16.ast;
 
 import java.io.IOException;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
@@ -35,6 +37,9 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class IncludeSourceFileNode extends ASTNode {
 
+	private static final Logger LOG = Logger
+			.getLogger(IncludeSourceFileNode.class);
+	
 	private String resourceIdentifier; 
 	private IResource resource;
 	
@@ -91,6 +96,7 @@ public class IncludeSourceFileNode extends ASTNode {
 			} 
 			catch (IOException e) 
 			{
+				LOG.error("parseInternal(): I/O error while including '"+path+"' : ",e);
 				context.getCompilationUnit().addMarker(
 						new CompilationError("I/O error while including '"+path+"' : "+e.getMessage(), 
 								context.getCompilationUnit() , region )

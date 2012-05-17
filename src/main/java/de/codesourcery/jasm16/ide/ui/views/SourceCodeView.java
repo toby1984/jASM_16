@@ -94,8 +94,11 @@ import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.AbstractResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
+import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
@@ -673,54 +676,16 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         if ( ! sourceFile.hasType( ResourceType.SOURCE_CODE ) ) {
             throw new IllegalArgumentException("Not a source file: "+sourceFile);
         }
-        this.project = project;
-        this.sourceFileOnDisk = sourceFile;
-
+        
+        // read source first so we don't discard internal state
+        // and end up with an IOException later on...
         final String source = Misc.readSource( sourceFile );
+        
+        this.project = project;
+        this.sourceFileOnDisk = sourceFile;        
         this.initialHashCode = Misc.calcHash( source );
-
-        sourceInMemory = new AbstractResource(ResourceType.SOURCE_CODE) {
-
-            @Override
-            public String readText(ITextRegion range) throws IOException
-            {
-                return range.apply( getTextFromTextPane() );
-            }
-
-            @Override
-            public String getIdentifier()
-            {
-                return sourceFile.getIdentifier();
-            }
-
-            @Override
-            public long getAvailableBytes() throws IOException
-            {
-                return editorPane.getDocument().getLength();
-            }
-
-            @Override
-            public OutputStream createOutputStream(boolean append) throws IOException
-            {
-                throw new UnsupportedOperationException("Cannot save to "+this);
-            }
-
-            @Override
-            public InputStream createInputStream() throws IOException
-            {
-                return new ByteArrayInputStream( getTextFromTextPane().getBytes() );
-            }
-
-            @Override
-            public boolean isSame(IResource other)
-            {
-                if ( other == this ) {
-                    return true;
-                }
-                return false;
-            }
-        };
-
+        this.sourceInMemory = new InMemorySourceResource( sourceFileOnDisk , editorPane );
+        
         disableDocumentListener();
 
         try 
@@ -749,12 +714,72 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             clearCompilationErrors();
 
             onSourceCodeValidation();
+            
+            final IResourceResolver delegatingResolver = new IResourceResolver() {
 
+            	private IResourceResolver sourceEditorResolver = (EditorContainer) getViewContainer();
+            	
+            	private IResourceResolver getChildResourceResolver(IResource parent) 
+            	{
+            		IResource r = parent == null ? getCurrentResource() : parent;
+            		if ( ! ( r instanceof FileResource ) ) 
+            		{
+            			if ( r instanceof InMemorySourceResource) {
+            				r = (FileResource) ((InMemorySourceResource) r).getResourceOnDisk();
+            			} 
+            		}
+            		if ( ! ( r instanceof FileResource ) ) {
+           				throw new RuntimeException("Internal error, not a file-resource: "+getCurrentResource());
+            		}            		
+            		final FileResource fr = (FileResource) r;
+            		return new FileResourceResolver( fr.getAbsoluteFile().getParentFile() );
+            	}
+            	
+				@Override
+				public IResource resolve(String identifier,ResourceType resourceType) throws ResourceNotFoundException 
+				{
+					try {
+						return sourceEditorResolver.resolve( identifier , resourceType );
+					} 
+					catch(ResourceNotFoundException e) 
+					{
+					}
+					return getChildResourceResolver(null).resolve( identifier , resourceType );
+				}
+
+				@Override
+				public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType)
+						throws ResourceNotFoundException 
+				{
+					try {
+						return sourceEditorResolver.resolveRelative( identifier , parent , resourceType );
+					} 
+					catch(ResourceNotFoundException e) 
+					{
+					}
+					
+					final IResource realParent;
+					if ( parent instanceof InMemorySourceResource ) 
+					{
+						realParent = ((InMemorySourceResource ) parent).getResourceOnDisk();
+					} else {
+						realParent = parent;
+					}
+					return getChildResourceResolver( parent ).resolveRelative( identifier , realParent , resourceType );					
+				}
+			};
+            
             try {
-                compilationUnit = project.getBuilder().parse( sourceInMemory , new CompilationListener() );
-            } catch(Exception e) {
+                compilationUnit = project.getBuilder().parse( 
+                		sourceInMemory ,
+                		delegatingResolver,                		
+                		new CompilationListener() 
+                );
+            } 
+            catch(Exception e) {
                 LOG.error("validateSourceCode(): ",e);
-            } finally {
+            } 
+            finally {
                 doHighlighting( compilationUnit , true );                
             }
 

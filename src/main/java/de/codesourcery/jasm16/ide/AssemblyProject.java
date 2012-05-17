@@ -34,6 +34,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
+import de.codesourcery.jasm16.compiler.Compiler;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -45,6 +46,7 @@ import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -73,9 +75,10 @@ public class AssemblyProject implements IAssemblyProject
 	private final IProjectBuilder builder = new IProjectBuilder() 
 	{
 		@Override
-		public ICompilationUnit parse(IResource source, ICompilationListener listener) throws IOException 
+		public ICompilationUnit parse(IResource source, IResourceResolver resolver , ICompilationListener listener) throws IOException 
 		{
 			final ICompiler compiler = createCompiler();
+			compiler.setResourceResolver( resolver );
 			compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
 
 			final List<ICompilationUnit> compUnits = getCompilationUnits();
@@ -103,7 +106,7 @@ public class AssemblyProject implements IAssemblyProject
 		}
 
 		protected ICompiler createCompiler() {
-			final ICompiler compiler = new de.codesourcery.jasm16.compiler.Compiler();
+			final ICompiler compiler = new Compiler();
 
 			// set compiler options
 			compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
