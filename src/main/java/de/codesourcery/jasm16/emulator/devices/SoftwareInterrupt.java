@@ -18,7 +18,7 @@ package de.codesourcery.jasm16.emulator.devices;
 /**
  * An interrupt triggered by software.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class SoftwareInterrupt implements IInterrupt {
 

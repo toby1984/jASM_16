@@ -168,6 +168,8 @@ public class StatementNode extends ASTNode
 			case EQUATION:
 				addChild( new EquationNode().parseInternal( context ) , context );
 				break;
+			case INITIALIZED_MEMORY_PACK:
+				// $//$FALL-THROUGH$
 			case INITIALIZED_MEMORY_BYTE: 
 				// $FALL-THROUGH$
 			case INITIALIZED_MEMORY_WORD: 

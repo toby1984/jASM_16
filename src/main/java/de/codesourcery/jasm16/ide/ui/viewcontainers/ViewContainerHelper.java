@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
  * Helper class that contains various utility methods for
  * implementing view containers.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class ViewContainerHelper 
 {

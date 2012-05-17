@@ -47,7 +47,7 @@ import de.codesourcery.jasm16.utils.Misc;
 /**
  * DCPU-16 emulator.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class Emulator implements IEmulator {
 

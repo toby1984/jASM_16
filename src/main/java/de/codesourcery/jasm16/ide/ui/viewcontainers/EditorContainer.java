@@ -40,7 +40,6 @@ import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
-import de.codesourcery.jasm16.ide.ui.views.SourceCodeView;
 
 public class EditorContainer extends AbstractView implements IViewContainer {
 

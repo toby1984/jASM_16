@@ -16,7 +16,6 @@
 package de.codesourcery.jasm16.ide;
 
 import de.codesourcery.jasm16.emulator.Emulator;
-import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;

@@ -32,14 +32,13 @@ import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Default keyboard device.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class DefaultKeyboard implements IDevice {
 

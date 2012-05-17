@@ -293,6 +293,11 @@ public final class Lexer implements ILexer {
             return ;
         }
         
+        if ( "pack".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.INITIALIZED_MEMORY_PACK , buffer , startIndex ) );
+            return ;        	
+        }
+        
         if ( ".word".equalsIgnoreCase( buffer ) || "dat".equalsIgnoreCase( buffer ) || ".dat".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.INITIALIZED_MEMORY_WORD , buffer , startIndex ) );
             return ;

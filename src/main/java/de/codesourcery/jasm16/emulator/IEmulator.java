@@ -27,7 +27,7 @@ import de.codesourcery.jasm16.emulator.memory.MainMemory;
 /**
  * DCPU-16 emulator abstraction.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public interface IEmulator
 {

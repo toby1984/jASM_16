@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * An (immutable) address range made up of starting address and size.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public final class AddressRange
 {

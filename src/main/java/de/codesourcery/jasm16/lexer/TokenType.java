@@ -43,6 +43,7 @@ public enum TokenType
 	PICK, // 'pick' (shorthand for [SP+offset] )
 	OPERATOR,
 	// ============ preprocessor-style stuff ======
+    INITIALIZED_MEMORY_PACK, // pack
     INITIALIZED_MEMORY_WORD, // .dat
     INITIALIZED_MEMORY_BYTE, // .byte
     UNINITIALIZED_MEMORY, // .bss   	

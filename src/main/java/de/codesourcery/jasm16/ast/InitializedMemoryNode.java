@@ -40,7 +40,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	public enum AllowedSize 
 	{
 		BYTE {
-			public boolean supportsCharacterLiterals() {
+			public boolean use16BitCharacterLiterals() {
 				return false;
 			}
 			public int getMaxSupportedValue() {
@@ -48,9 +48,13 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 			}            
 		},
 		WORD,
-		BYTE_OR_WORD;
+		PACK {
+			public boolean use16BitCharacterLiterals() {
+				return false;
+			}			
+		};
 
-		public boolean supportsCharacterLiterals() {
+		public boolean use16BitCharacterLiterals() {
 			return true;
 		}
 
@@ -74,7 +78,12 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		IToken tok = context.peek();
 
 		final TokenType acceptedType;
-		if ( tok.hasType( TokenType.INITIALIZED_MEMORY_BYTE ) ) 
+		if ( tok.hasType( TokenType.INITIALIZED_MEMORY_PACK ) ) 
+		{
+			acceptedType = tok.getType(); 
+			allowedSize = AllowedSize.PACK;
+		} 
+		else if ( tok.hasType( TokenType.INITIALIZED_MEMORY_BYTE ) ) 
 		{
 			acceptedType = tok.getType(); 
 			allowedSize = AllowedSize.BYTE;
@@ -137,9 +146,6 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 					} 
 					else if ( token.hasType( TokenType.STRING_DELIMITER ) ) 
 					{
-						if ( ! allowedSize.supportsCharacterLiterals() ) {
-							throw new ParseException("Characters are 16 bit each and thus not allowed here", token );
-						}
 						addChild( new CharacterLiteralNode().parse( context ) , context );
 					} else {
 						throw new ParseException("Expected a number or character literal, got "+token.getType(),token);
@@ -211,9 +217,20 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 			if ( node instanceof CharacterLiteralNode ) 
 			{
 				final List<Integer> bytes = ((CharacterLiteralNode) node).getBytes();
-				for ( int value : bytes ) 
-				{
-					data.add( value );
+				int index ;
+				if ( allowedSize.use16BitCharacterLiterals() ) {
+					index = 0;
+				} else {
+					index = 1;
+				}
+				
+				for ( ; index < bytes.size() ; ) {
+					data.add( bytes.get(index ) );
+					if ( allowedSize.use16BitCharacterLiterals() ) {
+						index++;
+					} else {
+						index += 2; // skip over color information byte
+					}
 				}
 			} 
 			else if ( node instanceof TermNode) 
@@ -231,13 +248,16 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 								unit,termNode ) 
 					);  
 					data.add( 0xff );
-					data.add(  0xff );        				
+					if ( allowedSize.getMaxSupportedValue() > 255 ) {
+						data.add(  0xff );        				
+					}
 				}
 				else 
 				{
 					final int value = lValue.intValue();
 					final boolean fromAddress = ( node instanceof SymbolReferenceNode);
-					if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ) 
+					if ( ( value > 255 || fromAddress ) || allowedSize == AllowedSize.WORD ||
+							allowedSize == AllowedSize.PACK ) 
 					{
 						data.add( (value & 0xff00) >> 8 );
 						data.add(  value & 0x00ff );

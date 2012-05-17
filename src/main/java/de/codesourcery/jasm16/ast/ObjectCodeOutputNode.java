@@ -26,7 +26,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 /**
  * Abstract base-class for AST nodes that generate object code.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public abstract class ObjectCodeOutputNode extends ASTNode implements ISymbolAware
 {

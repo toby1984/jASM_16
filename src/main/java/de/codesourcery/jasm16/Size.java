@@ -20,7 +20,7 @@ package de.codesourcery.jasm16;
  * 
  * <p>This class provides an abstraction to avoid conversion errors when converting between sizes in bytes and words.</p>
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public abstract class Size implements Comparable<Size>
 {

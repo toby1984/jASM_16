@@ -18,7 +18,7 @@ package de.codesourcery.jasm16.compiler;
 /**
  * Describes the severity on an error / {@link IMarker}.
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  * @see IMarker#ATTR_SEVERITY
  */
 public enum Severity

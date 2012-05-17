@@ -24,7 +24,7 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
  * {@link IObjectCodeWriterFactory} that creates writers which silently discard
  * any data written to them.  
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class NullObjectCodeWriterFactory extends AbstractObjectCodeWriterFactory
 {

@@ -24,7 +24,6 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.EmulationListener;
-import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.EmulatorFactory;
