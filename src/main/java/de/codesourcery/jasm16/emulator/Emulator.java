@@ -29,6 +29,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
@@ -304,7 +305,7 @@ public class Emulator implements IEmulator {
 	// ============ BreakPoints =======
 
 	// @GuardedBy( breakpoints )
-	private final Map<Address,Breakpoint> breakpoints = new HashMap<Address,Breakpoint>(); 
+	private final Map<Address,List<Breakpoint>> breakpoints = new HashMap<Address,List<Breakpoint>>(); 
 
 	// ============ Memory ============
 
@@ -570,7 +571,22 @@ public class Emulator implements IEmulator {
 			{
 				listener.afterContinuousExecution( emulator );
 			}
-		});         
+		});  
+		
+		// remove all internal breakpoints
+		final List<Breakpoint> internalBPs = new ArrayList<Breakpoint>();
+		synchronized( breakpoints ) {
+			for ( List<Breakpoint> bps : breakpoints.values() ) {
+				for ( Breakpoint bp : bps ) {
+					if ( bp.isOneShotBreakpoint() ) {
+						internalBPs.add( bp );
+					}
+				}
+			}
+		}
+		for ( Breakpoint bp : internalBPs ) {
+			deleteBreakpoint( bp );
+		}
 	}
 
 	/* (non-Javadoc)
@@ -947,24 +963,66 @@ public class Emulator implements IEmulator {
 		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable , executedCommandDuration );
 
 		// check whether we reached a breakpoint
-		final Breakpoint breakpoint;
+		maybeHandleBreakpoint();
+	}
+
+	private void maybeHandleBreakpoint() 
+	{
+		/*
+		 * We can have at most 2 breakpoints at any address,
+		 * one regular (user-defined) breakpoint and
+		 * one internal breakpoint used by stepReturn() 
+		 */
+		Breakpoint regularBP = null;
+		Breakpoint oneShotBP = null;
+
 		synchronized( breakpoints ) 
 		{
-			breakpoint = breakpoints.get( pc ); 
-		}
-		
-		if ( breakpoint != null && breakpoint.matches( this ) ) 
-		{
-		    stop(false);
+			final List<Breakpoint> candidates = breakpoints.get( pc ); 
 
-			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+			if ( candidates == null || candidates.isEmpty() ) 
+			{
+				return;
+			}		
 
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
+			for ( Breakpoint bp : candidates ) 
+			{
+				if ( bp.matches( this ) ) 
 				{
-					listener.onBreakpoint( emulator , breakpoint );
+					if ( bp.isOneShotBreakpoint() ) {
+						if ( oneShotBP == null ) {
+							oneShotBP = bp;
+						} else {
+							throw new RuntimeException("Internal error, more than one internal breakpoint at "+bp.getAddress());
+						}
+					} else {
+						if ( regularBP == null ) {
+							regularBP = bp;
+						} else {
+							throw new RuntimeException("Internal error, more than one regular breakpoint at "+bp.getAddress());
+						}
+					}
 				}
-			});             
+			}
+		}
+
+		if ( regularBP != null || oneShotBP != null ) 
+		{
+			// stop() will also remove ANY one-shot breakpoints from the list
+			stop(false);
+
+			if ( regularBP != null ) // only notify client code about the regular BP, internal BP is invisible to the user
+			{
+				final Breakpoint finalRegularBP = regularBP; // Closures can only access stuff declared final...
+				listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+					@Override
+					public void invoke(IEmulator emulator, IEmulationListener listener)
+					{
+						listener.onBreakpoint( emulator , finalRegularBP );
+					}
+				});         
+			} 
 		}
 	}
 
@@ -977,17 +1035,21 @@ public class Emulator implements IEmulator {
 	@Override
 	public void skipCurrentInstruction() 
 	{
-		final int instructionWord = memory.read( pc );
+		final int sizeInWords = calculateInstructionSizeInWords( pc );
+		pc = pc.plus( Size.words( sizeInWords ) , true );
+	}
+	
+	private int calculateInstructionSizeInWords(Address address) {
 
-		pc = pc.incrementByOne(true);
-
+		final int instructionWord = memory.read( address );
+		
 		final int opCode = (instructionWord & 0x1f);
-
-		final int operandsSizeInWords;
+		
+		int instructionSizeInWords=1; // +1 word for instruction itself
 		switch( opCode ) 
 		{
 		case 0x00: // skip special opcode
-			operandsSizeInWords= getOperandsSizeInWordsForSpecialInstruction( instructionWord );
+			instructionSizeInWords += getOperandsSizeInWordsForSpecialInstruction( instructionWord );
 			break;
 		case 0x01: // SET
 		case 0x02: // ADD
@@ -1012,29 +1074,29 @@ public class Emulator implements IEmulator {
 		case 0x15: // IFA
 		case 0x16: // IFL
 		case 0x17: // IFU
-			operandsSizeInWords= getOperandsSizeInWordsForBasicInstruction(instructionWord);
+			instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction(instructionWord);
 			break;
 		case 0x18: // UNKNOWN
 		case 0x19: // UNKNOWN;
-			operandsSizeInWords = getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+			instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 			break;
 		case 0x1a: // ADX
 		case 0x1b: // SBX
-			operandsSizeInWords= getOperandsSizeInWordsForBasicInstruction(instructionWord);
+			instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction(instructionWord);
 			break;                
 		case 0x1c: // UNKNOWN
 		case 0x1d: // UNKNOWN
-			operandsSizeInWords =getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+			instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 			break;
 		case 0x1e: // STI
 		case 0x1f: // STD
-			operandsSizeInWords = getOperandsSizeInWordsForBasicInstruction( instructionWord );
+			instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction( instructionWord );
 			break;
 		default:
-			operandsSizeInWords = getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+			instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 			break;
 		}
-		pc = pc.plus( Address.wordAddress( operandsSizeInWords ) , true );
+		return instructionSizeInWords;
 	}
 
 	private int getOperandsSizeInWordsForBasicInstruction(int instructionWord)
@@ -1589,7 +1651,35 @@ public class Emulator implements IEmulator {
 		final OperandDesc desc = loadSourceOperand( instructionWord );
 		return 1+storeTargetOperand( instructionWord , desc.value ) + desc.cycleCount;
 	}
+	
+	@Override
+	public boolean canStepReturn() {
+		return isJSR( memory.read( pc ) );
+	}
+	
+	@Override
+	public void stepReturn() 
+	{
+		if ( ! canStepReturn() ) {
+			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
+		}
+		
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( pc );
+		final Address nextInstruction = pc.plus( Size.words( currentInstructionSizeInWords ) , true );
+		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
+		start();
+	}
 
+	private boolean isJSR(int instructionWord) {
+		
+		final int basicOpCode = (instructionWord & 0x1f);
+		if ( basicOpCode != 0 ) {
+			return false;
+		}
+		final int specialOpCode = ( instructionWord >>> 5 ) &0x1f;
+		return specialOpCode == 0x01; // JSR
+	}
+	
 	private int handleSpecialOpCode(int instructionWord) {
 
 		final int opCode = ( instructionWord >>> 5 ) &0x1f;
@@ -2220,6 +2310,23 @@ public class Emulator implements IEmulator {
 	{
 		listenerHelper.removeEmulationListener( listener );
 	}
+	
+	private Breakpoint extractRegularBreakpoint(List<Breakpoint> bps) 
+	{
+		Breakpoint result = null;
+		for ( Breakpoint bp : bps ) 
+		{
+			if ( ! bp.isOneShotBreakpoint() ) 
+			{
+				if ( result != null ) {
+					throw new IllegalStateException("More than one " +
+							" regular breakpoint at address "+bp.getAddress());
+				}
+				result = bp;
+			}
+		}
+		return result;
+	}	
 
 	@Override
 	public void addBreakpoint(final Breakpoint bp)
@@ -2227,13 +2334,24 @@ public class Emulator implements IEmulator {
 		if (bp == null) {
 			throw new IllegalArgumentException("breakpoint must not be NULL.");
 		}
-		Breakpoint existing;
-		synchronized( breakpoints ) {
-			existing = breakpoints.put( bp.getAddress() , bp );
+		
+		Breakpoint replacedBreakpoint;
+		synchronized( breakpoints ) 
+		{
+			List<Breakpoint> list = breakpoints.get( bp.getAddress() );
+			if ( list == null ) {
+				list = new ArrayList<Breakpoint>();
+				breakpoints.put( bp.getAddress() , list );
+			} 
+			replacedBreakpoint = extractRegularBreakpoint( list );
+			if ( replacedBreakpoint != null ) {
+				list.remove( replacedBreakpoint );
+			}
+			list.add( bp );
 		}  
 
 		// notify listeners
-		if ( existing != null ) {
+		if ( replacedBreakpoint != null && ! replacedBreakpoint.isOneShotBreakpoint() ) {
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
 				@Override
@@ -2244,14 +2362,17 @@ public class Emulator implements IEmulator {
 			});         	
 		}
 
-		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.breakpointAdded( emulator , bp );
-			}
-		});        
+		if ( ! bp.isOneShotBreakpoint() ) 
+		{
+			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+	
+				@Override
+				public void invoke(IEmulator emulator, IEmulationListener listener)
+				{
+					listener.breakpointAdded( emulator , bp );
+				}
+			});        
+		}
 	}
 
 	@Override
@@ -2259,7 +2380,12 @@ public class Emulator implements IEmulator {
 
 		Breakpoint existing;
 		synchronized( breakpoints ) {
-			existing = breakpoints.get( bp.getAddress() );
+			final List<Breakpoint> list = breakpoints.get( bp.getAddress() );
+			if ( list != null ) {
+				existing = extractRegularBreakpoint( list );
+			} else {
+				existing = null;
+			}
 		}     	
 
 		if ( existing == null ) {
@@ -2285,10 +2411,19 @@ public class Emulator implements IEmulator {
 		}
 		Breakpoint existing;
 		synchronized( breakpoints ) {
-			existing = breakpoints.remove( bp.getAddress() );
+			final List<Breakpoint> list = breakpoints.get( bp.getAddress() );
+			final int idx = list.indexOf( bp );
+			if ( idx != -1 ) {
+				existing = list.remove( idx );
+			} else {
+				existing = null;
+			}
+			if ( list.isEmpty() ) {
+				breakpoints.remove( bp.getAddress() );
+			}
 		}      
 		// notify listeners
-		if ( existing != null ) {
+		if ( existing != null && ! existing.isOneShotBreakpoint() ) {
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
 				@Override
@@ -2303,9 +2438,17 @@ public class Emulator implements IEmulator {
 	@Override
 	public List<Breakpoint> getBreakPoints()
 	{
+		final List<Breakpoint> result = new ArrayList<Breakpoint>();
 		synchronized( breakpoints ) {
-			return new ArrayList<Breakpoint>( breakpoints.values() );
+			for ( List<Breakpoint> subList : breakpoints.values() ) {
+				for ( Breakpoint bp : subList ) {
+					if ( ! bp.isOneShotBreakpoint() ) {
+						result.add( bp );
+					}
+				}
+			}
 		}
+		return result;
 	}
 
 	@Override
@@ -2315,7 +2458,11 @@ public class Emulator implements IEmulator {
 			throw new IllegalArgumentException("address must not be NULL.");
 		}
 		synchronized( breakpoints ) {
-			return breakpoints.get( address );
+			final List<Breakpoint>  list = breakpoints.get( address );
+			if ( list == null ) {
+				return null;
+			}			
+			return extractRegularBreakpoint( list );
 		}
 	}
 

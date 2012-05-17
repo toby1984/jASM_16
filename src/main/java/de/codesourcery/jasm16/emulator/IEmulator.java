@@ -59,6 +59,25 @@ public interface IEmulator
     
     public void executeOneInstruction();
     
+    /**
+     * Check it's ok to invoke {@link #stepReturn()} because
+     * the PC is currently pointing at a JSR instruction.
+     *  
+     * @return
+     */
+	public boolean canStepReturn();
+	
+	/**
+	 * Executes a subroutine and stop at the next instruction after returning.
+	 *   
+	 * <p>Use {@link #canStepReturn()} to check whether the PC is currently pointing
+	 * at a JSR instruction.</p>
+	 * 
+	 * @throws IllegalStateException if the PC is not currently at a JSR instruction
+	 * @see #canStepReturn()
+	 */
+	public void stepReturn() throws IllegalStateException;
+    
     public Breakpoint getBreakPoint(Address address);
 
     public List<Breakpoint> getBreakPoints();
@@ -75,6 +94,17 @@ public interface IEmulator
     
     public IMemory getMemory();
     
+    /**
+     * Clears the memory and populates it with data from a byte array.
+     * 
+     * <p>This method will {@link #stop()} the emulator before updating the memory.</p>
+     * 
+     * <p>Note that since this method calls {@link #stop()} it 
+     * will also delete all one-shot breakpoints.</p>
+     *      
+     * @param startingOffset
+     * @param data
+     */
     public void loadMemory(Address startingOffset, byte[] data);
     
     /**
@@ -91,12 +121,24 @@ public interface IEmulator
     public void removeEmulationListener(IEmulationListener listener);     
     
     // emulator control
+    /**
+     * Reset the emulator,optionally clearing the memory as well.
+     * 
+     * <p>Note that calling this method will also delete all one-shot breakpoints.</p>     
+     * 
+     * @param clearMemory
+     */
     public void reset(boolean clearMemory);
     
     public void skipCurrentInstruction();
     
     public void start();
 
+    /**
+     * Stop the emulation.
+     * 
+     * <p>Note that calling this method will also delete all one-shot breakpoints.</p>
+     */
     public void stop();
     
     /**

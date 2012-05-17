@@ -40,9 +40,11 @@ public class EmulatorControllerView extends AbstractView
     
     private JPanel panel;
     private final JButton singleStepButton = new JButton("Step");
+    private final JButton stepReturnButton = new JButton("Step return");    
     private final JButton runButton = new JButton("Run");
     private final JButton stopButton = new JButton("Stop");   
     private final JButton resetButton = new JButton("Reset");
+    
     private JCheckBox runAtRealSpeed;
     
     private final DebuggingPerspective perspective;
@@ -91,6 +93,11 @@ public class EmulatorControllerView extends AbstractView
                 singleStepButton.setEnabled( ! emulatorRunningContinously );
                 runButton.setEnabled( ! emulatorRunningContinously );
                 stopButton.setEnabled( emulatorRunningContinously );
+                if ( emulatorRunningContinously ) {
+                	stepReturnButton.setEnabled( false );
+                } else {
+                	stepReturnButton.setEnabled( emulator.canStepReturn() );
+                }
                 resetButton.setEnabled( true );  
             }
         };
@@ -139,6 +146,7 @@ public class EmulatorControllerView extends AbstractView
         final JPanel buttonBar = new JPanel();
         buttonBar.setLayout( new GridBagLayout() );        
 
+        int x = 0;
         // =========== "SINGLE STEP" button ============        
         singleStepButton.addActionListener( new ActionListener() {
             
@@ -146,11 +154,25 @@ public class EmulatorControllerView extends AbstractView
             public void actionPerformed(ActionEvent e)
             {
                 emulator.executeOneInstruction();
+                updateButtonStates( false );
             }
         });
         
-        GridBagConstraints cnstrs = constraints( 0 , 0 , false , true , GridBagConstraints.NONE );          
+        GridBagConstraints cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( singleStepButton , cnstrs );
+        
+        // =========== "STEP RETURN" button ============        
+        stepReturnButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.stepReturn();
+            }
+        });
+        
+        cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
+        buttonBar.add( stepReturnButton , cnstrs );        
         
         // =========== "RUN" button ============        
         runButton.addActionListener( new ActionListener() {
@@ -163,7 +185,7 @@ public class EmulatorControllerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 1 , 0 , false , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( runButton , cnstrs );   
         
         // =========== "STOP" button ============        
@@ -176,7 +198,7 @@ public class EmulatorControllerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 2 , 0 , false , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( stopButton , cnstrs );          
         
         // =========== "RESET" button ============
@@ -189,7 +211,7 @@ public class EmulatorControllerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 3 , 0 , false , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
         buttonBar.add( resetButton , cnstrs );
         
         // =========== "Run at full speed" checkbox ============
@@ -236,7 +258,7 @@ public class EmulatorControllerView extends AbstractView
             }
         });
         
-        cnstrs = constraints( 4 , 0 , true , true , GridBagConstraints.NONE );          
+        cnstrs = constraints( x++ , 0 , true , true , GridBagConstraints.NONE );          
         buttonBar.add( runAtRealSpeed , cnstrs );        
         
         updateButtonStates( false );

@@ -105,6 +105,10 @@ public class Breakpoint
     	return StringUtils.isNotBlank( condition );
     }
     
+    public boolean isOneShotBreakpoint() {
+    	return false;
+    }
+    
     public void setCondition(String newCondition) throws ParseException 
     {
     	if ( StringUtils.isBlank( newCondition ) ) {
