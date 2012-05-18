@@ -113,4 +113,9 @@ public class EmulationListener implements IEmulationListener {
     public void beforeEmulatorIsDisposed(IEmulator emulator)
     {
     }
+
+    @Override
+    public void onEmulationError(IEmulator emulator, Address previousPC, Throwable cause)
+    {
+    }
 }

@@ -27,6 +27,8 @@ public interface IEmulationListener
 {
     public void beforeEmulatorIsDisposed(IEmulator emulator);
     
+    public void onEmulationError(IEmulator emulator,Address previousPC , Throwable cause);
+    
     public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed);
     
 	/**

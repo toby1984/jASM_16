@@ -85,7 +85,17 @@ public interface IEmulator
     
     public ICPU getCPU();
     
-    public boolean isStoppedBecauseOfError();
+    /**
+     * Returns a textual description of the last
+     * emulation error.
+     * 
+     * <p>Note that this error message gets cleared every time 
+     * {@link #start()} , {@link #stop()} ,{@link #reset(boolean)} or {@link #loadMemory(Address, byte[])}
+     * are called.
+     * </p>
+     * @return error message or <code>null</code>
+     */
+    public Throwable getLastEmulationError();
     
     public void setEmulationSpeed(EmulationSpeed speed);
     

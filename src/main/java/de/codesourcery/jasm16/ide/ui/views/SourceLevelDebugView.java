@@ -69,27 +69,34 @@ public class SourceLevelDebugView extends SourceCodeView
     private final Map<Address,Object> breakpointHighlights = new HashMap<Address,Object>();    
     
     private final IEmulationListener listener = new EmulationListener() {
-        
+        @Override
         public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
             highlightBreakpoint( breakpoint , true );
         }
-        
+        @Override
         public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
             highlightBreakpoint( breakpoint , false );   
         }
-        
+        @Override
         public void afterCommandExecution(IEmulator emulator, int commandDuration) {
             refreshDisplayHook();
         }
         
+        @Override
+        public void onEmulationError(IEmulator emulator, Address previousPC , Throwable cause) {
+            if ( ! scrollToVisible( emulator.getCPU().getPC() , true , false ) ) {
+                scrollToVisible( previousPC , true , false );
+            }
+        }
+        @Override
         public void afterContinuousExecutionHook() {
             refreshDisplayHook();
         }
-        
+        @Override
         public void afterReset(IEmulator emulator) {
             refreshDisplayHook();
         }
-        
+        @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes) {
             scrollToVisible( emulator.getCPU().getPC() , true ,true);
         }
@@ -197,10 +204,10 @@ public class SourceLevelDebugView extends SourceCodeView
         scrollToVisible(address,false,false);
     }
     
-    protected void scrollToVisible(Address address,boolean highlight,boolean reloadSource) {
+    protected boolean scrollToVisible(Address address,boolean highlight,boolean reloadSource) {
 
         if ( perspective.getCurrentProject() == null ) {
-            return;
+            return false;
         }
         
         final boolean updateParentView  = reloadSource || perspective.getCurrentProject() != this.currentProject;
@@ -211,7 +218,7 @@ public class SourceLevelDebugView extends SourceCodeView
         final ICompilationUnit unit = getCompilationUnitForAddress( address );
         if ( unit == null ) {
             System.out.println("Found no source for address "+address);
-            return;
+            return false;
         }
         
         final StatementNode node = getStatementNodeForAddress( unit , address );
@@ -244,6 +251,7 @@ public class SourceLevelDebugView extends SourceCodeView
                                 region.getStartingOffset() ,
                                 region.getEndOffset() );
                     }
+                    return true;
                 } catch (BadLocationException e) {
                     LOG.error("refreshDisplayHook(): ",e);
                 }      
@@ -251,7 +259,7 @@ public class SourceLevelDebugView extends SourceCodeView
         } else {
             System.out.println("Failed to locate AST node for address "+address);
         }
-            
+        return false;
     }
     
     @Override

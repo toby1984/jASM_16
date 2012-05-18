@@ -294,6 +294,18 @@ public class Emulator implements IEmulator {
             for ( IEmulationListener l : copy ) {
                 removeEmulationListener( l );
             }
+        }
+
+        public void notifyEmulationError(final Throwable e,final Address lastValidPC)
+        {
+            notifyListeners( new IEmulationListenerInvoker() {
+
+                @Override
+                public void invoke(IEmulator emulator, IEmulationListener listener)
+                {
+                    listener.onEmulationError( emulator , lastValidPC, e );
+                }
+            });
         }        
 	}
 
@@ -346,7 +358,7 @@ public class Emulator implements IEmulator {
 
 	private volatile Address interruptAddress;
 
-	private volatile boolean stoppedBecauseOfError = false;
+	private volatile Throwable lastEmulationError = null;
 	private volatile EmulationSpeed emulationSpeed = EmulationSpeed.MAX_SPEED;
 	private volatile boolean queueInterrupts = false;
 	
@@ -495,7 +507,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void reset(boolean clearMemory)
 	{
-		stop(false);
+		stop(null);
 
 		// reset memory BEFORE resetting devices
 		// because if a device uses MMIO, doing the
@@ -558,12 +570,12 @@ public class Emulator implements IEmulator {
 	 */
     @Override
     public void stop() {
-        stop( false );
+        stop( null  );
     }
     
-	protected void stop(boolean stopBecauseOfError) 
+	protected void stop(Throwable cause) 
 	{
-	    this.stoppedBecauseOfError = stopBecauseOfError;
+	    this.lastEmulationError = cause;
 	    
 		clockThread.stopSimulation();
 		
@@ -795,7 +807,7 @@ public class Emulator implements IEmulator {
 		@Override
 		public void run() {
 
-		    stoppedBecauseOfError = false;
+		    lastEmulationError = null;
 		    
 		    Command cmd = waitForStartCommand();
 
@@ -837,7 +849,7 @@ public class Emulator implements IEmulator {
 		                break;
 		            }   					
 					
-					stoppedBecauseOfError = false;					
+					lastEmulationError = null;					
 					lastStart.set( System.currentTimeMillis() );   
 					cycleCountAtLastStart=currentCycle;
 					
@@ -903,10 +915,18 @@ public class Emulator implements IEmulator {
 			this.previousPC = previousPC;
 			currentCycle+=execDurationInCycles;
 		} 
+		catch(EmulationErrorException e) {
+            stop( e );
+            listenerHelper.notifyEmulationError(e,previousPC);
+            LOG.error( "internalExecuteOneInstruction(): Emulation error "+e.getMessage(),e); 
+            out.println("\n\nERROR: Simulation stopped due to an error ( at address ."+this.previousPC+")");
+            return 0;		    
+		}
 		catch(Exception e) {
-			stop(true);
-			e.printStackTrace();
-			out.println("\n\nERROR: Simulation stopped due to error ( at address ."+this.previousPC+")");
+			stop( e );
+			listenerHelper.notifyEmulationError(e,previousPC);
+			LOG.error( "internalExecuteOneInstruction(): Internal error "+e.getMessage(),e); 
+			out.println("\n\nERROR: Simulation stopped due to an internal error ( at address ."+this.previousPC+")");
 			return 0;
 		} 
 		finally 
@@ -915,7 +935,7 @@ public class Emulator implements IEmulator {
 		}
 		return execDurationInCycles;
 	}     
-
+	
 	private void handleInterrupt(IInterrupt irq) 
 	{
 		/* When IA is set to something other than 0, interrupts triggered on the DCPU-16
@@ -947,7 +967,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void executeOneInstruction() 
 	{
-		stop(false);
+		stop(null);
 		internalExecuteOneInstruction();
 	}   
 
@@ -1012,7 +1032,7 @@ public class Emulator implements IEmulator {
 		if ( regularBP != null || oneShotBP != null ) 
 		{
 			// stop() will also remove ANY one-shot breakpoints from the list
-			stop(false);
+			stop(null);
 
 			if ( regularBP != null ) // only notify client code about the regular BP, internal BP is invisible to the user
 			{
@@ -1354,11 +1374,12 @@ public class Emulator implements IEmulator {
 	    for (DisassembledLine line : lines) {
             out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents());
         }
-		out.println("Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() ) );
-		out.println("Previously executed instruction was at "+Misc.toHexString( previousPC ) );
-		throw new RuntimeException("Unknown opcode");
+		final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() )+
+		        " (last valid: "+Misc.toHexString( previousPC )+")";
+        out.println(msg );
+		throw new UnknownOpcodeException( msg );
 	}
-
+	
 	private int handleIFU(int instructionWord) {
 		// performs next instruction only if b<a (signed)
 		OperandDesc source = loadSourceOperand( instructionWord );		
@@ -1790,9 +1811,9 @@ public class Emulator implements IEmulator {
 		final IDevice device = getDeviceForSlot( hardwareSlot );
 		if ( device == null ) 
 		{
-		    out.println("ERROR: Unknown hardware slot #"+hardwareSlot);
-			stop(true);
-			return 4+operand.cycleCount;
+		    LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
+		    out.println("ERROR: No device at slot #"+hardwareSlot);
+		    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
 		}
 		
 		final int cyclesConsumed = device.handleInterrupt( this );
@@ -1820,9 +1841,9 @@ public class Emulator implements IEmulator {
 		final IDevice device = getDeviceForSlot( hardwareSlot );
 		if ( device == null ) 
 		{
-		    out.println("ERROR: Unknown hardware slot #"+hardwareSlot);
-			stop(true);
-			return 4+operand.cycleCount;
+		    LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
+		    out.println("ERROR: No device at slot #"+hardwareSlot);
+		    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
 		}
 		
 		/* A+(B<<16) is a 32 bit word identifying the hardware id
@@ -1917,7 +1938,7 @@ public class Emulator implements IEmulator {
 	private int handleHCF(int instructionWord) 
 	{
 		final OperandDesc operand = loadSourceOperand( instructionWord );
-		stop(false);
+		stop(null);
 		return 1+operand.cycleCount;
 	}
 
@@ -2025,9 +2046,13 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	private int handleIllegalTargetOperand(int instructionWord) {
-		throw new RuntimeException("Illegal target operand in instruction word 0x"+
-				Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() ) );
+	private int handleIllegalTargetOperand(int instructionWord) 
+	{
+	    final String msg = "Illegal target operand in instruction word 0x"+
+                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() );
+	    LOG.error("handleIllegalTargetOperand(): "+msg);
+	    out.print("ERROR: "+msg);
+		throw new InvalidTargetOperandException( msg );
 	}
 
 	private OperandDesc loadSourceOperand(int instructionWord) {
@@ -2226,7 +2251,7 @@ public class Emulator implements IEmulator {
 	@Override
 	public void loadMemory(final Address startingOffset, final byte[] data) 
 	{
-		stop(false);
+		stop(null);
 
 		if ( clockThread.isRunnable ) {
 			throw new IllegalStateException("Emulation not stopped?");
@@ -2612,9 +2637,9 @@ public class Emulator implements IEmulator {
 	}
 	
     @Override
-    public boolean isStoppedBecauseOfError()
+    public Throwable getLastEmulationError()
     {
-        return stoppedBecauseOfError;
+        return lastEmulationError;
     }
     
     private static <T> T safeTake(BlockingQueue<T> queue) {
@@ -2672,4 +2697,36 @@ public class Emulator implements IEmulator {
     {
         return out;
     }
+    
+    public static class EmulationErrorException extends RuntimeException {
+
+        public EmulationErrorException(String message)
+        {
+            super(message);
+        }
+    }      
+    
+    public static final class UnknownOpcodeException extends EmulationErrorException {
+
+        public UnknownOpcodeException(String message)
+        {
+            super(message);
+        }
+    }    
+    
+    public static final class InvalidTargetOperandException extends EmulationErrorException {
+
+        public InvalidTargetOperandException(String message)
+        {
+            super(message);
+        }
+    }  
+    
+    public static final class InvalidDeviceSlotNumberException extends EmulationErrorException {
+
+        public InvalidDeviceSlotNumberException(String message)
+        {
+            super(message);
+        }
+    }     
 }
