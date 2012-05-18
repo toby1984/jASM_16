@@ -175,7 +175,8 @@ public class StatementNode extends ASTNode
 			case INITIALIZED_MEMORY_WORD: 
 				addChild( new InitializedMemoryNode().parseInternal( context ) , context );
 				break;
-			case UNINITIALIZED_MEMORY:
+			case UNINITIALIZED_MEMORY_WORDS:	
+			case UNINITIALIZED_MEMORY_BYTES:
 				addChild( new UninitializedMemoryNode().parseInternal( context ) , context );
 				break;
 			case INSTRUCTION: 

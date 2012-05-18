@@ -46,7 +46,8 @@ public enum TokenType
     INITIALIZED_MEMORY_PACK, // pack
     INITIALIZED_MEMORY_WORD, // .dat
     INITIALIZED_MEMORY_BYTE, // .byte
-    UNINITIALIZED_MEMORY, // .bss   	
+    UNINITIALIZED_MEMORY_WORDS, // reserve
+    UNINITIALIZED_MEMORY_BYTES, // .bss
     INCLUDE_BINARY, // .incbin
     ORIGIN, // .org
     EQUATION, // .equ

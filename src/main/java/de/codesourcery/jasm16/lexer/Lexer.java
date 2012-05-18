@@ -301,10 +301,15 @@ public final class Lexer implements ILexer {
         if ( ".word".equalsIgnoreCase( buffer ) || "dat".equalsIgnoreCase( buffer ) || ".dat".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.INITIALIZED_MEMORY_WORD , buffer , startIndex ) );
             return ;
-        }        
+        }      
+        
+        if ( "reserve".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.UNINITIALIZED_MEMORY_WORDS , buffer , startIndex ) );
+            return ;
+        }           
 
-        if ( ".bss".equalsIgnoreCase( buffer ) || "reserve".equalsIgnoreCase( buffer ) ) {
-            currentTokens.add( new Token(TokenType.UNINITIALIZED_MEMORY , buffer , startIndex ) );
+        if ( ".bss".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.UNINITIALIZED_MEMORY_BYTES , buffer , startIndex ) );
             return ;
         }		
         

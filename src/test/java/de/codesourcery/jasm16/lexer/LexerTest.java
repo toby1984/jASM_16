@@ -268,11 +268,22 @@ public class LexerTest extends TestHelper {
         final String input = ".bss 100";
         final Lexer lexer = new Lexer( new Scanner( input ) );
         assertFalse( lexer.eof() );
-        assertToken( lexer , TokenType.UNINITIALIZED_MEMORY , ".bss");
+        assertToken( lexer , TokenType.UNINITIALIZED_MEMORY_BYTES , ".bss");
         assertToken( lexer , TokenType.WHITESPACE, " ");        
         assertToken( lexer , TokenType.NUMBER_LITERAL, "100");
         assertTrue( lexer.eof() );
     }	
+    
+    public void testParseUninitializedMemory2() {
+
+        final String input = "reserve 100";
+        final Lexer lexer = new Lexer( new Scanner( input ) );
+        assertFalse( lexer.eof() );
+        assertToken( lexer , TokenType.UNINITIALIZED_MEMORY_WORDS, "reserve");
+        assertToken( lexer , TokenType.WHITESPACE, " ");        
+        assertToken( lexer , TokenType.NUMBER_LITERAL, "100");
+        assertTrue( lexer.eof() );
+    }    
 
     public void testParseComment() {
 
