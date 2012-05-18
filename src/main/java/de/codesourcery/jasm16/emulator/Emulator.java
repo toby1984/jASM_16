@@ -906,6 +906,9 @@ public class Emulator implements IEmulator {
             final Address previousPC = pc;		    
 			execDurationInCycles = executeInstruction();
 			if ( checkMemoryWrites ) {
+			    // note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
+			    // the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
+			    // a jump into an interrupt handler that skipped over non-instruction memory
 			    final int sizeInWords = calculateInstructionSizeInWords( previousPC );
 			    memory.writeProtect( new AddressRange( previousPC , Size.words( sizeInWords )) );
 			}
