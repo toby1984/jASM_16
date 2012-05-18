@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
@@ -55,7 +56,7 @@ public class Emulator implements IEmulator {
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 
 	private static final boolean DEBUG_LISTENER_PERFORMANCE = false;
-
+	
 	private final IdentityHashMap<IEmulationListener,Long> listenerPerformance = 
 			new IdentityHashMap<IEmulationListener,Long>();
 
@@ -295,11 +296,12 @@ public class Emulator implements IEmulator {
                 removeEmulationListener( l );
             }
         }
-
 	}
 
 	private final AtomicLong lastStart = new AtomicLong(0);
 	
+    private volatile boolean checkMemoryWrites = false;
+    
 	private volatile int cycleCountAtLastStart=0;
 	private final AtomicLong lastStop = new AtomicLong(0);
 	private volatile int cycleCountAtLastStop=0;
@@ -313,7 +315,7 @@ public class Emulator implements IEmulator {
 
 	// memory needs to be thread-safe since the emulation runs in a separate thread
 	// and UI threads may access the registers concurrently    
-	private final MainMemory memory = new MainMemory( 65536 );
+	private final MainMemory memory = new MainMemory( 65536 , checkMemoryWrites );
 	
 	// ========= devices ===========
 	
@@ -522,6 +524,8 @@ public class Emulator implements IEmulator {
 
     private void resetMemory(boolean clearMemory)
     {
+        memory.resetWriteProtection();
+        
         if ( clearMemory ) 
 		{
 			memory.clear();
@@ -901,6 +905,10 @@ public class Emulator implements IEmulator {
 		{
             final Address previousPC = pc;		    
 			execDurationInCycles = executeInstruction();
+			if ( checkMemoryWrites ) {
+			    final int sizeInWords = calculateInstructionSizeInWords( previousPC );
+			    memory.writeProtect( new AddressRange( previousPC , Size.words( sizeInWords )) );
+			}
 			this.previousPC = previousPC;
 			currentCycle+=execDurationInCycles;
 		} 
@@ -2691,7 +2699,45 @@ public class Emulator implements IEmulator {
         {
             super(message);
         }
-    }      
+    }  
+    
+    /**
+     * Thrown when the emulator is running with {@link Emulator#checkMemoryWrites} and
+     * the program tries to write memory that was already part of the execution path (and 
+     * thus contains program code and not data).
+     * 
+     * @author tobias.gierke@voipfuture.com
+     */
+    public static class MemoryProtectionFaultException extends EmulationErrorException {
+
+        private final Address offendingWriteAddress;
+        private final AddressRange protectedRange;
+        
+        public MemoryProtectionFaultException(String message,Address offendingWriteAddress,AddressRange protectedRange)
+        {
+            super(message);
+            this.offendingWriteAddress = offendingWriteAddress;
+            this.protectedRange = protectedRange;
+        }
+        
+        /**
+         * Returns the address the program was trying to write to.
+         * @return
+         */
+        public Address getOffendingWriteAddress()
+        {
+            return offendingWriteAddress;
+        }
+        
+        /**
+         * Returns the protected address range that contained the offending address.
+         * @return
+         */
+        public AddressRange getProtectedMemoryRange()
+        {
+            return protectedRange;
+        }
+    }    
     
     public static final class UnknownOpcodeException extends EmulationErrorException {
 
@@ -2715,5 +2761,18 @@ public class Emulator implements IEmulator {
         {
             super(message);
         }
+    }
+
+    @Override
+    public void setMemoryProtectionEnabled(boolean enabled)
+    {
+        checkMemoryWrites = enabled;
+        memory.setCheckWriteAccess( enabled );
+    }
+
+    @Override
+    public boolean isMemoryProtectionEnabled()
+    {
+        return checkMemoryWrites;
     }     
 }

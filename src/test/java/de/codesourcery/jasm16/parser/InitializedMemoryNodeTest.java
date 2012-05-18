@@ -177,7 +177,17 @@ public class InitializedMemoryNodeTest extends TestHelper
         final IParseContext context = createParseContext( source );
 
         final ASTNode result = new InitializedMemoryNode().parse( context );
-        assertTrue( result.hasErrors() );
+        assertTrue( result instanceof InitializedMemoryNode);
+        assertFalse( result.hasErrors() );
+        
+        final InitializedMemoryNode node = (InitializedMemoryNode) result;
+        resolveSymbols( CompilationUnit.createInstance("dummy", source ) , node );
+        final int size = node.getSizeInBytes( 0 );
+        assertEquals( 2 , size );
+        final byte[] data = node.getBytes();
+        assertEquals( 2 , data.length );
+        assertEquals( (byte) 0 , data[0] );
+        assertEquals( (byte) 'a' , data[1] );        
     }   
     
     public void testParseInitializedMemory7() 

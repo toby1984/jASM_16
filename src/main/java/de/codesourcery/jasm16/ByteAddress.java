@@ -43,6 +43,18 @@ public class ByteAddress extends Address
     	this.value = (int) value;
     }
     
+    public int getByteAddressValue() {
+        return value;
+    }
+    
+    public int getWordAddressValue() {
+        final int result = value >>> 1;
+        if ( (result << 1) != value ) {
+            throw new RuntimeException("Internal error, cannot convert byte address "+this+" that is not on a 16-bit boundary to word address");
+        }
+        return result;
+    }
+    
     public int getValue() {
         return value;
     }
@@ -83,7 +95,7 @@ public class ByteAddress extends Address
     @Override
     public Address plus(Address other,boolean wrap)
     {
-        final int sum = other.toByteAddress().getValue() + getValue();
+        final int sum = other.getByteAddressValue() + getValue();
         
         final int newValue;
         if ( wrap ) {
@@ -97,7 +109,7 @@ public class ByteAddress extends Address
     @Override
     public Address plus(Size size,boolean wrap)
     {
-        final int sum = size.toSizeInBytes().getValue() + getValue();
+        final int sum = size.getSizeInBytes() + getValue();
         
         final int newValue;
         if ( wrap ) {
@@ -121,7 +133,7 @@ public class ByteAddress extends Address
     @Override
     public Address minus(Address other)
     {
-        int newValue = getValue() - other.toByteAddress().getValue();
+        int newValue = getValue() - other.getByteAddressValue();
         if ( newValue < 0 ) {
             newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
         }
@@ -131,7 +143,7 @@ public class ByteAddress extends Address
     @Override
     public Address minus(Size size)
     {
-        int newValue = getValue() - size.toSizeInBytes().getValue();
+        int newValue = getValue() - size.getSizeInBytes();
         if ( newValue < 0 ) {
             newValue = (int) ( (ByteAddress.MAX_ADDRESS+1) + newValue );
         }

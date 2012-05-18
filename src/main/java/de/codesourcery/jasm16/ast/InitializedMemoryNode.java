@@ -40,20 +40,20 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	public enum AllowedSize 
 	{
 		BYTE {
-			public boolean use16BitCharacterLiterals() {
-				return false;
-			}
+			@Override
 			public int getMaxSupportedValue() {
 				return 255;
 			}            
 		},
 		WORD,
 		PACK {
+		    @Override
 			public boolean use16BitCharacterLiterals() {
 				return false;
-			}			
+			}		
+			
 		};
-
+		
 		public boolean use16BitCharacterLiterals() {
 			return true;
 		}
