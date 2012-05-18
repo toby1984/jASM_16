@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.utils;
 
+import java.io.PrintStream;
+
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -32,6 +34,8 @@ public class DebugCompilationListener extends CompilationListener {
     private int parsedLineCount;
     private long overallTime=0;
     private long startTime;
+    
+    private PrintStream out = System.out;
 
     private final boolean printDetails;
     public DebugCompilationListener(boolean printDetails) {
@@ -49,7 +53,7 @@ public class DebugCompilationListener extends CompilationListener {
     {
         overallTime +=System.currentTimeMillis();
         final float speed = parsedLineCount / (overallTime / 1000.0f );
-        System.out.println("Compiled "+parsedLineCount+" lines in "+overallTime+" ms ( "+speed+" lines/s )");
+        out.println("Compiled "+parsedLineCount+" lines in "+overallTime+" ms ( "+speed+" lines/s )");
     }
 
     @Override
@@ -57,7 +61,7 @@ public class DebugCompilationListener extends CompilationListener {
     {
         startTime = -System.currentTimeMillis();
         if ( printDetails ) {
-            System.out.println("start  : "+phase.getName());
+            out.println("start  : "+phase.getName());
         }
     }
 
@@ -66,7 +70,7 @@ public class DebugCompilationListener extends CompilationListener {
     {
         startTime += System.currentTimeMillis();
         if ( printDetails ) {
-            System.out.println("success: "+phase.getName()+" [ "+startTime+" ms ]");
+            out.println("success: "+phase.getName()+" [ "+startTime+" ms ]");
         }
     }
 
@@ -75,7 +79,7 @@ public class DebugCompilationListener extends CompilationListener {
     {
         startTime += System.currentTimeMillis();
         if ( printDetails ) {
-            System.out.println("FAILURE: "+phase.getName()+" [ "+startTime+" ms ]");
+            out.println("FAILURE: "+phase.getName()+" [ "+startTime+" ms ]");
         }
     }
 
@@ -95,5 +99,15 @@ public class DebugCompilationListener extends CompilationListener {
         if ( phase.getName().equals( ICompilerPhase.PHASE_PARSE ) ) {
             parsedLineCount = unit.getParsedLineCount();
         }	    
+    }
+
+    public PrintStream getOutput()
+    {
+        return out;
+    }
+
+    public void setOutput(PrintStream out)
+    {
+        this.out = out;
     }
 }
