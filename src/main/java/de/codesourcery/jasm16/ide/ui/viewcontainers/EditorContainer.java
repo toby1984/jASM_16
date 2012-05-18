@@ -355,7 +355,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
             return editor;
         }
         
-        editor = EditorFactory.createEditor( workspace , project , resource );
+        editor = EditorFactory.createEditor( workspace , project , resource , this );
         addView( editor );
         // open resource AFTER IView has been added to this container,
         // view may rely on methods of this container

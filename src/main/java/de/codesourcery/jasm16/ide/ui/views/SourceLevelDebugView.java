@@ -41,6 +41,7 @@ import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
@@ -94,9 +95,9 @@ public class SourceLevelDebugView extends SourceCodeView
         }
     };
     
-    public SourceLevelDebugView(IWorkspace workspace,DebuggingPerspective perspective, IEmulator emulator)
+    public SourceLevelDebugView(IResourceResolver resourceResolver,IWorkspace workspace,DebuggingPerspective perspective, IEmulator emulator)
     {
-        super(workspace, false);
+        super(resourceResolver,workspace, false);
         if ( perspective == null ) {
             throw new IllegalArgumentException("perspective must not be NULL.");
         }

@@ -37,6 +37,8 @@ import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase2;
 import de.codesourcery.jasm16.compiler.phases.CalculateAddressesPhase;
 import de.codesourcery.jasm16.compiler.phases.CodeGenerationPhase;
 import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
+import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
 
 /**
  * Default compiler (assembler) implementation.
@@ -59,6 +61,7 @@ public class Compiler implements ICompiler {
     private IObjectCodeWriterFactory writerFactory;
     private IResourceResolver resourceResolver = new FileResourceResolver();
     private final Set<CompilerOption> options = new HashSet<CompilerOption>(); 
+    private ICompilationOrderProvider linkOrderProvider;
     
     /**
      * Reads the compiler's version number from the Maven2 pom.properties 
@@ -100,8 +103,29 @@ public class Compiler implements ICompiler {
     }
     
     @Override
-    public void compile(List<ICompilationUnit> units, ICompilationListener listener) 
+    public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
     {
+        final ICompilationOrderProvider orderProvider;
+        if ( linkOrderProvider == null ) {
+            orderProvider = new ICompilationOrderProvider() {
+                
+                @Override
+                public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver)
+                {
+                    return units;
+                }
+            };
+        } else {
+            orderProvider = linkOrderProvider;
+        }
+        
+        final List<ICompilationUnit> units;
+        try {
+            units = orderProvider.determineCompilationOrder( unitsToCompile , resourceResolver );
+        } catch (ResourceNotFoundException e1) {
+            throw new UnknownCompilationOrderException( e1.getMessage(), e1);
+        }
+        
         final ICompilerPhase firstPhase = compilerPhases.isEmpty() ? null : compilerPhases.get(0);
         listener.onCompileStart( firstPhase );
         
@@ -325,5 +349,14 @@ public class Compiler implements ICompiler {
 			options.remove( option );
 		}
 	}
+
+    @Override
+    public void setCompilationOrderProvider(ICompilationOrderProvider provider)
+    {
+        if (provider == null) {
+            throw new IllegalArgumentException("provider must not be NULL.");
+        }
+        this.linkOrderProvider = provider;
+    }
 
 }

@@ -32,9 +32,11 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.Compiler;
+import de.codesourcery.jasm16.compiler.DefaultCompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -129,8 +131,16 @@ public class AssemblyProject implements IAssemblyProject
 					{
 						protected void closeHook() throws IOException 
 						{
-							System.out.println("closeHook(): Closing object file "+outputFile.getAbsolutePath());
-							if ( getCurrentWriteOffset().getValue() != 0 ) {
+						    Address start = getFirstWriteOffset();
+						    Address end = getCurrentWriteOffset();
+						    final int len;
+						    if ( start != null && end != null ) {
+						        len = end.toByteAddress().getValue() - start.toByteAddress().getValue();
+						    } else {
+						        len = 0;
+						    }
+							System.out.println("closeHook(): Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
+							if ( len > 0 ) {
 								objectFiles.add( resource );
 								workspace.resourceCreated( AssemblyProject.this , resource );
 							}
@@ -156,6 +166,8 @@ public class AssemblyProject implements IAssemblyProject
 		{
 			final ICompiler compiler = createCompiler();
 
+			compiler.setCompilationOrderProvider( new DefaultCompilationOrderProvider() );
+			
 			// set output code writer
 			final List<IResource> objectFiles = new ArrayList<IResource>();
 

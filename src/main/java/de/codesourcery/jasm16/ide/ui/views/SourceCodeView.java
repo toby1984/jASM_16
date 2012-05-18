@@ -123,13 +123,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     private static final int RECOMPILATION_DELAY_MILLIS = 300;
 
     // UI widgets
-
     private volatile JPanel panel;
 
     private volatile boolean editable;
-
     private final UndoManager undoManager = new UndoManager();
-
     private final UndoableEditListener undoListener = new  UndoableEditListener() 
     {
         public void undoableEditHappened(UndoableEditEvent e) 
@@ -217,6 +214,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     private final SimpleAttributeSet defaultStyle;
 
     // compiler
+    private final IResourceResolver resourceResolver;
     protected final IWorkspace workspace; 
     private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
 
@@ -602,11 +600,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     }
 
-    public SourceCodeView(IWorkspace workspace,boolean isEditable) 
+    public SourceCodeView(IResourceResolver resourceResolver , IWorkspace workspace,boolean isEditable) 
     {
         if (workspace == null) {
             throw new IllegalArgumentException("workspace must not be null");
         }
+        this.resourceResolver = resourceResolver;
         this.editable = isEditable;
         this.workspace = workspace;
         defaultStyle = new SimpleAttributeSet();
@@ -717,8 +716,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             
             final IResourceResolver delegatingResolver = new IResourceResolver() {
 
-            	private IResourceResolver sourceEditorResolver = (EditorContainer) getViewContainer();
-            	
             	private IResourceResolver getChildResourceResolver(IResource parent) 
             	{
             		IResource r = parent == null ? getCurrentResource() : parent;
@@ -739,7 +736,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 				public IResource resolve(String identifier,ResourceType resourceType) throws ResourceNotFoundException 
 				{
 					try {
-						return sourceEditorResolver.resolve( identifier , resourceType );
+					    if ( resourceResolver != null ) {
+					        return resourceResolver.resolve( identifier , resourceType );
+					    }
 					} 
 					catch(ResourceNotFoundException e) 
 					{
@@ -752,7 +751,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 						throws ResourceNotFoundException 
 				{
 					try {
-						return sourceEditorResolver.resolveRelative( identifier , parent , resourceType );
+					    if ( resourceResolver != null ) {
+					        return resourceResolver.resolveRelative( identifier , parent , resourceType );
+					    }
 					} 
 					catch(ResourceNotFoundException e) 
 					{
@@ -1261,10 +1262,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     }
 
     @Override
-    public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource) 
+    public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
     {
         if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-            return new SourceCodeView(this.workspace, true );
+            return new SourceCodeView(resourceResolver,this.workspace, true );
         }
         throw new IllegalArgumentException("Unsupported resource type: "+resource);
     }

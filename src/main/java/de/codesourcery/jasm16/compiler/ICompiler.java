@@ -21,6 +21,7 @@ import java.util.NoSuchElementException;
 import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
 
 /**
  * Compiler (assembler).
@@ -77,20 +78,30 @@ public interface ICompiler
 	/**
 	 * Compiles a set of compilation units.
 	 * 
+	 * <p>The compilation units will be compiled/linked in the order determined
+	 * by the current {@link ICompilationOrderProvider}.</p>
+	 * 
 	 * @param units
 	 * @return processed compilation units
+	 * @see #setCompilationOrderProvider(ICompilationOrderProvider)
+     * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order	 
 	 */
-	public void compile(List<ICompilationUnit> units);	
+	public void compile(List<ICompilationUnit> units) throws UnknownCompilationOrderException;	
 	
 	/**
 	 * Compiles a set of compilation units , notifying a {@link ICompilationListener}
 	 * instance while doing so.
 	 * 
+     * <p>The compilation units will be compiled/linked in the order determined
+     * by the current {@link ICompilationOrderProvider}.</p>
+     * 	 
 	 * @param units
 	 * @param listener
 	 * @return processed compilation units
+	 * @see #setCompilationOrderProvider(ICompilationOrderProvider)
+	 * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
 	 */
-	public void compile(List<ICompilationUnit> units,ICompilationListener listener);
+	public void compile(List<ICompilationUnit> units,ICompilationListener listener) throws UnknownCompilationOrderException;
 	
 	/**
 	 * Returns all compiler phases currently that are currently configured.
@@ -152,4 +163,15 @@ public interface ICompiler
 	 * @param resolver
 	 */
 	public void setResourceResolver(IResourceResolver resolver);
+	
+	/**
+	 * Sets the compilation order provider responsible for determining the
+	 * compilation order when more than one compilation unit is to be compiled.
+	 * 
+	 * <p>By default the compiler uses an implementation that will link/compile
+	 * compilation units in the order they where passed to {@link #compile(List)}.</p>
+	 * 
+	 * @param provider
+	 */
+	public void setCompilationOrderProvider(ICompilationOrderProvider provider);
 }

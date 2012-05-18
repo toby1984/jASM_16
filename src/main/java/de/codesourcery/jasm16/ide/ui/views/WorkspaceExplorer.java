@@ -606,11 +606,14 @@ public class WorkspaceExplorer extends AbstractView {
 					p.toFront();
 					return;
 				}
-			}
+			} 
 		}
 
+	    final List<IViewContainer> editorContainer = perspectivesManager.getPerspectives( EditorContainer.VIEW_ID );
+	      
 		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , workspace , applicationConfig );
+		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , workspace , applicationConfig , 
+		        editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
 		p.openExecutable( project , executable );
 		p.setVisible( true );
 		p.toFront();            

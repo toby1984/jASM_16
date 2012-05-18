@@ -63,6 +63,7 @@ import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
@@ -343,9 +344,9 @@ public class SourceEditorView extends SourceCodeView {
 	    return astInspector != null && astInspector.isVisible();
 	}
 	
-	public SourceEditorView(IWorkspace workspace) 
+	public SourceEditorView(IResourceResolver resourceResolver,IWorkspace workspace) 
 	{
-	    super( workspace , true );
+	    super( resourceResolver,workspace , true );
 		workspace.addWorkspaceListener( workspaceListener );
 	}
 
@@ -735,10 +736,10 @@ public class SourceEditorView extends SourceCodeView {
 	}
 
 	@Override
-	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource) 
+	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
 	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView(this.workspace);
+			return new SourceEditorView(resourceResolver,this.workspace);
 		}
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
 	}

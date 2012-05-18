@@ -55,7 +55,9 @@ public class CodeGenerationPhase extends CompilerPhase {
 
     @Override
     public boolean execute(List<ICompilationUnit> units, ISymbolTable symbolTable,
-            IObjectCodeWriterFactory writerFactory, ICompilationListener listener, IResourceResolver resourceResolver, Set<CompilerOption> options)
+            IObjectCodeWriterFactory writerFactory, ICompilationListener listener, 
+            IResourceResolver resourceResolver, 
+            Set<CompilerOption> options)
     {
         try {
             return super.execute(units, symbolTable, writerFactory, listener, resourceResolver, options);
