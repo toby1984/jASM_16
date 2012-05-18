@@ -64,14 +64,14 @@ public final class DefaultScreen implements IDevice {
 
     private final int VIDEO_RAM_SIZE_IN_WORDS;
 
-    private static final int GLYPH_WIDTH = 4;
-    private static final int GLYPH_HEIGHT = 8;
+    public static final int GLYPH_WIDTH = 4;
+    public static final int GLYPH_HEIGHT = 8;
     
-    private static final int PALETTE_COLORS = 16;
+    public static final int PALETTE_COLORS = 16;
 
-    private static final int IMG_CHARS_PER_ROW = 32;
+    public static final int IMG_CHARS_PER_ROW = 32;
     
-    private static final int BORDER_WIDTH=10;
+    public static final int BORDER_WIDTH=10;
     
     private final int SCREEN_WIDTH;
     private final int SCREEN_HEIGHT;
