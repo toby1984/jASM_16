@@ -296,17 +296,6 @@ public class Emulator implements IEmulator {
             }
         }
 
-        public void notifyEmulationError(final Throwable e,final Address lastValidPC)
-        {
-            notifyListeners( new IEmulationListenerInvoker() {
-
-                @Override
-                public void invoke(IEmulator emulator, IEmulationListener listener)
-                {
-                    listener.onEmulationError( emulator , lastValidPC, e );
-                }
-            });
-        }        
 	}
 
 	private final AtomicLong lastStart = new AtomicLong(0);
@@ -573,7 +562,7 @@ public class Emulator implements IEmulator {
         stop( null  );
     }
     
-	protected void stop(Throwable cause) 
+	protected void stop(final Throwable cause) 
 	{
 	    this.lastEmulationError = cause;
 	    
@@ -584,7 +573,7 @@ public class Emulator implements IEmulator {
 			@Override
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
-				listener.afterContinuousExecution( emulator );
+				listener.onStop( emulator , previousPC , cause );
 			}
 		});  
 		
@@ -917,14 +906,12 @@ public class Emulator implements IEmulator {
 		} 
 		catch(EmulationErrorException e) {
             stop( e );
-            listenerHelper.notifyEmulationError(e,previousPC);
             LOG.error( "internalExecuteOneInstruction(): Emulation error "+e.getMessage(),e); 
             out.println("\n\nERROR: Simulation stopped due to an error ( at address ."+this.previousPC+")");
             return 0;		    
 		}
 		catch(Exception e) {
 			stop( e );
-			listenerHelper.notifyEmulationError(e,previousPC);
 			LOG.error( "internalExecuteOneInstruction(): Internal error "+e.getMessage(),e); 
 			out.println("\n\nERROR: Simulation stopped due to an internal error ( at address ."+this.previousPC+")");
 			return 0;

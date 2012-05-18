@@ -83,15 +83,18 @@ public class SourceLevelDebugView extends SourceCodeView
         }
         
         @Override
-        public void onEmulationError(IEmulator emulator, Address previousPC , Throwable cause) {
-            if ( ! scrollToVisible( emulator.getCPU().getPC() , true , false ) ) {
-                scrollToVisible( previousPC , true , false );
+        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) 
+        {
+            if ( emulationError != null ) 
+            {
+              if ( ! scrollToVisible( emulator.getCPU().getPC() , true , false ) ) {
+                  scrollToVisible( previousPC , true , false );
+              }                
+            } else {
+                refreshDisplayHook();
             }
         }
-        @Override
-        public void afterContinuousExecutionHook() {
-            refreshDisplayHook();
-        }
+        
         @Override
         public void afterReset(IEmulator emulator) {
             refreshDisplayHook();

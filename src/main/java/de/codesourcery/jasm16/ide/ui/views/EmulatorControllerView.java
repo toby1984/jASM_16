@@ -27,6 +27,7 @@ import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
@@ -71,7 +72,7 @@ public class EmulatorControllerView extends AbstractView
         };
         
         @Override
-        public void afterContinuousExecutionHook() {
+        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
             updateButtonStates( false );
         }        
      };

@@ -98,7 +98,7 @@ public class DisassemblerView extends AbstractView
         }
         
 		@Override
-		public void afterContinuousExecutionHook() {
+		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}        
      };

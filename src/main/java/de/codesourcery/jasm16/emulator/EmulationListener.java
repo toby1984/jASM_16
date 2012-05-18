@@ -50,12 +50,12 @@ public class EmulationListener implements IEmulationListener {
 	}
 	
 	@Override
-	public final void afterContinuousExecution(IEmulator emulator) {
+	public final void onStop(IEmulator emulator,Address previousPC , Throwable emulationError) {
 		fullSpeedMode = false;
-		afterContinuousExecutionHook();
+		onStopHook(emulator, previousPC, emulationError);
 	}
 
-	public void afterContinuousExecutionHook() {
+	public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 	}
 	
 	@Override
@@ -114,8 +114,4 @@ public class EmulationListener implements IEmulationListener {
     {
     }
 
-    @Override
-    public void onEmulationError(IEmulator emulator, Address previousPC, Throwable cause)
-    {
-    }
 }

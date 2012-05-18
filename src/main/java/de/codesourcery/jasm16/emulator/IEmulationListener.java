@@ -27,8 +27,6 @@ public interface IEmulationListener
 {
     public void beforeEmulatorIsDisposed(IEmulator emulator);
     
-    public void onEmulationError(IEmulator emulator,Address previousPC , Throwable cause);
-    
     public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed);
     
 	/**
@@ -44,8 +42,7 @@ public interface IEmulationListener
 	public void beforeContinuousExecution(IEmulator emulator);
 	
 	/**
-	 * Invoked after the emulation stopped
-	 * (running at full speed).
+	 * Invoked after the emulation stopped.
 	 * 
 	 * <p>When invoked, listeners may re-enable actions suitable for
 	 * single-step execution that were disabled by the last call
@@ -54,7 +51,7 @@ public interface IEmulationListener
 	 * 	 
 	 * @see IEmulator#stop()
 	 */
-	public void afterContinuousExecution(IEmulator emulator);
+	public void onStop(IEmulator emulator,Address previousPC , Throwable emulationError);
 	
     public void afterReset(IEmulator emulator);
     
