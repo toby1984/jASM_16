@@ -68,7 +68,7 @@ public class DefaultClock implements IDevice
         @Override
         public void run()
         {
-            System.out.println("Clock thread started.");
+            emulator.getOutput().println("Clock thread started.");
             while ( ! terminate ) 
             {
                 while( ! isRunnable ) 
@@ -95,7 +95,7 @@ public class DefaultClock implements IDevice
                 } catch (InterruptedException e) {
                 }
             }
-            System.out.println("Default clock shutdown.");
+            emulator.getOutput().println("Default clock shutdown.");
         }
         
         public void terminate() {
@@ -106,7 +106,7 @@ public class DefaultClock implements IDevice
             
             while ( clockThread.isAlive() ) 
             {
-                System.out.println("Waiting for clock thread to terminate...");
+                emulator.getOutput().println("Waiting for clock thread to terminate...");
                 try {
                     Thread.sleep( 250 );
                 } catch (InterruptedException e) { }
@@ -227,7 +227,7 @@ public class DefaultClock implements IDevice
                 } else {
                     clockThread.irqMessage = b;
                     clockThread.irqEnabled = true;
-                    System.out.println("Clock IRQs enabled with message "+Misc.toHexString( b ));
+                    emulator.getOutput().println("Clock IRQs enabled with message "+Misc.toHexString( b ));
                 }
                 break;
             default:
