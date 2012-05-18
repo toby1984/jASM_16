@@ -398,8 +398,9 @@ public class WorkspaceExplorer extends AbstractView {
 				public void actionPerformed(ActionEvent e) {
 					try {
 						project.getBuilder().build();
-					} catch (IOException e1) {
-						LOG.error("Failed to build "+project,e1);
+					} catch (Exception ex) {
+						LOG.error("Failed to build "+project,ex);
+						UIUtils.showErrorDialog(null,"Building project '"+project.getName()+"' failed" , "Building the project failed: "+ex.getMessage(),ex);
 					}
 				}
 			});		

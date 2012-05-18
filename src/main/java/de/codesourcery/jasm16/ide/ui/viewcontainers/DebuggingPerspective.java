@@ -137,7 +137,7 @@ public class DebuggingPerspective extends Perspective
         }
 
         @Override
-        public void afterContinuousExecutionHook() {
+        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
         }
     };
 

@@ -16,6 +16,7 @@
 package de.codesourcery.jasm16.ide.ui.utils;
 
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -23,14 +24,17 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.PrintStream;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -215,10 +219,94 @@ public class UIUtils {
 	}
 	
 	public static void showErrorDialog(Component parent,String title,String message) {
-		JOptionPane.showMessageDialog(parent,
-			    message,
-			    title,
-			    JOptionPane.ERROR_MESSAGE);		
+	    showErrorDialog(parent, title, message,null);
+	}
+	
+	public static void showErrorDialog(Component parent,String title,String textMessage,Throwable cause) 
+	{
+	    final String stacktrace;
+	    if ( cause == null ) {
+	        stacktrace = null;
+	    } else {
+	        final ByteArrayOutputStream stackTrace = new ByteArrayOutputStream();
+            cause.printStackTrace( new PrintStream( stackTrace ) );
+            stacktrace = new String(stackTrace.toByteArray());
+	    }
+	    
+        final JDialog dialog = new JDialog( (Window) null, title );
+        
+        dialog.setModal( true );
+        
+        final JTextArea message = createMultiLineLabel( textMessage );
+        final DialogResult[] outcome = { DialogResult.CANCEL };
+        
+        final JButton okButton = new JButton("Ok");
+        okButton.addActionListener( new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                outcome[0] = DialogResult.YES;
+                dialog.dispose();
+            }
+        });
+        
+        final JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout( new FlowLayout() );
+        buttonPanel.add( okButton );
+        
+        final JPanel messagePanel = new JPanel();
+        messagePanel.setLayout( new GridBagLayout() );
+        
+        GridBagConstraints cnstrs = constraints(0,0,true,true, GridBagConstraints.BOTH );
+        cnstrs.weightx=1;
+        cnstrs.weighty=0.1;
+        cnstrs.gridheight = 1;
+        messagePanel.add( message , cnstrs );
+        
+        if ( stacktrace != null  ) 
+        {
+            final JTextArea createMultiLineLabel = new JTextArea( stacktrace );
+
+            createMultiLineLabel.setBackground(null);
+            createMultiLineLabel.setEditable(false);
+            createMultiLineLabel.setBorder(null);
+            createMultiLineLabel.setLineWrap(false);
+            createMultiLineLabel.setWrapStyleWord(false);
+            
+            final JScrollPane pane = new JScrollPane( createMultiLineLabel ,JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED , JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED );
+            
+            cnstrs = constraints(0,1,true,true, GridBagConstraints.BOTH );     
+            cnstrs.weightx=1.0;
+            cnstrs.weighty=0.9;
+            cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+            cnstrs.gridheight = GridBagConstraints.REMAINDER;
+            messagePanel.add( pane , cnstrs );
+        }
+        
+        final JPanel panel = new JPanel();
+        panel.setLayout( new GridBagLayout() );
+        
+        cnstrs = constraints(0,0,true,false , GridBagConstraints.BOTH );    
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.gridheight = 1;
+        cnstrs.weighty=1.0;
+        cnstrs.insets = new Insets(5,2,5,2); // top,left,bottom,right           
+        panel.add( messagePanel , cnstrs );
+        
+        cnstrs = constraints(0,1,true,true, GridBagConstraints.HORIZONTAL );    
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.gridheight = 1;
+        cnstrs.weighty=0;
+        cnstrs.insets = new Insets(0,2,10,2); // top,left,bottom,right      
+        panel.add( buttonPanel , cnstrs );
+        
+        dialog.getContentPane().add( panel );
+        
+        dialog.setMinimumSize(new Dimension(600,400));
+        dialog.setPreferredSize(new Dimension(600,400));
+        dialog.setMaximumSize(new Dimension(600,400));
+        
+        dialog.pack();
+        dialog.setVisible( true );
 	}
 
     protected static final GridBagConstraints constraints(int x,int y,boolean remainderHoriz,boolean remainderVert,int fill) {

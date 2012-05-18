@@ -15,12 +15,19 @@
  */
 package de.codesourcery.jasm16.ide.ui.views;
 
+import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JPanel;
-import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.text.Document;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -29,14 +36,18 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class CPUView extends AbstractView
 {
     public static final String VIEW_ID = "cpu-view";
     
     private JPanel panel;
-    private final JTextArea textArea = new JTextArea();
+    private final SimpleAttributeSet defaultStyle;      
+    private final SimpleAttributeSet errorStyle;  
+    private final JTextPane textArea = new JTextPane();
     
     private IEmulator emulator;
     
@@ -67,18 +78,28 @@ public class CPUView extends AbstractView
         }
 
 		@Override
-		public void afterContinuousExecutionHook() {
+		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}
      };
     
     public CPUView() 
     {
+        errorStyle = createStyle(Color.RED);
+        defaultStyle = createStyle(Color.GREEN);
     }
     
     public CPUView(IEmulator emulator) 
     {
+        this();
         setEmulator( emulator );
+    }    
+    
+    protected final static SimpleAttributeSet createStyle(Color color) 
+    {
+        SimpleAttributeSet result = new SimpleAttributeSet();
+        StyleConstants.setForeground( result , color );
+        return result;
     }    
     
     @Override
@@ -90,6 +111,15 @@ public class CPUView extends AbstractView
         final ICPU cpu = emulator.getCPU();
 
         final StringBuilder builder = new StringBuilder();
+        final List<ITextRegion> redRegions = new ArrayList<ITextRegion>();
+        
+        Throwable lastError = emulator.getLastEmulationError();
+        if ( lastError != null ) 
+        {
+            final String msg = StringUtils.isBlank( lastError.getMessage() ) ? lastError.getClass().getName() : lastError.getMessage();
+            builder.append("Emulation stopped with an error: "+msg+"\n");
+            redRegions.add( new TextRegion( 0 , builder.length() ) );
+        }        
         
         int itemsInLine = 0;
         for ( int i = 0 ; i < ICPU.COMMON_REGISTER_NAMES.length ; i++ ) {
@@ -107,13 +137,16 @@ public class CPUView extends AbstractView
         builder.append("EX: "+Misc.toHexString( cpu.getEX() )).append("\n");
         builder.append("IA: "+Misc.toHexString( cpu.getInterruptAddress() )).append("\n");
         
-        String text="Interrupt queueing is ";
-        if ( cpu.isQueueInterrupts() ) {
-        	text += "ON";
+        builder.append("IQ: Interrupt queueing is ");
+        if ( cpu.isQueueInterrupts() ) 
+        {
+            int start = builder.length();
+            builder.append("ON");
+            redRegions.add( new TextRegion( start , builder.length() - start ) );
         } else {
-        	text += "OFF";
-        }
-        builder.append("IQ: "+text+"\n");   
+            builder.append("OFF");
+        }        
+        builder.append("\n");   
         builder.append("IRQs: "+StringUtils.join( cpu.getInterruptQueue() , "," )).append("\n");
         builder.append("SP: "+Misc.toHexString( cpu.getSP().getValue() )).append("\n");
         
@@ -121,7 +154,13 @@ public class CPUView extends AbstractView
             @Override
             public void run()
             {
+                final StyledDocument doc = textArea.getStyledDocument();
+                doc.putProperty(Document.StreamDescriptionProperty, null);                
+                
                 textArea.setText( builder.toString() );
+                for ( ITextRegion region : redRegions ) {
+                    doc.setCharacterAttributes( region.getStartingOffset() , region.getLength() , errorStyle  , true );
+                }
             }
         });
     }
