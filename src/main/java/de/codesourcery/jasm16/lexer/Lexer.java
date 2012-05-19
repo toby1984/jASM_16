@@ -69,7 +69,7 @@ public final class Lexer implements ILexer {
         this.scanner = scanner;
     }	
 
-    @Override
+    
     public void mark()
     {
         marks.push( new State( this.currentTokens , 
@@ -78,7 +78,7 @@ public final class Lexer implements ILexer {
                 currentLineStartOffset) );
     }
 
-    @Override
+    
     public void clearMark() {
         if ( marks.isEmpty() ) {
             throw new IllegalStateException("Must call mark() first");
@@ -86,7 +86,7 @@ public final class Lexer implements ILexer {
         marks.pop();
     }	
 
-    @Override
+    
     public void reset() throws IllegalStateException
     {
         if ( marks.isEmpty() ) {
@@ -361,13 +361,13 @@ public final class Lexer implements ILexer {
         return currentTokens.get(0);
     }
 
-    @Override
+    
     public boolean eof() 
     {
         return currentToken() == null;
     }
 
-    @Override
+    
     public IToken peek() throws EOFException
     {
         if ( eof() ) {
@@ -376,7 +376,7 @@ public final class Lexer implements ILexer {
         return currentToken();
     }
 
-    @Override
+    
     public IToken read() throws EOFException
     {
         if ( eof() ) {
@@ -392,20 +392,20 @@ public final class Lexer implements ILexer {
         return result;
     }
 
-    @Override
+    
     public int currentParseIndex()
     {
         final IToken tok = currentToken();
         return tok != null ? tok.getStartingOffset() : scanner.currentParseIndex();
     }
     
-    @Override
+    
     public IToken read(TokenType expectedType) throws ParseException,EOFException
     {    
         return read((String) null,expectedType);
     }
 
-    @Override
+    
     public IToken read(String errorMessage, TokenType expectedType) throws ParseException,EOFException
     {
         final IToken tok = peek();
@@ -423,7 +423,7 @@ public final class Lexer implements ILexer {
         return read();
     }
 
-    @Override
+    
     public List<IToken> advanceTo(TokenType[] expectedTypes,boolean advancePastMatchedToken) 
     {    
         if ( expectedTypes == null ) {
@@ -466,23 +466,23 @@ public final class Lexer implements ILexer {
         return result;
     }
 
-    @Override
+    
     public int getCurrentLineNumber() {
         return currentLineNumber;
     }
 
-    @Override
+    
     public int getCurrentLineStartOffset() {
         return currentLineStartOffset;
     }
 
-    @Override
+    
     public String toString()
     {
         return eof() ? "Lexer is at EOF" : peek().toString();
     }
 
-    @Override
+    
     public boolean hasLexerOption(LexerOption option) {
         if (option == null) {
             throw new IllegalArgumentException("option must not be NULL");
@@ -490,7 +490,7 @@ public final class Lexer implements ILexer {
         return this.options.contains( option );
     }
 
-    @Override
+    
     public void setLexerOption(LexerOption option, boolean enabled) 
     {
         if ( option == null ) {

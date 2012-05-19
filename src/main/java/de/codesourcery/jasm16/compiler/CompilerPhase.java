@@ -50,7 +50,7 @@ public abstract class CompilerPhase implements ICompilerPhase {
         this.name = name;
     }
     
-    @Override
+    
     public String getName()
     {
         return name;
@@ -74,13 +74,13 @@ public abstract class CompilerPhase implements ICompilerPhase {
         return false;
     }
 
-    @Override
+    
     public String toString()
     {
         return name.toString();
     }
 
-    @Override
+    
     public boolean execute(List<ICompilationUnit> units, 
     		ISymbolTable symbolTable, 
     		IObjectCodeWriterFactory writerFactory , 
@@ -132,7 +132,7 @@ public abstract class CompilerPhase implements ICompilerPhase {
 	{
 		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() {
 			
-			@Override
+			
 			public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
 					throws IOException 
 			{
@@ -153,7 +153,7 @@ public abstract class CompilerPhase implements ICompilerPhase {
 		return context;
 	}
     
-    @Override
+    
     public void setStopAfterExecution(boolean yesNo) {
     	this.stopAfterExecution = yesNo;
     }

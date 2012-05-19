@@ -61,7 +61,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 			this.context = context;
 		}
 
-		@Override
+		
 		public boolean visit(ASTNode node) 
 		{
 			if ( node instanceof RegisterReferenceNode) 
@@ -89,7 +89,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 		}
 	};
 
-	@Override
+	
 	protected void run(final ICompilationUnit unit , final ICompilationContext compContext) throws IOException
 	{
 		if ( unit.getAST() == null ) {
@@ -98,7 +98,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 
 		final ASTVisitor visitor = new ASTVisitor() 
 		{
-			@Override
+			
 			public void visit(OperandNode node, IIterationContext context) 
 			{
 				switch(  node.getAddressingMode() )
@@ -109,7 +109,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 						}
 						final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 	
-							@Override
+							
 							public boolean visit(ASTNode node) 
 							{
 								if ( node instanceof OperatorNode) 
@@ -127,7 +127,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 						}
 						final ISimpleASTNodeVisitor<ASTNode> visitor2 = new ISimpleASTNodeVisitor<ASTNode>() {
 	
-							@Override
+							
 							public boolean visit(ASTNode node) 
 							{
 								if ( node instanceof OperatorNode) 
@@ -157,7 +157,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 		final boolean[] valueInRange = {true};
 		final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 
-			@Override
+			
 			public boolean visit(ASTNode node) 
 			{
 				if ( node instanceof TermNode) 

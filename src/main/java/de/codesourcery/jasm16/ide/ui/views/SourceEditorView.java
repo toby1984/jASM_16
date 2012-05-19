@@ -214,7 +214,7 @@ public class SourceEditorView extends SourceCodeView {
 			super();
 		}
 
-		@Override
+		
 		public int getRowCount()
 		{
 			return messages.size();
@@ -243,13 +243,13 @@ public class SourceEditorView extends SourceCodeView {
 			fireTableDataChanged();
 		}
 
-		@Override
+		
 		public int getColumnCount()
 		{
 			return 3;
 		}
 
-		@Override
+		
 		public String getColumnName(int columnIndex)
 		{
 			switch(columnIndex) {
@@ -264,19 +264,19 @@ public class SourceEditorView extends SourceCodeView {
 			}
 		}
 
-		@Override
+		
 		public Class<?> getColumnClass(int columnIndex)
 		{
 			return String.class;
 		}
 
-		@Override
+		
 		public boolean isCellEditable(int rowIndex, int columnIndex)
 		{
 			return false;
 		}
 
-		@Override
+		
 		public Object getValueAt(int rowIndex, int columnIndex)
 		{
 			final StatusMessage msg = messages.get( rowIndex );
@@ -301,7 +301,7 @@ public class SourceEditorView extends SourceCodeView {
 			}
 		}
 
-		@Override
+		
 		public void setValueAt(Object aValue, int rowIndex, int columnIndex)
 		{
 			throw new UnsupportedOperationException("");
@@ -386,14 +386,14 @@ public class SourceEditorView extends SourceCodeView {
 	        fireTableStructureChanged();
 	    }
 	    
-        @Override
+        
         public int getRowCount()
         {
             ISymbolTable table = getSymbolTable();
             return table == null ? 0 : getSymbolTable().getSize();
         }
 
-        @Override
+        
         public int getColumnCount()
         {
             return 3;
@@ -405,7 +405,7 @@ public class SourceEditorView extends SourceCodeView {
             List<ISymbol> all = table == null ? Collections.<ISymbol>emptyList() : table.getSymbols();
             Collections.sort( all , new Comparator<ISymbol>() {
 
-                @Override
+                
                 public int compare(ISymbol o1, ISymbol o2)
                 {
                     return o1.getIdentifier().getRawValue().compareTo( o2.getIdentifier().getRawValue() );
@@ -418,7 +418,7 @@ public class SourceEditorView extends SourceCodeView {
             return getSortedSymbols().get( modelRowIndex );
         }
         
-        @Override
+        
         public String getColumnName(int column)
         {
             if ( column == COL_SYMBOL_NAME ) {
@@ -431,13 +431,13 @@ public class SourceEditorView extends SourceCodeView {
             throw new IllegalArgumentException("Internal error, unhandled column "+column);
         }
         
-        @Override
+        
         public Class<?> getColumnClass(int columnIndex)
         {
             return String.class;
         }
 
-        @Override
+        
         public Object getValueAt(int rowIndex, int columnIndex)
         {
             final ISymbol symbol = getSymbolForRow( rowIndex );
@@ -483,7 +483,7 @@ public class SourceEditorView extends SourceCodeView {
 		// add symbol table 
 		symbolTable.setFillsViewportHeight( true );
 		symbolTable.addMouseListener( new MouseAdapter() {
-		    @Override
+		    
 		    public void mouseClicked(MouseEvent e)
 		    {
 		        if ( e.getButton() == MouseEvent.BUTTON1 ) {
@@ -539,7 +539,7 @@ public class SourceEditorView extends SourceCodeView {
 		public ASTTreeCellRenderer() {
 		}
 
-		@Override
+		
 		public Component getTreeCellRendererComponent(JTree tree,
 				Object value, boolean selected, boolean expanded,
 				boolean leaf, int row, boolean hasFocus) 
@@ -583,20 +583,20 @@ public class SourceEditorView extends SourceCodeView {
 		}
 	} 
 
-	@Override
+	
 	protected void onSourceCodeValidation()
 	{
 	    statusModel.clearMessages();
 	}
 
-	@Override
+	
 	protected void onHighlightingStart()
 	{
         final ASTTableModelWrapper astModel = new ASTTableModelWrapper( getCurrentCompilationUnit().getAST() ) ;
         astTree.setModel( astModel );
 	}
 	
-	@Override
+	
 	protected void onCompilationError(ICompilationError error)
 	{
        statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
@@ -604,7 +604,7 @@ public class SourceEditorView extends SourceCodeView {
 
 	// ============= view creation ===================
 
-	@Override
+	
 	public JPanel getPanel()
 	{
 		if ( panel == null ) {
@@ -625,7 +625,7 @@ public class SourceEditorView extends SourceCodeView {
 
 		showASTButton.addActionListener( new ActionListener() {
 
-			@Override
+			
 			public void actionPerformed(ActionEvent e) 
 			{
 				final boolean currentlyVisible = isASTInspectorVisible();
@@ -724,7 +724,7 @@ public class SourceEditorView extends SourceCodeView {
 		return panel;
 	}
 
-	@Override
+	
 	public void disposeHook2()
 	{
 		workspace.removeWorkspaceListener( workspaceListener );
@@ -735,7 +735,7 @@ public class SourceEditorView extends SourceCodeView {
 		}
 	}
 
-	@Override
+	
 	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
 	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
@@ -744,7 +744,7 @@ public class SourceEditorView extends SourceCodeView {
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
 	}
 
-	@Override
+	
 	public String getID() {
 		return "source-editor";
 	}

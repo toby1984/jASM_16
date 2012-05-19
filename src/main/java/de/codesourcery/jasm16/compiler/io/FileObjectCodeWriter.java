@@ -58,13 +58,13 @@ public class FileObjectCodeWriter extends AbstractObjectCodeWriter
        return new FileOutputStream( outputFile , append );
     }
 	  
-    @Override
+    
     protected void closeHook() throws IOException
     {
         // nothing to do
     }
 
-    @Override
+    
     protected void deleteOutputHook() throws IOException
     {
         if ( outputFile.exists() && ! outputFile.delete() ) {

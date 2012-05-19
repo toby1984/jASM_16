@@ -29,7 +29,7 @@ public class ParentSymbolTable implements IParentSymbolTable
     public ParentSymbolTable() {
     }
     
-    @Override
+    
     public ISymbol getSymbol(Identifier identifier)
     {
         for ( ISymbolTable table : tables.values() ) 
@@ -42,7 +42,7 @@ public class ParentSymbolTable implements IParentSymbolTable
         return null;
     }
     
-    @Override
+    
     public List<ISymbol> getSymbols(Identifier identifier)
     {
         final List<ISymbol>  result = new ArrayList<ISymbol>();
@@ -56,7 +56,7 @@ public class ParentSymbolTable implements IParentSymbolTable
         return result;
     }    
     
-    @Override
+    
     public List<ISymbol> getSymbols()
     {
         final List<ISymbol>  result = new ArrayList<ISymbol>();
@@ -66,7 +66,7 @@ public class ParentSymbolTable implements IParentSymbolTable
         return result;
     }
 
-    @Override
+    
     public void defineSymbol(ISymbol symbol) throws DuplicateSymbolException
     {
         final ICompilationUnit unit = symbol.getCompilationUnit();
@@ -85,7 +85,7 @@ public class ParentSymbolTable implements IParentSymbolTable
         table.defineSymbol( symbol );
     }
 
-    @Override
+    
     public boolean containsSymbol(Identifier identifier)
     {
         for ( ISymbolTable table : tables.values() ) 
@@ -97,7 +97,7 @@ public class ParentSymbolTable implements IParentSymbolTable
         return false;
     }
 
-    @Override
+    
     public void clear()
     {
         for ( ISymbolTable table : tables.values() ) 
@@ -106,19 +106,19 @@ public class ParentSymbolTable implements IParentSymbolTable
         }              
     }
     
-    @Override
+    
     public IParentSymbolTable getParent()
     {
         return null;
     }
     
-    @Override
+    
     public void setParent(IParentSymbolTable table)
     {
         throw new UnsupportedOperationException("Parent symbol tables cannot have other parents");
     }
 
-    @Override
+    
     public int getSize()
     {
         int result = 0;

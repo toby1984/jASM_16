@@ -70,12 +70,12 @@ public abstract class MenuManager
 			return result.toArray( new MenuPath[ result.size() ] );
 		}		
 
-		@Override
+		
 		public int hashCode() {
 			return toString().hashCode();
 		}
 
-		@Override
+		
 		public boolean equals(Object obj) 
 		{
 			if ( obj == this ) {
@@ -259,7 +259,7 @@ public abstract class MenuManager
 			}
 		}
 		
-		@Override
+		
 		public void run() 
 		{
 			while( true ) 
@@ -301,7 +301,7 @@ public abstract class MenuManager
 							cacheModified = true;
 							SwingUtilities.invokeLater( new Runnable() {
 
-								@Override
+								
 								public void run() 
 								{
 									System.out.println("Item state changed: "+entry.getLabel()+"  "+oldState+" -> "+currentState);
@@ -354,7 +354,7 @@ public abstract class MenuManager
 		// sort paths ascending by length
 		Collections.sort( paths , new Comparator<MenuPath>() {
 
-			@Override
+			
 			public int compare(MenuPath o1, MenuPath o2) 
 			{
 				final int len1 = o1.toString().length();
@@ -419,12 +419,12 @@ public abstract class MenuManager
 			final Action action;
 			action = new AbstractAction( e.getLabel() ) {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent event) {
 					e.onClick();
 				}
 				
-				@Override
+				
 				public boolean isEnabled() {
 					return e.isEnabled();
 				}
@@ -433,7 +433,7 @@ public abstract class MenuManager
 
 			final JMenuItem item = new JMenuItem( action ) {
 
-				@Override
+				
 				public boolean isEnabled() {
 					return action.isEnabled();
 				}

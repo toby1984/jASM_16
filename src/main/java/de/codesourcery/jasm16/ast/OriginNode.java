@@ -33,7 +33,7 @@ public class OriginNode extends ObjectCodeOutputNode
 {
     private Address address;
     
-    @Override
+    
     public ASTNode copySingleNode()
     {
         final OriginNode result = new OriginNode();
@@ -41,13 +41,13 @@ public class OriginNode extends ObjectCodeOutputNode
         return result;
     }
 
-    @Override
+    
     public boolean supportsChildNodes()
     {
         return true;
     }
 
-    @Override
+    
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         mergeWithAllTokensTextRegion( context.read( TokenType.ORIGIN ) );
@@ -72,13 +72,13 @@ public class OriginNode extends ObjectCodeOutputNode
         return this;
     }
 
-	@Override
+	
     public void symbolsResolved(ICompilationContext context)
     {
         // nothing to do here
     }
 
-    @Override
+    
     public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
     	if ( address.getValue() < thisNodesObjectCodeOffsetInBytes ) {
@@ -89,7 +89,7 @@ public class OriginNode extends ObjectCodeOutputNode
         return (int) (address.getValue() - thisNodesObjectCodeOffsetInBytes);
     }
 
-    @Override
+    
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException, ParseException
     {
         if ( this.address == null ) {

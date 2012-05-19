@@ -61,7 +61,7 @@ public class CompilationUnit implements ICompilationUnit {
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
-    @Override
+    
     public void beforeCompilationStart() {
         this.lines.clear();
         this.ast = null;
@@ -83,7 +83,7 @@ public class CompilationUnit implements ICompilationUnit {
         return new CompilationUnit( identifier  , new StringResource( identifier , source , ResourceType.SOURCE_CODE) );
     }
 
-    @Override
+    
     public void setLine(Line l) 
     {
         if (l == null) {
@@ -92,19 +92,19 @@ public class CompilationUnit implements ICompilationUnit {
         lines.put( l.getLineNumber() , l );
     }
     
-    @Override
+    
     public int getParsedLineCount() {
         return lines.size();
     }
     
-    @Override
+    
     public SourceLocation getSourceLocation(ITextRegion textRegion)
     {
     	final Line l = getLineForOffset( textRegion.getStartingOffset() );
         return new SourceLocation(this,l,textRegion);
     }
 
-    @Override
+    
     public Line getLineForOffset(int offset) throws NoSuchElementException
     {
         if ( offset < 0 ) {
@@ -132,7 +132,7 @@ public class CompilationUnit implements ICompilationUnit {
      * @param range
      * @return lines ordered ascending by line number
      */
-    @Override
+    
     public List<Line> getLinesForRange(ITextRegion range) 
     {
         if (range == null) {
@@ -148,7 +148,7 @@ public class CompilationUnit implements ICompilationUnit {
         }
         Comparator<Line> comparator = new Comparator<Line>() {
 			
-			@Override
+			
 			public int compare(Line o1, Line o2) {
 				return Integer.valueOf( o1.getLineNumber() ).compareTo( Integer.valueOf( o2.getLineNumber() ) );
 			}
@@ -163,19 +163,19 @@ public class CompilationUnit implements ICompilationUnit {
     }	
 
     @SuppressWarnings({ "unchecked", "cast" })
-    @Override
+    
     public List<ICompilationError> getErrors() {
         return (List<ICompilationError>) internalGetMarkers( IMarker.TYPE_COMPILATION_ERROR , IMarker.TYPE_GENERIC_COMPILATION_ERROR );
     }
 
-    @Override
+    
     public boolean hasErrors() 
     {
         return this.markers.get( IMarker.TYPE_COMPILATION_ERROR) != null ||
         	   this.markers.get( IMarker.TYPE_GENERIC_COMPILATION_ERROR ) != null;
     }
 
-    @Override
+    
     public void addMarker(IMarker marker) {
         if (marker == null) {
             throw new IllegalArgumentException("marker must not be NULL");
@@ -207,7 +207,7 @@ public class CompilationUnit implements ICompilationUnit {
         this.identifier=identifier;
     }
 
-    @Override
+    
     public boolean equals(Object obj) {
         if ( obj == this ) {
             return true;
@@ -218,39 +218,39 @@ public class CompilationUnit implements ICompilationUnit {
         return super.equals(obj);
     }
 
-    @Override
+    
     public int hashCode() {
         return this.identifier.hashCode();
     }
 
-    @Override
+    
     public String getIdentifier() {
         return identifier;
     }
 
-    @Override
+    
     public AST getAST() {
         return ast;
     }
 
-    @Override
+    
     public void setAST(AST ast) {
         this.ast = ast;
     }
     
-    @Override
+    
     public IResource getResource()
     {
         return resource;
     }
 
-    @Override
+    
     public String getSource(ITextRegion range) throws IOException
     {
         return getResource().readText(range);
     }
 
-    @Override
+    
     public Line getLineByNumber(int lineNumber) throws IndexOutOfBoundsException
     {
         final Line result = lines.get( lineNumber );
@@ -260,7 +260,7 @@ public class CompilationUnit implements ICompilationUnit {
         return result;
     }
 
-    @Override
+    
     public void deleteMarker(IMarker marker)
     {
         final List<IMarker> markers = this.markers.get( marker.getType() );
@@ -279,7 +279,7 @@ public class CompilationUnit implements ICompilationUnit {
     }
     
     @SuppressWarnings("unchecked")
-    @Override
+    
     public List<IMarker> getMarkers(String... types)
     {
         return internalGetMarkers( types );
@@ -308,19 +308,19 @@ public class CompilationUnit implements ICompilationUnit {
         return result;
     }
     
-    @Override
+    
     public String toString()
     {
         return getResource().toString();
     }
 
-    @Override
+    
     public Address getObjectCodeStartOffset()
     {
         return objectCodeStartAddress;
     }
 
-    @Override
+    
     public void setObjectCodeStartOffset(Address address)
     {
         if (address == null) {
@@ -330,7 +330,7 @@ public class CompilationUnit implements ICompilationUnit {
         this.objectCodeStartAddress = address;
     }
 
-	@Override
+	
 	public void addDependency(ICompilationUnit unit) 
 	{
 		if (unit == null) {
@@ -364,12 +364,12 @@ public class CompilationUnit implements ICompilationUnit {
 		}
 	}
 
-	@Override
+	
 	public List<ICompilationUnit> getDependencies() {
 		return new ArrayList<ICompilationUnit>( this.dependencies );
 	}
 	
-	@Override
+	
 	public ISymbolTable getSymbolTable()
 	{
 	    return symbolTable;

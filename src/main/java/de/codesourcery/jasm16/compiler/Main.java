@@ -156,7 +156,7 @@ public class Main {
         {
             compiler.insertCompilerPhaseAfter( new CompilerPhase("format-code") 
             {
-                @Override
+                
                 protected void run(ICompilationUnit unit, ICompilationContext context) throws IOException {
                     if ( unit.getAST() != null ) {
                         ASTUtils.visitInOrder( unit.getAST() , 
@@ -233,30 +233,30 @@ public class Main {
         if ( dumpObjectCode ) {
             factory = new AbstractObjectCodeWriterFactory() {
                 
-                @Override
+                
                 protected void deleteOutputHook() throws IOException
                 {
                     generatedObjectCode = new ByteArrayOutputStream(); 
                 }
                 
-                @Override
+                
                 protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context)
                 {
                     return new AbstractObjectCodeWriter() {
                         
-                        @Override
+                        
                         protected void deleteOutputHook() throws IOException
                         {
                             generatedObjectCode = new ByteArrayOutputStream(); 
                         }
                         
-                        @Override
+                        
                         protected OutputStream createOutputStream() throws IOException
                         {
                             return generatedObjectCode;
                         }
                         
-                        @Override
+                        
                         protected void closeHook() throws IOException
                         {
                         }
@@ -275,7 +275,7 @@ public class Main {
             // no output file given, just dump source.dasm16 into source.o
             factory = new SimpleFileObjectCodeWriterFactory() 
             {
-                @Override
+                
                 protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context) 
                 {
                     final IResource resource = context.getCurrentCompilationUnit().getResource();
@@ -372,13 +372,13 @@ public class Main {
             super( "debug-symbols" ); 
         }
 
-        @Override
+        
         protected void run(ICompilationUnit unit, ICompilationContext context) throws IOException
         {
             final List<ISymbol> symbols = context.getSymbolTable().getSymbols();
             final Comparator<ISymbol> comp = new Comparator<ISymbol>() {
 
-                @Override
+                
                 public int compare(ISymbol o1, ISymbol o2) 
                 {
                     if ( o1 instanceof Label && o2 instanceof Label ) 

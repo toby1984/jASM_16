@@ -61,7 +61,7 @@ public class ViewContainerManager implements IViewContainerListener
             throw new IllegalArgumentException("id must not be NULL/blank.");
         }
         
-        final List<IViewContainer> result = new ArrayList<>();
+        final List<IViewContainer> result = new ArrayList<IViewContainer>();
         
         synchronized(containers) {
             for ( IViewContainer p : containers ) {
@@ -73,7 +73,7 @@ public class ViewContainerManager implements IViewContainerListener
         return result;
     }
 
-    @Override
+    
     public void viewContainerClosed(IViewContainer container)
     {
         removeViewContainer( container );

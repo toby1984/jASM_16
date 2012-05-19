@@ -96,20 +96,20 @@ public class Compiler implements ICompiler {
     	compilerPhases.addAll( setupCompilerPhases() );
     }
     
-    @Override
+    
     public void compile(List<ICompilationUnit> units) 
     {
     	compile( units , new CompilationListener() );
     }
     
-    @Override
+    
     public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
     {
         final ICompilationOrderProvider orderProvider;
         if ( linkOrderProvider == null ) {
             orderProvider = new ICompilationOrderProvider() {
                 
-                @Override
+                
                 public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver)
                 {
                     return units;
@@ -210,12 +210,12 @@ public class Compiler implements ICompiler {
         return phases;
     }
 
-	@Override
+	
 	public List<ICompilerPhase> getCompilerPhases() {
 		return Collections.unmodifiableList( this.compilerPhases );
 	}
 
-	@Override
+	
 	public void insertCompilerPhaseAfter(ICompilerPhase phase, String name) {
 		
 		if ( phase == null ) {
@@ -254,7 +254,7 @@ public class Compiler implements ICompiler {
 	}
 	
 
-	@Override
+	
 	public ICompilerPhase getCompilerPhaseByName(String name) {
 		
 		if (StringUtils.isBlank(name)) {
@@ -269,7 +269,7 @@ public class Compiler implements ICompiler {
 		throw new IllegalArgumentException("Found no compiler phase '"+name+"'");
 	}
 	
-	@Override
+	
 	public void replaceCompilerPhase(ICompilerPhase phase, String name) 
 	{
 		if ( phase == null ) {
@@ -286,7 +286,7 @@ public class Compiler implements ICompiler {
 		compilerPhases.set( getCompilerPhaseIndex( name ) , phase );
 	}
 	
-	@Override
+	
 	public void removeCompilerPhase(String name) {
 	    
 	    for (Iterator<ICompilerPhase> it = compilerPhases.iterator(); it.hasNext();) {
@@ -299,7 +299,7 @@ public class Compiler implements ICompiler {
 	    throw new NoSuchElementException("Failed to remove phase '"+name+"'");
 	}
 	
-	@Override
+	
 	public void insertCompilerPhaseBefore(ICompilerPhase phase, String name) 
 	{
 		if ( phase == null ) {
@@ -312,7 +312,7 @@ public class Compiler implements ICompiler {
 		compilerPhases.add( getCompilerPhaseIndex( name ) , phase );
 	}
 
-    @Override
+    
     public void setObjectCodeWriterFactory(IObjectCodeWriterFactory factory)
     {
         if (factory == null) {
@@ -321,7 +321,7 @@ public class Compiler implements ICompiler {
         this.writerFactory = factory;
     }
 
-    @Override
+    
     public void setResourceResolver(IResourceResolver resolver)
     {
         if (resolver == null) {
@@ -330,7 +330,7 @@ public class Compiler implements ICompiler {
         this.resourceResolver = resolver;
     }
 
-	@Override
+	
 	public boolean hasCompilerOption(CompilerOption option) {
 		if (option == null) {
 			throw new IllegalArgumentException("option must not be NULL");
@@ -338,7 +338,7 @@ public class Compiler implements ICompiler {
 		return this.options.contains( option );
 	}
 
-	@Override
+	
 	public void setCompilerOption(CompilerOption option, boolean onOff) {
 		if ( option == null ) {
 			throw new IllegalArgumentException("option must not be NULL");
@@ -350,7 +350,7 @@ public class Compiler implements ICompiler {
 		}
 	}
 
-    @Override
+    
     public void setCompilationOrderProvider(ICompilationOrderProvider provider)
     {
         if (provider == null) {

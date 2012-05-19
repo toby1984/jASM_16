@@ -30,7 +30,7 @@ public class InMemorySourceResource extends AbstractResource {
 		this.editor = editor;
 	}
 	
-    @Override
+    
     public String readText(ITextRegion range) throws IOException
     {
         return range.apply( getTextFromEditor() );
@@ -53,31 +53,31 @@ public class InMemorySourceResource extends AbstractResource {
         }
     }    
 
-    @Override
+    
     public String getIdentifier()
     {
         return resourceOnDisk.getIdentifier();
     }
 
-    @Override
+    
     public long getAvailableBytes() throws IOException
     {
         return editor.getDocument().getLength();
     }
 
-    @Override
+    
     public OutputStream createOutputStream(boolean append) throws IOException
     {
         throw new UnsupportedOperationException("Cannot save to "+this);
     }
 
-    @Override
+    
     public InputStream createInputStream() throws IOException
     {
         return new ByteArrayInputStream( getTextFromEditor().getBytes() );
     }
 
-    @Override
+    
     public boolean isSame(IResource other)
     {
         if ( other == this ) {

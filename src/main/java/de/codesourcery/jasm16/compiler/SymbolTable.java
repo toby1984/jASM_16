@@ -37,7 +37,7 @@ public class SymbolTable implements ISymbolTable {
 	public SymbolTable() {
 	}
 	
-	@Override
+	
 	public void defineSymbol( ISymbol symbol) throws DuplicateSymbolException
 	{
 		if (symbol == null) {
@@ -58,7 +58,7 @@ public class SymbolTable implements ISymbolTable {
 		}
 	}
 
-	@Override
+	
 	public ISymbol getSymbol(Identifier identifier) 
 	{
 		if ( identifier == null ) {
@@ -71,13 +71,13 @@ public class SymbolTable implements ISymbolTable {
 		return result;
 	}
 
-	@Override
+	
 	public boolean containsSymbol(Identifier identifier)
 	{
 		return getSymbol( identifier ) != null;
 	}
 
-	@Override
+	
 	public String toString() 
 	{
 		StringBuilder result = new StringBuilder();
@@ -88,29 +88,29 @@ public class SymbolTable implements ISymbolTable {
 		return result.toString();
 	}
 
-	@Override
+	
 	public void clear() {
 		symbols.clear();
 	}
 
-	@Override
+	
 	public List<ISymbol> getSymbols() {
 		return new ArrayList<ISymbol>( symbols.values() );
 	}
 
-    @Override
+    
     public IParentSymbolTable getParent()
     {
         return parent;
     }
 
-    @Override
+    
     public void setParent(IParentSymbolTable table)
     {
         this.parent = table;
     }
 
-    @Override
+    
     public int getSize()
     {
         return symbols.size();

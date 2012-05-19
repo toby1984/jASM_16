@@ -29,7 +29,7 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DefaultCompilationOrderProvider implements ICompilationOrderProvider
 {
-    @Override
+    
     public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver) throws UnknownCompilationOrderException, ResourceNotFoundException
     {
         if ( units.isEmpty() ) {
@@ -43,7 +43,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
             ParsingResult parseResult;
             try {
                 parseResult = getIncludedSources( unit , resolver );
-            } catch (IOException | ParseException e) {
+            } catch (Exception e) {
                 throw new UnknownCompilationOrderException("Failed to parse "+unit,e);
             }
             final List<IResource> sourceFile = parseResult.includedSources;
@@ -76,7 +76,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         // try to order root set ascending by starting address
         Collections.sort( rootSet , new Comparator<DependencyNode>() {
 
-            @Override
+            
             public int compare(DependencyNode o1, DependencyNode o2)
             {
                 if ( o1.objectCodeStartingAddress.isLessThan( o2.objectCodeStartingAddress ) ) {
@@ -133,7 +133,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         
         final NodeVisitor visitor= new NodeVisitor() {
             
-            @Override
+            
             public void visit(DependencyNode node)
             {
                 if ( node.dependentNodes.isEmpty() ) {
@@ -234,7 +234,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
             }
         }
         
-        @Override
+        
         public String toString()
         {
             return "(0x"+Misc.toHexString( objectCodeStartingAddress )+")"+unit.toString();
@@ -259,7 +259,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         final Set<ParserOption> parserOptions = Collections.singleton( ParserOption.NO_SOURCE_INCLUDE_PROCESSING );   
         final ICompilationUnitResolver compUnitResolver = new ICompilationUnitResolver() {
             
-            @Override
+            
             public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException
             {
                 throw new UnsupportedOperationException("Should not be called");

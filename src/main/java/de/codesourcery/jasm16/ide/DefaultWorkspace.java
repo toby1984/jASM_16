@@ -70,12 +70,12 @@ public class DefaultWorkspace implements IWorkspace
 		return workspaceConfig;
 	}
 
-	@Override
+	
 	public File getBaseDirectory() {
 		return appConfig.getWorkspaceDirectory();
 	}
 
-	@Override
+	
 	public List<IAssemblyProject> getAllProjects()
 	{
 		assertWorkspaceOpen();
@@ -125,7 +125,7 @@ public class DefaultWorkspace implements IWorkspace
 		return result;
 	}
 
-	@Override
+	
 	public boolean doesProjectExist(String name)
 	{
 		assertWorkspaceOpen();
@@ -138,7 +138,7 @@ public class DefaultWorkspace implements IWorkspace
 		return false;
 	}
 
-	@Override
+	
 	public IAssemblyProject createNewProject(String name) throws IOException, ProjectAlreadyExistsException
 	{
 		if (StringUtils.isBlank(name)) {
@@ -205,14 +205,14 @@ public class DefaultWorkspace implements IWorkspace
 		addResourceListener( result );
 		
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 			    if ( listener instanceof IWorkspaceListener) {
 			        ((IWorkspaceListener) listener).projectCreated(result);
 			    }
 			}
-			@Override
+			
 			public String toString() {
 				return "PROJECT-CREATED: "+result;
 			}			
@@ -220,7 +220,7 @@ public class DefaultWorkspace implements IWorkspace
 		return result;		
 	}
 
-	@Override
+	
 	public void deleteProject(final IAssemblyProject project,boolean deletePhyiscally) throws IOException
 	{
 		if (project == null) {
@@ -255,13 +255,13 @@ public class DefaultWorkspace implements IWorkspace
 				}
 				
 				notifyListeners( new IInvoker() {
-					@Override
+					
 					public void invoke(IResourceListener listener) {
 		                if ( listener instanceof IWorkspaceListener) {
 		                    ((IWorkspaceListener) listener).projectDeleted(existing);
 		                }					    
 					}
-					@Override
+					
 					public String toString() {
 						return "PROJECT-DELETED: "+project;
 					}					
@@ -271,7 +271,7 @@ public class DefaultWorkspace implements IWorkspace
 		}
 	}
 	
-	@Override
+	
 	public void deleteFile(final IAssemblyProject project, final File file) throws IOException 
 	{
 		if ( project == null ) {
@@ -310,7 +310,7 @@ public class DefaultWorkspace implements IWorkspace
 		if ( project != null  ) 
 		{
 			notifyListeners( new IInvoker() {
-				@Override
+				
 				public void invoke(IResourceListener listener) 
 				{
 					IResource resource = project.getResourceForFile( file );
@@ -319,7 +319,7 @@ public class DefaultWorkspace implements IWorkspace
 					}
 					listener.resourceDeleted( project , resource );
 				}
-				@Override
+				
 				public String toString() {
 					return "RESOURCE-DELETED: "+file.getAbsolutePath();
 				}					
@@ -327,7 +327,7 @@ public class DefaultWorkspace implements IWorkspace
 		}
 	}
 
-	@Override
+	
 	public void saveProjectConfiguration(IAssemblyProject project) throws IOException
 	{
 		if (project == null) {
@@ -342,16 +342,16 @@ public class DefaultWorkspace implements IWorkspace
 		project.getConfiguration().save();
 	}
 
-	@Override
+	
 	public void resourceChanged(final IAssemblyProject project , final IResource resource)
 	{
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) {
 				listener.resourceChanged( project , resource );
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "RESOURCE-CHANGED: "+resource;
 			}			
@@ -381,25 +381,25 @@ public class DefaultWorkspace implements IWorkspace
 		}		
 	}
 	
-	@Override
+	
 	public void addWorkspaceListener(IWorkspaceListener listener)
 	{
 	    addResourceListener( listener );
 	}
 
-	@Override
+	
 	public void removeWorkspaceListener(IWorkspaceListener listener)
 	{
 	    removeResourceListener( listener );
 	}
 
-	@Override
+	
 	public void reloadWorkspace() throws IOException 
 	{
 		loadProjects();
 	}
 
-	@Override
+	
 	public IAssemblyProject getProjectByName(String name) 
 	{
 		assertWorkspaceOpen();
@@ -413,54 +413,54 @@ public class DefaultWorkspace implements IWorkspace
 		throw new NoSuchElementException("Found no project named '"+name+"'");
 	}
 
-	@Override
+	
 	public void close() throws IOException {
 		this.opened.set( false );
 		getWorkspaceConfig().saveConfiguration();		
 	}
 
-	@Override
+	
 	public void open() throws IOException 
 	{
 		reloadWorkspace();
 	}
 
-	@Override
+	
 	public void resourceCreated(final IAssemblyProject project, final IResource resource) {
 
 		notifyListeners( new IInvoker() {
 
-			@Override
+			
 			public void invoke(IResourceListener listener) {
 				listener.resourceCreated( project , resource );
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "RESOURCE-CREATED: "+resource;
 			}
 		});
 	}
 
-	@Override
+	
 	public void resourceDeleted(final IAssemblyProject project, final IResource resource) 
 	{
 		notifyListeners( new IInvoker() {
 
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 				listener.resourceDeleted( project , resource );
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "RESOURCE-DELETED: "+resource;
 			}			
 		});		
 	}
 
-    @Override
+    
     public void addResourceListener(IResourceListener listener)
     {
         if (listener == null) {
@@ -483,7 +483,7 @@ public class DefaultWorkspace implements IWorkspace
         }        
     }
 
-    @Override
+    
     public void removeResourceListener(IResourceListener listener)
     {
         if (listener == null) {
@@ -494,11 +494,11 @@ public class DefaultWorkspace implements IWorkspace
         }         
     }
 
-	@Override
+	
 	public void buildStarted(final AssemblyProject assemblyProject) 
 	{
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 				if ( listener instanceof IWorkspaceListener ) {
@@ -506,18 +506,18 @@ public class DefaultWorkspace implements IWorkspace
 				}
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "BUILD-STARTED: "+assemblyProject;
 			}			
 		});		
 	}
 
-	@Override
+	
 	public void buildFinished(final AssemblyProject assemblyProject, final boolean buildSuccessful) 
 	{
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 				if ( listener instanceof IWorkspaceListener ) {
@@ -525,14 +525,14 @@ public class DefaultWorkspace implements IWorkspace
 				}
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "BUILD-FINISHED: "+assemblyProject+" ( success = "+buildSuccessful+" )";
 			}			
 		});			
 	}
 
-    @Override
+    
     public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException
     {
         if (projects == null) {
@@ -547,7 +547,7 @@ public class DefaultWorkspace implements IWorkspace
         }
     }
 
-	@Override
+	
 	public void openProject(final IAssemblyProject project) {
 		
 		try {
@@ -561,7 +561,7 @@ public class DefaultWorkspace implements IWorkspace
 		// implements IWorkspaceListener#projectOpened() and
 		// will update it's internal state when it receives the message
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 				if ( listener instanceof IWorkspaceListener ) {
@@ -569,14 +569,14 @@ public class DefaultWorkspace implements IWorkspace
 				}
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "PROJECT-OPENED: "+project;
 			}			
 		});			
 	}
 
-	@Override
+	
 	public void closeProject(final IAssemblyProject project) 
 	{
 		try {
@@ -590,7 +590,7 @@ public class DefaultWorkspace implements IWorkspace
 		// implements IWorkspaceListener#projectClosed() and
 		// will update it's internal state when it receives the message
 		notifyListeners( new IInvoker() {
-			@Override
+			
 			public void invoke(IResourceListener listener) 
 			{
 				if ( listener instanceof IWorkspaceListener ) {
@@ -598,14 +598,14 @@ public class DefaultWorkspace implements IWorkspace
 				}
 			}
 			
-			@Override
+			
 			public String toString() {
 				return "PROJECT-CLOSED: "+project;
 			}			
 		});			
 	}
 
-	@Override
+	
 	public IAssemblyProject importProject(File baseDirectory) throws IOException, ProjectAlreadyExistsException 
 	{
 		if (baseDirectory == null) {

@@ -81,7 +81,7 @@ public class BreakpointView extends AbstractView {
 
 		private final List<Breakpoint> breakPoints = new ArrayList<Breakpoint>();
 		
-		@Override
+		
 		public String getColumnName(int column) 
 		{
 			switch( column  ) 
@@ -112,7 +112,7 @@ public class BreakpointView extends AbstractView {
 			return breakPoints.get( modelRow );
 		}		
 
-		@Override
+		
 		public void setValueAt(Object aValue, int rowIndex, int columnIndex) 
 		{
 			final Breakpoint bp = getBreakpoint( rowIndex );
@@ -141,7 +141,7 @@ public class BreakpointView extends AbstractView {
 			emulator.breakpointChanged( bp );
 		}
 		
-		@Override
+		
 		public boolean isCellEditable(int rowIndex, int columnIndex) 
 		{
 			switch( columnIndex ) {
@@ -154,7 +154,7 @@ public class BreakpointView extends AbstractView {
 			}
 		}
 		
-		@Override
+		
 		public int getRowCount() {
 			return breakPoints.size();
 		}
@@ -192,12 +192,12 @@ public class BreakpointView extends AbstractView {
 			fireTableRowsInserted( pos , pos );			
 		}		
 
-		@Override
+		
 		public int getColumnCount() {
 			return 3;
 		}
 		
-		@Override
+		
 		public Class<?> getColumnClass(int columnIndex) {
 			switch( columnIndex ) 
 			{
@@ -212,7 +212,7 @@ public class BreakpointView extends AbstractView {
 			}
 		}
 
-		@Override
+		
 		public Object getValueAt(int rowIndex, int columnIndex) 
 		{
 			final Breakpoint bp = breakPoints.get( rowIndex );
@@ -243,27 +243,27 @@ public class BreakpointView extends AbstractView {
 		emulator.addEmulationListener( listener );
 	}
 	
-	@Override
+	
 	public void disposeHook() 
 	{
 		emulator.removeEmulationListener( listener );
 	}
 
-	@Override
+	
 	public void refreshDisplay() {
 	}
 
-	@Override
+	
 	public String getTitle() {
 		return "Breakpoints";
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}
 
-	@Override
+	
 	protected JPanel getPanel() 
 	{
 		if ( panel == null ) {
@@ -299,7 +299,7 @@ public class BreakpointView extends AbstractView {
 		
 		table.getActionMap().put("deleteRow" , new AbstractAction("deleteRow") {
 
-			@Override
+			
 			public void actionPerformed(ActionEvent e) 
 			{
 				final int viewRow = table.getSelectedRow();

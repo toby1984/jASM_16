@@ -91,12 +91,12 @@ public class SourceLocation extends TextRegion implements Comparable<SourceLocat
 		return getStartingOffset();
 	}
 	
-	@Override
+	
 	public String toString() {
 		return compilationUnit+" , line "+lineNumber+" , column "+getColumnNumber()+" , offset "+getStartingOffset();
 	}
 
-	@Override
+	
 	public int compareTo(SourceLocation o) 
 	{
 		if ( this.getOffset() < o.getOffset() ) {

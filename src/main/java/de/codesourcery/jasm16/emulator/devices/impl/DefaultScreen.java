@@ -139,7 +139,7 @@ public final class DefaultScreen implements IDevice {
     private volatile IMemoryRegion videoRAM = null;
     private final boolean connectUponAddDevice;
     
-    @Override
+    
     public void reset()
     {
         if ( useCustomPaletteRAM ) {
@@ -182,7 +182,7 @@ public final class DefaultScreen implements IDevice {
             }            
         }
         
-        @Override
+        
         public void clear() 
         {
             final int size = getSize().toSizeInWords().getValue();
@@ -212,13 +212,13 @@ public final class DefaultScreen implements IDevice {
             return cache.get( index );
         }
 
-        @Override
+        
         public void write(Address address, int value) {
             super.write( address, value);
             cache.set( address.getValue() , toJavaColor( value ) );
         }
 
-        @Override
+        
         public void write(int wordAddress, int value) {
             super.write( wordAddress , value );
             cache.set( wordAddress , toJavaColor( value ) );            
@@ -231,19 +231,19 @@ public final class DefaultScreen implements IDevice {
             super("Video RAM",new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) );
         }
 
-        @Override
+        
         public void clear() {
             super.clear();
             doFullVRAMRendering();
         }
 
-        @Override
+        
         public void write(Address address, int value) {
             super.write( address, value);
             vramMemoryUpdated( address.toWordAddress().getValue() , value );    		
         }
 
-        @Override
+        
         public void write(int wordAddress, int value) {
             super.write( wordAddress , value );
             vramMemoryUpdated( wordAddress , value );
@@ -403,7 +403,7 @@ public final class DefaultScreen implements IDevice {
         return screen() != null;
     }
 
-    @Override
+    
     public void afterAddDevice(IEmulator emulator) {
         this.emulator = emulator;
         if ( connectUponAddDevice ) {
@@ -411,7 +411,7 @@ public final class DefaultScreen implements IDevice {
         }
     }
 
-    @Override
+    
     public void beforeRemoveDevice(IEmulator emulator) 
     {
         if ( isConnected() ) {
@@ -425,7 +425,7 @@ public final class DefaultScreen implements IDevice {
         this.emulator = null;
     }
 
-    @Override
+    
     public DeviceDescriptor getDeviceDescriptor() {
         return DESC;
     }
@@ -475,7 +475,7 @@ public final class DefaultScreen implements IDevice {
         this.consoleScreen = null;
     }
 
-    @Override
+    
     public int handleInterrupt(IEmulator emulator) 
     {
         /*

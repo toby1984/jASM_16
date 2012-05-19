@@ -37,7 +37,7 @@ public class RegisterReferenceNode extends TermNode
 	private boolean hasPreDecrement;
 	private boolean hasPostIncrement;
 	
-	@Override
+	
 	public boolean equals(Object obj)
 	{
 	    if ( obj == this ) {
@@ -53,7 +53,7 @@ public class RegisterReferenceNode extends TermNode
 	    return false; 
 	}
 	
-    @Override
+    
 	protected RegisterReferenceNode parseInternal(IParseContext context) throws ParseException
     {
         /* 0x18: POP / [SP++]                                            
@@ -134,13 +134,13 @@ public class RegisterReferenceNode extends TermNode
         return this;
     }
 
-	@Override
+	
 	public TermNode reduce(ICompilationContext context) 
 	{
 		return (TermNode) createCopy(false);
 	}
 
-    @Override
+    
     public RegisterReferenceNode copySingleNode()
     {
     	final RegisterReferenceNode result = new RegisterReferenceNode();
@@ -165,7 +165,7 @@ public class RegisterReferenceNode extends TermNode
         return register;
     }    
     
-    @Override
+    
     public String toString() 
     {
     	String result="";
@@ -179,12 +179,12 @@ public class RegisterReferenceNode extends TermNode
     	return result;
     }
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) {
 		return Long.valueOf( 0 );
 	}    

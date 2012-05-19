@@ -28,7 +28,7 @@ public class ASTNodeTest extends TestCase
     	public TestNode() {
     	}
     	
-        @Override
+        
         public boolean supportsChildNodes() {
             return true;
         }    	
@@ -37,18 +37,18 @@ public class ASTNodeTest extends TestCase
     		super(range);
     	}
     	
-        @Override
+        
 		protected ASTNode parseInternal(IParseContext context) throws ParseException
         {
             return null;
         }
         
-        @Override
+        
         protected void setTextRegionIncludingAllTokens(ITextRegion textRegion) {
         	super.setTextRegionIncludingAllTokens(textRegion);
         }
 
-        @Override
+        
         public ASTNode copySingleNode()
         {
             return new TestNode();

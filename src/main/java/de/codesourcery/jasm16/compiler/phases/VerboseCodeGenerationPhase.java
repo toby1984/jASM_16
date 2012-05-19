@@ -30,7 +30,7 @@ import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
  */
 public class VerboseCodeGenerationPhase extends CodeGenerationPhase {
 
-    @Override
+    
     protected void outputObjectCode(ICompilationUnit unit, final ICompilationContext compContext,final IObjectCodeWriter writer) throws IOException
     {   
         final String outputFile;

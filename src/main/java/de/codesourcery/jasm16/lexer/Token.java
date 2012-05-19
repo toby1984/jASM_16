@@ -34,32 +34,32 @@ public final class Token extends TextRegion implements IToken {
 		this.contents = contents;
 	}
 
-	@Override
+	
 	public TokenType getType() {
 		return type;
 	}
 	
-	@Override
+	
 	public boolean hasType(TokenType t) {
 		return t.equals( getType() );
 	}
 	
-	@Override
+	
 	public String getContents() {
 		return contents;
 	}
 
-	@Override
+	
 	public String toString() {
 		return ">"+contents+"< ("+super.toString()+" , "+type+")";
 	}
 	
-	@Override
+	
 	public final boolean isWhitespace() {
         return hasType( TokenType.WHITESPACE );	    
 	}
 	
-	@Override
+	
     public final boolean isEOL() {
         return hasType( TokenType.EOL );     
     }	

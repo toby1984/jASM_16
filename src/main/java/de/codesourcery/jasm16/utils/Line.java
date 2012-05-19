@@ -80,7 +80,7 @@ public class Line
         return lineStartingOffset;
     }
     
-    @Override
+    
     public String toString() {
     	return "line "+lineNumber;
     }

@@ -47,7 +47,7 @@ public class FoldExpressionsPhase extends CompilerPhase {
 		super(ICompilerPhase.PHASE_FOLD_EXPRESSIONS);
 	}
 
-	@Override
+	
     protected void run(final ICompilationUnit unit, ICompilationContext context) throws IOException
     {
         foldExpressions( context );

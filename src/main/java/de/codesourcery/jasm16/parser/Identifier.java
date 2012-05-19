@@ -65,7 +65,7 @@ outer:
         this.identifier = identifier;
     }
     
-    @Override
+    
     public boolean equals(Object obj) 
     {
     	if ( this == obj ) {
@@ -77,7 +77,7 @@ outer:
     	return false;
     }
     
-    @Override
+    
     public int hashCode() {
     	return identifier.hashCode();
     }
@@ -92,7 +92,7 @@ outer:
     	return identifier;
     }
     
-    @Override
+    
     public String toString()
     {
         return identifier;

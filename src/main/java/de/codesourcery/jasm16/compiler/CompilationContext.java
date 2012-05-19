@@ -94,12 +94,12 @@ public class CompilationContext implements ICompilationContext {
 		this.options.addAll( options );
 	}
 	
-	@Override
+	
 	public ISymbolTable getSymbolTable() {
 		return symbolTable;
 	}
 
-	@Override
+	
 	public ICompilationUnit getCurrentCompilationUnit() {
 		return currentUnit;
 	}
@@ -109,31 +109,31 @@ public class CompilationContext implements ICompilationContext {
         return writerFactory.getWriter( this );
     }
     
-    @Override
+    
     public IObjectCodeWriterFactory getObjectCodeWriterFactory()
     {
         return writerFactory;
     }
 
-    @Override
+    
     public List<ICompilationUnit> getAllCompilationUnits()
     {
         return Collections.unmodifiableList( this.allCompilationUnits );
     }
 
-    @Override
+    
     public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
     {
         return resourceResolver.resolve( identifier, resourceType );
     }
 
-    @Override
+    
     public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
     {
         return resourceResolver.resolveRelative( identifier , parent, resourceType );
     }
 
-	@Override
+	
 	public boolean hasCompilerOption(CompilerOption option) 
 	{
 		if (option == null) {
@@ -142,7 +142,7 @@ public class CompilationContext implements ICompilationContext {
 		return options.contains( option );
 	}
 
-	@Override
+	
 	public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException {
 		return compilationUnitResolver.getOrCreateCompilationUnit( resource );
 	}

@@ -197,7 +197,7 @@ public class ExpressionNodeTest extends TestHelper {
 		
 		final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 			
-			@Override
+			
 			public boolean visit(ASTNode node) 
 			{
 				System.out.println( node.getClass().getName() +" '"+node.toString()+"'" );
@@ -221,7 +221,7 @@ public class ExpressionNodeTest extends TestHelper {
 		
 		final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 			
-			@Override
+			
 			public boolean visit(ASTNode node) 
 			{
 				System.out.println( node.getClass().getName() +" '"+node.toString()+"'" );

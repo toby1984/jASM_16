@@ -273,34 +273,34 @@ public class InitializedMemoryNodeTest extends TestHelper
         final byte[][] actual = new byte[1][];
         IObjectCodeWriter writer = new IObjectCodeWriter() {
             
-            @Override
+            
             public void close() throws IOException { }
             
-            @Override
+            
             public void writeObjectCode(byte[] data, int offset, int length) throws IOException { }
             
-            @Override
+            
             public void writeObjectCode(byte[] values) throws IOException
             {
                 actual[0] = values;
             }
             
-            @Override
+            
             public void deleteOutput() throws IOException { }
 
-            @Override
+            
             public Address getCurrentWriteOffset()
             {
                 return Address.ZERO;
             }
 
-            @Override
+            
             public void advanceToWriteOffset(Address offset) throws IOException
             {
                 throw new UnsupportedOperationException("Not implemented");
             }
 
-            @Override
+            
             public Address getFirstWriteOffset()
             {
                 return Address.ZERO;

@@ -28,7 +28,7 @@ public class ByteArrayObjectCodeWriterFactory extends AbstractObjectCodeWriterFa
     
     private int firstWriteOffset = 0;
     
-    @Override
+    
     protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context)
     {
         if ( out == null ) {
@@ -37,7 +37,7 @@ public class ByteArrayObjectCodeWriterFactory extends AbstractObjectCodeWriterFa
         return new AbstractObjectCodeWriter() {
 
             
-            @Override
+            
             public void advanceToWriteOffset(Address offset) throws IOException
             {
                 super.advanceToWriteOffset(offset);
@@ -46,18 +46,18 @@ public class ByteArrayObjectCodeWriterFactory extends AbstractObjectCodeWriterFa
                 }
             }
             
-            @Override
+            
             protected void closeHook() throws IOException
             {
             }
 
-            @Override
+            
             protected OutputStream createOutputStream() throws IOException
             {
                 return out;
             }
 
-            @Override
+            
             protected void deleteOutputHook() throws IOException
             {
                 out = null;
@@ -74,7 +74,7 @@ public class ByteArrayObjectCodeWriterFactory extends AbstractObjectCodeWriterFa
         return firstWriteOffset;
     }
 
-    @Override
+    
     protected void deleteOutputHook() throws IOException
     {
         firstWriteOffset = -1;

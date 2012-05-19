@@ -25,7 +25,7 @@ public class ProjectConfigurationTest extends TestHelper {
 
 	private File file;
 	
-	@Override
+	
 	protected void tearDown() throws Exception {
 		super.tearDown();
 		if ( file != null ) {

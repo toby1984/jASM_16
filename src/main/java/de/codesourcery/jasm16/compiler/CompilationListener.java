@@ -25,36 +25,36 @@ package de.codesourcery.jasm16.compiler;
  */
 public class CompilationListener implements ICompilationListener
 {
-    @Override
+    
     public void start(ICompilerPhase phase) {
     }
 
-    @Override
+    
     public void success(ICompilerPhase phase) {
     }
 
-    @Override
+    
     public void failure(ICompilerPhase phase) {
     }
 
-	@Override
+	
 	public void failure(ICompilerPhase phase, ICompilationUnit unit) {
 	}
 
-	@Override
+	
 	public void start(ICompilerPhase phase, ICompilationUnit unit) {
 	}
 
-	@Override
+	
 	public void success(ICompilerPhase phase, ICompilationUnit unit) {
 	}
 
-    @Override
+    
     public void onCompileStart(ICompilerPhase firstPhase)
     {
     }
 
-    @Override
+    
     public void afterCompile(ICompilerPhase lastPhase)
     {
     }

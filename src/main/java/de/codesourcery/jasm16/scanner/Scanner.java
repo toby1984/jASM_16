@@ -26,12 +26,12 @@ public class Scanner implements IScanner {
 		this.input = input;
 	}
 	
-	@Override
+	
 	public boolean eof() {
 		return currentIndex >= input.length();
 	}
 
-	@Override
+	
 	public char peek() throws EOFException
 	{
 		if ( eof() ) {
@@ -40,7 +40,7 @@ public class Scanner implements IScanner {
 		return input.charAt(currentIndex);
 	}
 
-	@Override
+	
 	public char read() throws EOFException {
 		if ( eof() ) {
 			throw new EOFException("End of input reached",currentIndex);
@@ -48,12 +48,12 @@ public class Scanner implements IScanner {
 		return input.charAt(currentIndex++);		
 	}
 
-	@Override
+	
 	public int currentParseIndex() {
 		return currentIndex;
 	}
 
-	@Override
+	
 	public void setCurrentParseIndex(int index) {
 		if ( index < 0 ) 
 		{
@@ -62,7 +62,7 @@ public class Scanner implements IScanner {
 		this.currentIndex = index;
 	}
 
-    @Override
+    
     public String toString()
     {
         return eof() ? "Scanner is at EOF" : ""+peek();

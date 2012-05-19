@@ -33,7 +33,7 @@ public class EmulationListener implements IEmulationListener {
 
 	private volatile boolean fullSpeedMode = false;
 	
-	@Override
+	
 	public final void beforeContinuousExecution(IEmulator emulator) {
 		fullSpeedMode = true;
 		beforeContinuousExecutionHook();
@@ -49,7 +49,7 @@ public class EmulationListener implements IEmulationListener {
 		return fullSpeedMode;
 	}
 	
-	@Override
+	
 	public final void onStop(IEmulator emulator,Address previousPC , Throwable emulationError) {
 		fullSpeedMode = false;
 		onStopHook(emulator, previousPC, emulationError);
@@ -58,58 +58,58 @@ public class EmulationListener implements IEmulationListener {
 	public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 	}
 	
-	@Override
+	
 	public void afterReset(IEmulator emulator) {
 	}
 
-	@Override
+	
 	public void afterMemoryLoad(IEmulator emulator, Address startAddress,int lengthInBytes) 
 	{
 	}
 
-	@Override
+	
 	public void onBreakpoint(IEmulator emulator, Breakpoint breakpoint) 
 	{
 	}
 
-	@Override
+	
 	public void beforeCommandExecution(IEmulator emulator) 
 	{
 	}
 
-	@Override
+	
 	public void afterCommandExecution(IEmulator emulator, int commandDuration) 
 	{
 	}
 
-	@Override
+	
 	public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
 	}
 
-	@Override
+	
 	public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
 	}
 
-	@Override
+	
 	public void breakpointChanged(IEmulator emulator, Breakpoint breakpoint) {
 	}
 
-	@Override
+	
 	public boolean isInvokeBeforeCommandExecution() {
 		return false;
 	}
 
-	@Override
+	
 	public boolean isInvokeAfterCommandExecution() {
 		return true;
 	}
 	
-	@Override
+	
 	public boolean isInvokeAfterAndBeforeCommandExecutionInContinuousMode() {
 		return false;
 	}
 
-    @Override
+    
     public void beforeEmulatorIsDisposed(IEmulator emulator)
     {
     }

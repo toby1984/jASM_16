@@ -44,7 +44,7 @@ public class ASTValidationPhase1 extends CompilerPhase {
 		super(ICompilerPhase.PHASE_VALIDATE_AST1);
 	}
 
-    @Override
+    
     protected void run(final ICompilationUnit unit , final ICompilationContext compContext) throws IOException
     {
         if ( unit.getAST() == null ) {
@@ -53,7 +53,7 @@ public class ASTValidationPhase1 extends CompilerPhase {
         
         final ASTVisitor visitor = new ASTVisitor() 
         {
-        	@Override
+        	
         	public void visit(SymbolReferenceNode node, IIterationContext context) 
         	{
                 final Identifier id = node.getIdentifier();

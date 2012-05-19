@@ -30,7 +30,7 @@ public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWrit
     public AbstractObjectCodeWriterFactory() {
     }
     
-    @Override
+    
     public final IObjectCodeWriter getWriter(ICompilationContext context)
     {
     	final String identifier = context.getCurrentCompilationUnit().getIdentifier();
@@ -44,7 +44,7 @@ public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWrit
 
     protected abstract IObjectCodeWriter createObjectCodeWriter(ICompilationContext context);
 
-    @Override
+    
     public final void closeObjectWriters() throws IOException
     {
     	for (Iterator<IObjectCodeWriter> it = objectCodeWriters.values().iterator(); it.hasNext();) 
@@ -55,7 +55,7 @@ public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWrit
 		}
     }
     
-    @Override
+    
     public final void deleteOutput() throws IOException
     {
         closeObjectWriters();

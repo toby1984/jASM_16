@@ -41,7 +41,7 @@ public class LabelExpressionsInliningTest extends TestHelper {
 		final ISymbolTable[] symbolTable = new ISymbolTable[1];
 		compiler.insertCompilerPhaseAfter( new CompilerPhase("pry-on-symbol-table") {
 
-			@Override
+			
 			protected void run(ICompilationUnit unit,ICompilationContext context) throws IOException 
 			{
 				symbolTable[0] = context.getSymbolTable();
@@ -109,7 +109,7 @@ public class LabelExpressionsInliningTest extends TestHelper {
 		final ISymbolTable[] symbolTable = new ISymbolTable[1];
 		compiler.insertCompilerPhaseAfter( new CompilerPhase("pry-on-symbol-table") {
 
-			@Override
+			
 			protected void run(ICompilationUnit unit,ICompilationContext context) throws IOException 
 			{
 				symbolTable[0] = context.getSymbolTable();
@@ -177,7 +177,7 @@ public class LabelExpressionsInliningTest extends TestHelper {
 		final ISymbolTable[] symbolTable = new ISymbolTable[1];
 		compiler.insertCompilerPhaseAfter( new CompilerPhase("pry-on-symbol-table") {
 
-			@Override
+			
 			protected void run(ICompilationUnit unit,ICompilationContext context) throws IOException 
 			{
 				symbolTable[0] = context.getSymbolTable();

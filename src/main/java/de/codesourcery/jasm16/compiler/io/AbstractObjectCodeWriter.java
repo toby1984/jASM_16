@@ -37,7 +37,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     protected AbstractObjectCodeWriter() {
     }
     
-    @Override
+    
     public final void close() throws IOException
     {
         try {
@@ -67,7 +67,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         return writer;
     }
     
-    @Override
+    
     public Address getFirstWriteOffset()
     {
         return Address.byteAddress( firstWriteOffset );
@@ -75,13 +75,13 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     
    protected abstract OutputStream createOutputStream() throws IOException;
     
-    @Override
+    
     public final void writeObjectCode(byte[] data) throws IOException
     {
         writeObjectCode( data , 0 , data.length );
     }
 
-    @Override
+    
     public final void writeObjectCode(byte[] data, int offset, int length) throws IOException
     {
         writeObjectCodeHook(data,offset,length);
@@ -93,7 +93,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         getOutputStream().write( data ,offset,length );
     }
 
-    @Override
+    
     public final void deleteOutput() throws IOException
     {
         this.currentWriteOffset = 0;
@@ -107,13 +107,13 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         
     protected abstract void deleteOutputHook() throws IOException;        
 
-    @Override
+    
     public final Address getCurrentWriteOffset()
     {
         return Address.byteAddress( currentWriteOffset );
     }
 
-    @Override
+    
     public void advanceToWriteOffset(Address offset) throws IOException
     {
         if (offset == null) {

@@ -56,7 +56,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
         super(ICompilerPhase.PHASE_RESOLVE_ADDRESSES);
     }
 
-    @Override
+    
     public boolean execute(List<ICompilationUnit> units, 
             final ISymbolTable symbolTable , 
             IObjectCodeWriterFactory writerFactory , 
@@ -81,16 +81,19 @@ public class CalculateAddressesPhase extends CompilerPhase {
         boolean sizeIsStable;
         do {
             sizeIsStable = true;
-            for ( final ICompilationUnit unit : units ) 
+            for (int i = 0; i < units.size(); i++)
             {
+                final ICompilationUnit unit = units.get(i);
+                
                 if ( unit.getAST() == null ) 
                 {
                     continue;
                 }
                 final ICompilationContext context = createCompilationContext(units,
                         symbolTable, writerFactory, resourceResolver, options,
-                        unit); 				
-                final Address startingOffset = unit.getObjectCodeStartOffset();            
+                        unit);
+                
+                Address startingOffset = unit.getObjectCodeStartOffset();
                 final long newSizeInBytes = assignAddresses( context , startingOffset);
                 Long oldSizeInBytes = sizeByCompilationUnit.get( unit.getIdentifier() );
                 if ( oldSizeInBytes == null ) {
@@ -115,7 +118,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
 
         final IASTNodeVisitor<ASTNode> visitor = new IASTNodeVisitor<ASTNode>() {
 
-            @Override
+            
             public void visit(ASTNode n,IIterationContext ctx) 
             {
                 try {
@@ -172,7 +175,7 @@ public class CalculateAddressesPhase extends CompilerPhase {
         return currentSize[0];
     }
 
-    @Override
+    
     protected void run(ICompilationUnit unit, ICompilationContext context)
             throws IOException {
         throw new UnsupportedOperationException("Not implemented");

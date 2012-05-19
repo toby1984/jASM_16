@@ -28,7 +28,7 @@ public class ApplicationConfigTest extends TestHelper {
 
 	private File file;
 	
-	@Override
+	
 	protected void tearDown() throws Exception {
 		if ( file != null ) {
 			file.delete();

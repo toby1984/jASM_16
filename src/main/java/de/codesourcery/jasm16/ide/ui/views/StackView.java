@@ -48,7 +48,7 @@ public class StackView extends AbstractView
     
     private final IEmulationListener listener = new EmulationListener() {
 
-        @Override
+        
         public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -56,7 +56,7 @@ public class StackView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterReset(IEmulator emulator)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -64,7 +64,7 @@ public class StackView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -72,7 +72,7 @@ public class StackView extends AbstractView
         	}
         }
 
-		@Override
+		
 		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}
@@ -86,7 +86,7 @@ public class StackView extends AbstractView
     public StackView() {
     }
     
-    @Override
+    
     public void refreshDisplay() 
     {
         if ( emulator == null ) {
@@ -108,7 +108,7 @@ public class StackView extends AbstractView
         );
         SwingUtilities.invokeLater( new Runnable() {
 
-            @Override
+            
             public void run()
             {
                 final List<String> lines = Misc.toHexDumpLines( Address.wordAddress( realStart ), data, data.length , 1 , printASCII , true , true );
@@ -151,7 +151,7 @@ public class StackView extends AbstractView
         emulator.addEmulationListener( listener );
     }
     
-    @Override
+    
     public void disposeHook() 
     {
         if ( this.emulator != null ) {
@@ -176,7 +176,7 @@ public class StackView extends AbstractView
         return panel;
     }
 
-    @Override
+    
     public JPanel getPanel() {
         if ( panel == null ) {
             panel = createPanel();
@@ -184,12 +184,12 @@ public class StackView extends AbstractView
         return panel;
     }
 
-	@Override
+	
 	public String getTitle() {
 		return "stack view";
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}

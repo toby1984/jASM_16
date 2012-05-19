@@ -50,17 +50,17 @@ public class StringResource extends AbstractResource
         this.data = data;
     }
 
-    @Override
+    
     public InputStream createInputStream() throws IOException
     {
         return new ByteArrayInputStream( data.getBytes() );
     }
 
-    @Override
+    
     public OutputStream createOutputStream(boolean append) throws IOException
     {
         final OutputStream result = new ByteArrayOutputStream() {
-            @Override
+            
             public void close() throws IOException
             {
                 super.close();
@@ -70,7 +70,7 @@ public class StringResource extends AbstractResource
         return result;
     }
 
-    @Override
+    
     public String readText(ITextRegion range) throws IOException
     {
         if (range == null) {
@@ -79,24 +79,24 @@ public class StringResource extends AbstractResource
         return range.apply( data );
     }
 
-    @Override
+    
     public String toString()
     {
         return "string resource";
     }
 
-    @Override
+    
     public long getAvailableBytes() throws IOException
     {
         return data.getBytes().length;
     }
 
-	@Override
+	
 	public String getIdentifier() {
 		return identifier;
 	}
 	
-    @Override
+    
     public boolean isSame(IResource other)
     {
         if ( other == this ) {

@@ -411,40 +411,40 @@ public class InstructionNodeTest extends TestHelper
         
         final IObjectCodeWriter writer = new IObjectCodeWriter() {
 			
-			@Override
+			
 			public void close() throws IOException { }
 			
-			@Override
+			
 			public void writeObjectCode(byte[] data, int offset, int length)
 					throws IOException 
 			{
 				objcode.set( ArrayUtils.subarray( data , offset , offset+length ) );
 			}
 			
-			@Override
+			
 			public void writeObjectCode(byte[] data) throws IOException {
 				writeObjectCode( data ,0,data.length );
 			}
 			
-			@Override
+			
 			public void deleteOutput() throws IOException {
 				// TODO Auto-generated method stub
 				
 			}
 
-            @Override
+            
             public Address getCurrentWriteOffset()
             {
                 return Address.ZERO;
             }
             
-            @Override
+            
             public Address getFirstWriteOffset()
             {
                 return Address.ZERO;
             }            
 
-            @Override
+            
             public void advanceToWriteOffset(Address offset) throws IOException
             {
                 throw new UnsupportedOperationException("Not implemented");                
@@ -452,7 +452,7 @@ public class InstructionNodeTest extends TestHelper
 		};
 		
 		final IObjectCodeWriterFactory factory = new SimpleFileObjectCodeWriterFactory() {
-		    @Override
+		    
 		    protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context)
 		    {
 		        return writer;

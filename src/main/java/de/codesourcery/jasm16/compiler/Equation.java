@@ -59,7 +59,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		expression = null;
 	}
 
-	@Override
+	
 	public Long getValue(ISymbolTable symbolTable) 
 	{
 		if ( expression == null ) {
@@ -72,7 +72,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		return expression;
 	}
 
-	@Override
+	
 	public void setValue(Long value) {
 		throw new UnsupportedOperationException( "cannot set value of constant equation");
 	}
@@ -124,7 +124,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		{
 			final ISimpleASTNodeVisitor<ASTNode> checkingVisitor = new ISimpleASTNodeVisitor<ASTNode>() 
 			{
-				@Override
+				
 				public boolean visit(ASTNode node) 
 				{
 					if ( node instanceof SymbolReferenceNode) 

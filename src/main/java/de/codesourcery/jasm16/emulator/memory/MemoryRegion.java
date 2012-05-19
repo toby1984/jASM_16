@@ -74,7 +74,7 @@ public class MemoryRegion implements IMemoryRegion {
         memory.set( address.toWordAddress().getValue() , value & 0xffff);
     }
 
-    @Override
+    
     public void clear()
     {
         final int len = memory.length();
@@ -83,13 +83,13 @@ public class MemoryRegion implements IMemoryRegion {
         }
     }
 
-    @Override
+    
     public Size getSize()
     {
         return addressRange.getSize();
     }
 
-    @Override
+    
     public String getRegionName()
     {
         return regionName;
@@ -109,11 +109,11 @@ public class MemoryRegion implements IMemoryRegion {
         return result;
     }
 
-    @Override
+    
     public List<IMemoryRegion> subtract(AddressRange gap)
     {
         final List<AddressRange> regions = addressRange.subtract( gap );
-        final List<IMemoryRegion> result = new ArrayList<>();
+        final List<IMemoryRegion> result = new ArrayList<IMemoryRegion>();
         
         for ( AddressRange region : regions ) {
             result.add( createCopy( region ) );
@@ -121,13 +121,13 @@ public class MemoryRegion implements IMemoryRegion {
         return result;
     }
 
-    @Override
+    
     public AddressRange getAddressRange()
     {
         return addressRange;
     }
     
-    @Override
+    
     public String toString()
     {
         return getRegionName()+" - "+getAddressRange().toString();

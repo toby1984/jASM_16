@@ -116,7 +116,7 @@ public class UIUtils {
 		
 		final JButton yesButton = new JButton("Yes");
 		yesButton.addActionListener( new ActionListener() {
-			@Override
+			
 			public void actionPerformed(ActionEvent e) {
 				outcome[0] = DialogResult.YES;
 				dialog.dispose();
@@ -125,7 +125,7 @@ public class UIUtils {
 		
 		final JButton noButton = new JButton("No");
 		noButton.addActionListener( new ActionListener() {
-			@Override
+			
 			public void actionPerformed(ActionEvent e) {
 				outcome[0] = DialogResult.NO;
 				dialog.dispose();
@@ -133,7 +133,7 @@ public class UIUtils {
 		});		
 		final JButton cancelButton = new JButton("Cancel");
 		cancelButton.addActionListener( new ActionListener() {
-			@Override
+			
 			public void actionPerformed(ActionEvent e) {
 				outcome[0] = DialogResult.CANCEL;
 				dialog.dispose();
@@ -266,7 +266,7 @@ public class UIUtils {
         
         final JButton okButton = new JButton("Ok");
         okButton.addActionListener( new ActionListener() {
-            @Override
+            
             public void actionPerformed(ActionEvent e) {
                 outcome[0] = DialogResult.YES;
                 dialog.dispose();

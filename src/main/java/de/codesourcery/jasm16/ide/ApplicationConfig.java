@@ -64,7 +64,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		loadConfig();
 	}
 
-	@Override
+	
 	public File getWorkspaceDirectory() 
 	{
 		return getFile( KEY_WORKSPACE_DIRECTORY );
@@ -131,7 +131,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		return result;
 	}
 
-	@Override
+	
 	public void saveConfiguration() throws IOException {
 
 		final Properties props = new Properties();
@@ -154,7 +154,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		}
 	}
 
-	@Override
+	
 	public void setWorkspaceDirectory(File dir) throws IOException 
 	{
 		if (dir == null) {
@@ -165,7 +165,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		saveConfiguration();
 	}
 
-	@Override
+	
 	public void storeViewCoordinates(String viewID, SizeAndLocation loc) 
 	{
 		if (StringUtils.isBlank(viewID)) {
@@ -186,7 +186,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		this.configProperties.put( sizeKey , sizeValue );
 	}
 
-	@Override
+	
 	public SizeAndLocation getViewCoordinates(String viewId) 
 	{
 		final String posKey =  KEY_VIEW_COORDINATES_PREFIX+viewId+".position";

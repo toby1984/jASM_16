@@ -22,7 +22,7 @@ package de.codesourcery.jasm16.ast;
  */
 public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 
-	@Override
+	
 	public final void visit(ASTNode n, IIterationContext context) 
 	{
 		if ( n instanceof AST ) {
@@ -71,60 +71,60 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 			
 	}
 	
-    @Override
+    
     public void visit(IncludeSourceFileNode node,IIterationContext context) { }		
 	
-    @Override
+    
     public void visit(EquationNode node,IIterationContext context) { }	
 	
-    @Override
+    
     public void visit(OriginNode node,IIterationContext context) { }	
 	
-	@Override
+	
     public void visit(IncludeBinaryFileNode node,IIterationContext context) { }
     
-	@Override
+	
 	public void visit(AST node,IIterationContext context) { }
 	
-	@Override
+	
 	public void visit(InitializedMemoryNode node,IIterationContext context) { }
 	
-	@Override
+	
 	public void visit(CharacterLiteralNode node, IIterationContext context) { }
 
-	@Override
+	
 	public void visit(CommentNode node, IIterationContext context) { }
 
-	@Override
+	
 	public void visit(ExpressionNode node, IIterationContext context) {	}
 
-	@Override
+	
 	public void visit(InstructionNode node, IIterationContext context) { }
 
-	@Override
+	
 	public void visit(LabelNode node, IIterationContext context) { }
 
-	@Override
+	
 	public void visit(SymbolReferenceNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(NumberNode node, IIterationContext context) { }
 
-	@Override
+	
 	public void visit(OperandNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(OperatorNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(RegisterReferenceNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(StatementNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(UninitializedMemoryNode node, IIterationContext context) {}
 
-	@Override
+	
 	public void visit(UnparsedContentNode node, IIterationContext context) {}
 }

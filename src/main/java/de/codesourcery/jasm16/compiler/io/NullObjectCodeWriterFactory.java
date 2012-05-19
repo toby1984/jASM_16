@@ -28,35 +28,35 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
  */
 public class NullObjectCodeWriterFactory extends AbstractObjectCodeWriterFactory
 {
-    @Override
+    
     protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context)
     {
         return new AbstractObjectCodeWriter() {
             
-            @Override
+            
             protected void deleteOutputHook() throws IOException
             {
             }
             
-            @Override
+            
             protected OutputStream createOutputStream() throws IOException
             {
                 return new OutputStream() {
 
-                    @Override
+                    
                     public void write(int b) throws IOException
                     {
                     }};
             }
             
-            @Override
+            
             protected void closeHook() throws IOException
             {
             }
         };
     }
 
-    @Override
+    
     protected void deleteOutputHook() throws IOException
     {
     }

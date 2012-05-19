@@ -39,22 +39,22 @@ public final class HardwareInterrupt implements IInterrupt {
 		return device;
 	}
 	
-	@Override
+	
 	public int getMessage() {
 		return message;
 	}
 
-	@Override
+	
 	public boolean isSoftwareInterrupt() {
 		return false;
 	}
 
-	@Override
+	
 	public boolean isHardwareInterrupt() {
 		return true;
 	}
 
-	@Override
+	
 	public String toString() {
 		return "HW{"+Misc.toHexString( message )+"}";
 	}

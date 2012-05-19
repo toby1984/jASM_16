@@ -53,7 +53,7 @@ public class MemoryIterator implements IMemoryIterator
     	this.wrap = wrap;
     }
     
-    @Override
+    
     public int nextWord()
     {
         if ( wordsAvailable <= 0 ) {
@@ -65,13 +65,13 @@ public class MemoryIterator implements IMemoryIterator
         return memory.read( old );
     }
 
-    @Override
+    
     public boolean hasNext()
     {
         return wordsAvailable > 0;
     }
 
-    @Override
+    
     public Address currentAddress()
     {
         return current;

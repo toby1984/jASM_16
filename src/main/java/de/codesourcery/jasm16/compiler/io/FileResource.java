@@ -46,7 +46,7 @@ public class FileResource extends AbstractResource
         this.file = file;
     }
 
-    @Override
+    
     public InputStream createInputStream() throws IOException
     {
         if ( contents == null ) {
@@ -55,7 +55,7 @@ public class FileResource extends AbstractResource
         return new ByteArrayInputStream( contents.getBytes() );
     }
 
-    @Override
+    
     public OutputStream createOutputStream(boolean append) throws IOException
     {
         return new FileOutputStream( file , append);
@@ -68,20 +68,20 @@ public class FileResource extends AbstractResource
         return contents;
     }
     
-    @Override
+    
     public String readText(ITextRegion range) throws IOException
     {
         loadContents();
         return range.apply( contents );
     }
     
-    @Override
+    
     public String toString()
     {
         return file.getAbsolutePath();
     }
 
-    @Override
+    
     public long getAvailableBytes() throws IOException
     {
         return file.length();
@@ -92,12 +92,12 @@ public class FileResource extends AbstractResource
         return file.getAbsoluteFile();
     }    
 
-    @Override
+    
     public boolean supportsDelete() {
     	return true;
     }
     
-    @Override
+    
     public void delete() throws IOException 
     {
     	if ( file.exists() ) {
@@ -112,12 +112,12 @@ public class FileResource extends AbstractResource
         return file;
     }
 
-	@Override
+	
 	public String getIdentifier() {
 		return file.getAbsolutePath();
 	}
 
-    @Override
+    
     public boolean isSame(IResource other)
     {
         if ( other == this ) {

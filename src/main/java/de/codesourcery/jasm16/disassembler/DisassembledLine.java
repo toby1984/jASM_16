@@ -60,7 +60,7 @@ public final class DisassembledLine
         return contents;
     }
     
-    @Override
+    
     public String toString() {
     	return Misc.toHexString( getAddress() )+": "+getContents()+" ( "+instructionLength+" )";
     }
