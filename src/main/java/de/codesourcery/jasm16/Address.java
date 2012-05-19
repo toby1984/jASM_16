@@ -30,15 +30,21 @@ package de.codesourcery.jasm16;
  */
 public abstract class Address implements Comparable<Address>
 {
-    public static final Address ZERO = new WordAddress(0);
+    public static final WordAddress ZERO = new WordAddress(0);
     
     public static WordAddress wordAddress( long value) 
     {
+    	if ( value == 0 ) {
+    		return ZERO;
+    	}
         return new WordAddress( value );
     }
     
     public static ByteAddress byteAddress( long value) 
     {
+    	if ( value == 0 ) {
+    		return ByteAddress.ZERO;
+    	}
         return new ByteAddress( value );
     }    
     

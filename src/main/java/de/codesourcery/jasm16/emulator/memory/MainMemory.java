@@ -21,10 +21,10 @@ import java.util.List;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.AddressRangeList;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
+import de.codesourcery.jasm16.utils.Bitfield;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -42,7 +42,7 @@ public class MainMemory implements IMemory
     
     // list of AddressRange instances that will trigger an exception 
     // when being written to
-    private final AddressRangeList writeProtectedMemoryRanges = new AddressRangeList();
+    private final Bitfield writeProtectedMemoryRanges;
     
     public MainMemory(int sizeInWords) 
     {
@@ -52,6 +52,7 @@ public class MainMemory implements IMemory
     public MainMemory(int sizeInWords,boolean checkWriteAccess) 
     {
         regions.add( createMainMemory( new AddressRange( WordAddress.ZERO , Size.words( 65536 ) ) ) );
+        this.writeProtectedMemoryRanges = new Bitfield( sizeInWords );
         this.checkWriteAccess = checkWriteAccess;
     }    
     
@@ -91,12 +92,19 @@ public class MainMemory implements IMemory
      */
     public void writeProtect(AddressRange range) {
         if ( ! checkWriteAccess ) {
-            throw new IllegalStateException("Trying to mark an address range as write-protected while checkWrites == false ");
+            throw new IllegalStateException("Trying to mark an address range as write-protected " +
+            		"while checkWrites == false ");
         }
         if (range == null) {
             throw new IllegalArgumentException("range must not be NULL.");
         }
-        this.writeProtectedMemoryRanges.add( range );
+        
+        int start = range.getStartAddress().getWordAddressValue();
+        final int len = range.getSize().getSizeInWords();
+        for ( int i = 0 ; i < len ;i++ ) {
+      		writeProtectedMemoryRanges.setBit( start );
+        	start++;
+        }
     }
     
     /**
@@ -235,10 +243,11 @@ public class MainMemory implements IMemory
 
     private void checkWritePermitted(WordAddress address, int value ) throws MemoryProtectionFaultException
     {
-        final AddressRange protectedRange = writeProtectedMemoryRanges.findAddressRange( address );
-        if (  protectedRange != null ) {
-            throw new MemoryProtectionFaultException("Trying to write value "+Misc.toHexString( value )+" to address 0x"+Misc.toHexString( address )
-                    +" that is part of write-protected range = "+protectedRange,address,protectedRange);
+    	if ( writeProtectedMemoryRanges.isSet( address.getWordAddressValue() ) ) 
+    	{
+            throw new MemoryProtectionFaultException("Trying to write value "+
+    	Misc.toHexString( value )+" to address 0x"+Misc.toHexString( address )
+                    +" that is part of write-protected range.",address);
         }
     }
 

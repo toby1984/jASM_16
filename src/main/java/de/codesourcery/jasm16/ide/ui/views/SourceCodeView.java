@@ -99,6 +99,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
@@ -905,33 +906,50 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     public final void centerCurrentLineInScrollPane()
     {
-        final Container container = SwingUtilities.getAncestorOfClass(JViewport.class, editorPane);
+    	final Runnable r = new Runnable() {
+    		@Override
+    		public void run() {
 
-        if (container == null) {
-            return;
-        }
+    	        final Container container = SwingUtilities.getAncestorOfClass(JViewport.class, editorPane);
 
-        try {
-            final Rectangle r = editorPane.modelToView(editorPane.getCaretPosition());
-            if (r == null ) {
-                return;
-            }
-            final JViewport viewport = (JViewport) container;
-            final int extentHeight = viewport.getExtentSize().height;
-            final int viewHeight = viewport.getViewSize().height;
+    	        if (container == null) {
+    	            return;
+    	        }
 
-            int y = Math.max(0, r.y - (extentHeight / 2));
-            y = Math.min(y, viewHeight - extentHeight);
+    	        try {
+    	            final Rectangle r = editorPane.modelToView(editorPane.getCaretPosition());
+    	            if (r == null ) {
+    	                return;
+    	            }
+    	            final JViewport viewport = (JViewport) container;
+    	            final int extentHeight = viewport.getExtentSize().height;
+    	            final int viewHeight = viewport.getViewSize().height;
 
-            viewport.setViewPosition(new Point(0, y));
-        } 
-        catch (BadLocationException ble) {
-            LOG.error("centerCurrentLineInScrollPane(): ",ble);
-        }
+    	            int y = Math.max(0, r.y - (extentHeight / 2));
+    	            y = Math.min(y, viewHeight - extentHeight);
+
+    	            viewport.setViewPosition(new Point(0, y));
+    	        } 
+    	        catch (BadLocationException ble) {
+    	            LOG.error("centerCurrentLineInScrollPane(): ",ble);
+    	        }    			
+    		}
+    		
+    	};
+    	
+    	UIUtils.invokeLater( r );
     }
 
-    public final void gotoLocation(int offset) {
-        editorPane.setCaretPosition( offset );
+    public final void gotoLocation(final int offset) {
+    	
+    	final Runnable r = new Runnable() {
+    		@Override
+    		public void run() {
+    			editorPane.setCaretPosition( offset );		
+    		}
+    	};
+        
+    	UIUtils.invokeLater( r );
         centerCurrentLineInScrollPane();
     }
 

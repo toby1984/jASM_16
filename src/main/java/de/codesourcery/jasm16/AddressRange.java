@@ -195,4 +195,5 @@ public final class AddressRange
     {
         return getStartAddress().isEqualOrLessThan( newRange.getStartAddress() ) && getEndAddress().isEqualOrGreaterThan( newRange.getEndAddress() );
     }     
+    
 }
