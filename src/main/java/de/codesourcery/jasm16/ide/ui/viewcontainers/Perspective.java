@@ -86,7 +86,7 @@ public class Perspective extends JFrame implements IViewContainer {
 			final SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
 			applicationConfig.storeViewCoordinates( getUniqueID( view ) , sizeAndLoc );
 			frame.dispose();
-			System.out.println("Disposing "+view);
+			LOG.debug("dispose(): Disposing "+view);
 			view.dispose();			
 		}
 	}
@@ -147,26 +147,6 @@ public class Perspective extends JFrame implements IViewContainer {
 		
 		desktop.setBackground( Color.BLACK );
 		desktop.setForeground( Color.GREEN );	
-		
-		menuManager.addEntry( new MenuEntry("File/Save all") {
-
-			@Override
-			public void onClick() {
-				System.out.println("Save all!");
-			}
-			
-			public boolean isEnabled() {
-				
-				final EditorContainer editorContainer = (EditorContainer ) 
-						getViewByID( EditorContainer.VIEW_ID );
-				
-				if ( editorContainer == null ) {
-					return false;
-				}
-				return editorContainer.getViews().size() > 0 ;
-			};
-			
-		} );
 		
 		menuManager.addEntry( new MenuEntry("File/Quit") {
 
@@ -297,7 +277,6 @@ public class Perspective extends JFrame implements IViewContainer {
 		SizeAndLocation sizeAndLoc = applicationConfig.getViewCoordinates( getUniqueID( view ) );
 		if ( sizeAndLoc != null ) 
 		{
-			System.out.println("load(): "+view.getID()+" => "+sizeAndLoc);
 			internalFrame.setSize( sizeAndLoc.getSize() );
 			internalFrame.setLocation( sizeAndLoc.getLocation() );
 		} else {

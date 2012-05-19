@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.emulator.devices.impl;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -46,6 +47,7 @@ import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
@@ -56,6 +58,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public final class DefaultScreen implements IDevice {
 
+	private static final Logger LOG = Logger.getLogger(DefaultScreen.class);
+	
     public static final int STANDARD_SCREEN_ROWS = 12;
     public static final int STANDARD_SCREEN_COLUMNS = 32;
     
@@ -71,13 +75,35 @@ public final class DefaultScreen implements IDevice {
 
     public static final int IMG_CHARS_PER_ROW = 32;
     
-    public static final int BORDER_WIDTH=10;
+    public static final int BORDER_WIDTH = 10;
+    public static final int BORDER_HEIGHT = 10;    
     
     private final int SCREEN_WIDTH;
     private final int SCREEN_HEIGHT;
 
-    private static final Logger LOG = Logger.getLogger(DefaultScreen.class);
+    private volatile ILogger out;
+    
+    private final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
+            "jASM16 default screen" , 
+            0x7349f615,
+            0x1802, 
+            0x1c6c8b36 );
+    
+    private volatile Component uiComponent; 
+    private volatile ConsoleScreen consoleScreen;
 
+    private volatile IEmulator emulator = null;
+
+    private volatile int borderPaletteIndex = 3;
+    private volatile boolean useCustomPaletteRAM = false;
+    private volatile PaletteRAM paletteRAM = new PaletteRAM( WordAddress.ZERO );
+
+    private volatile boolean requiresFullVRAMRendering = true;
+    private volatile IMemoryRegion videoRAM = null;
+    private final boolean connectUponAddDevice;    
+
+    private BufferedImage defaultFontImage;    
+    
     public DefaultScreen(boolean connectUponAddDevice) {
     	this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice );
     }
@@ -96,20 +122,12 @@ public final class DefaultScreen implements IDevice {
     	this.SCREEN_COLUMNS = screenColumns;
     	this.SCREEN_ROWS = screenRows;
     	this.VIDEO_RAM_SIZE_IN_WORDS = SCREEN_ROWS*SCREEN_COLUMNS;
-        this.SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+20;
-        this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+10;
+        this.SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+2*(BORDER_WIDTH);
+        this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+2*(BORDER_HEIGHT);
         
         this.connectUponAddDevice = connectUponAddDevice;
         setupDefaultPaletteRAM();
     }
-    
-    private final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
-            "jASM16 default screen" , 
-            0x7349f615,
-            0x1802, 
-            0x1c6c8b36 );
-
-    private BufferedImage defaultFontImage;
     
     private synchronized BufferedImage getDefaultFontImage(Graphics2D target) throws IOException 
     {
@@ -126,19 +144,6 @@ public final class DefaultScreen implements IDevice {
         return defaultFontImage;
     }
 
-    private volatile Component uiComponent; 
-    private volatile ConsoleScreen consoleScreen;
-
-    private volatile IEmulator emulator = null;
-    private volatile int borderColorPaletteIndex=0;
-
-    private volatile boolean useCustomPaletteRAM = false;
-    private volatile PaletteRAM paletteRAM = new PaletteRAM( WordAddress.ZERO );
-
-    private volatile boolean requiresFullVRAMRendering = true;
-    private volatile IMemoryRegion videoRAM = null;
-    private final boolean connectUponAddDevice;
-    
     @Override
     public void reset()
     {
@@ -147,7 +152,6 @@ public final class DefaultScreen implements IDevice {
             useCustomPaletteRAM = false;
         }
         paletteRAM.setDefaultPalette();
-        borderColorPaletteIndex = 0;
         requiresFullVRAMRendering=true;
         
         if ( videoRAM != null && ! connectUponAddDevice ) {
@@ -305,7 +309,8 @@ public final class DefaultScreen implements IDevice {
         doFullVRAMRendering();
     }
     
-    private void doFullVRAMRendering()
+    @SuppressWarnings("deprecation")
+	private void doFullVRAMRendering()
     {
         ConsoleScreen screen = screen();
         if ( screen == null ) {
@@ -405,10 +410,14 @@ public final class DefaultScreen implements IDevice {
 
     @Override
     public void afterAddDevice(IEmulator emulator) {
+    	if ( this.emulator != null ) {
+    		throw new IllegalStateException("Device "+this+" is already associated with an emulator?");
+    	}
         this.emulator = emulator;
         if ( connectUponAddDevice ) {
             connect( Address.wordAddress( 0x8000 ) );
         }
+        this.out = emulator.getOutput();
     }
 
     @Override
@@ -464,15 +473,11 @@ public final class DefaultScreen implements IDevice {
                 LOG.error("screen(): Failed to load default font",e);
                 throw new RuntimeException("Failed to load default font",e);
             }
-            this.consoleScreen =  new ConsoleScreen( image , SCREEN_WIDTH , SCREEN_HEIGHT );
+            final Color borderColor = paletteRAM.getColor( borderPaletteIndex );
+            this.consoleScreen =  new ConsoleScreen( image , SCREEN_WIDTH , SCREEN_HEIGHT , borderColor );
             renderScreenDisconnectedMessage();
         }
         return this.consoleScreen;
-    }
-
-    public void detach() {
-        this.uiComponent = null;
-        this.consoleScreen = null;
     }
 
     @Override
@@ -536,7 +541,11 @@ public final class DefaultScreen implements IDevice {
              *    Reads the B register, and sets the border color to palette index B&0xF
              */
             final int b = emulator.getCPU().getRegisterValue( Register.B );
-            borderColorPaletteIndex = b & 0xf;
+            this.borderPaletteIndex = b & 0x0f;
+            final ConsoleScreen screen = screen();
+            if ( screen != null ) {
+            	screen.setBorderColor( paletteRAM.getColor( this.borderPaletteIndex ) );
+            }
         } else if ( a == 4 ) {
             /*
              * 4: MEM_DUMP_FONT
@@ -546,7 +555,7 @@ public final class DefaultScreen implements IDevice {
              */
 
             // TODO: Not implemented
-
+        	return 256;
         } else if ( a == 5 ) {
             /*
              * 5: MEM_DUMP_PALETTE
@@ -563,7 +572,7 @@ public final class DefaultScreen implements IDevice {
             }
             return 16;
         } else {
-            LOG.warn("handleInterrupt(): "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
+            out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
         }
         return 0;
     }
@@ -572,16 +581,26 @@ public final class DefaultScreen implements IDevice {
 
         // array holding image data from the generated image
         private final RawImage screen;
+ 
+        private volatile Color borderColor;
         
         // an image containing the glyphs for our font
         private final RawImage glyphBitmap;
         private final int glyphBackgroundColor;
         
-        public ConsoleScreen(BufferedImage fontImage,int screenWidth,int screenHeight) 
+        private final int screenWidth;
+        private final int screenHeight;
+        
+        public ConsoleScreen(BufferedImage fontImage,
+        		int screenWidth,
+        		int screenHeight,Color borderColor) 
         {
+        	this.screenWidth = screenWidth;
+        	this.screenHeight=screenHeight;
             this.glyphBitmap = new RawImage( "glyphs" , fontImage.getWidth() , fontImage.getHeight() );
             this.glyphBitmap.getGraphics().drawImage( fontImage , 0 , 0, null );
             
+            // choose darkest color as background color
             int[] colors = glyphBitmap.getUniqueColors();
             int candidate = 0xffffff;
             for ( int col : colors ) {
@@ -589,20 +608,42 @@ public final class DefaultScreen implements IDevice {
                     candidate = col;
                 }
             }
+            this.borderColor = borderColor;
             glyphBackgroundColor=candidate;
             this.screen = new RawImage( "console" , screenWidth , screenHeight );
+            renderBorder();
+        }
+        
+        protected void renderBorder() {
+        	final Graphics2D graphics = getGraphics();
+        	graphics.setColor( borderColor );
+        	graphics.fillRect( 0 , 0 , screenWidth , BORDER_HEIGHT ); // top border
+        	graphics.fillRect( 0 , 0 , BORDER_WIDTH , screenHeight ); // left border 
+        	graphics.fillRect( 0 , screenHeight-BORDER_HEIGHT , screenWidth , screenHeight ); // bottom border
+        	graphics.fillRect( screenWidth-BORDER_WIDTH , 0 , BORDER_WIDTH , screenHeight ); // right border
+        }
+        
+        public void setBorderColor(Color color) {
+        	if (color == null) {
+				throw new IllegalArgumentException("color must not be null");
+			}
+        	this.borderColor = color;
         }
         
         public void clearChar(int column, int row, Color color)
         {
-            final int screenX = GLYPH_WIDTH * column;
-            final int screenY = GLYPH_HEIGHT * row;    
+            final int screenX = BORDER_WIDTH + GLYPH_WIDTH * column;
+            final int screenY = BORDER_HEIGHT + GLYPH_HEIGHT * row;    
             fillRect( screenX,screenY , GLYPH_WIDTH, GLYPH_HEIGHT , color );
         }
         
         public void fillScreen(Color col) 
         {
-            fillRect(0,0,getWidth(),getHeight(),col);
+            fillRect(BORDER_WIDTH,
+            		BORDER_HEIGHT,
+            		screenWidth-(2*BORDER_WIDTH),
+            		screenHeight-(2*BORDER_HEIGHT)
+            		,col);
         }
         
         public void fillRect(int screenX, int screenY, int width,int height, Color color)
@@ -630,12 +671,12 @@ public final class DefaultScreen implements IDevice {
         
         public int getWidth()
         {
-            return screen.getWidth();
+            return screenWidth;
         }
         
         public int getHeight()
         {
-            return screen.getHeight();
+            return screenHeight;
         }
         
         public BufferedImage getImage() {
@@ -667,8 +708,8 @@ public final class DefaultScreen implements IDevice {
             final int glyphX = GLYPH_WIDTH  * glyphColumn;            
             final int glyphY = GLYPH_HEIGHT * glyphRow;
             
-            final int screenX = GLYPH_WIDTH * screenColumn;
-            final int screenY = GLYPH_HEIGHT * screenRow;
+            final int screenX = BORDER_WIDTH + GLYPH_WIDTH * screenColumn;
+            final int screenY = BORDER_HEIGHT + GLYPH_HEIGHT * screenRow;
             
             final int glyphBitmapWidth = glyphBitmap.getWidth();
             final int screenBitmapWidth = screen.getWidth();

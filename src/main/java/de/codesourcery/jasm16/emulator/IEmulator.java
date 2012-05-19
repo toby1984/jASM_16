@@ -201,7 +201,7 @@ public interface IEmulator
 
 	public boolean isCalibrated();    
 	
-	public void setOutput(PrintStream out);
+	public void setOutput(ILogger logger);
 	
-	public PrintStream getOutput();
+	public ILogger getOutput();
 }

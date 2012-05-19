@@ -359,7 +359,7 @@ public class Emulator implements IEmulator {
 
 	private volatile int currentCycle = 0;
 	
-	private volatile PrintStream out = System.out;
+	private volatile ILogger out = new PrintStreamLogger( System.out );
 
 	private final ICPU cpuAdaptor = new ICPU() {
 
@@ -805,7 +805,7 @@ public class Emulator implements IEmulator {
 		    Command cmd = waitForStartCommand();
 
             if ( cmd.isTerminateCommand() ) {
-                out.println("Emulator thread terminated.");
+                out.info("Emulator thread terminated.");
                 return;
             }		   
 			lastStart.set( System.currentTimeMillis() );
@@ -823,13 +823,13 @@ public class Emulator implements IEmulator {
 					if ( DEBUG_LISTENER_PERFORMANCE ) 
 					{
 						for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
-							out.println( entry.getKey()+" = "+entry.getValue()+" millis" );	
+							out.debug( entry.getKey()+" = "+entry.getValue()+" millis" );	
 						}
 					}
 					
-					out.println("Emulator stopped.");
-					out.println( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
-					out.println("Estimated clock rate: "+getEstimatedClockSpeed() );
+					out.info("Emulator stopped.");
+					out.info( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
+					out.info("Estimated clock rate: "+getEstimatedClockSpeed() );
 
 					cmd = waitForStopCommand();
 					if ( cmd.isTerminateCommand() ) {
@@ -865,7 +865,7 @@ public class Emulator implements IEmulator {
 				}
 			}
 			
-            out.println("Emulator thread terminated.");
+            out.info("Emulator thread terminated.");
 		} // END: ClockThread
 
 	}
@@ -918,13 +918,13 @@ public class Emulator implements IEmulator {
 		catch(EmulationErrorException e) {
             stop( e );
             LOG.error( "internalExecuteOneInstruction(): Emulation error "+e.getMessage(),e); 
-            out.println("\n\nERROR: Simulation stopped due to an error ( at address ."+this.previousPC+")");
+            out.warn("Simulation stopped due to a program error ( at address ."+this.previousPC+")");
             return 0;		    
 		}
 		catch(Exception e) {
 			stop( e );
 			LOG.error( "internalExecuteOneInstruction(): Internal error "+e.getMessage(),e); 
-			out.println("\n\nERROR: Simulation stopped due to an internal error ( at address ."+this.previousPC+")");
+			out.error("Simulation stopped due to an internal error ( at address ."+this.previousPC+")");
 			return 0;
 		} 
 		finally 
@@ -1370,11 +1370,11 @@ public class Emulator implements IEmulator {
 	    final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , previousPC ).toSizeInWords().getValue();
 	    List<DisassembledLine> lines = dis.disassemble( getMemory() , Address.wordAddress( 0 ) , instructionCount , true );
 	    for (DisassembledLine line : lines) {
-            out.println( Misc.toHexString( line.getAddress() )+": "+line.getContents());
+            out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
         }
 		final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( pc.decrementByOne() )+
 		        " (last valid: "+Misc.toHexString( previousPC )+")";
-        out.println(msg );
+        out.warn(msg );
 		throw new UnknownOpcodeException( msg );
 	}
 	
@@ -1810,7 +1810,7 @@ public class Emulator implements IEmulator {
 		if ( device == null ) 
 		{
 		    LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
-		    out.println("ERROR: No device at slot #"+hardwareSlot);
+		    out.warn("No device at slot #"+hardwareSlot);
 		    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
 		}
 		
@@ -1840,7 +1840,7 @@ public class Emulator implements IEmulator {
 		if ( device == null ) 
 		{
 		    LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
-		    out.println("ERROR: No device at slot #"+hardwareSlot);
+		    out.warn("No device at slot #"+hardwareSlot);
 		    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
 		}
 		
@@ -2049,7 +2049,7 @@ public class Emulator implements IEmulator {
 	    final String msg = "Illegal target operand in instruction word 0x"+
                 Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc.decrementByOne() );
 	    LOG.error("handleIllegalTargetOperand(): "+msg);
-	    out.print("ERROR: "+msg);
+	    out.warn( msg);
 		throw new InvalidTargetOperandException( msg );
 	}
 
@@ -2281,7 +2281,7 @@ public class Emulator implements IEmulator {
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
 		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
-		out.print("Measuring delay loop...");
+		out.info("Measuring delay loop...");
 		/*
 		 * Warm-up JVM / JIT.
 		 */
@@ -2304,13 +2304,13 @@ public class Emulator implements IEmulator {
 		}
 
 		final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
-		out.println(" one iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
+		out.info("one delay-loop iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
 		final double loopIterationsPerCycle = expectedNanosPerCycle / nanosPerDelayLoopExecution;
 		
 		clockThread.adjustmentFactor = 1.0d;
 		clockThread.oneCycleDelay = (int) Math.round( loopIterationsPerCycle );
 		
-		out.println(" one cycle = "+clockThread.oneCycleDelay+" loop iterations.");
+		out.info("one CPU cycle = "+clockThread.oneCycleDelay+" delay-loop iterations.");
 	}
 
 	@Override
@@ -2495,19 +2495,18 @@ public class Emulator implements IEmulator {
 	@Override
 	public void unmapRegion(IMemoryRegion region) {
 		this.memory.unmapRegion( region );
-		this.memory.dumpMemoryLayout();
+		
+		out.debug("Unmapped memory region "+region);
+		this.memory.dumpMemoryLayout(out);
 	}
 
 	@Override
 	public void mapRegion(IMemoryRegion region) 
 	{
-	    out.println("Before adding new memory region: "+region);
-	       // TODO: Remove debug code
-        this.memory.dumpMemoryLayout();
-        
 		this.memory.mapRegion( region );
-		// TODO: Remove debug code
-		this.memory.dumpMemoryLayout();
+		
+		out.debug("Mapped memory region "+region);
+		this.memory.dumpMemoryLayout( out );
 	}
 
 	@Override
@@ -2540,8 +2539,7 @@ public class Emulator implements IEmulator {
 				throw new IllegalStateException("Already 65535 devices registered");
 			}
 			devices.add( device );
-			// TODO: remove debug output
-			out.println("Device added - configuration is now:\n");
+			out.debug("Added device "+device);
 			printDevices();
 		}
 		device.afterAddDevice( this );
@@ -2553,8 +2551,8 @@ public class Emulator implements IEmulator {
 
 			int slot = 0;
 			for ( IDevice d : devices ) {
-				out.println("Slot #"+slot+":");
-				out.println( d.getDeviceDescriptor().toString("    ",true));
+				out.debug("Slot #"+slot+":");
+				out.debug( d.getDeviceDescriptor().toString("    ",true));
 				slot++;
 			}		
 		}
@@ -2591,7 +2589,7 @@ public class Emulator implements IEmulator {
 		
         // TODO: remove debug output
 		if ( isRegistered ) {
-		    out.println("Device removed - configuration is now:\n");
+		    out.debug("Removed device "+device);
 		    printDevices();
 		}
 	}
@@ -2662,7 +2660,7 @@ public class Emulator implements IEmulator {
     @Override
     public synchronized void dispose()
     {
-        out.println("Disposing Emulator ...");
+        out.info("Disposing Emulator ...");
         stop();
 
         // terminate clock thread
@@ -2681,17 +2679,17 @@ public class Emulator implements IEmulator {
                 LOG.error("dispose(): Failed to remove "+d);
             }
         }
-        out.println("Emulator disposed.");
+        out.info("Emulator disposed.");
     }
 
     @Override
-    public void setOutput(PrintStream out)
+    public void setOutput(ILogger out)
     {
         this.out = out;
     }
 
     @Override
-    public PrintStream getOutput()
+    public ILogger getOutput()
     {
         return out;
     }

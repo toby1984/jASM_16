@@ -24,6 +24,7 @@ import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
+import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.utils.Bitfield;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -64,13 +65,12 @@ public class MainMemory implements IMemory
         return new MemoryRegion( "main memory" , range );
     }
     
-    public void dumpMemoryLayout() 
+    public void dumpMemoryLayout(ILogger logger) 
     {
-    	System.out.println("\nMemory layout:\n");
+    	logger.debug("Memory layout");
     	for ( IMemoryRegion region : regions ) {
-    		System.out.println( region );
+    		logger.debug( region.toString() );
     	}
-    	System.out.println("\n");
     }
     
     @Override

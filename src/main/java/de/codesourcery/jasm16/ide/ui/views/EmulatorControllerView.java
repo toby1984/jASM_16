@@ -182,7 +182,6 @@ public class EmulatorControllerView extends AbstractView
             public void actionPerformed(ActionEvent e)
             {
                 emulator.start();
-                System.out.println("Simulation started!");
             }
         });
         

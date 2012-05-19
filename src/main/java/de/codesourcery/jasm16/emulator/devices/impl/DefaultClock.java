@@ -15,10 +15,9 @@
  */
 package de.codesourcery.jasm16.emulator.devices.impl;
 
-import org.apache.log4j.Logger;
-
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
@@ -26,8 +25,6 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DefaultClock implements IDevice
 {
-	private static final Logger LOG = Logger.getLogger(DefaultClock.class);
-	
     private static final int INITIAL_TICKS_PER_SECOND = (int) Math.round( 1000.0 / 60.0d);	
 	
     private final DeviceDescriptor DESC = new DeviceDescriptor("generic clock","jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
@@ -35,6 +32,8 @@ public class DefaultClock implements IDevice
     private volatile IEmulator emulator;
     
     private final ClockThread clockThread = new ClockThread();
+    
+    private volatile ILogger out;
     
     @Override
     public void reset()
@@ -68,7 +67,7 @@ public class DefaultClock implements IDevice
         @Override
         public void run()
         {
-            System.out.println("Clock thread started.");
+            out.debug("Clock thread started.");
             while ( ! terminate ) 
             {
                 while( ! isRunnable ) 
@@ -95,7 +94,7 @@ public class DefaultClock implements IDevice
                 } catch (InterruptedException e) {
                 }
             }
-            System.out.println("Default clock shutdown.");
+            out.debug("Default clock shutdown.");
         }
         
         public void terminate() {
@@ -106,7 +105,7 @@ public class DefaultClock implements IDevice
             
             while ( clockThread.isAlive() ) 
             {
-                System.out.println("Waiting for clock thread to terminate...");
+                out.debug("Waiting for clock thread to terminate...");
                 try {
                     Thread.sleep( 250 );
                 } catch (InterruptedException e) { }
@@ -156,10 +155,11 @@ public class DefaultClock implements IDevice
     @Override
     public void afterAddDevice(IEmulator emulator)
     {
-        if ( this.emulator != null && this.emulator != emulator ) {
+        if ( this.emulator != null ) {
             throw new IllegalStateException("Clock "+this+" already associated with emulator "+emulator+" ?");
         }
         this.emulator = emulator;
+        this.out = emulator.getOutput();
     }
 
     @Override
@@ -227,11 +227,11 @@ public class DefaultClock implements IDevice
                 } else {
                     clockThread.irqMessage = b;
                     clockThread.irqEnabled = true;
-                    System.out.println("Clock IRQs enabled with message "+Misc.toHexString( b ));
+                    out.debug("Clock IRQs enabled with message "+Misc.toHexString( b ));
                 }
                 break;
             default:
-                LOG.warn("handleInterrupt(): Clock received unknown interrupt msg "+Misc.toHexString( a ));
+                out.warn("handleInterrupt(): Clock received unknown interrupt msg "+Misc.toHexString( a ));
         }
         return 0;
     }
