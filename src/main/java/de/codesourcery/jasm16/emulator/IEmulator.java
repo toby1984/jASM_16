@@ -19,6 +19,7 @@ import java.io.PrintStream;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
@@ -53,6 +54,33 @@ public interface IEmulator
     public void breakpointChanged(Breakpoint breakpoint);
 
     public void calibrate();
+    
+    /**
+     * Enable/disable instruction memory write protection.
+     * 
+     * <p>When enabled, the emulator will keep track of all memory
+     * regions that contain executable code and will stop
+     * emulation with {@link MemoryProtectionFaultException} 
+     * whenever the program tries to write to one of these locations</p>.
+     *
+     * <p>It's obviously not a good idea to enable this feature when running self-modifying code.</p>
+     * 
+     * <p>Note that enabling this feature may have a <b>big</b> (big like in ten-fold or more) 
+     * impact on emulation performance (depends on the amount of memory writes the application does).</p>
+     * 
+     * @param enabled
+     * @see MemoryProtectionFaultException
+     * @see #isMemoryProtectionEnabled()
+     */
+    public void setMemoryProtectionEnabled(boolean enabled);
+    
+    /**
+     * Check whether the emulation is currently running with memory-protection enabled.
+     *  
+     * @return
+     * @see #setMemoryProtectionEnabled(boolean)
+     */
+    public boolean isMemoryProtectionEnabled();
     
     public void dispose();
     

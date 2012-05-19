@@ -21,8 +21,11 @@ import java.util.List;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.AddressRangeList;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * DCPU-16 main memory emulation.
@@ -35,10 +38,25 @@ import de.codesourcery.jasm16.WordAddress;
 public class MainMemory implements IMemory
 {
     private final List<IMemoryRegion> regions = new ArrayList<IMemoryRegion>(); 
+    private volatile boolean checkWriteAccess;
+    
+    // list of AddressRange instances that will trigger an exception 
+    // when being written to
+    private final AddressRangeList writeProtectedMemoryRanges = new AddressRangeList();
     
     public MainMemory(int sizeInWords) 
     {
+        this(sizeInWords , false );
+    }
+    
+    public MainMemory(int sizeInWords,boolean checkWriteAccess) 
+    {
         regions.add( createMainMemory( new AddressRange( WordAddress.ZERO , Size.words( 65536 ) ) ) );
+        this.checkWriteAccess = checkWriteAccess;
+    }    
+    
+    public void setCheckWriteAccess(boolean onOff) {
+        this.checkWriteAccess = onOff;
     }
     
     private static IMemoryRegion createMainMemory(AddressRange range) {
@@ -60,6 +78,35 @@ public class MainMemory implements IMemory
         for ( IMemory r : regions ) {
             r.clear();
         }
+    }
+    
+    /**
+     * Marks an address range as being write-protected.
+     * 
+     * <p>Subsequent writes to this address range will trigger a {@link MemoryProtectionFaultException}.</p>
+     * 
+     * @param range address range to check
+     * @throws IllegalStateException if this instance was not created with the <code>checkWrites</code> flag set to <code>true</code>
+     * @see #resetWriteProtection()
+     */
+    public void writeProtect(AddressRange range) {
+        if ( ! checkWriteAccess ) {
+            throw new IllegalStateException("Trying to mark an address range as write-protected while checkWrites == false ");
+        }
+        if (range == null) {
+            throw new IllegalArgumentException("range must not be NULL.");
+        }
+        this.writeProtectedMemoryRanges.add( range );
+    }
+    
+    /**
+     * Discards all information about write-protected address ranges.
+     * 
+     * @see #writeProtect(AddressRange)
+     * @see #setCheckWriteAccess(boolean)
+     */
+    public void resetWriteProtection() {
+        writeProtectedMemoryRanges.clear();
     }
     
     /**
@@ -174,17 +221,36 @@ public class MainMemory implements IMemory
     }
 
     @Override
-    public void write(int wordAddress, int value)
+    public void write(int wordAddress, int value) throws MemoryProtectionFaultException
     {
         final WordAddress address = Address.wordAddress( wordAddress );
+        
+        if ( checkWriteAccess ) {
+            checkWritePermitted(address,value);
+        }
+        
         final IMemoryRegion region = getRegion( address );
         region.write( address.minus( region.getAddressRange().getStartAddress() ) , value );           
     }
 
+    private void checkWritePermitted(WordAddress address, int value ) throws MemoryProtectionFaultException
+    {
+        final AddressRange protectedRange = writeProtectedMemoryRanges.findAddressRange( address );
+        if (  protectedRange != null ) {
+            throw new MemoryProtectionFaultException("Trying to write value "+Misc.toHexString( value )+" to address 0x"+Misc.toHexString( address )
+                    +" that is part of write-protected range = "+protectedRange,address,protectedRange);
+        }
+    }
+
     @Override
-    public void write(Address adr, int value)
+    public void write(Address adr, int value) throws MemoryProtectionFaultException
     {
         final WordAddress address = adr.toWordAddress();
+        
+        if ( checkWriteAccess ) {
+            checkWritePermitted(address,value);
+        }
+        
         final IMemoryRegion region = getRegion( address );
         region.write( address.minus( region.getAddressRange().getStartAddress() ) , value );        
     }

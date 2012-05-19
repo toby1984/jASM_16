@@ -24,6 +24,7 @@ public class EmulatorFactory
 {
     public Emulator createEmulator() {
         final Emulator result = new Emulator();
+        result.setMemoryProtectionEnabled( true );
         result.addDevice( new DefaultClock() );
         return result;
     }

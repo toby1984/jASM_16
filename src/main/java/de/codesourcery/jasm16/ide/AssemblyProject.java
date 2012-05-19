@@ -246,7 +246,7 @@ public class AssemblyProject implements IAssemblyProject
 			} else if ( results.isEmpty() ) {
 				return null;
 			}
-			throw new RuntimeException("Internal error, more than one executable in project "+AssemblyProject.this);
+			throw new RuntimeException("Internal error, more than one executable in project "+AssemblyProject.this+": "+results);
 		}
 
 		@Override

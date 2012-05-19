@@ -25,7 +25,9 @@ import java.util.List;
  */
 public final class AddressRange
 {
+    // note that client codes RELIES on this class being immutable !
     private final Address start;
+    private final Address end;
     private final Size size;
 
     public AddressRange(Address start, Address end) {
@@ -40,6 +42,7 @@ public final class AddressRange
         }
         this.start = start;
         this.size = Size.bytes( end.toByteAddress().getValue() - start.toByteAddress().getValue() );
+        this.end = start.plus( size , false );
     }    
     
     @Override
@@ -73,6 +76,7 @@ public final class AddressRange
         }
         this.start = start;
         this.size = size;
+        this.end = start.plus( size , false );
     }
 
     public Address getStartAddress()
@@ -82,7 +86,7 @@ public final class AddressRange
 
     public Address getEndAddress()
     {
-        return start.plus( size , false );
+        return end;
     }    
 
     public Size getSize()
@@ -153,5 +157,42 @@ public final class AddressRange
             result.add( new AddressRange( gap.getEndAddress() , getEndAddress() ) );            
         }
         return result;
+    }
+    
+    public boolean isAdjactantTo(AddressRange other) {
+        return this.getStartAddress().equals( other.getEndAddress() ) ||
+               this.getEndAddress().equals( other.getStartAddress() );
+    }
+
+    public AddressRange mergeWith(AddressRange other)
+    {
+        if ( contains( other ) ) {
+            return this;
+        }
+        
+        if ( other.contains( this ) ) {
+            return other;
+        }
+        
+        Address newStart;
+        Address newEnd;
+        if ( getStartAddress().isEqualOrLessThan( other.getStartAddress() ) ) {
+            newStart = this.start;
+            newEnd = other.getEndAddress();
+        } else {
+            newStart = other.start;
+            newEnd = this.getEndAddress();
+        }
+        
+        final AddressRange result = new AddressRange( newStart , newEnd );
+        if ( result.size.getSizeInBytes() != ( size.getSizeInBytes() + other.size.getSizeInBytes() ) ) {
+            throw new IllegalArgumentException("Cannot merge non-adjactant address ranges "+this+" and "+other);
+        }
+        return result;
+    }
+
+    public boolean contains(AddressRange newRange)
+    {
+        return getStartAddress().isEqualOrLessThan( newRange.getStartAddress() ) && getEndAddress().isEqualOrGreaterThan( newRange.getEndAddress() );
     }     
 }

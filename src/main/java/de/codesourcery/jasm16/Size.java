@@ -46,6 +46,10 @@ public abstract class Size implements Comparable<Size>
         return value;
     }
     
+    public abstract int getSizeInBytes();
+    
+    public abstract int getSizeInWords();    
+    
     @Override
     public final boolean equals(Object obj) 
     {
@@ -53,22 +57,22 @@ public abstract class Size implements Comparable<Size>
     		return true;
     	}
     	if ( obj instanceof Size) {
-    		return toSizeInBytes().getValue() == ((Size) obj).toSizeInBytes().getValue();
+    	    return getSizeInBytes() == ((Size) obj).getSizeInBytes();
     	}
     	return false;
     }
     
     @Override
     public final int hashCode() {
-    	return toSizeInBytes().getValue();
+    	return getSizeInBytes();
     }
     
     public final Size minus(Size other) {
-        return new SizeInBytes( this.toSizeInBytes().getValue() - other.toSizeInBytes().getValue() );
+        return new SizeInBytes( this.getSizeInBytes() - other.getSizeInBytes() );
     }
     
     public final Size plus(Size other) {
-        return new SizeInBytes( this.toSizeInBytes().getValue() + other.toSizeInBytes().getValue() );
+        return new SizeInBytes( this.getSizeInBytes() + other.getSizeInBytes() );
     }    
     
     public abstract SizeInBytes toSizeInBytes();
@@ -79,6 +83,18 @@ public abstract class Size implements Comparable<Size>
     
         protected SizeInBytes(int size) {
             super(size);
+        }
+        
+        public int getSizeInBytes() {
+            return getValue();
+        }
+        
+        public int getSizeInWords() {
+            int result = getValue() >>> 1;
+            if ( (result << 1) != getValue() ) {
+                throw new RuntimeException("Internal error, converting byte-size "+getValue()+" to words causes loss of precision");
+            }
+            return result;
         }
 
         @Override
@@ -109,6 +125,14 @@ public abstract class Size implements Comparable<Size>
         protected SizeInWords(int size) {
             super(size);
         }
+        
+        public int getSizeInBytes() {
+            return getValue() << 1;
+        }
+        
+        public int getSizeInWords() {
+            return getValue();
+        }        
 
         @Override
         public SizeInBytes toSizeInBytes()
@@ -132,19 +156,19 @@ public abstract class Size implements Comparable<Size>
 
 	public final boolean isGreaterThan(Size availableSize) 
 	{
-		return toSizeInBytes().getValue() > availableSize.toSizeInBytes().getValue();
+		return getSizeInBytes() > availableSize.getSizeInBytes();
 	}    
 	
 	public final boolean isLessThan(Size availableSize) 
 	{
-		return toSizeInBytes().getValue() < availableSize.toSizeInBytes().getValue();
+		return getSizeInBytes() < availableSize.getSizeInBytes();
 	}
 	
 	@Override
 	public final int compareTo(Size o) 
 	{
-		final int s1 = toSizeInBytes().getValue();
-		final int s2 = o.toSizeInBytes().getValue();
+		final int s1 = getSizeInBytes();
+		final int s2 = o.getSizeInBytes();
 		if ( s1 < s2 ) {
 			return -1;
 		}

@@ -45,8 +45,8 @@ public abstract class Address implements Comparable<Address>
     @Override
     public int compareTo(Address other)
     {
-        final int value1 = this.toByteAddress().getValue();
-        final int value2 = other.toByteAddress().getValue();
+        final int value1 = this.getByteAddressValue();
+        final int value2 = other.getByteAddressValue();
         if ( value1 < value2 ) {
             return -1;
         } 
@@ -59,35 +59,33 @@ public abstract class Address implements Comparable<Address>
     
     public final boolean isLessThan(Address other) 
     {
-        return this.compareTo( other ) < 0;
+        return this.getByteAddressValue() < other.getByteAddressValue();
     }
     
     public final boolean isEqualOrLessThan(Address other) 
     {
-        return this.compareTo( other ) <= 0;
+        return this.getByteAddressValue() <= other.getByteAddressValue();
     }    
     
     public final boolean isGreaterThan(Address other) 
     {
-        return this.compareTo( other ) > 0;
+        return this.getByteAddressValue() > other.getByteAddressValue();        
     }    
     
     public final boolean isEqualOrGreaterThan(Address other) 
     {
-        return this.compareTo( other ) >= 0;
+        return this.getByteAddressValue() >= other.getByteAddressValue();         
     }     
     
     @Override
-    public final boolean equals(Object obj)
+    public final boolean equals(Object that)
     {
-        if ( obj == this ) {
+        if ( that == this ) {
             return true;
         }
-        if ( obj instanceof Address) 
+        if ( that instanceof Address) 
         {
-        	final int value1 = this.toByteAddress().getValue();
-        	final int value2 = ((Address) obj).toByteAddress().getValue();
-            return value1 == value2;
+        	return this.getByteAddressValue() == ((Address) that).getByteAddressValue();
         }
         return false;
     }
@@ -95,7 +93,7 @@ public abstract class Address implements Comparable<Address>
     @Override
     public final int hashCode()
     {
-        return toByteAddress().getValue();
+        return getByteAddressValue();
     }
     
     /**
@@ -148,6 +146,10 @@ public abstract class Address implements Comparable<Address>
     	
     public abstract WordAddress toWordAddress();
     
+    public abstract int getByteAddressValue();
+    
+    public abstract int getWordAddressValue();    
+    
 	public static int alignTo16Bit(int sizeInBytes) 
 	{
 		int result = sizeInBytes;
@@ -159,15 +161,15 @@ public abstract class Address implements Comparable<Address>
 	
 	public static Size calcDistanceInBytes(Address start, Address end) {
 	    
-	    Address startNormalized = start.toByteAddress();
-	    Address endNormalized = end.toByteAddress();
+	    int startNormalized = start.getByteAddressValue();
+	    int endNormalized = end.getByteAddressValue();
 	    
-	    if ( startNormalized.getValue() <= endNormalized.getValue() ) {
-	        return Size.bytes( endNormalized.getValue() - startNormalized.getValue() );
+	    if ( startNormalized <= endNormalized ) {
+	        return Size.bytes( endNormalized - startNormalized  );
 	    }
 	    
-	    final int len1 = (int) ((ByteAddress.MAX_ADDRESS+1) - startNormalized.getValue());
-	    final int len2 = endNormalized.getValue();
+	    final int len1 = (int) ((ByteAddress.MAX_ADDRESS+1) - startNormalized);
+	    final int len2 = endNormalized;
 	    return Size.bytes( len1+len2 );
 	}
     

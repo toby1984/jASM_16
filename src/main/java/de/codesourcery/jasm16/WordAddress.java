@@ -82,7 +82,7 @@ public class WordAddress extends Address
     @Override
     public Address plus(Address other,boolean wrap)
     {
-        final int sum = other.toWordAddress().getValue() + getValue();
+        final int sum = other.getWordAddressValue() + getValue();
         final int newValue;
         if ( wrap ) {
             newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );
@@ -95,7 +95,7 @@ public class WordAddress extends Address
     @Override
     public Address plus(Size size,boolean wrap)
     {
-        final int sum = getValue() + size.toSizeInWords().getValue();
+        final int sum = getValue() + size.getSizeInWords();
         final int newValue;
         if ( wrap ) {
             newValue = (int) ( sum % (WordAddress.MAX_ADDRESS+1) );            
@@ -104,6 +104,14 @@ public class WordAddress extends Address
         }
         return new WordAddress( newValue );
     }       
+    
+    public int getByteAddressValue() {
+        return value <<1;
+    }
+    
+    public int getWordAddressValue() {
+        return value;
+    }
     
     @Override
     public Address decrementByOne()
@@ -118,7 +126,7 @@ public class WordAddress extends Address
     @Override
     public Address minus(Address other)
     {
-        int newValue = getValue() - other.toWordAddress().getValue();
+        int newValue = getValue() - other.getWordAddressValue();
         if ( newValue < 0 ) {
             newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
         }
@@ -128,7 +136,7 @@ public class WordAddress extends Address
     @Override
     public Address minus(Size size)
     {
-        int newValue = getValue() - size.toSizeInWords().getValue();
+        int newValue = getValue() - size.getSizeInWords();
         if ( newValue < 0 ) {
             newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
         }

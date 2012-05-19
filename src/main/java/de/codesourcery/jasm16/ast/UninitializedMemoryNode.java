@@ -53,11 +53,18 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
 	{
-		mergeWithAllTokensTextRegion( context.read(TokenType.UNINITIALIZED_MEMORY) );
+	    final int factor;
+	    if ( context.peek().hasType( TokenType.UNINITIALIZED_MEMORY_BYTES ) ) {
+	        factor = 1;
+	        mergeWithAllTokensTextRegion( context.read(TokenType.UNINITIALIZED_MEMORY_BYTES ) );
+	    } else {
+	        factor = 2;
+	        mergeWithAllTokensTextRegion( context.read(TokenType.UNINITIALIZED_MEMORY_WORDS) );
+	    }
 		mergeWithAllTokensTextRegion( context.parseWhitespace() );
 		final NumberNode node = (NumberNode) new NumberNode().parse( context );
 		mergeWithAllTokensTextRegion( node );
-		setSizeInBytes( node.getAsWord() );
+		setSizeInBytes( node.getAsWord()*factor );
 		return this;           	    
 	}
 
