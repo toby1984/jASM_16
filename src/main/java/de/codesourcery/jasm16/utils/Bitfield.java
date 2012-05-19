@@ -2,11 +2,6 @@ package de.codesourcery.jasm16.utils;
 
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.AddressRangeList;
-import de.codesourcery.jasm16.Size;
-
 public final class Bitfield {
 
 	private static final int SHIFT_PER_ELEMENT=5; // = 32 bits per element 
@@ -48,16 +43,4 @@ public final class Bitfield {
 		data.set( elementOffset , data.get(elementOffset) & ~( 1 << bitOffset ) );
 	}
 	
-	@Override
-	public String toString() {
-		AddressRangeList list = new AddressRangeList();
-		int len = data.length() << SHIFT_PER_ELEMENT;
-		for ( int i = 0 ; i < len ; i++) 
-		{
-			if ( isSet( i ) ) {
-				list.add( new AddressRange( Address.wordAddress( i ) , Size.words( 1 ) ) );
-			}
-		}
-		return list.toString();
-	}
 }
