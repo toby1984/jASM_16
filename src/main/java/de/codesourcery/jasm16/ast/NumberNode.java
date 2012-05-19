@@ -44,7 +44,7 @@ public class NumberNode extends ConstantValueNode
     	this.value = value;
     }
     
-    @Override
+    
 	protected NumberNode parseInternal(IParseContext context) throws ParseException
     {
         final boolean isNegativeNumber;
@@ -76,7 +76,7 @@ public class NumberNode extends ConstantValueNode
     	return this;
     }
     
-    @Override
+    
     public boolean equals(Object obj)
     {
         if ( obj == this ) {
@@ -113,17 +113,17 @@ public class NumberNode extends ConstantValueNode
          value = value * -1;
     }
 
-	@Override
+	
 	public NumberNode reduce(ICompilationContext context) {
 		return (NumberNode) createCopy( false );
 	}
 	
-	@Override
+	
 	public boolean isNumberLiteral() {
 		return true;
 	}
 
-    @Override
+    
     public NumberNode copySingleNode()
     {
     	final NumberNode result = new NumberNode();
@@ -131,23 +131,23 @@ public class NumberNode extends ConstantValueNode
     	return result;
     }
 
-    @Override
+    
     public Long getNumericValue(ISymbolTable context)
     {
     	return value;
     }
     
-    @Override
+    
     public String toString() {
     	return Long.toString( value );
     }
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) {
 		return value;
 	}    

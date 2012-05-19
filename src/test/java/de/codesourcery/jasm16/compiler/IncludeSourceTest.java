@@ -39,7 +39,7 @@ public class IncludeSourceTest extends TestHelper {
 
 		final Compiler c = new Compiler() 
 		{
-			@Override
+			
 			protected ISymbolTable createSymbolTable() {
 				return symbolTable;
 			}
@@ -49,13 +49,13 @@ public class IncludeSourceTest extends TestHelper {
 		
 		c.setResourceResolver( new IResourceResolver() {
 
-			@Override
+			
 			public IResource resolve(String identifier,ResourceType type) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
-			@Override
+			
 			public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "../source2".equals( identifier ) ) 
@@ -91,7 +91,7 @@ public class IncludeSourceTest extends TestHelper {
 
 		final Compiler c = new Compiler() 
 		{
-			@Override
+			
 			protected ISymbolTable createSymbolTable() {
 				return symbolTable;
 			}
@@ -99,13 +99,13 @@ public class IncludeSourceTest extends TestHelper {
 		
 		c.setResourceResolver( new IResourceResolver() {
 
-			@Override
+			
 			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
-			@Override
+			
 			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
@@ -139,7 +139,7 @@ public class IncludeSourceTest extends TestHelper {
 
 		final Compiler c = new Compiler() 
 		{
-			@Override
+			
 			protected ISymbolTable createSymbolTable() {
 				return symbolTable;
 			}
@@ -149,13 +149,13 @@ public class IncludeSourceTest extends TestHelper {
 		
 		c.setResourceResolver( new IResourceResolver() {
 
-			@Override
+			
 			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
-			@Override
+			
 			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {

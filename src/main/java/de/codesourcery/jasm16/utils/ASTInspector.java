@@ -130,7 +130,7 @@ public class ASTInspector {
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
 
-	private final JComboBox<String> comboBox = new JComboBox<String>();
+	private final JComboBox comboBox = new JComboBox();
 	private final JTextField cursorPosition = new JTextField(); 
 	private JTextPane editorPane;
 	private JScrollPane editorScrollPane;    
@@ -252,7 +252,7 @@ public class ASTInspector {
 			super();
 		}
 
-		@Override
+		
 		public int getRowCount()
 		{
 			return messages.size();
@@ -281,13 +281,13 @@ public class ASTInspector {
 			fireTableDataChanged();
 		}
 
-		@Override
+		
 		public int getColumnCount()
 		{
 			return 3;
 		}
 
-		@Override
+		
 		public String getColumnName(int columnIndex)
 		{
 			switch(columnIndex) {
@@ -302,19 +302,19 @@ public class ASTInspector {
 			}
 		}
 
-		@Override
+		
 		public Class<?> getColumnClass(int columnIndex)
 		{
 			return String.class;
 		}
 
-		@Override
+		
 		public boolean isCellEditable(int rowIndex, int columnIndex)
 		{
 			return false;
 		}
 
-		@Override
+		
 		public Object getValueAt(int rowIndex, int columnIndex)
 		{
 			final StatusMessage msg = messages.get( rowIndex );
@@ -339,7 +339,7 @@ public class ASTInspector {
 			}
 		}
 
-		@Override
+		
 		public void setValueAt(Object aValue, int rowIndex, int columnIndex)
 		{
 			throw new UnsupportedOperationException("");
@@ -374,7 +374,7 @@ public class ASTInspector {
 			setDaemon( true );
 		}
 
-		@Override
+		
 		public void run()
 		{
 			while( true )
@@ -408,7 +408,7 @@ public class ASTInspector {
 					try {
 						SwingUtilities.invokeAndWait( new Runnable() {
 
-							@Override
+							
 							public void run()
 							{
 								try {
@@ -449,13 +449,13 @@ public class ASTInspector {
 			compilationThread.documentChanged();
 		}
 
-		@Override
+		
 		public void removeUpdate(DocumentEvent e) { textChanged(e); }        
 
-		@Override
+		
 		public void insertUpdate(DocumentEvent e) { textChanged(e); }
 
-		@Override
+		
 		public void changedUpdate(DocumentEvent e) 
 		{
 			textChanged(e); }
@@ -463,7 +463,7 @@ public class ASTInspector {
 
 	private final CaretListener listener = new CaretListener() {
 
-		@Override
+		
 		public void caretUpdate(CaretEvent e) 
 		{
 			if ( currentUnit != null && currentUnit.getAST() != null && currentUnit.getAST().getTextRegion() != null ) 
@@ -507,7 +507,7 @@ public class ASTInspector {
 
 		SwingUtilities.invokeLater( new Runnable() {
 
-			@Override
+			
 			public void run()
 			{
 				try {
@@ -557,7 +557,7 @@ public class ASTInspector {
 
 		final AdjustmentListener adjustmentListener = new AdjustmentListener() {
 
-			@Override
+			
 			public void adjustmentValueChanged(AdjustmentEvent e) 
 			{
 				if ( ! e.getValueIsAdjusting() ) 
@@ -577,7 +577,7 @@ public class ASTInspector {
 			final JButton showASTButton = new JButton("Show AST" );
 			showASTButton.addActionListener( new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) 
 				{
 					boolean currentlyVisible = astInspector != null ? astInspector.isVisible() : false;
@@ -597,7 +597,7 @@ public class ASTInspector {
 
 			fileChooser.addActionListener( new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) 
 				{
 					final JFileChooser chooser;
@@ -610,7 +610,7 @@ public class ASTInspector {
 
 					final FileFilter filter = new FileFilter() {
 
-						@Override
+						
 						public boolean accept(File f) 
 						{
 							if ( f.isDirectory() ) {
@@ -621,7 +621,7 @@ public class ASTInspector {
 									f.getName().endsWith(".dasm16"));
 						}
 
-						@Override
+						
 						public String getDescription() {
 							return "DCPU-16 assembler sources";
 						}
@@ -646,7 +646,7 @@ public class ASTInspector {
 			toolbar.add( fileChooser );
 			toolbar.add( showASTButton );
 
-			final ComboBoxModel<String> model = new ComboBoxModel<String>() {
+			final ComboBoxModel model = new ComboBoxModel() {
 
 				private ICompilerPhase selected;
 
@@ -661,7 +661,7 @@ public class ASTInspector {
 					}
 				}
 
-				@Override
+				
 				public Object getSelectedItem() 
 				{
 					return selected != null ? selected.getName() : null;
@@ -676,30 +676,30 @@ public class ASTInspector {
 					return null;
 				}
 
-				@Override
+				
 				public void setSelectedItem(Object name) {
 					selected = getPhaseByName( (String) name );
 				}
 
-				@Override
+				
 				public void addListDataListener(ListDataListener l) { }
 
-				@Override
+				
 				public String getElementAt(int index) {
 					return realModel.get(index); 
 				}
 
-				@Override
+				
 				public int getSize() { return realModel.size(); }
 
-				@Override
+				
 				public void removeListDataListener(ListDataListener l) { }
 
 			};
 			comboBox.setModel( model );
 			comboBox.addActionListener( new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) 
 				{
 					if ( model.getSelectedItem() != null ) 
@@ -856,7 +856,7 @@ public class ASTInspector {
 		public ASTTreeCellRenderer() {
 		}
 
-		@Override
+		
 		public Component getTreeCellRendererComponent(JTree tree,
 				Object value, boolean selected, boolean expanded,
 				boolean leaf, int row, boolean hasFocus) 
@@ -917,7 +917,7 @@ public class ASTInspector {
 
 		final IResource resource = new AbstractResource(SOURCE_CODE) {
 
-			@Override
+			
 			public String readText(ITextRegion range) throws IOException
 			{
 				return range.apply( getSourceFromEditor() );
@@ -932,30 +932,30 @@ public class ASTInspector {
 				}                    
 			}
 
-			@Override
+			
 			public long getAvailableBytes() throws IOException
 			{
 				return editorPane.getDocument().getLength();
 			}
 
-			@Override
+			
 			public OutputStream createOutputStream(boolean append) throws IOException
 			{
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
-			@Override
+			
 			public InputStream createInputStream() throws IOException
 			{
 				return new ByteArrayInputStream( getSourceFromEditor().getBytes() );
 			}
 
-			@Override
+			
 			public String getIdentifier() {
 				return file.getAbsolutePath();
 			}
 
-            @Override
+            
             public boolean isSame(IResource other)
             {
                 if ( other == this ) {
@@ -983,14 +983,14 @@ public class ASTInspector {
 		{
 			private long compileTime;
 
-			@Override
+			
 			public void onCompileStart(ICompilerPhase firstPhase) {
 				System.out.print("Compiling...");
 				clearCompilationErrors( currentUnit );
 				compileTime = -System.currentTimeMillis();
 			}
 
-			@Override
+			
 			public void afterCompile(ICompilerPhase lastPhase) 
 			{
 				compileTime += System.currentTimeMillis();
@@ -1215,7 +1215,7 @@ public class ASTInspector {
 		compiler.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
 		compiler.setResourceResolver( new FileResourceResolver() {
 
-			@Override
+			
 			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
 			{
 				if ( parent instanceof FileResource) {
@@ -1224,7 +1224,7 @@ public class ASTInspector {
 				return new FileResource( new File( file.getParentFile() , identifier ) , ResourceType.UNKNOWN);
 			}
 
-			@Override
+			
 			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
 			{
 				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );

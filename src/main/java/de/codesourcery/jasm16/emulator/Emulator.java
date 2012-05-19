@@ -121,7 +121,7 @@ public class Emulator implements IEmulator {
             return id;
         }
 	    
-	    @Override
+	    
 	    public String toString()
 	    {
 	        if ( isStopCommand ) {
@@ -156,7 +156,7 @@ public class Emulator implements IEmulator {
 
 		private final IEmulationListenerInvoker BEFORE_COMMAND_INVOKER = new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.beforeCommandExecution( emulator );
@@ -210,7 +210,7 @@ public class Emulator implements IEmulator {
 		{
 			final IEmulationListenerInvoker invoker = new IEmulationListenerInvoker() {
 
-				@Override
+				
 				public void invoke(IEmulator emulator, IEmulationListener listener)
 				{
 					listener.afterCommandExecution( emulator , executedCommandDuration );
@@ -280,7 +280,7 @@ public class Emulator implements IEmulator {
         {
             notifyListeners( new IEmulationListenerInvoker() {
 
-                @Override
+                
                 public void invoke(IEmulator emulator, IEmulationListener listener)
                 {
                     listener.beforeEmulatorIsDisposed( emulator );
@@ -363,7 +363,7 @@ public class Emulator implements IEmulator {
 
 	private final ICPU cpuAdaptor = new ICPU() {
 
-		@Override
+		
 		public int[] getCommonRegisters()
 		{
 			final int len = registers.length();
@@ -375,7 +375,7 @@ public class Emulator implements IEmulator {
 			return result;
 		}
 		
-		@Override
+		
 		public List<IInterrupt> getInterruptQueue() {
 			synchronized( interruptQueue ) {
 				return new ArrayList<IInterrupt>( interruptQueue );
@@ -414,7 +414,7 @@ public class Emulator implements IEmulator {
 			throw new IllegalArgumentException("Unsupported register "+reg);			
 		}
 
-		@Override
+		
 		public int getRegisterValue(Register reg) 
 		{
 			// a,b,c,x,y,z,i,j
@@ -447,31 +447,31 @@ public class Emulator implements IEmulator {
 			}
 		}        
 
-		@Override
+		
 		public Address getPC()
 		{
 			return pc;
 		}
 
-		@Override
+		
 		public Address getSP()
 		{
 			return sp;
 		}
 
-		@Override
+		
 		public int getEX()
 		{
 			return ex;
 		}
 
-		@Override
+		
 		public Address getInterruptAddress()
 		{
 			return interruptAddress;
 		}
 
-		@Override
+		
 		public int getCurrentCycleCount()
 		{
 			return currentCycle;
@@ -485,7 +485,7 @@ public class Emulator implements IEmulator {
 			return queueInterrupts;
 		}
 		
-		@Override
+		
 		public boolean interruptsEnabled() {
 			return interruptAddress != null && interruptAddress.getValue() != 0;
 		}
@@ -495,7 +495,7 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#reset()
 	 */
-	@Override
+	
 	public void reset(boolean clearMemory)
 	{
 		stop(null);
@@ -514,7 +514,7 @@ public class Emulator implements IEmulator {
 		// notify listeners
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.afterReset( emulator );                
@@ -561,7 +561,7 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#stop()
 	 */
-    @Override
+    
     public void stop() {
         stop( null  );
     }
@@ -574,7 +574,7 @@ public class Emulator implements IEmulator {
 		
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.onStop( emulator , previousPC , cause );
@@ -600,12 +600,12 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#start()
 	 */
-	@Override
+	
 	public void start() 
 	{
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.beforeContinuousExecution( emulator );
@@ -797,7 +797,7 @@ public class Emulator implements IEmulator {
            return waitForCommand(true);
         }
         
-		@Override
+		
 		public void run() {
 
 		    lastEmulationError = null;
@@ -962,7 +962,7 @@ public class Emulator implements IEmulator {
 		registers.set( REGISTER_A, irq.getMessage() );
 	}
 
-	@Override
+	
 	public void executeOneInstruction() 
 	{
 		stop(null);
@@ -1037,7 +1037,7 @@ public class Emulator implements IEmulator {
 				final Breakpoint finalRegularBP = regularBP; // Closures can only access stuff declared final...
 				listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-					@Override
+					
 					public void invoke(IEmulator emulator, IEmulationListener listener)
 					{
 						listener.onBreakpoint( emulator , finalRegularBP );
@@ -1053,7 +1053,7 @@ public class Emulator implements IEmulator {
 		return ( opCode >= 0x10 && opCode <= 0x17);
 	}
 
-	@Override
+	
 	public void skipCurrentInstruction() 
 	{
 		final int sizeInWords = calculateInstructionSizeInWords( pc );
@@ -1674,12 +1674,12 @@ public class Emulator implements IEmulator {
 		return 1+storeTargetOperand( instructionWord , desc.value ) + desc.cycleCount;
 	}
 	
-	@Override
+	
 	public boolean canStepReturn() {
 		return isJSR( memory.read( pc ) );
 	}
 	
-	@Override
+	
 	public void stepReturn() 
 	{
 		if ( ! canStepReturn() ) {
@@ -2246,7 +2246,7 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#loadMemory(de.codesourcery.jasm16.Address, byte[])
 	 */
-	@Override
+	
 	public void loadMemory(final Address startingOffset, final byte[] data) 
 	{
 		stop(null);
@@ -2260,7 +2260,7 @@ public class Emulator implements IEmulator {
 		// notify listeners
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.afterMemoryLoad( emulator , startingOffset , data.length );                
@@ -2275,7 +2275,7 @@ public class Emulator implements IEmulator {
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#calibrate()
 	 */
-	@Override
+	
 	public synchronized void calibrate() 
 	{
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
@@ -2313,25 +2313,25 @@ public class Emulator implements IEmulator {
 		out.println(" one cycle = "+clockThread.oneCycleDelay+" loop iterations.");
 	}
 
-	@Override
+	
 	public ICPU getCPU()
 	{
 		return cpuAdaptor;
 	}
 
-	@Override
+	
 	public IMemory getMemory()
 	{
 		return memory;
 	}
 
-	@Override
+	
 	public void addEmulationListener(IEmulationListener listener)
 	{
 		listenerHelper.addEmulationListener( listener );
 	}
 
-	@Override
+	
 	public void removeEmulationListener(IEmulationListener listener)
 	{
 		listenerHelper.removeEmulationListener( listener );
@@ -2354,7 +2354,7 @@ public class Emulator implements IEmulator {
 		return result;
 	}	
 
-	@Override
+	
 	public void addBreakpoint(final Breakpoint bp)
 	{
 		if (bp == null) {
@@ -2380,7 +2380,7 @@ public class Emulator implements IEmulator {
 		if ( replacedBreakpoint != null && ! replacedBreakpoint.isOneShotBreakpoint() ) {
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-				@Override
+				
 				public void invoke(IEmulator emulator, IEmulationListener listener)
 				{
 					listener.breakpointDeleted( emulator , bp );
@@ -2392,7 +2392,7 @@ public class Emulator implements IEmulator {
 		{
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 	
-				@Override
+				
 				public void invoke(IEmulator emulator, IEmulationListener listener)
 				{
 					listener.breakpointAdded( emulator , bp );
@@ -2401,7 +2401,7 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	@Override
+	
 	public void breakpointChanged(final Breakpoint bp) {
 
 		Breakpoint existing;
@@ -2421,7 +2421,7 @@ public class Emulator implements IEmulator {
 
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-			@Override
+			
 			public void invoke(IEmulator emulator, IEmulationListener listener)
 			{
 				listener.breakpointChanged( emulator , bp );
@@ -2429,7 +2429,7 @@ public class Emulator implements IEmulator {
 		});         
 	}
 
-	@Override
+	
 	public void deleteBreakpoint(final Breakpoint bp)
 	{
 		if (bp == null) {
@@ -2452,7 +2452,7 @@ public class Emulator implements IEmulator {
 		if ( existing != null && ! existing.isOneShotBreakpoint() ) {
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-				@Override
+				
 				public void invoke(IEmulator emulator, IEmulationListener listener)
 				{
 					listener.breakpointDeleted( emulator , bp );
@@ -2461,7 +2461,7 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	@Override
+	
 	public List<Breakpoint> getBreakPoints()
 	{
 		final List<Breakpoint> result = new ArrayList<Breakpoint>();
@@ -2477,7 +2477,7 @@ public class Emulator implements IEmulator {
 		return result;
 	}
 
-	@Override
+	
 	public Breakpoint getBreakPoint(Address address)
 	{
 		if (address == null) {
@@ -2492,13 +2492,13 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	@Override
+	
 	public void unmapRegion(IMemoryRegion region) {
 		this.memory.unmapRegion( region );
 		this.memory.dumpMemoryLayout();
 	}
 
-	@Override
+	
 	public void mapRegion(IMemoryRegion region) 
 	{
 	    out.println("Before adding new memory region: "+region);
@@ -2510,7 +2510,7 @@ public class Emulator implements IEmulator {
 		this.memory.dumpMemoryLayout();
 	}
 
-	@Override
+	
 	public boolean triggerInterrupt(IInterrupt interrupt) 
 	{
 		if ( ! getCPU().interruptsEnabled() ) {
@@ -2529,7 +2529,7 @@ public class Emulator implements IEmulator {
 		return true;
 	}
 
-	@Override
+	
 	public void addDevice(IDevice device) 
 	{
 		if (device == null) {
@@ -2560,14 +2560,14 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	@Override
+	
 	public List<IDevice> getDevices() {
 		synchronized( devices ) {
 			return new ArrayList<IDevice>( devices );
 		}
 	}
 
-	@Override
+	
 	public void removeDevice(IDevice device) 
 	{
 		if (device == null) {
@@ -2596,12 +2596,12 @@ public class Emulator implements IEmulator {
 		}
 	}
 	
-	@Override
+	
 	public EmulationSpeed getEmulationSpeed() {
 		return emulationSpeed;
 	}
 	
-	@Override
+	
 	public void setEmulationSpeed(final EmulationSpeed newSpeed) 
 	{
 	    if (newSpeed == null) {
@@ -2621,7 +2621,7 @@ public class Emulator implements IEmulator {
         
         listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
-            @Override
+            
             public void invoke(IEmulator emulator, IEmulationListener listener)
             {
                 listener.onEmulationSpeedChange( oldSpeed , newSpeed );
@@ -2629,12 +2629,12 @@ public class Emulator implements IEmulator {
         });           
 	}
 	
-	@Override
+	
 	public boolean isCalibrated() {
 		return clockThread.oneCycleDelay != -1;
 	}
 	
-    @Override
+    
     public Throwable getLastEmulationError()
     {
         return lastEmulationError;
@@ -2659,7 +2659,7 @@ public class Emulator implements IEmulator {
         }
     }
     
-    @Override
+    
     public synchronized void dispose()
     {
         out.println("Disposing Emulator ...");
@@ -2684,13 +2684,13 @@ public class Emulator implements IEmulator {
         out.println("Emulator disposed.");
     }
 
-    @Override
+    
     public void setOutput(PrintStream out)
     {
         this.out = out;
     }
 
-    @Override
+    
     public PrintStream getOutput()
     {
         return out;
@@ -2756,14 +2756,14 @@ public class Emulator implements IEmulator {
         }
     }
 
-    @Override
+    
     public void setMemoryProtectionEnabled(boolean enabled)
     {
         checkMemoryWrites = enabled;
         memory.setCheckWriteAccess( enabled );
     }
 
-    @Override
+    
     public boolean isMemoryProtectionEnabled()
     {
         return checkMemoryWrites;

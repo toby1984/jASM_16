@@ -169,7 +169,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     private final UndoRedoAction undoAction = new UndoRedoAction() {
 
-        @Override
+        
         public void actionPerformed(ActionEvent e) {
             try {
                 undoManager.undo();
@@ -183,7 +183,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     private final UndoRedoAction redoAction = new UndoRedoAction() {
 
-        @Override
+        
         public void actionPerformed(ActionEvent e) {
             try {
                 undoManager.redo();
@@ -360,7 +360,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             super();
         }
 
-        @Override
+        
         public int getRowCount()
         {
             return messages.size();
@@ -389,13 +389,13 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             fireTableDataChanged();
         }
 
-        @Override
+        
         public int getColumnCount()
         {
             return 3;
         }
 
-        @Override
+        
         public String getColumnName(int columnIndex)
         {
             switch(columnIndex) {
@@ -410,19 +410,19 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             }
         }
 
-        @Override
+        
         public Class<?> getColumnClass(int columnIndex)
         {
             return String.class;
         }
 
-        @Override
+        
         public boolean isCellEditable(int rowIndex, int columnIndex)
         {
             return false;
         }
 
-        @Override
+        
         public Object getValueAt(int rowIndex, int columnIndex)
         {
             final StatusMessage msg = messages.get( rowIndex );
@@ -447,7 +447,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             }
         }
 
-        @Override
+        
         public void setValueAt(Object aValue, int rowIndex, int columnIndex)
         {
             throw new UnsupportedOperationException("");
@@ -482,7 +482,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             setDaemon( true );
         }
 
-        @Override
+        
         public void run()
         {
             while( true )
@@ -516,7 +516,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                         try {
                             SwingUtilities.invokeAndWait( new Runnable() {
 
-                                @Override
+                                
                                 public void run()
                                 {
                                     try {
@@ -560,19 +560,19 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             compilationThread.documentChanged();
         }
 
-        @Override
+        
         public void removeUpdate(DocumentEvent e) { textChanged(e); }        
 
-        @Override
+        
         public void insertUpdate(DocumentEvent e) { textChanged(e); }
 
-        @Override
+        
         public void changedUpdate(DocumentEvent e)  { /* do nothing, style change only */ }
     };
 
     private final CaretListener listener = new CaretListener() {
 
-        @Override
+        
         public void caretUpdate(CaretEvent e) 
         {
             if ( ! isEditable() ) {
@@ -729,7 +729,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             		return new FileResourceResolver( fr.getAbsoluteFile().getParentFile() );
             	}
             	
-				@Override
+				
 				public IResource resolve(String identifier,ResourceType resourceType) throws ResourceNotFoundException 
 				{
 					try {
@@ -743,7 +743,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					return getChildResourceResolver(null).resolve( identifier , resourceType );
 				}
 
-				@Override
+				
 				public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType)
 						throws ResourceNotFoundException 
 				{
@@ -907,7 +907,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     public final void centerCurrentLineInScrollPane()
     {
     	final Runnable r = new Runnable() {
-    		@Override
+    		
     		public void run() {
 
     	        final Container container = SwingUtilities.getAncestorOfClass(JViewport.class, editorPane);
@@ -943,7 +943,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     public final void gotoLocation(final int offset) {
     	
     	final Runnable r = new Runnable() {
-    		@Override
+    		
     		public void run() {
     			editorPane.setCaretPosition( offset );		
     		}
@@ -1039,7 +1039,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     // ============= view creation ===================
 
-    @Override
+    
     public JPanel getPanel()
     {
         if ( panel == null ) {
@@ -1107,7 +1107,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         final AdjustmentListener adjustmentListener = new AdjustmentListener() {
 
-            @Override
+            
             public void adjustmentValueChanged(AdjustmentEvent e) 
             {
                 if ( ! e.getValueIsAdjusting() ) 
@@ -1174,7 +1174,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 KeyStroke.getKeyStroke(KeyEvent.VK_S,Event.CTRL_MASK),
                 new AbstractAction() 
         {
-            @Override
+            
             public void actionPerformed(ActionEvent e) {
                 saveCurrentFile();
             }
@@ -1230,7 +1230,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         return this.sourceInMemory;
     }
 
-    @Override
+    
     public final void disposeHook()
     {
         workspace.removeWorkspaceListener( workspaceListener );
@@ -1240,7 +1240,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     protected void disposeHook2() {
     }
 
-    @Override
+    
     public final void refreshDisplay()
     {
         try {
@@ -1259,7 +1259,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     }
 
-    @Override
+    
     public String getTitle() 
     {
         if ( getCurrentResource() == null ) {
@@ -1275,7 +1275,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         return prefix + identifier;
     }
 
-    @Override
+    
     public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
     {
         if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
@@ -1284,7 +1284,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         throw new IllegalArgumentException("Unsupported resource type: "+resource);
     }
 
-    @Override
+    
     public final boolean hasUnsavedContent() 
     {
         if ( this.sourceFileOnDisk == null ) {
@@ -1293,12 +1293,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         return ! initialHashCode.equals( Misc.calcHash( getTextFromTextPane() ) );
     }
 
-    @Override
+    
     public final boolean mayBeDisposed() {
         return ! hasUnsavedContent();
     }
 
-    @Override
+    
     public final void openResource(IAssemblyProject project, IResource resource) throws IOException 
     {
         if ( this.project != project || this.sourceFileOnDisk != resource ) {
@@ -1312,7 +1312,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         getViewContainer().setTitle( SourceCodeView.this , title );               
     }
 
-    @Override
+    
     public String getID() {
         return "source-view";
     }

@@ -48,7 +48,7 @@ public abstract class Address implements Comparable<Address>
         return new ByteAddress( value );
     }    
     
-    @Override
+    
     public int compareTo(Address other)
     {
         final int value1 = this.getByteAddressValue();
@@ -83,7 +83,7 @@ public abstract class Address implements Comparable<Address>
         return this.getByteAddressValue() >= other.getByteAddressValue();         
     }     
     
-    @Override
+    
     public final boolean equals(Object that)
     {
         if ( that == this ) {
@@ -96,7 +96,7 @@ public abstract class Address implements Comparable<Address>
         return false;
     }
     
-    @Override
+    
     public final int hashCode()
     {
         return getByteAddressValue();

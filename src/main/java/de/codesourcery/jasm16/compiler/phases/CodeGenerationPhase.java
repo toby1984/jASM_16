@@ -53,7 +53,7 @@ public class CodeGenerationPhase extends CompilerPhase {
         super(ICompilerPhase.PHASE_GENERATE_CODE);
     }
 
-    @Override
+    
     public boolean execute(List<ICompilationUnit> units, ISymbolTable symbolTable,
             IObjectCodeWriterFactory writerFactory, ICompilationListener listener, 
             IResourceResolver resourceResolver, 
@@ -90,7 +90,7 @@ public class CodeGenerationPhase extends CompilerPhase {
         }
     }
 
-    @Override
+    
     protected void run(ICompilationUnit unit, final ICompilationContext compContext) throws IOException
     {
         final IObjectCodeWriterFactory factory = compContext.getObjectCodeWriterFactory();
@@ -110,7 +110,7 @@ public class CodeGenerationPhase extends CompilerPhase {
         {
             final IASTNodeVisitor<ASTNode> visitor = new IASTNodeVisitor<ASTNode>() {
 
-                @Override
+                
                 public void visit(ASTNode n, IIterationContext context)
                 {
                     if ( n instanceof ObjectCodeOutputNode ) 

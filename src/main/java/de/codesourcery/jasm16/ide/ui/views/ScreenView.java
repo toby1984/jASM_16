@@ -52,7 +52,7 @@ public class ScreenView extends AbstractView
 		this.emulator.addDevice( keyboard );
     }
     
-    @Override
+    
     public void disposeHook()
     {
     	if ( screen != null ) {
@@ -62,7 +62,7 @@ public class ScreenView extends AbstractView
         this.emulator.removeDevice( keyboard );
     }
 
-    @Override
+    
     public void refreshDisplay()
     {
     	if ( panel != null ) {
@@ -70,19 +70,19 @@ public class ScreenView extends AbstractView
     	}
     }
 
-    @Override
+    
     public String getTitle()
     {
         return "Screen";
     }
 
-    @Override
+    
     public String getID()
     {
         return VIEW_ID;
     }
     
-    @Override
+    
     protected JPanel getPanel()
     {
     	if ( panel == null ) 

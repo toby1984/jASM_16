@@ -32,7 +32,7 @@ public abstract class AbstractMarker implements IMarker
     
     private final Map<String,Object> attrs = new HashMap<String,Object>();
     
-    @Override
+    
     public String toString()
     {
         return "marker_type="+type+", compilation unit= "+unit.getIdentifier()+" , attributes="+attrs;
@@ -50,7 +50,7 @@ public abstract class AbstractMarker implements IMarker
         this.unit = unit;
     }
 
-    @Override
+    
     public boolean hasAttribute(String name)
     {
         if (StringUtils.isBlank(name)) {
@@ -59,18 +59,18 @@ public abstract class AbstractMarker implements IMarker
         return attrs.containsKey( name );
     }
     
-    @Override
+    
     public ICompilationUnit getCompilationUnit() {
         return unit;
     }
     
-    @Override
+    
     public String getType()
     {
         return type;
     }
 
-    @Override
+    
     public boolean hasType(String type)
     {
         if (type == null) {
@@ -79,7 +79,7 @@ public abstract class AbstractMarker implements IMarker
         return getType().equals( type );
     }
 
-    @Override
+    
     public int getAttribute(String name, int defaultValue)
     {
         Object object = attrs.get( name );
@@ -89,7 +89,7 @@ public abstract class AbstractMarker implements IMarker
         return (Integer) object;
     }
 
-    @Override
+    
     public String getAttribute(String name, String defaultValue)
     {
         Object object = attrs.get( name );
@@ -100,7 +100,7 @@ public abstract class AbstractMarker implements IMarker
     }
 
     @SuppressWarnings("unchecked")
-    @Override
+    
     public <T> T getAttribute(String name, T defaultValue)
     {
         Object object = attrs.get( name );
@@ -110,25 +110,25 @@ public abstract class AbstractMarker implements IMarker
         return (T) object;
     }
 
-    @Override
+    
     public void delete()
     {
         unit.deleteMarker( this );
     }
 
-    @Override
+    
     public void setAttribute(String name, int value)
     {
         attrs.put( name , value );
     }
 
-    @Override
+    
     public void setAttribute(String name, String value)
     {
         attrs.put( name , value );
     }
 
-    @Override
+    
     public void setAttribute(String name, Object value)
     {
         attrs.put( name , value );

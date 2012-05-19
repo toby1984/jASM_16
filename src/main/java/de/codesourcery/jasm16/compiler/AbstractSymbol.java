@@ -47,12 +47,12 @@ public abstract class AbstractSymbol implements ISymbol {
 		return identifier;
 	}
 	
-	@Override
+	
 	public final ICompilationUnit getCompilationUnit() {
 		return unit;
 	}
 	
-    @Override
+    
     public final ITextRegion getLocation()
     {
         return location;

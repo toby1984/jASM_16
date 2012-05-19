@@ -50,7 +50,7 @@ public class SizeAndLocation
 		this.location = location;
 	}
 	
-	@Override
+	
 	public String toString() {
 		return "x="+location.x+",y="+location.y+",width="+dimension.width+",height="+dimension.height;
 	}

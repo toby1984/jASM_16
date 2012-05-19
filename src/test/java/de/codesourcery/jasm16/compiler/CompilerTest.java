@@ -45,31 +45,31 @@ public class CompilerTest extends TestHelper
 		
 		compiler.setObjectCodeWriterFactory( new AbstractObjectCodeWriterFactory() {
 
-			@Override
+			
 			protected IObjectCodeWriter createObjectCodeWriter( ICompilationContext context) 
 			{
 				return new AbstractObjectCodeWriter() {
 
-					@Override
+					
 					protected void closeHook() throws IOException {
 						out[0].close();
 					}
 
-					@Override
+					
 					protected OutputStream createOutputStream() throws IOException 
 					{
 						out[0] = new ByteArrayOutputStream();
 						return out[0];
 					}
 
-					@Override
+					
 					protected void deleteOutputHook() throws IOException {
 						out[0] = null;
 					}
 				};
 			}
 
-			@Override
+			
 			protected void deleteOutputHook() throws IOException {
 			}
 		});

@@ -59,18 +59,18 @@ public class ByteAddress extends Address
         return value;
     }
     
-    @Override
+    
     public String toString()
     {
         return "0x"+Misc.toHexString( this.value );
     }
 
-	@Override
+	
 	public ByteAddress toByteAddress() {
 		return this;
 	}
 
-	@Override
+	
 	public WordAddress toWordAddress() 
 	{
 		final int wordAddress = value >>> 1;
@@ -80,7 +80,7 @@ public class ByteAddress extends Address
 		return new WordAddress( wordAddress );
 	}
 
-    @Override
+    
     public Address incrementByOne(boolean wrap)
     {
         final int newValue;
@@ -92,7 +92,7 @@ public class ByteAddress extends Address
         return new ByteAddress( newValue );
     }
 
-    @Override
+    
     public Address plus(Address other,boolean wrap)
     {
         final int sum = other.getByteAddressValue() + getValue();
@@ -106,7 +106,7 @@ public class ByteAddress extends Address
         return new ByteAddress( newValue );
     }
     
-    @Override
+    
     public Address plus(Size size,boolean wrap)
     {
         final int sum = size.getSizeInBytes() + getValue();
@@ -120,7 +120,7 @@ public class ByteAddress extends Address
         return new ByteAddress( newValue );        
     }      
     
-    @Override
+    
     public Address decrementByOne()
     {
         int newValue = getValue() - 1;
@@ -130,7 +130,7 @@ public class ByteAddress extends Address
         return new ByteAddress( newValue );
     }
 
-    @Override
+    
     public Address minus(Address other)
     {
         int newValue = getValue() - other.getByteAddressValue();
@@ -140,7 +140,7 @@ public class ByteAddress extends Address
         return new ByteAddress( newValue );
     }
 
-    @Override
+    
     public Address minus(Size size)
     {
         int newValue = getValue() - size.getSizeInBytes();

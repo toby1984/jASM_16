@@ -40,14 +40,14 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	public enum AllowedSize 
 	{
 		BYTE {
-			@Override
+			
 			public int getMaxSupportedValue() {
 				return 255;
 			}            
 		},
 		WORD,
 		PACK {
-		    @Override
+		    
 			public boolean use16BitCharacterLiterals() {
 				return false;
 			}		
@@ -70,7 +70,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	public InitializedMemoryNode() {
 	}
 
-	@Override
+	
 	protected InitializedMemoryNode parseInternal(IParseContext context) throws ParseException
 	{
 		final ICompilationUnit unit = context.getCompilationUnit();
@@ -280,7 +280,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		return result;
 	}
 
-	@Override
+	
 	public InitializedMemoryNode copySingleNode()
 	{
 		final InitializedMemoryNode  result = new InitializedMemoryNode();
@@ -294,14 +294,14 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	}
 
 
-	@Override
+	
 	public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
 	{
 		this.address = writer.getCurrentWriteOffset();
 		writer.writeObjectCode( this.parsedData );
 	}
 
-	@Override
+	
 	public void symbolsResolved(ICompilationContext context)
 	{
 		byte[] bytes;
@@ -330,7 +330,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		return parsedData;
 	}
 
-	@Override
+	
 	public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
 	{
 		if ( this.parsedData == null ) {
@@ -339,12 +339,12 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		return parsedData.length;
 	}
 
-	@Override
+	
 	public boolean supportsChildNodes() {
 		return true;
 	}
 	
-	@Override
+	
 	public Address getAddress() {
 		return address;
 	}

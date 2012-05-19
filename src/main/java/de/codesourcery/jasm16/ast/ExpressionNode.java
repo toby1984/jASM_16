@@ -51,7 +51,7 @@ public class ExpressionNode extends TermNode
     public ExpressionNode() {
     }
 
-    @Override
+    
     public boolean equals(Object obj)
     {
         return obj instanceof ExpressionNode;
@@ -74,7 +74,7 @@ public class ExpressionNode extends TermNode
         return termCount;
     }
 
-    @Override
+    
     public Long calculate(ISymbolTable symbolTable) 
     {
         final List<TermNode> terms = new ArrayList<TermNode>();
@@ -105,7 +105,7 @@ public class ExpressionNode extends TermNode
         return literalValues.get(0).calculate( symbolTable );
     }
 
-    @Override
+    
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         final int offset = context.currentParseIndex();
@@ -130,23 +130,23 @@ public class ExpressionNode extends TermNode
 
     private static enum ExpectedType {
         NOTHING {
-            @Override
+            
             public boolean isTreatMinusAsOperator() { return true; }
         },
         LITERAL_OR_EXPRESSION {
-            @Override
+            
             public boolean isTreatMinusAsOperator() { return false; }
         },
         INFIX_OR_POSTFIX_OPERATOR {
-            @Override
+            
             public boolean isTreatMinusAsOperator() { return true; }
         },
         ANY_OPERATOR {
-            @Override
+            
             public boolean isTreatMinusAsOperator() { return true; }
         }, 
         INFIX_OP_OR_LITERAL_OR_EXPRESSION {
-            @Override
+            
             public boolean isTreatMinusAsOperator() { return true; }
         };
         
@@ -516,7 +516,7 @@ public class ExpressionNode extends TermNode
         final boolean[] result = { false };
         final ISimpleASTNodeVisitor<OperatorNode> visitor = new ISimpleASTNodeVisitor<OperatorNode>() {
 
-            @Override
+            
             public boolean visit(OperatorNode node) 
             {
                 if ( node.getOperator() ==operator ) {
@@ -647,13 +647,13 @@ public class ExpressionNode extends TermNode
         return false;
     }
 
-    @Override
+    
     public ExpressionNode copySingleNode()
     {
         return new ExpressionNode();
     }
 
-    @Override
+    
     public boolean supportsChildNodes() {
         return true;
     }	

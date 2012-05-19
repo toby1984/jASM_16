@@ -332,7 +332,7 @@ public class Misc {
 
             Collections.sort( errors ,new Comparator<ICompilationError>() {
 
-                @Override
+                
                 public int compare(ICompilationError o1, ICompilationError o2) 
                 {
                     if ( o1 instanceof CompilationError && o2 instanceof CompilationError ) 
@@ -675,7 +675,7 @@ public class Misc {
     	
         final IFileVisitor deletingVisitor = new IFileVisitor() {
 
-            @Override
+            
             public boolean visit(File file) throws IOException 
             {
                 if ( visitor == null || visitor.visit( file ) ) 

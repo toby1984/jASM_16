@@ -54,13 +54,13 @@ public class GenericCompilationError extends AbstractMarker implements ICompilat
         }
     }
 
-    @Override
+    
     public String getMessage()
     {
         return getAttribute(IMarker.ATTR_DESCRIPTION, "");
     }
 
-    @Override
+    
     public Throwable getCause()
     {
         return getAttribute(IMarker.ATTR_EXCEPTION, (Throwable) null);
@@ -71,7 +71,7 @@ public class GenericCompilationError extends AbstractMarker implements ICompilat
      * 
      * @return
      */
-    @Override
+    
     public int getLineNumber()
     {
         return getAttribute(IMarker.ATTR_LINE_NUMBER, -1);
@@ -87,7 +87,7 @@ public class GenericCompilationError extends AbstractMarker implements ICompilat
      * 
      * @return
      */
-    @Override
+    
     public int getColumnNumber()
     {
         return getAttribute(IMarker.ATTR_COLUMN_NUMBER, -1);
@@ -98,43 +98,43 @@ public class GenericCompilationError extends AbstractMarker implements ICompilat
         setAttribute(IMarker.ATTR_COLUMN_NUMBER, column);
     }
 
-    @Override
+    
     public ASTNode getNode()
     {
         return getAttribute(IMarker.ATTR_AST_NODE, (ASTNode) null);
     }
 
-    @Override
+    
     public void setErrorOffset(int offset)
     {
         setAttribute(IMarker.ATTR_SRC_OFFSET, offset);
     }    
 
-    @Override
+    
     public int getErrorOffset()
     {
         return getAttribute(IMarker.ATTR_SRC_OFFSET, -1);
     }
 
-    @Override
+    
     public int getLineStartOffset()
     {
         return getAttribute(IMarker.ATTR_LINE_START_OFFSET, -1);
     }
 
-    @Override
+    
     public void setLineStartOffset(int lineStartOffset)
     {
         setAttribute(IMarker.ATTR_LINE_START_OFFSET, lineStartOffset);
     }
 
-    @Override
+    
     public ITextRegion getLocation()
     {
         return getAttribute(IMarker.ATTR_SRC_REGION, (ITextRegion) null);
     }
     
-    @Override
+    
     public void setLocation(ITextRegion location)
     {
         if (location == null) {

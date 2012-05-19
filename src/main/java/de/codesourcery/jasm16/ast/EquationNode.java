@@ -36,12 +36,12 @@ public class EquationNode extends ConstantValueNode {
 
 	private Identifier identifier;
 	
-	@Override
+	
 	public Long getNumericValue(ISymbolTable symbolTable) {
 		return calculate( symbolTable );
 	}
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) 
 	{
 		if ( getChildCount() == 1) 
@@ -51,26 +51,26 @@ public class EquationNode extends ConstantValueNode {
 		return null;
 	}
 
-	@Override
+	
 	public TermNode reduce(ICompilationContext context) 
 	{
 		// currently not supported, just return a copy
 		return (TermNode) createCopy( true );
 	}
 
-	@Override
+	
 	public ASTNode createCopy(boolean shallow) {
 		return super.createCopy(true); // ALWAYS do a deep copy since the child nodes hold the actual value of this expression
 	}
 	
-	@Override
+	
 	public ASTNode copySingleNode() {
 		final EquationNode result = new EquationNode();
 		result.identifier = identifier;
 		return result;
 	}
 
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
 		final ITextRegion region = new TextRegion( context.read( TokenType.EQUATION ) );
@@ -114,7 +114,7 @@ public class EquationNode extends ConstantValueNode {
 		return this;
 	}
 
-	@Override
+	
 	public boolean supportsChildNodes() {
 		return true;
 	}

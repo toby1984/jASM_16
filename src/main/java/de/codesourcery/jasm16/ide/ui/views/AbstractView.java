@@ -59,7 +59,7 @@ public abstract class AbstractView implements IView
     	return getPanel();
     }
     
-    @Override
+    
     public final void dispose()
     {
         for (Iterator<IView> it = children.iterator(); it.hasNext();) {
@@ -137,7 +137,7 @@ public abstract class AbstractView implements IView
         return cnstrs;
     }
     
-    @Override
+    
     public boolean mayBeDisposed() {
     	return true;
     }

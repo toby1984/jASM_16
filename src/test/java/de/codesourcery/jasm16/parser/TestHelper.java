@@ -68,13 +68,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     
     protected static final IResourceResolver RESOURCE_RESOLVER = new IResourceResolver() {
         
-        @Override
+        
         public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
 
-        @Override
+        
         public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
@@ -112,7 +112,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) );
     }    
     
-    @Override
+    
     protected void setUp() throws Exception
     {
         symbolTable = new SymbolTable();
@@ -149,7 +149,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 
 		compiler.insertCompilerPhaseAfter( new CompilerPhase("pry-on-symbols") {
 
-			@Override
+			
 			protected void run(ICompilationUnit unit, ICompilationContext context) throws IOException 
 			{
 				symbolTable = context.getSymbolTable();
@@ -217,13 +217,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         return new CompilationContext( unit , symbolTable , new NullObjectCodeWriterFactory() , 
         		new IResourceResolver() {
             
-            @Override
+            
             public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
             }
             
-            @Override
+            
             public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException();
@@ -251,7 +251,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         
         final StringBuilder result = new StringBuilder();
         final ASTVisitor visitor = new ASTVisitor() {
-            @Override
+            
             public void visit(UnparsedContentNode node, IIterationContext context)
             {
                 final String msg = Misc.toPrettyString( node.getError() , node.getErrorOffset() , source );
@@ -286,42 +286,42 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     {
     	ICompilationContext context = new ICompilationContext() {
 
-			@Override
+			
 			public List<ICompilationUnit> getAllCompilationUnits() {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
-			@Override
+			
 			public ICompilationUnit getCurrentCompilationUnit() {
 				return unit;
 			}
 
-			@Override
+			
 			public IObjectCodeWriterFactory getObjectCodeWriterFactory() {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
-			@Override
+			
 			public ISymbolTable getSymbolTable() {
 				return symbolTable;
 			}
 
-			@Override
+			
 			public boolean hasCompilerOption(CompilerOption option) {
 				return false;
 			}
 
-			@Override
+			
 			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
-			@Override
+			
 			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
 			}
 
-			@Override
+			
 			public ICompilationUnit getOrCreateCompilationUnit(
 					IResource resource) throws IOException 
 			{
@@ -334,7 +334,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         }
     }
     
-    @Override
+    
     public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
     		throws IOException 
     {

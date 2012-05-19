@@ -35,42 +35,42 @@ public class ASTTableModelWrapper implements TreeModel {
 		this.ast = ast;
 	}
 
-	@Override
+	
 	public void addTreeModelListener(TreeModelListener l) {
 	}
 
-	@Override
+	
 	public Object getChild(Object parent, int index) 
 	{
 		return ((ASTNode) parent).child(index);
 	}
 
-	@Override
+	
 	public int getChildCount(Object parent) {
 		return ((ASTNode) parent).getChildCount();
 	}
 
-	@Override
+	
 	public int getIndexOfChild(Object parent, Object child) 
 	{
 		return ((ASTNode) parent).indexOf( (ASTNode) child );
 	}
 
-	@Override
+	
 	public Object getRoot() {
 		return ast;
 	}
 
-	@Override
+	
 	public boolean isLeaf(Object node) {
 		return ((ASTNode) node).getChildCount() == 0;
 	}
 
-	@Override
+	
 	public void removeTreeModelListener(TreeModelListener l) {
 	}
 
-	@Override
+	
 	public void valueForPathChanged(TreePath path, Object newValue) {
 	}
 	

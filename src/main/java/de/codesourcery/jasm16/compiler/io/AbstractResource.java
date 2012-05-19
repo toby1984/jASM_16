@@ -33,12 +33,12 @@ public abstract class AbstractResource implements IResource {
 		this.type = type;
 	}
 	
-	@Override
+	
 	public final ResourceType getType() {
 		return type;
 	}
 
-	@Override
+	
 	public boolean hasType(ResourceType t) {
 		if (t == null) {
 			throw new IllegalArgumentException("t must not be NULL");
@@ -46,12 +46,12 @@ public abstract class AbstractResource implements IResource {
 		return getType().equals( t );
 	}
 	
-	@Override
+	
 	public boolean supportsDelete() {
 		return false;
 	}
 	
-	@Override
+	
 	public void delete() throws IOException {
 		throw new UnsupportedOperationException("Not supported");
 	}

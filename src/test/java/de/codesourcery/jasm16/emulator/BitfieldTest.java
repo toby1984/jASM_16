@@ -9,7 +9,7 @@ public class BitfieldTest extends TestCase {
 	
 	private Bitfield bitfield;
 	
-	@Override
+	
 	protected void setUp() throws Exception {
 		super.setUp();
 		bitfield = new Bitfield(65536);

@@ -63,13 +63,13 @@ public class ASTUtils {
         
         public VisitorResult getResult() { return result; }
         
-        @Override
+        
         public void stop() { setResult( VisitorResult.STOP ); }
 
-        @Override
+        
         public void dontGoDeeper() { setResult( VisitorResult.DONT_GO_DEEPER); }
 
-        @Override
+        
         public void continueTraversal() { setResult( VisitorResult.CONTINUE_TRAVERSAL ); }
     }
     
@@ -125,13 +125,13 @@ public class ASTUtils {
         }
         return new Iterator<ASTNode> () {
 
-            @Override
+            
             public boolean hasNext()
             {
                 return ! stack.isEmpty();
             }
 
-            @Override
+            
             public ASTNode next()
             {
                 ASTNode n = stack.peek();
@@ -141,7 +141,7 @@ public class ASTUtils {
                 return stack.pop();
             }
 
-            @Override
+            
             public void remove()
             {
                 throw new UnsupportedOperationException("Not implemented");
@@ -165,7 +165,7 @@ public class ASTUtils {
         return new Iterator<ASTNode>() 
                 {
 
-            @Override
+            
             public boolean hasNext() {
                 return ! stack.isEmpty();
             }
@@ -176,7 +176,7 @@ public class ASTUtils {
              *    |\ 
              *(4) D C (3)
              */
-            @Override
+            
             public ASTNode next() 
             {
                 if ( stack.isEmpty() ) {
@@ -193,7 +193,7 @@ public class ASTUtils {
                 return result;
             }
 
-            @Override
+            
             public void remove() {
                 throw new UnsupportedOperationException();
             }
@@ -206,7 +206,7 @@ public class ASTUtils {
         final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 
             @SuppressWarnings("unchecked")
-			@Override
+			
             public boolean visit(ASTNode node) 
             {
                 if ( clazz.isAssignableFrom( node.getClass() ) ) 
@@ -230,7 +230,7 @@ public class ASTUtils {
         final ISimpleASTNodeVisitor<ASTNode> visitor2 = new ISimpleASTNodeVisitor<ASTNode>() {
 
             @SuppressWarnings("unchecked")
-			@Override
+			
             public boolean visit(ASTNode node) 
             {
                 if ( clazz.isAssignableFrom( node.getClass() ) ) {
@@ -247,7 +247,7 @@ public class ASTUtils {
         final boolean[] result = { false };
         final ISimpleASTNodeVisitor<T> visitor = new ISimpleASTNodeVisitor<T>() {
 
-            @Override
+            
             public boolean visit(T node) 
             {
                 result[0] = true;
@@ -348,7 +348,7 @@ public class ASTUtils {
         final Address[] result = {null};
         final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
             
-            @Override
+            
             public boolean visit(ASTNode node) 
             {
                 if ( node instanceof ObjectCodeOutputNode) {

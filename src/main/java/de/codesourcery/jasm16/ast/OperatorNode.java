@@ -53,7 +53,7 @@ public class OperatorNode extends TermNode
         addChild( term1 , context );
     }  
     
-    @Override
+    
     public boolean equals(Object obj)
     {
         if ( obj == this ) {
@@ -80,7 +80,7 @@ public class OperatorNode extends TermNode
         return getTermCount() == this.operator.getRequiredOperandCount();
     }
     
-    @Override
+    
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         final IToken tok = context.read("expected an operator",TokenType.OPERATOR);
@@ -142,7 +142,7 @@ public class OperatorNode extends TermNode
     	return null;
     }
     
-    @Override
+    
     public String toString() 
     {
     	if ( getOperator() == null ) {
@@ -167,13 +167,13 @@ public class OperatorNode extends TermNode
 //    	return child(0)+" "+getOperator().getLiteral()+" "+child(1);
     }
     
-	@Override
+	
 	public TermNode reduce(ICompilationContext context) 
 	{
 		return operator.fold( context ,  this );
 	}
 
-    @Override
+    
     public OperatorNode copySingleNode()
     {
         final OperatorNode result = new OperatorNode();
@@ -181,12 +181,12 @@ public class OperatorNode extends TermNode
         return result;
     }
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return true; 
     }
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) {
 		return operator.calculate( symbolTable,  this );
 	}    

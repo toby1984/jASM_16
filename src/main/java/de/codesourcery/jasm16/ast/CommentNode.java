@@ -28,7 +28,7 @@ public class CommentNode extends ASTNode
 {
 	private String value;
 	
-    @Override
+    
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
     	mergeWithAllTokensTextRegion( context.read( TokenType.SINGLE_LINE_COMMENT) );
@@ -43,7 +43,7 @@ public class CommentNode extends ASTNode
         return this;
     }
     
-    @Override
+    
     public CommentNode copySingleNode()
     {
     	final CommentNode result= new CommentNode();
@@ -51,7 +51,7 @@ public class CommentNode extends ASTNode
     	return result;
     }    
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }

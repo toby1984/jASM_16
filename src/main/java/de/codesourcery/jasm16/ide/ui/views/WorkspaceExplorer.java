@@ -104,7 +104,7 @@ public class WorkspaceExplorer extends AbstractView {
 		this.workspace = workspace;
 	}
 
-	@Override
+	
 	public void disposeHook() 
 	{
 		if ( panel != null ) {
@@ -115,7 +115,7 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 	}
 
-	@Override
+	
 	public JPanel getPanel() 
 	{
 		if ( panel == null ) {
@@ -146,7 +146,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		tree.addKeyListener( new KeyAdapter() 
 		{
-			@Override
+			
 			public void keyPressed(KeyEvent e) {
 				if ( e.getKeyCode() == KeyEvent.VK_DELETE ) 
 				{
@@ -187,7 +187,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		final TreeSelectionListener selectionListener = new TreeSelectionListener() {
 
-			@Override
+			
 			public void valueChanged(TreeSelectionEvent e) {
 
 
@@ -336,7 +336,7 @@ public class WorkspaceExplorer extends AbstractView {
 		editorContainer.openResource( workspace , project , resource );
 	}
 
-	@Override
+	
 	public void refreshDisplay() {
 		treeModel = createTreeModel();
 		tree.setModel( treeModel );
@@ -377,7 +377,7 @@ public class WorkspaceExplorer extends AbstractView {
 			if ( project.isOpen() ) {
 				addMenuEntry( popup , "Close project", new ActionListener() {
 
-					@Override
+					
 					public void actionPerformed(ActionEvent e) {
 						workspace.closeProject( project );
 					}
@@ -385,7 +385,7 @@ public class WorkspaceExplorer extends AbstractView {
 			} else {
 				addMenuEntry( popup , "Open project", new ActionListener() {
 
-					@Override
+					
 					public void actionPerformed(ActionEvent e) {
 						workspace.openProject( project );
 					}
@@ -394,7 +394,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 			addMenuEntry( popup , "Build project", new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) {
 					try {
 						project.getBuilder().build();
@@ -410,7 +410,7 @@ public class WorkspaceExplorer extends AbstractView {
 			{
 				addMenuEntry( popup , "Open in debugger", new ActionListener() {
 
-					@Override
+					
 					public void actionPerformed(ActionEvent e) 
 					{
 						try {
@@ -428,7 +428,7 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( canCreateFileIn( selectedNode ) ) {
 			addMenuEntry( popup , "New source file...", new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) 
 				{
 					try {
@@ -442,7 +442,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		addMenuEntry( popup , "New project...", new ActionListener() {
 
-			@Override
+			
 			public void actionPerformed(ActionEvent e) 
 			{
 				try {
@@ -460,7 +460,7 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( selectedNode != null ) {
 			addMenuEntry( popup , "Delete...", new ActionListener() {
 
-				@Override
+				
 				public void actionPerformed(ActionEvent e) 
 				{
 					deleteResource( selectedNode );
@@ -471,7 +471,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		addMenuEntry( popup , "Refresh", new ActionListener() {
 
-			@Override
+			
 			public void actionPerformed(ActionEvent e) 
 			{
 				refreshWorkspace( project );
@@ -481,7 +481,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		addMenuEntry( popup , "Import existing project...", new ActionListener() {
 
-			@Override
+			
 			public void actionPerformed(ActionEvent e) 
 			{
 				final JFileChooser fc = new JFileChooser( workspace.getBaseDirectory() );
@@ -666,7 +666,7 @@ public class WorkspaceExplorer extends AbstractView {
 			super( null );
 		}
 
-		@Override
+		
 		public WorkspaceTreeNode getRoot() 
 		{
 			if ( root == null ) {
@@ -675,22 +675,22 @@ public class WorkspaceExplorer extends AbstractView {
 			return root;
 		}
 
-		@Override
+		
 		public void projectCreated(IAssemblyProject project) {
 			treeStructureChanged();			
 		}
 
-		@Override
+		
 		public void projectDeleted(IAssemblyProject project) {
 			treeStructureChanged();
 		}
 
-		@Override
+		
 		public void resourceChanged(IAssemblyProject project, IResource resource) {
 			treeStructureChanged();			
 		}
 
-		@Override
+		
 		public void resourceCreated(IAssemblyProject project, IResource resource) 
 		{
 			final FileResource fr = (FileResource) resource;
@@ -744,7 +744,7 @@ public class WorkspaceExplorer extends AbstractView {
 					new Object[] { newRoot } ); 			
 		}
 
-		@Override
+		
 		public void resourceDeleted(IAssemblyProject project, IResource resource) 
 		{
 			final FileResource fr = (FileResource) resource;
@@ -824,7 +824,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 			Collections.sort( projects , new Comparator<IAssemblyProject>() {
 
-				@Override
+				
 				public int compare(IAssemblyProject o1, IAssemblyProject o2) {
 					return o1.getName().compareTo( o2.getName() );
 				}
@@ -862,7 +862,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 			final Comparator<File> BY_NAME_COMP = new Comparator<File>() {
 
-				@Override
+				
 				public int compare(File o1, File o2) 
 				{
 					return o1.getName().compareTo( o2.getName() );
@@ -886,13 +886,13 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
-		@Override
+		
 		public void buildStarted(IAssemblyProject project) { /* no-op */ }
 
-		@Override
+		
 		public void buildFinished(IAssemblyProject project, boolean success) { /* no-op */ }
 
-		@Override
+		
 		public void projectClosed(IAssemblyProject project) {
 
 			ProjectNode node = findProjectNode( project );
@@ -908,7 +908,7 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
-		@Override
+		
 		public void projectOpened(IAssemblyProject project) 
 		{
 			ProjectNode node = findProjectNode( project );
@@ -1002,21 +1002,21 @@ public class WorkspaceExplorer extends AbstractView {
 			this.parent = parent;
 		}
 
-		@Override
+		
 		public Enumeration<WorkspaceTreeNode> children() 
 		{
 			final Iterator<WorkspaceTreeNode> iterator = children.iterator();
 			return new Enumeration<WorkspaceTreeNode>() {
 
-				@Override
+				
 				public boolean hasMoreElements() { return iterator.hasNext(); }
 
-				@Override
+				
 				public WorkspaceTreeNode nextElement() { return iterator.next(); }
 			};
 		}
 
-		@Override
+		
 		public boolean getAllowsChildren() 
 		{
 			if ( this instanceof FileNode) 
@@ -1026,23 +1026,23 @@ public class WorkspaceExplorer extends AbstractView {
 			return true;
 		}
 
-		@Override
+		
 		public javax.swing.tree.TreeNode getChildAt(int childIndex) 
 		{
 			return children.get( childIndex );
 		}
 
-		@Override
+		
 		public int getChildCount() {
 			return children.size();
 		}
 
-		@Override
+		
 		public int getIndex(javax.swing.tree.TreeNode node) {
 			return children.indexOf( node );
 		}
 
-		@Override
+		
 		public boolean isLeaf() 
 		{
 			if ( this instanceof FileNode) {
@@ -1065,12 +1065,12 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
-		@Override
+		
 		public String toString() {
 			return "Project "+getValue().getName();
 		}
 
-		@Override
+		
 		public IAssemblyProject getValue() {
 			return (IAssemblyProject) super.getValue();
 		}
@@ -1085,12 +1085,12 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
-		@Override
+		
 		public File getValue() {
 			return (File) super.getValue();
 		}
 
-		@Override
+		
 		public String toString() {
 			return "Resource "+getValue().getAbsolutePath();
 		}
@@ -1107,17 +1107,17 @@ public class WorkspaceExplorer extends AbstractView {
 
 
 
-	@Override
+	
 	public String getTitle() {
 		return "Workspace view";
 	}
 
-	@Override
+	
 	public String getID() {
 		return "workspace-explorer";
 	}
 
-	@Override
+	
 	public boolean mayBeDisposed() {
 		return false;
 	}

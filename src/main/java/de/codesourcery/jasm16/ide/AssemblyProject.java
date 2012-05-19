@@ -76,7 +76,7 @@ public class AssemblyProject implements IAssemblyProject
 	
 	private final IProjectBuilder builder = new IProjectBuilder() 
 	{
-		@Override
+		
 		public ICompilationUnit parse(IResource source, IResourceResolver resolver , ICompilationListener listener) throws IOException 
 		{
 			final ICompiler compiler = createCompiler();
@@ -155,13 +155,13 @@ public class AssemblyProject implements IAssemblyProject
 			} );			
 		}
 
-		@Override
+		
 		public boolean build() throws IOException 
 		{
 			return build( new CompilationListener() );
 		}
 
-		@Override
+		
 		public boolean build(ICompilationListener listener) throws IOException 
 		{
 			final ICompiler compiler = createCompiler();
@@ -232,12 +232,12 @@ public class AssemblyProject implements IAssemblyProject
 			return executable;
 		}
 
-		@Override
+		
 		public void clean() throws IOException {
 			cleanOutputFolder();
 		}
 
-		@Override
+		
 		public IResource getExecutable() 
 		{
 			List<IResource> results = getResources( ResourceType.EXECUTABLE );
@@ -249,7 +249,7 @@ public class AssemblyProject implements IAssemblyProject
 			throw new RuntimeException("Internal error, more than one executable in project "+AssemblyProject.this+": "+results);
 		}
 
-		@Override
+		
 		public ICompilationUnit getCompilationUnit(IResource source) 
 		{
 			if (source == null) {
@@ -268,7 +268,7 @@ public class AssemblyProject implements IAssemblyProject
 			throw new NoSuchElementException("Could not find compilation unit for "+source);
 		}
 
-		@Override
+		
 		public List<ICompilationUnit> getCompilationUnits()
 		{
 			return new ArrayList<ICompilationUnit>( units );
@@ -326,7 +326,7 @@ public class AssemblyProject implements IAssemblyProject
 		}
 	}
 	
-	@Override
+	
 	public void rescanResources() throws IOException
 	{
         final List<IResource> deletedResources=new ArrayList<IResource>();   
@@ -375,7 +375,7 @@ outer:
 		// scan source folders
 		final IFileVisitor visitor = new IFileVisitor() 
 		{
-			@Override
+			
 			public boolean visit(File file) throws IOException 
 			{
 				if ( Misc.isSourceFile( file ) ) 
@@ -406,7 +406,7 @@ outer:
 		{
 			final IFileVisitor executableVisitor = new IFileVisitor() {
 
-				@Override
+				
 				public boolean visit(File file) throws IOException
 				{
 					if ( file.isFile() ) 
@@ -425,13 +425,13 @@ outer:
 		return new ArrayList<IResource>( result.values() );
 	}
 
-	@Override
+	
 	public String getName()
 	{
 		return projectConfiguration.getProjectName();
 	}
 
-	@Override
+	
 	public List<IResource> getAllResources()
 	{
 		synchronized( RESOURCE_LOCK ) {
@@ -439,23 +439,23 @@ outer:
 		}
 	}
 
-	@Override
+	
 	public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 	{
 		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier, resourceType );
 	}
 
-	@Override
+	
 	public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
 		return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent, resourceType );
 	}
 
-	@Override
+	
 	public ProjectConfiguration getConfiguration() {
 		return projectConfiguration;
 	}
 
-	@Override
+	
 	public List<IResource> getResources(ResourceType type) 
 	{
 		if (type == null) {
@@ -520,12 +520,12 @@ outer:
 		}
 	}
 
-	@Override
+	
 	public IProjectBuilder getBuilder() {
 		return builder;
 	}
 
-	@Override
+	
 	public IResource lookupResource(String identifier) 
 	{
 		for ( IResource r : getAllResources() ) {
@@ -536,13 +536,13 @@ outer:
 		throw new NoSuchElementException("Unable to find resource '"+identifier+" in project "+this);
 	}
 
-	@Override
+	
 	public void resourceChanged(IAssemblyProject project, IResource resource) {
 
 		// nothing to do yet...
 	}
 
-	@Override
+	
 	public void resourceCreated(IAssemblyProject project, IResource resource) 
 	{
 		if ( resource instanceof FileResource) 
@@ -578,7 +578,7 @@ outer:
 		}
 	}
 
-	@Override
+	
 	public void resourceDeleted(IAssemblyProject project, IResource resource) {
 
 		synchronized( RESOURCE_LOCK ) 
@@ -595,7 +595,7 @@ outer:
 		}	    
 	}
 
-	@Override
+	
 	public IResource getResourceForFile(File file)
 	{
 		for ( IResource r : getAllResources() ) {
@@ -608,7 +608,7 @@ outer:
 		return null;
 	}
 
-	@Override
+	
 	public boolean isSame(IAssemblyProject other) 
 	{
 		if ( other == this ) {
@@ -623,27 +623,27 @@ outer:
 		return false;
 	}
 
-	@Override
+	
 	public boolean isOpen() {
 		return isOpen;
 	}
 
-	@Override
+	
 	public boolean isClosed() {
 		return !isOpen;
 	}
 
-	@Override
+	
 	public void projectCreated(IAssemblyProject project) { /* sooo not interested */ }
 
-	@Override
+	
 	public void projectClosed(IAssemblyProject project) {
 		if ( project == this ) {
 			this.isOpen = false;
 		}		
 	}
 
-	@Override
+	
 	public void projectOpened(IAssemblyProject project) 
 	{
 		if ( project == this ) {
@@ -651,12 +651,12 @@ outer:
 		}
 	}
 
-	@Override
+	
 	public void projectDeleted(IAssemblyProject project) { /* sooo not interested */ }
 
-	@Override
+	
 	public void buildStarted(IAssemblyProject project) { /* sooo not interested */ }
 
-	@Override
+	
 	public void buildFinished(IAssemblyProject project, boolean success) { /* sooo not interested */ }
 }

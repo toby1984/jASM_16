@@ -58,7 +58,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	
 	private MenuEntry saveCurrent = new MenuEntry("File/Save") {
 
-		@Override
+		
 		public void onClick() {
 			System.out.println("Save current editor contents");
 		}
@@ -90,7 +90,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		this.title = title;
 	}
 	
-	@Override
+	
 	protected JPanel getPanel() {
 		if ( panel == null ) {
 			panel = createPanel();
@@ -147,7 +147,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
         } );              
     }	
 	
-	@Override
+	
 	public void addView(IView view) 
 	{
 	    final int index = tabbedPane.getTabCount();
@@ -177,7 +177,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
        throw new IllegalArgumentException("Invalid tab index: "+tabIndex);
 	}
 	
-	@Override
+	
 	public void setTitle(IView view, String title) 
 	{
 		for ( ViewWithPanel p : this.views ) 
@@ -192,7 +192,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 	}
 
-	@Override
+	
 	public void disposeHook() 
 	{
 		final List<ViewWithPanel> copy = new ArrayList<ViewWithPanel>(this.views);
@@ -208,7 +208,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		helper.fireViewContainerClosed( this );
 	}
 
-	@Override
+	
 	public List<IView> getViews() 
 	{
 		final List<IView> result = new ArrayList<IView>();
@@ -218,7 +218,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		return result;
 	}
 
-	@Override
+	
 	public void disposeView(IView view) 
 	{
 		if (view == null) {
@@ -265,12 +265,12 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 	}
 
-	@Override
+	
 	public String getTitle() {
 		return title;
 	}
 
-	@Override
+	
 	public void refreshDisplay() 
 	{
 		for ( ViewWithPanel p : this.views ) {
@@ -295,7 +295,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		return null;
 	}
 
-	@Override
+	
 	public boolean mayBeDisposed() 
 	{
 		boolean result = false;
@@ -308,12 +308,12 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		return result;
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}
 
-	@Override
+	
 	public IView getViewByID(String viewId) 
 	{
 		if (StringUtils.isBlank(viewId)) {
@@ -329,18 +329,18 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		return null;
 	}
 
-	@Override
+	
 	public MenuManager getMenuManager() {
 		return null;
 	}
 
-    @Override
+    
     public void addViewContainerListener(IViewContainerListener listener)
     {
         helper.addViewContainerListener( listener );
     }
 
-    @Override
+    
     public void removeViewContainerListener(IViewContainerListener listener)
     {
         helper.removeViewContainerListener( listener );
@@ -373,7 +373,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
     	return result;
     }
     
-	@Override
+	
 	public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
 	{
 		for ( SourceCodeView v : getSourceCodeViews() ) {
@@ -384,7 +384,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);
 	}
 
-	@Override
+	
 	public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
 	{
 		for ( SourceCodeView v : getSourceCodeViews() ) {

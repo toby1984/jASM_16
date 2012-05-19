@@ -54,7 +54,7 @@ public class Label extends AbstractSymbol implements IValueSymbol {
         this.address = address;
     }
 	
-	@Override
+	
 	public String toString() 
 	{
 	    if ( address != null ) {
@@ -63,7 +63,7 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 		return getIdentifier().toString();
 	}
 
-	@Override
+	
 	public Long getValue(ISymbolTable symbolTable) 
 	{
 		if ( this.address == null ) {
@@ -72,7 +72,7 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 		return Long.valueOf( this.address.getValue() );
 	}
 
-	@Override
+	
 	public void setValue(Long value) {
 		if ( value == null ) {
 			this.address = null;

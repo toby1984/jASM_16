@@ -53,7 +53,7 @@ public class HexDumpView extends AbstractView
     
     private final IEmulationListener listener = new EmulationListener() {
 
-        @Override
+        
         public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -61,7 +61,7 @@ public class HexDumpView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterReset(IEmulator emulator)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -69,7 +69,7 @@ public class HexDumpView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -77,7 +77,7 @@ public class HexDumpView extends AbstractView
         	}
         }
 
-		@Override
+		
 		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}        
@@ -90,7 +90,7 @@ public class HexDumpView extends AbstractView
     public HexDumpView() {
     }
     
-    @Override
+    
     public void refreshDisplay() 
     {
         if ( emulator == null ) {
@@ -99,7 +99,7 @@ public class HexDumpView extends AbstractView
         
         SwingUtilities.invokeLater( new Runnable() {
 
-            @Override
+            
             public void run()
             {
             	final byte[] data = MemUtils.getBytes( emulator.getMemory() , 
@@ -146,7 +146,7 @@ public class HexDumpView extends AbstractView
         emulator.addEmulationListener( listener );
     }
     
-    @Override
+    
     public void disposeHook() 
     {
         if ( this.emulator != null ) {
@@ -180,7 +180,7 @@ public class HexDumpView extends AbstractView
         final JTextField gotoTextfield = new JTextField();
         gotoTextfield.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 final String val = gotoTextfield.getText();
@@ -218,22 +218,22 @@ public class HexDumpView extends AbstractView
         
         textArea.addKeyListener( new PagingKeyAdapter() {
 			
-			@Override
+			
 			protected void onePageUp() {
 				HexDumpView.this.onePageUp();
 			}
 			
-			@Override
+			
 			protected void onePageDown() {
 				HexDumpView.this.onePageDown();				
 			}
 			
-			@Override
+			
 			protected void oneLineUp() {
 				HexDumpView.this.oneLineUp();
 			}
 			
-			@Override
+			
 			protected void oneLineDown() {
 				HexDumpView.this.oneLineDown();				
 			}
@@ -241,7 +241,7 @@ public class HexDumpView extends AbstractView
         
         result.addComponentListener( new ComponentAdapter() {
 			
-			@Override
+			
 			public void componentResized(ComponentEvent e) {
 				refreshDisplay();
 			}
@@ -270,7 +270,7 @@ public class HexDumpView extends AbstractView
         refreshDisplay();           
     }     
 
-    @Override
+    
     public JPanel getPanel() {
         if ( panel == null ) {
             panel = createPanel();
@@ -278,12 +278,12 @@ public class HexDumpView extends AbstractView
         return panel;
     }
 
-	@Override
+	
 	public String getTitle() {
 		return "memory view";
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}

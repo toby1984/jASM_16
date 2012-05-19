@@ -59,24 +59,24 @@ public class UnparsedContentNode extends ASTNode
         return errorOffset;
     }
     
-    @Override
+    
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         throw new UnsupportedOperationException();
     }
 
-    @Override
+    
     public UnparsedContentNode copySingleNode()
     {
         return new UnparsedContentNode(this.error, this.errorOffset );
     }
 
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }    
     
-    @Override
+    
     public String toString()
     {
         return "UnparsedContentNode[ errorOffset = "+errorOffset+" , region = "+getTextRegion()+"]";

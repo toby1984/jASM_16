@@ -62,7 +62,7 @@ public class ParseException extends java.text.ParseException
         return range;
     }
     
-    @Override
+    
     public synchronized Throwable getCause()
     {
         return cause;

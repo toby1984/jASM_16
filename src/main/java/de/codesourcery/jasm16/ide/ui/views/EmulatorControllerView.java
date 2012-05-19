@@ -60,18 +60,18 @@ public class EmulatorControllerView extends AbstractView
             }
         }
         
-        @Override
+        
         public void afterReset(IEmulator emulator)
         {
             updateButtonStates( false );            
         }
         
-        @Override
+        
         protected void beforeContinuousExecutionHook() {
             updateButtonStates( true );         
         };
         
-        @Override
+        
         public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
             updateButtonStates( false );
         }        
@@ -89,7 +89,7 @@ public class EmulatorControllerView extends AbstractView
 
         final Runnable runnable = new Runnable() {
 
-            @Override
+            
             public void run() {
                 singleStepButton.setEnabled( ! emulatorRunningContinously );
                 runButton.setEnabled( ! emulatorRunningContinously );
@@ -110,7 +110,7 @@ public class EmulatorControllerView extends AbstractView
         }
     }
     
-    @Override
+    
     public void refreshDisplay() 
     {
     }
@@ -132,7 +132,7 @@ public class EmulatorControllerView extends AbstractView
         emulator.addEmulationListener( listener );
     }
     
-    @Override
+    
     public void disposeHook() 
     {
         if ( this.emulator != null ) {
@@ -151,7 +151,7 @@ public class EmulatorControllerView extends AbstractView
         // =========== "SINGLE STEP" button ============        
         singleStepButton.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 emulator.executeOneInstruction();
@@ -165,7 +165,7 @@ public class EmulatorControllerView extends AbstractView
         // =========== "STEP RETURN" button ============        
         stepReturnButton.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 emulator.stepReturn();
@@ -178,7 +178,7 @@ public class EmulatorControllerView extends AbstractView
         // =========== "RUN" button ============        
         runButton.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 emulator.start();
@@ -192,7 +192,7 @@ public class EmulatorControllerView extends AbstractView
         // =========== "STOP" button ============        
         stopButton.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 emulator.stop();
@@ -205,7 +205,7 @@ public class EmulatorControllerView extends AbstractView
         // =========== "RESET" button ============
         resetButton.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 perspective.resetEmulator();
@@ -220,7 +220,7 @@ public class EmulatorControllerView extends AbstractView
         final AtomicBoolean isCalibrating = new AtomicBoolean(false);
         runAtRealSpeed.addActionListener( new ActionListener() {
             
-            @Override
+            
             public void actionPerformed(ActionEvent e)
             {
                 final boolean isSelected = runAtRealSpeed.isSelected();
@@ -229,14 +229,14 @@ public class EmulatorControllerView extends AbstractView
                     if ( isCalibrating.compareAndSet( false , true ) ) 
                     {
                         new Thread() {
-                            @Override
+                            
                             public void run() 
                             {
                                 final JDialog dialog = UIUtils.createMessageDialog( null, "Calibrating emulation speed" , "Please wait, benchmarking your system...");
                                 dialog.setModal(true);
                                 
                                 new Thread() {
-                                    @Override
+                                    
                                     public void run() 
                                     {
                                         try {
@@ -266,7 +266,7 @@ public class EmulatorControllerView extends AbstractView
         return buttonBar;
     }
 
-    @Override
+    
     public JPanel getPanel() {
         if ( panel == null ) {
             panel = createPanel();
@@ -274,12 +274,12 @@ public class EmulatorControllerView extends AbstractView
         return panel;
     }
 
-    @Override
+    
     public String getTitle() {
         return "Emulator control";
     }
 
-    @Override
+    
     public String getID() {
         return VIEW_ID;
     }

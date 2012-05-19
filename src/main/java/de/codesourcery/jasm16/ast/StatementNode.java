@@ -137,7 +137,7 @@ public class StatementNode extends ASTNode
 		}
 	}    
 
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
 	{
 		if ( parseStartOfLine( context ) && ! context.peek().hasType( TokenType.SINGLE_LINE_COMMENT ) ) 
@@ -206,13 +206,13 @@ public class StatementNode extends ASTNode
 		}
 	}
 
-	@Override
+	
 	public StatementNode copySingleNode()
 	{
 		return new StatementNode();
 	}
 
-	@Override
+	
 	public boolean supportsChildNodes() {
 		return true;
 	}    
