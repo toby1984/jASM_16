@@ -34,6 +34,6 @@ public class EmulatorFactory
     }
     
     public DefaultScreen createScreenDevice() {
-    	return new DefaultScreen( 32 , 16 , true );
+    	return new DefaultScreen( true );
     }
 }

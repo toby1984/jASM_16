@@ -628,6 +628,7 @@ public final class DefaultScreen implements IDevice {
 				throw new IllegalArgumentException("color must not be null");
 			}
         	this.borderColor = color;
+        	renderBorder();
         }
         
         public void clearChar(int column, int row, Color color)

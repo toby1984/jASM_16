@@ -355,6 +355,7 @@ public class Emulator implements IEmulator {
 	
 	// @GuardedBy( interruptQueue )
 	private volatile IInterrupt currentInterrupt = null;
+	// @GuardedBy( interruptQueue )
 	private final List<IInterrupt> interruptQueue = new ArrayList<IInterrupt>();
 
 	private volatile int currentCycle = 0;
@@ -547,6 +548,9 @@ public class Emulator implements IEmulator {
     {
         currentCycle = 0;
 		queueInterrupts = false;
+		synchronized( interruptQueue ) {
+			interruptQueue.clear();
+		}
 		interruptAddress = Address.wordAddress( 0 );
 		pc = Address.wordAddress( 0 );
 		sp = Address.wordAddress( 0 );
@@ -1317,20 +1321,20 @@ public class Emulator implements IEmulator {
 		// sets b to a, then decreases I and J by 1
 		// a,b,c,x,y,z,i,j
 		final OperandDesc source = loadSourceOperand( instructionWord );
-
+		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
 		registers.decrementAndGet( 6 ); // registers[6]-=1; <<< I
 		registers.decrementAndGet( 7 ); // registers[7]-=1; <<< J
-		return 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;			
+		return cycles;
 	}
 
 	private int handleSTI(int instructionWord) {
 		// sets b to a, then increases I and J by 1
 		// a,b,c,x,y,z,i,j
 		final OperandDesc source = loadSourceOperand( instructionWord );
-
-		registers.incrementAndGet( 6 ); // registers[6]+=1; <<< I
-		registers.incrementAndGet( 7 ); // registers[7]+=1; <<< J
-		return 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;			
+		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
+		registers.incrementAndGet( REGISTER_I ); // registers[6]+=1; <<< I
+		registers.incrementAndGet( REGISTER_J ); // registers[7]+=1; <<< J		
+		return cycles;
 	}
 
 	private int handleSBX(int instructionWord) 

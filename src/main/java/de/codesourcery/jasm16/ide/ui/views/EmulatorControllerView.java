@@ -60,6 +60,10 @@ public class EmulatorControllerView extends AbstractView
             }
         }
         
+        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes) {
+        	updateButtonStates(false);
+        }
+        
         @Override
         public void afterReset(IEmulator emulator)
         {

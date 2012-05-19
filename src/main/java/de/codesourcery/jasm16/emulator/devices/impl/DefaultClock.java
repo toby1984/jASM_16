@@ -27,7 +27,8 @@ public class DefaultClock implements IDevice
 {
     private static final int INITIAL_TICKS_PER_SECOND = (int) Math.round( 1000.0 / 60.0d);	
 	
-    private final DeviceDescriptor DESC = new DeviceDescriptor("generic clock","jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
+    private final DeviceDescriptor DESC = new DeviceDescriptor("generic clock",
+    		"jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
 
     private volatile IEmulator emulator;
     
@@ -74,7 +75,8 @@ public class DefaultClock implements IDevice
                 {
                     if ( terminate ) {
                         break;
-                    }                    
+                    }            
+                    out.debug("Clock thread stopped.");                    
                     synchronized (SLEEP_LOCK) 
                     {
                         try {
@@ -116,6 +118,7 @@ public class DefaultClock implements IDevice
         {
             stopClock();
             tickCounter = 0;
+            out.info("Clock set to tick "+ticksPerSecond+" times per second");
             sleepDelay = (int) Math.round( 1000.0 / ticksPerSecond ); 
         }
         
