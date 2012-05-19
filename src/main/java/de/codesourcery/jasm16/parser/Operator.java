@@ -43,23 +43,23 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 public enum Operator 
 {
 	INCREMENT("++",7,OperatorPosition.POSTFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
 		}
 		
-		@Override
+		
 		public int getRequiredOperandCount()
 		{
 		    return 1;
 		}
 	},
 	DECREMENT("--",7,OperatorPosition.PREFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
 		}
-        @Override
+        
         public int getRequiredOperandCount()
         {
             return 1;
@@ -67,125 +67,125 @@ public enum Operator
 	},	
 	// == !=
 	EQUAL("==",2,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1.longValue() == n2.longValue() ? 1 : 0;
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}		
 	},	
 	NOT_EQUAL("!=",2,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1.longValue() != n2.longValue() ? 1 : 0;			
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}			
 	},	
 	// < > <= >=
 	GREATER_OR_EQUAL(">=",3,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 >= n2 ? 1 : 0;
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}			
 	},	
 	LESS_OR_EQUAL("<=",3,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 <= n2 ? 1 : 0;
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}			
 	},		
 	GREATER_THAN(">",3,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 > n2 ? 1 : 0;
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}			
 	},	
 	LESS_THAN("<",3,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 < n2 ? 1 : 0;
 		}
-		@Override
+		
 		public boolean isComparisonOperator() {
 			return true;
 		}	
 	},
 	LEFT_SHIFT("<<",4,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 << n2;
 		}
 	},	
 	RIGHT_SHIFT(">>",4,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2)
 		{
 			return n1 >> n2;
 		}
 	},		
 	PLUS("+",5,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2) {
 			return n1+n2;
 		}
 	},
 	MINUS("-",5,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2) {
 			return n1-n2;
 		}
 	},
 	MODULO("%",6,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2) {
 			return n1 % n2;
 		}
 	},	
 	TIMES("*",6,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2) {
 			return n1*n2;
 		}
 	},
 	DIVIDE("/",6,OperatorPosition.INFIX) {
-		@Override
+		
 		public long calculate(Long n1,Long n2) {
 			return n1 / n2;
 		}
 	},
 	PARENS("(",100,OperatorPosition.PREFIX) {
 
-        @Override
+        
         protected long calculate(Long n1,Long n2)
         {
             throw new UnsupportedOperationException("Invoked on parens?");
         }
         
-        @Override
+        
         public int getRequiredOperandCount()
         {
             return 1;

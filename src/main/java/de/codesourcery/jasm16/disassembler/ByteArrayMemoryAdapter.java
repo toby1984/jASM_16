@@ -36,7 +36,7 @@ public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
 		this.data = data;
 	}
 	
-	@Override
+	
 	public Size getSize() {
 		return Size.bytes( data.length );
 	}
@@ -45,7 +45,7 @@ public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
 	    return getSize().toSizeInBytes().getValue();
 	}
 	
-    @Override
+    
     public int read(Address address)
     {
         int offset = address.toByteAddress().getValue();
@@ -68,7 +68,7 @@ public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
         return result;
     }
 
-    @Override
+    
     public int read(int wordAddress)
     {
         return read( Address.wordAddress( wordAddress ) );

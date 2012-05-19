@@ -51,7 +51,7 @@ public class OperandNode extends ASTNode
 		this.addressingMode = null;
 	}
 
-	@Override
+	
 	protected OperandNode parseInternal(IParseContext context) throws ParseException
 	{
 		/*
@@ -293,7 +293,7 @@ public class OperandNode extends ASTNode
 
 		final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 
-			@Override
+			
 			public boolean visit(ASTNode node)
 			{
 				final NodeType type = getNodeType(node);
@@ -366,7 +366,7 @@ public class OperandNode extends ASTNode
 		return context.peek().hasType( TokenType.CHARACTERS ) && Register.isRegisterIdentifier( context.peek().getContents() );
 	}
 
-	@Override
+	
 	public OperandNode copySingleNode()
 	{
 		final OperandNode result = new OperandNode();
@@ -374,7 +374,7 @@ public class OperandNode extends ASTNode
 		return result;
 	}
 
-	@Override
+	
 	public boolean supportsChildNodes() {
 		return true;
 	}    

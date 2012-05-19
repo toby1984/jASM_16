@@ -38,7 +38,7 @@ public class FileObjectCodeWriterTest extends TestCase
         {
         }
         
-        @Override
+        
         public void deleteOutputHook() throws IOException
         {
             out = new ByteArrayOutputStream();
@@ -48,7 +48,7 @@ public class FileObjectCodeWriterTest extends TestCase
             return out.toByteArray();
         }
         
-        @Override
+        
         protected OutputStream createOutputStream() throws IOException
         {
             return out;
@@ -56,7 +56,7 @@ public class FileObjectCodeWriterTest extends TestCase
         
     }
     
-    @Override
+    
     protected void setUp() throws Exception
     {
         this.writer = new ByteArrayWriter();

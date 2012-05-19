@@ -293,7 +293,7 @@ public abstract class ASTNode
 
         final ISimpleASTNodeVisitor<UnparsedContentNode> visitor = new ISimpleASTNodeVisitor<UnparsedContentNode>() {
 
-            @Override
+            
             public boolean visit(UnparsedContentNode node) 
             {
                 hasErrors[0] = true;
@@ -761,7 +761,7 @@ public abstract class ASTNode
      */
     protected abstract ASTNode parseInternal(IParseContext context) throws ParseException;
 
-    @Override
+    
     public String toString() 
     {
         final StringBuilder builder = new StringBuilder();

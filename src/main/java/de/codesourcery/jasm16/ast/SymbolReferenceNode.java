@@ -40,7 +40,7 @@ public class SymbolReferenceNode extends ConstantValueNode
 		return identifier;
 	}
 
-	@Override
+	
 	protected SymbolReferenceNode parseInternal(IParseContext context) throws ParseException
 	{
 		final int startOffset = context.currentParseIndex();
@@ -50,7 +50,7 @@ public class SymbolReferenceNode extends ConstantValueNode
 	}
 
     
-    @Override
+    
     public boolean equals(Object obj)
     {
         if ( obj == this ) {
@@ -62,12 +62,12 @@ public class SymbolReferenceNode extends ConstantValueNode
         return false; 
     }
     
-	@Override
+	
 	public SymbolReferenceNode reduce(ICompilationContext context) {
 		return (SymbolReferenceNode) createCopy(false);
 	}
 
-	@Override
+	
 	public SymbolReferenceNode copySingleNode()
 	{
 		final SymbolReferenceNode result = new SymbolReferenceNode();
@@ -75,7 +75,7 @@ public class SymbolReferenceNode extends ConstantValueNode
 		return result;
 	}
 
-	@Override
+	
 	public Long getNumericValue(ISymbolTable table)
 	{
 		final ISymbol symbol = table.getSymbol( this.identifier );
@@ -88,17 +88,17 @@ public class SymbolReferenceNode extends ConstantValueNode
 		return ((IValueSymbol) symbol).getValue( table );
 	}
 	
-	@Override
+	
 	public String toString() {
 		return identifier != null ? identifier.toString() : "<null identifier?>";
 	}
 	
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) 
 	{
 		return getNumericValue( symbolTable );

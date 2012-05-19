@@ -51,7 +51,7 @@ public class CharacterLiteralNode extends ConstantValueNode {
 		this.maxLength = maxLength;
 	}	
 	
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
 	    mergeWithAllTokensTextRegion( context.read("Expected a character literal but string delimiter is missing",TokenType.STRING_DELIMITER) );
@@ -119,7 +119,7 @@ public class CharacterLiteralNode extends ConstantValueNode {
 		return result;
 	}
 
-    @Override
+    
     public CharacterLiteralNode copySingleNode()
     {
     	final CharacterLiteralNode result=new CharacterLiteralNode(this.maxLength);
@@ -131,18 +131,18 @@ public class CharacterLiteralNode extends ConstantValueNode {
     	return result;
     }
 
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }
 
-	@Override
+	
 	public Long getNumericValue(ISymbolTable symbolTable) 
 	{
 		return calculate( symbolTable );
 	}
 
-	@Override
+	
 	public Long calculate(ISymbolTable symbolTable) {
 		if ( this.bytes == null || this.bytes.length > 2 ) {
 			return null;
@@ -152,7 +152,7 @@ public class CharacterLiteralNode extends ConstantValueNode {
 		return (long) (hi << 8 ) | lo;
 	}
 
-	@Override
+	
 	public TermNode reduce(ICompilationContext context) {
 		return (TermNode) createCopy( true );
 	}    

@@ -130,7 +130,7 @@ public enum OpCode
     // general
     SET("set",2,0x01) // sets b to a 
     {
-        @Override
+        
         public boolean isValidAddressingMode(OperandPosition position , AddressingMode type) 
         {
             if ( position == OperandPosition.TARGET_OPERAND ) 
@@ -267,35 +267,35 @@ public enum OpCode
     
     // conditions
     IFB("ifb",2,0x10) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },  
     IFC("ifc",2,0x11) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },       
     IFE("ife",2,0x12) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },
     IFN("ifn",2,0x13) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },	
     IFG("ifg",2,0x14) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },
     IFA("ifa",2,0x15) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     }, 
     IFL("ifl",2,0x16) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },
     IFU("ifu",2,0x17) {
-        @Override
+        
         protected boolean isConditionalBranchOpCode() { return true; }
     },     
     // bit-shifting

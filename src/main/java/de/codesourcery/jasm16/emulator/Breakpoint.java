@@ -207,7 +207,7 @@ public class Breakpoint
 
 		final IPatternReplacer replacer1 = new IPatternReplacer() {
 
-			@Override
+			
 			public String replace(Matcher matcher, String context) 
 			{
 				final String hexString = matcher.group(2);
@@ -226,7 +226,7 @@ public class Breakpoint
 		
 		final IPatternReplacer replacer2 = new IPatternReplacer() {
 
-			@Override
+			
 			public String replace(Matcher matcher, String context) 
 			{
 				final String hexString = matcher.group(1);
@@ -242,7 +242,7 @@ public class Breakpoint
 		
 		final IPatternReplacer replacer3 = new IPatternReplacer() {
 
-			@Override
+			
 			public String replace(Matcher matcher, String context) 
 			{
 				final String register = matcher.group(1);
@@ -261,7 +261,7 @@ public class Breakpoint
 		// register values
 		final IPatternReplacer replacer4 = new IPatternReplacer() {
 
-			@Override
+			
 			public String replace(Matcher matcher, String context) 
 			{
 				final String register = matcher.group(1);
@@ -307,7 +307,7 @@ public class Breakpoint
 		final IResourceResolver resourceResolver=new FileResourceResolver();
 		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() {
 
-			@Override
+			
 			public ICompilationUnit getOrCreateCompilationUnit(
 					IResource resource) throws IOException {
 				throw new UnsupportedOperationException();
@@ -325,7 +325,7 @@ public class Breakpoint
 		return (TermNode) node;
 	}
 	
-	@Override
+	
 	public String toString() {
 		return getAddress()+( hasCondition() ? ", "+getCondition()+" " : "" )+( isEnabled() ? "" : "[DISABLED]");
 	}

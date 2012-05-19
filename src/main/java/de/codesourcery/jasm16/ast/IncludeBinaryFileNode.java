@@ -45,7 +45,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     private int resourceSize = UNKNOWN_SIZE;
     private Address address;
     
-    @Override
+    
     public ASTNode copySingleNode()
     {
         final IncludeBinaryFileNode result= new IncludeBinaryFileNode();
@@ -56,13 +56,13 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
         return result;
     }
 
-    @Override
+    
     public boolean supportsChildNodes()
     {
         return false;
     }
 
-    @Override
+    
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         mergeWithAllTokensTextRegion( context.read( TokenType.INCLUDE_BINARY ) );
@@ -90,19 +90,19 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
         return this;
     }
 
-    @Override
+    
     public void symbolsResolved(ICompilationContext context)
     {
         // nothing to do
     }
 
-    @Override
+    
     public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
         return resourceSize;
     }
 
-    @Override
+    
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException, ParseException
     {
     	address = writer.getCurrentWriteOffset();
@@ -118,7 +118,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
         }
     }
 
-    @Override
+    
     public Address getAddress() {
     	return address;
     }

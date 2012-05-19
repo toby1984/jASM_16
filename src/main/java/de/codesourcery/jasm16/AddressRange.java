@@ -45,7 +45,7 @@ public final class AddressRange
         this.end = start.plus( size , false );
     }    
     
-    @Override
+    
     public final boolean equals(Object obj)
     {
         if ( this == obj ) {
@@ -59,7 +59,7 @@ public final class AddressRange
         return false;
     }
     
-    @Override
+    
     public final int hashCode()
     {
         int result = 31 + start.hashCode();
@@ -94,7 +94,7 @@ public final class AddressRange
         return size;
     }
 
-    @Override
+    
     public String toString()
     {
         return getStartAddress()+" - "+getEndAddress()+" ( "+size.toSizeInWords()+" / "+size.toSizeInBytes()+" )";
@@ -127,7 +127,7 @@ public final class AddressRange
             throw new IllegalArgumentException("gap must not be NULL.");
         }
         
-        final List<AddressRange> result = new ArrayList<>();
+        final List<AddressRange> result = new ArrayList<AddressRange>();
 
         if ( ! intersectsWith( gap ) ) {
             throw new IllegalArgumentException("Gap "+gap+" does not intersect with memory region "+this);

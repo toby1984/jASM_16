@@ -73,7 +73,7 @@ public class MainMemory implements IMemory
     	System.out.println("\n");
     }
     
-    @Override
+    
     public void clear()
     {
         for ( IMemory r : regions ) {
@@ -192,7 +192,7 @@ public class MainMemory implements IMemory
         regions.add( newRegion );
     }
 
-    @Override
+    
     public int read(int wordAddress)
     {
         final WordAddress address = Address.wordAddress( wordAddress );
@@ -220,7 +220,7 @@ public class MainMemory implements IMemory
         throw new RuntimeException("Address not mapped: "+address);
     }
 
-    @Override
+    
     public int read(Address adr)
     {
         final WordAddress address = adr.toWordAddress();
@@ -228,7 +228,7 @@ public class MainMemory implements IMemory
         return region.read( address.minus( region.getAddressRange().getStartAddress() ) );
     }
 
-    @Override
+    
     public void write(int wordAddress, int value) throws MemoryProtectionFaultException
     {
         final WordAddress address = Address.wordAddress( wordAddress );
@@ -251,7 +251,7 @@ public class MainMemory implements IMemory
         }
     }
 
-    @Override
+    
     public void write(Address adr, int value) throws MemoryProtectionFaultException
     {
         final WordAddress address = adr.toWordAddress();
@@ -264,7 +264,7 @@ public class MainMemory implements IMemory
         region.write( address.minus( region.getAddressRange().getStartAddress() ) , value );        
     }
 
-    @Override
+    
     public Size getSize()
     {
         Size result = Size.bytes( 0 );

@@ -108,7 +108,7 @@ public class InstructionNode extends ObjectCodeOutputNode
         return null;
     }
     
-    @Override
+    
     protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         final IToken token = context.read( "Expected a DCPU-16 mnemonic", TokenType.INSTRUCTION );
@@ -212,7 +212,7 @@ public class InstructionNode extends ObjectCodeOutputNode
         }
     }
 
-    @Override
+    
     public InstructionNode copySingleNode()
     {
         final InstructionNode result= new InstructionNode();
@@ -222,19 +222,19 @@ public class InstructionNode extends ObjectCodeOutputNode
         return result;
     }
 
-    @Override
+    
     public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
         return sizeInBytes;
     }
 
-    @Override
+    
     public void symbolsResolved(ICompilationContext context)
     {
     	this.sizeInBytes = getOpCode().calculateSizeInBytes( context , this );
     }    
 
-	@Override
+	
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {	
 		this.address = writer.getCurrentWriteOffset();
@@ -252,7 +252,7 @@ public class InstructionNode extends ObjectCodeOutputNode
         return ASTUtils.getNodesByType( this , OperandNode.class , true );
     }
 
-    @Override
+    
     public boolean supportsChildNodes() {
         return true;
     }
@@ -261,7 +261,7 @@ public class InstructionNode extends ObjectCodeOutputNode
         return errorRecoveryTokenTypes;
     }
 
-    @Override
+    
     public Address getAddress() {
 		return address;
 	}

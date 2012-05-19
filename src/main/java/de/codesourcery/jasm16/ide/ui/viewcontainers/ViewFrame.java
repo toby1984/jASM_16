@@ -45,7 +45,7 @@ public class ViewFrame extends JFrame implements IViewContainer
     
     private final MenuManager menuManager = new MenuManager() {
 
-		@Override
+		
 		public void menuBarChanged() 
 		{
 			setJMenuBar( menuManager.getMenuBar() );
@@ -64,7 +64,7 @@ public class ViewFrame extends JFrame implements IViewContainer
         
         addWindowListener( new WindowAdapter() {
 
-            @Override
+            
             public void windowClosing(WindowEvent e)
             {
             	disposeView( component );
@@ -90,7 +90,7 @@ public class ViewFrame extends JFrame implements IViewContainer
         pack();
     }
 
-	@Override
+	
 	public void disposeView(IView view) 
 	{
 		if ( view == component ) {
@@ -99,22 +99,22 @@ public class ViewFrame extends JFrame implements IViewContainer
 		}
 	}
 
-	@Override
+	
 	public void addView(IView view) {
 		throw new UnsupportedOperationException("showView()");
 	}
 
-	@Override
+	
 	public List<IView> getViews() {
 		return Collections.singletonList( component );
 	}
 
-	@Override
+	
 	public void setTitle(IView view, String title) {
 		setTitle( title );
 	}
 
-	@Override
+	
 	public IView getViewByID(String viewId) 
 	{
 		if (StringUtils.isBlank(viewId)) {
@@ -127,7 +127,7 @@ public class ViewFrame extends JFrame implements IViewContainer
 		return component.getID().equals( viewId ) ? component : null;
 	}
 
-	@Override
+	
 	public MenuManager getMenuManager() 
 	{
 		if ( menuBar == null ) {
@@ -137,19 +137,19 @@ public class ViewFrame extends JFrame implements IViewContainer
 		return menuManager;
 	}
 
-    @Override
+    
     public String getID()
     {
         return component.getID();
     }
 
-    @Override
+    
     public void addViewContainerListener(IViewContainerListener listener)
     {
         helper.addViewContainerListener( listener );
     }
 
-    @Override
+    
     public void removeViewContainerListener(IViewContainerListener listener)
     {
         helper.removeViewContainerListener( listener );

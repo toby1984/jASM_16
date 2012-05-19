@@ -130,13 +130,13 @@ public class DebuggingPerspective extends Perspective
 
     private final IEmulationListener listener = new EmulationListener() 
     {
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
             setupPerspective();
         }
 
-        @Override
+        
         public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
         }
     };
@@ -164,7 +164,7 @@ public class DebuggingPerspective extends Perspective
         return resourceResolver;
     }
 
-    @Override
+    
     public void dispose() 
     {
         try {
@@ -285,7 +285,7 @@ public class DebuggingPerspective extends Perspective
         return (CPUView) getViewByID( CPUView.VIEW_ID );
     }      
 
-    @Override
+    
     public String getID()
     {
         return ID;

@@ -41,7 +41,7 @@ public class SimpleFileObjectCodeWriterFactory extends AbstractObjectCodeWriterF
         return new FileObjectCodeWriter( this.outputFile  , append );
     }
 
-    @Override
+    
     protected void deleteOutputHook() throws IOException
     {
         if ( outputFile != null && outputFile.isFile() && outputFile.exists() ) {

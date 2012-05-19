@@ -68,19 +68,19 @@ public class TextRegion implements ITextRegion
         this.length = length;
     }
 
-    @Override
+    
     public int getStartingOffset()
     {
         return startingOffset;
     }
     
-    @Override
+    
     public int getLength()
     {
         return length;
     }
 
-    @Override
+    
     public void merge(ITextRegion other)
     {
     	// order of calculations is IMPORTANT here, otherwise it's yielding wrong results!
@@ -89,7 +89,7 @@ public class TextRegion implements ITextRegion
         this.length = newEnd - this.startingOffset;
     }
     
-    @Override
+    
     public void subtract(ITextRegion other)
     {
         if ( isSame( other ) ) 
@@ -123,13 +123,13 @@ public class TextRegion implements ITextRegion
         throw new UnsupportedOperationException("Cannot calculate "+this+" MINUS "+other+" , would yield two non-adjactent ranges");
     }
     
-    @Override
+    
     public boolean contains(ITextRegion other)
     {
         return other.getStartingOffset() >= this.getStartingOffset() && other.getEndOffset() <= this.getEndOffset();
     }
     
-    @Override
+    
     public boolean overlaps(ITextRegion other)
     {
         return this.contains( other ) || other.contains( this ) || 
@@ -177,25 +177,25 @@ public class TextRegion implements ITextRegion
     	throw new IllegalArgumentException( this+" has no intersection with "+other);
     }
     
-    @Override
+    
     public int getEndOffset()
     {
         return startingOffset+length;
     }
 
-    @Override
+    
     public boolean contains(int offset)
     {
         return offset >= this.getStartingOffset() && offset < this.getEndOffset();
     }
 
-    @Override
+    
     public boolean isSame(ITextRegion other)
     {
         return this == other || ( this.getStartingOffset() == other.getStartingOffset() && this.getLength() == other.getLength() );
     }
 
-    @Override
+    
     public String apply(String string)
     {
     	try {
@@ -206,14 +206,14 @@ public class TextRegion implements ITextRegion
     	}
     }    
     
-    @Override
+    
     public String toString()
     {
         return "["+getStartingOffset()+","+getEndOffset()+"[";
                 
     }
 
-	@Override
+	
 	public void merge(List<? extends ITextRegion> ranges) 
 	{
 		if ( ranges.isEmpty() ) {

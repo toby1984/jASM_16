@@ -50,7 +50,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
 		this.sizeInBytes = (int) size;
 	}
 
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
 	{
 	    final int factor;
@@ -68,7 +68,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
 		return this;           	    
 	}
 
-    @Override
+    
     public UninitializedMemoryNode copySingleNode()
     {
         final UninitializedMemoryNode result = new UninitializedMemoryNode();
@@ -77,7 +77,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
         return result;
     }
     
-    @Override
+    
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {
     	address = writer.getCurrentWriteOffset();
@@ -86,18 +86,18 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
         writer.writeObjectCode( data );
     }
 
-    @Override
+    
     public void symbolsResolved(ICompilationContext context)
     {
         // nothing to see here...
     }
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }    
     
-    @Override
+    
     public Address getAddress() {
 		return address;
 	}

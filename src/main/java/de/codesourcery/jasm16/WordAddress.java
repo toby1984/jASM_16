@@ -51,23 +51,23 @@ public class WordAddress extends Address
         return value;
     }
     
-    @Override
+    
     public String toString()
     {
         return "0x"+Misc.toHexString( this.value );
     }
 
-	@Override
+	
 	public ByteAddress toByteAddress() {
 		return new ByteAddress( getValue() << 1 );
 	}
 
-	@Override
+	
 	public WordAddress toWordAddress() {
 		return this;
 	}
 
-    @Override
+    
     public Address incrementByOne(boolean wrap)
     {
         final int newValue;
@@ -79,7 +79,7 @@ public class WordAddress extends Address
         return new WordAddress( newValue );
     }
 
-    @Override
+    
     public Address plus(Address other,boolean wrap)
     {
         final int sum = other.getWordAddressValue() + getValue();
@@ -92,7 +92,7 @@ public class WordAddress extends Address
         return new WordAddress( newValue );
     }
     
-    @Override
+    
     public Address plus(Size size,boolean wrap)
     {
         final int sum = getValue() + size.getSizeInWords();
@@ -113,7 +113,7 @@ public class WordAddress extends Address
         return value;
     }
     
-    @Override
+    
     public Address decrementByOne()
     {
         int newValue = getValue() - 1;
@@ -123,7 +123,7 @@ public class WordAddress extends Address
         return new WordAddress( newValue );
     }
 
-    @Override
+    
     public Address minus(Address other)
     {
         int newValue = getValue() - other.getWordAddressValue();
@@ -133,7 +133,7 @@ public class WordAddress extends Address
         return new WordAddress( newValue );
     }
 
-    @Override
+    
     public Address minus(Size size)
     {
         int newValue = getValue() - size.getSizeInWords();

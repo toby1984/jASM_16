@@ -43,7 +43,7 @@ public class IncludeSourceFileNode extends ASTNode {
 	private String resourceIdentifier; 
 	private IResource resource;
 	
-	@Override
+	
 	public ASTNode copySingleNode() 
 	{
 		final IncludeSourceFileNode result = new IncludeSourceFileNode();
@@ -52,7 +52,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		return result;
 	}
 	
-	@Override
+	
 	public ASTNode createCopy(boolean shallow) {
 		return super.createCopy(true);
 	}
@@ -61,7 +61,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		return resource;
 	}
 	
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
 		final ITextRegion region = new TextRegion( context.read( TokenType.INCLUDE_SOURCE ) );
@@ -107,7 +107,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		return this;
 	}
 
-	@Override
+	
 	public boolean supportsChildNodes() {
 		return true;
 	}

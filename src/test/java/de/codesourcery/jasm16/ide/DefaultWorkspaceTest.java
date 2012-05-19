@@ -30,7 +30,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 
 	private File workspaceDir;
 	
-	@Override
+	
 	protected void tearDown() throws Exception 
 	{
 		if ( workspaceDir != null ) {
@@ -39,7 +39,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		}
 	}
 	
-	@Override
+	
 	protected void setUp() throws Exception {
 		super.setUp();
 		final File tempDir = getTempDir();
@@ -50,18 +50,18 @@ public class DefaultWorkspaceTest extends TestHelper {
 	public void testLoadWorkspaceWithOneProject() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
-			@Override
+			
 			public void setWorkspaceDirectory(File dir) throws IOException { }
-			@Override
+			
 			public void saveConfiguration() { }
-			@Override
+			
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
 			}
-			@Override
+			
 			public void storeViewCoordinates(String viewID, SizeAndLocation loc) {
 			}
-			@Override
+			
 			public SizeAndLocation getViewCoordinates(String viewId) {
 				return null;
 			}
@@ -102,18 +102,18 @@ public class DefaultWorkspaceTest extends TestHelper {
 	public void testLoadWorkspaceWithTwoProjects() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
-			@Override
+			
 			public void setWorkspaceDirectory(File dir) throws IOException { }
-			@Override
+			
 			public void saveConfiguration() { }
-			@Override
+			
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
 			}
-			@Override
+			
 			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
 			
-			@Override
+			
 			public SizeAndLocation getViewCoordinates(String viewId) {
 				// TODO Auto-generated method stub
 				return null;
@@ -160,19 +160,19 @@ public class DefaultWorkspaceTest extends TestHelper {
 	public void testDeleteProject() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
-			@Override
+			
 			public void setWorkspaceDirectory(File dir) throws IOException { }
-			@Override
+			
 			public void saveConfiguration() { }
-			@Override
+			
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
 			}
 			
-			@Override
+			
 			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
 			
-			@Override
+			
 			public SizeAndLocation getViewCoordinates(String viewId) {
 				// TODO Auto-generated method stub
 				return null;
@@ -214,19 +214,19 @@ public class DefaultWorkspaceTest extends TestHelper {
 	public void testDeleteProjectPhysically() throws IOException, ProjectAlreadyExistsException {
 		
 		final IApplicationConfig config = new IApplicationConfig() {
-			@Override
+			
 			public void setWorkspaceDirectory(File dir) throws IOException { }
-			@Override
+			
 			public void saveConfiguration() { }
-			@Override
+			
 			public File getWorkspaceDirectory() {
 				return workspaceDir;
 			}
 			
-			@Override
+			
 			public void storeViewCoordinates(String viewID, SizeAndLocation loc) { }
 			
-			@Override
+			
 			public SizeAndLocation getViewCoordinates(String viewId) {
 				// TODO Auto-generated method stub
 				return null;

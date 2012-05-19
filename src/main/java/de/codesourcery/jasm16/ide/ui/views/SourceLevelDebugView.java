@@ -69,20 +69,20 @@ public class SourceLevelDebugView extends SourceCodeView
     private final Map<Address,Object> breakpointHighlights = new HashMap<Address,Object>();    
     
     private final IEmulationListener listener = new EmulationListener() {
-        @Override
+        
         public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
             highlightBreakpoint( breakpoint , true );
         }
-        @Override
+        
         public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
             highlightBreakpoint( breakpoint , false );   
         }
-        @Override
+        
         public void afterCommandExecution(IEmulator emulator, int commandDuration) {
             refreshDisplayHook();
         }
         
-        @Override
+        
         public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) 
         {
             if ( emulationError != null ) 
@@ -95,11 +95,11 @@ public class SourceLevelDebugView extends SourceCodeView
             }
         }
         
-        @Override
+        
         public void afterReset(IEmulator emulator) {
             refreshDisplayHook();
         }
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes) {
             scrollToVisible( emulator.getCPU().getPC() , true ,true);
         }
@@ -171,7 +171,7 @@ public class SourceLevelDebugView extends SourceCodeView
         }
     }
     
-    @Override
+    
     public JPanel getPanel()
     {
         if ( panel == null ) 
@@ -265,7 +265,7 @@ public class SourceLevelDebugView extends SourceCodeView
         return false;
     }
     
-    @Override
+    
     protected void refreshDisplayHook()
     {
         scrollToVisible( emulator.getCPU().getPC() , true ,false);
@@ -361,7 +361,7 @@ public class SourceLevelDebugView extends SourceCodeView
         
         final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
             
-            @Override
+            
             public boolean visit(ASTNode node)
             {
                 if ( node instanceof ObjectCodeOutputNode) {
@@ -396,13 +396,13 @@ public class SourceLevelDebugView extends SourceCodeView
         return null;
     }
     
-    @Override
+    
     public String getTitle()
     {
         return "Source-level debug";
     }
 
-    @Override
+    
     public String getID()
     {
         return VIEW_ID;

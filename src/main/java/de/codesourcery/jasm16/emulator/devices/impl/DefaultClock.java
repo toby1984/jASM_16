@@ -36,7 +36,7 @@ public class DefaultClock implements IDevice
     
     private final ClockThread clockThread = new ClockThread();
     
-    @Override
+    
     public void reset()
     {
         stopClock();
@@ -65,7 +65,7 @@ public class DefaultClock implements IDevice
             setName("hw-clock-thread");
         }
 
-        @Override
+        
         public void run()
         {
             emulator.getOutput().println("Clock thread started.");
@@ -153,7 +153,7 @@ public class DefaultClock implements IDevice
         clockThread.stopClock();
     }  
     
-    @Override
+    
     public void afterAddDevice(IEmulator emulator)
     {
         if ( this.emulator != null && this.emulator != emulator ) {
@@ -162,20 +162,20 @@ public class DefaultClock implements IDevice
         this.emulator = emulator;
     }
 
-    @Override
+    
     public void beforeRemoveDevice(IEmulator emulator)
     {
         clockThread.terminate();
         this.emulator = null;
     }
 
-    @Override
+    
     public DeviceDescriptor getDeviceDescriptor()
     {
         return DESC;
     }
 
-    @Override
+    
     public int handleInterrupt(IEmulator emulator)
     {
         /*

@@ -63,7 +63,7 @@ public class Perspective extends JFrame implements IViewContainer {
 	
 	private final MenuManager menuManager = new MenuManager() {
 		
-		@Override
+		
 		public void menuBarChanged() 
 		{
 			setJMenuBar( menuManager.getMenuBar() );
@@ -95,7 +95,7 @@ public class Perspective extends JFrame implements IViewContainer {
 	    return getID()+"."+view.getID();
 	}
 	
-	@Override
+	
 	public void dispose() 
 	{
         final SizeAndLocation sizeAndLoc = new SizeAndLocation( getLocation() , getSize() );
@@ -150,7 +150,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		
 		menuManager.addEntry( new MenuEntry("File/Save all") {
 
-			@Override
+			
 			public void onClick() {
 				System.out.println("Save all!");
 			}
@@ -170,7 +170,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		
 		menuManager.addEntry( new MenuEntry("File/Quit") {
 
-			@Override
+			
 			public void onClick() 
 			{
 				System.exit(0);
@@ -190,7 +190,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		setJMenuBar( menuManager.getMenuBar() );
 	}
 
-	@Override
+	
 	public void disposeView(IView view) 
 	{
 		for (Iterator<InternalFrameWithView> it = this.views.iterator(); it.hasNext();) 
@@ -223,7 +223,7 @@ public class Perspective extends JFrame implements IViewContainer {
 //		final Comparator<InternalFrameWithView> comparator = new Comparator<InternalFrameWithView>() 
 //		{
 //			
-//			@Override
+//			
 //			public int compare(InternalFrameWithView o1, InternalFrameWithView o2) 
 //			{
 //				final Point loc1 = o1.frame.getLocation();
@@ -281,7 +281,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		return true;
 	}
 	
-	@Override
+	
 	public void addView(final IView view) 
 	{
 		if (view == null) {
@@ -312,7 +312,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		
 		final InternalFrameListener listener = new InternalFrameAdapter() {
 			
-			@Override
+			
 			public void internalFrameClosing(InternalFrameEvent e) {
 				disposeView( view );
 			}
@@ -325,7 +325,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		desktop.add(internalFrame);			
 	}
 
-	@Override
+	
 	public List<IView> getViews() 
 	{
 		final List<IView> result = new ArrayList<IView>();
@@ -335,7 +335,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		return result;
 	}
 
-	@Override
+	
 	public void setTitle(IView view, String title) 
 	{
 		for (InternalFrameWithView frame : this.views) 
@@ -347,7 +347,7 @@ public class Perspective extends JFrame implements IViewContainer {
 		}
 	}
 
-	@Override
+	
 	public IView getViewByID(String viewId) 
 	{
 		if (StringUtils.isBlank(viewId)) {
@@ -363,24 +363,24 @@ public class Perspective extends JFrame implements IViewContainer {
 		return null;
 	}
 
-	@Override
+	
 	public MenuManager getMenuManager() {
 		return menuManager;
 	}
 
-    @Override
+    
     public String getID()
     {
         return id;
     }
 
-    @Override
+    
     public void addViewContainerListener(IViewContainerListener listener)
     {
         helper.addViewContainerListener( listener );
     }
 
-    @Override
+    
     public void removeViewContainerListener(IViewContainerListener listener)
     {
         helper.removeViewContainerListener( listener );

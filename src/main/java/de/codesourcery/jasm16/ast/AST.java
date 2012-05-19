@@ -31,12 +31,12 @@ import de.codesourcery.jasm16.utils.Line;
 public class AST extends ASTNode 
 {
 
-	@Override
+	
 	public ASTNode copySingleNode() {
 		return new AST();
 	}
 
-	@Override
+	
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
         while ( ! context.eof() ) 
@@ -75,7 +75,7 @@ public class AST extends ASTNode
         return this;	    
 	}
 	
-	@Override
+	
 	public boolean supportsChildNodes() {
 	    return true;
 	}

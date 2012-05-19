@@ -49,7 +49,7 @@ public class ClassPathResource extends AbstractResource
         this.classpathLocation = classpathLocation;
     }
 
-    @Override
+    
     public InputStream createInputStream() throws IOException
     {
         final InputStream stream = getClass().getClassLoader().getResourceAsStream( classpathLocation );
@@ -59,7 +59,7 @@ public class ClassPathResource extends AbstractResource
         return stream;
     }
 
-    @Override
+    
     public OutputStream createOutputStream(boolean append) throws IOException
     {
         throw new IOException("Cannot write to classpath resource '"+classpathLocation+"'");
@@ -74,32 +74,32 @@ public class ClassPathResource extends AbstractResource
         return contents;
     }
     
-    @Override
+    
     public String readText(ITextRegion range) throws IOException
     {
         loadContents();
         return range.apply( new String( contents ) );
     }
     
-    @Override
+    
     public String toString()
     {
         return classpathLocation;
     }
 
-    @Override
+    
     public long getAvailableBytes() throws IOException
     {
     	loadContents();
         return this.contents.length;
     }
 
-	@Override
+	
 	public String getIdentifier() {
 		return classpathLocation;
 	}
 
-    @Override
+    
     public boolean isSame(IResource other)
     {
         if ( other == this ) {

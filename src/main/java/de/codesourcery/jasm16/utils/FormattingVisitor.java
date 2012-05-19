@@ -71,19 +71,19 @@ public class FormattingVisitor extends ASTVisitor {
     }
     
 
-    @Override
+    
     public void visit(IncludeSourceFileNode node, IIterationContext itContext) 
     {
     	output( "include \""+node.getResourceIdentifier()+"\"" );
     	itContext.dontGoDeeper();
     }
     
-    @Override
+    
     public void visit(CharacterLiteralNode node, IIterationContext context) 
     {
     }
 
-    @Override
+    
     public void visit(CommentNode node, IIterationContext context) 
     {
     	if ( node.getParent().getChildCount() == 1 ) {
@@ -103,7 +103,7 @@ public class FormattingVisitor extends ASTVisitor {
 		}
     }
 
-    @Override
+    
     public void visit(ExpressionNode node, IIterationContext context) {
     }
     
@@ -131,7 +131,7 @@ public class FormattingVisitor extends ASTVisitor {
         return Misc.padRight( src+address  , column0Width );		
 	}
 
-    @Override
+    
     public void visit(InstructionNode node, IIterationContext context) 
     {
         final LabelNode label = getLabelNode( node );
@@ -224,22 +224,22 @@ public class FormattingVisitor extends ASTVisitor {
             return b >= 0 ? b : b+256;
         }
 
-        @Override
+        
         public String toString() 
         { 
             flushBuffer(true);
             return builder.toString();
         }
 
-        @Override
+        
         protected void closeHook() throws IOException { }
 
-        @Override
+        
         protected OutputStream createOutputStream() throws IOException
         {
             return new OutputStream() {
 
-                @Override
+                
                 public void write(int b) throws IOException
                 {
                     buffer.add( (byte) ( b & 0xff ) );
@@ -248,11 +248,11 @@ public class FormattingVisitor extends ASTVisitor {
             };
         }
 
-        @Override
+        
         protected void deleteOutputHook() throws IOException { }
     }
 
-    @Override
+    
     public void visit(LabelNode node, IIterationContext context) 
     {
 		output( toString( node ) );
@@ -275,44 +275,44 @@ public class FormattingVisitor extends ASTVisitor {
     	return null;
     }
 
-    @Override
+    
     public void visit(SymbolReferenceNode node, IIterationContext context) {
     }
 
-    @Override
+    
     public void visit(NumberNode node, IIterationContext context) {
     }
 
-    @Override
+    
     public void visit(OperandNode node, IIterationContext context) 
     {
     }
     
-    @Override
+    
     public void visit(IncludeBinaryFileNode node, IIterationContext context) {
     	output( getSource( node ) );
     }
 
-    @Override
+    
     public void visit(OriginNode node, IIterationContext context) {
     	output( getSource( node ) );
     }
     
-    @Override
+    
     public void visit(OperatorNode node, IIterationContext context) {
     }
 
-    @Override
+    
     public void visit(RegisterReferenceNode node, IIterationContext context) {
     }
 
-    @Override
+    
     public void visit(StatementNode node, IIterationContext context) 
     {
    		output("\n");
     }
 
-    @Override
+    
     public void visit(InitializedMemoryNode node , IIterationContext context) {
 
         final HexStringWriter writer = new HexStringWriter(false);
@@ -325,12 +325,12 @@ public class FormattingVisitor extends ASTVisitor {
         output("; "+writer.toString()  );	    
     }
 
-    @Override
+    
     public void visit(UninitializedMemoryNode node, IIterationContext context) {
         output( getSource( node ) );			
     }
 
-    @Override
+    
     public void visit(UnparsedContentNode node, IIterationContext context) {
         output( getSource( node ) );			
     }

@@ -91,7 +91,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private final KeyListener keyListener = new KeyListener() {
 
-		@Override
+		
 		public void keyTyped(KeyEvent e) 
 		{
 			final int c = e.getKeyChar();
@@ -181,7 +181,7 @@ public class DefaultKeyboard implements IDevice {
 			}
 		}
 
-		@Override
+		
 		public void keyReleased(KeyEvent e) 
 		{
 			final int mapped = mapKeyCode(e);
@@ -204,7 +204,7 @@ public class DefaultKeyboard implements IDevice {
 			sendInterrupt();
 		}
 
-		@Override
+		
 		public void keyPressed(KeyEvent e) 
 		{
 			if ( ! receivedAtLeastOneInterrupt ) {
@@ -233,7 +233,7 @@ public class DefaultKeyboard implements IDevice {
 	    this.useLegacyMemoryBuffer = useLegacyMemoryBuffer;
 	}
 	
-	@Override
+	
 	public void reset() {
 	    synchronized (BUFFER_LOCK) {
 	        keysTyped.clear();
@@ -302,7 +302,7 @@ public class DefaultKeyboard implements IDevice {
 	 * When interrupts are enabled, the keyboard will trigger an interrupt when one or
 	 * more keys have been pressed, released, or typed.
 	 */
-	@Override
+	
 	public void afterAddDevice(IEmulator emulator) 
 	{
 		if ( this.emulator != null ) {
@@ -315,7 +315,7 @@ public class DefaultKeyboard implements IDevice {
 		}
 	}
 
-	@Override
+	
 	public void beforeRemoveDevice(IEmulator emulator) {
 		if ( inputComponent != null ) {
 			inputComponent.removeKeyListener( keyListener );
@@ -327,12 +327,12 @@ public class DefaultKeyboard implements IDevice {
 		this.emulator = null;
 	}
 
-	@Override
+	
 	public DeviceDescriptor getDeviceDescriptor() {
 		return desc;
 	}
 
-	@Override
+	
 	public int handleInterrupt(IEmulator emulator) 
 	{
 		receivedAtLeastOneInterrupt = true;

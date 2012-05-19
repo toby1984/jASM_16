@@ -93,7 +93,7 @@ public abstract class Size implements Comparable<Size>
     
     public abstract int getSizeInWords();    
     
-    @Override
+    
     public final boolean equals(Object obj) 
     {
     	if ( obj == this ) {
@@ -105,7 +105,7 @@ public abstract class Size implements Comparable<Size>
     	return false;
     }
     
-    @Override
+    
     public final int hashCode() {
     	return getSizeInBytes();
     }
@@ -140,13 +140,13 @@ public abstract class Size implements Comparable<Size>
             return result;
         }
 
-        @Override
+        
         public SizeInBytes toSizeInBytes()
         {
             return this;
         }
 
-        @Override
+        
         public SizeInWords toSizeInWords()
         {
             int convertedValue = getValue() >>> 1;
@@ -156,7 +156,7 @@ public abstract class Size implements Comparable<Size>
             return new SizeInWords( getValue() >>> 1);
         }
         
-        @Override
+        
         public String toString()
         {
             return getValue()+" bytes";
@@ -177,19 +177,19 @@ public abstract class Size implements Comparable<Size>
             return getValue();
         }        
 
-        @Override
+        
         public SizeInBytes toSizeInBytes()
         {
             return new SizeInBytes( getValue() << 1);
         }
 
-        @Override
+        
         public SizeInWords toSizeInWords()
         {
             return this;
         }
         
-        @Override
+        
         public String toString()
         {
             return getValue()+" words";
@@ -207,7 +207,7 @@ public abstract class Size implements Comparable<Size>
 		return getSizeInBytes() < availableSize.getSizeInBytes();
 	}
 	
-	@Override
+	
 	public final int compareTo(Size o) 
 	{
 		final int s1 = getSizeInBytes();

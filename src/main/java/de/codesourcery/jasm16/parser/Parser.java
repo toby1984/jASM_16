@@ -57,7 +57,7 @@ public class Parser implements IParser
     	this.compilationUnitResolver= compilationUnitResolver;
     }
 
-    @Override
+    
     public AST parse(ICompilationContext context) throws IOException 
     {
         final String source = Misc.readSource( context.getCurrentCompilationUnit() );
@@ -69,13 +69,13 @@ public class Parser implements IParser
         final ICompilationUnit unit = CompilationUnit.createInstance( "string input" , source );
         final IResourceResolver resolver = new IResourceResolver() {
 
-            @Override
+            
             public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
             }
 
-            @Override
+            
             public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
@@ -108,7 +108,7 @@ public class Parser implements IParser
         return result;
     }
 
-    @Override
+    
     public void setParserOption(ParserOption option, boolean onOff)
     {
         if ( option == null ) {
@@ -121,7 +121,7 @@ public class Parser implements IParser
         }
     }
 
-    @Override
+    
     public boolean hasParserOption(ParserOption option)
     {
         if (option == null) {

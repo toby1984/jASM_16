@@ -113,74 +113,74 @@ public class ParseContext implements IParseContext
 		this.compilationUnitResolver = compilationUnitResolver;
 	}
 	
-	@Override
+	
 	public List<IToken> advanceTo(TokenType[] expectedTypes,
 			boolean advancePastMatchedToken) {
 		return lexer.advanceTo(expectedTypes, advancePastMatchedToken);
 	}
 
-	@Override
+	
 	public void clearMark() {
 		lexer.clearMark();
 	}
 
-	@Override
+	
 	public int currentParseIndex() {
 		return lexer.currentParseIndex();
 	}
 
-	@Override
+	
 	public boolean eof() {
 		return lexer.eof();
 	}
 
-	@Override
+	
 	public void mark() {
 		lexer.mark();
 	}
 
-	@Override
+	
 	public IToken peek() throws EOFException {
 		return lexer.peek();
 	}
 
-	@Override
+	
 	public IToken read() throws EOFException {
 		return lexer.read();
 	}
 
-	@Override
+	
 	public IToken read(TokenType expectedType) throws ParseException,
 			EOFException {
 		return lexer.read(expectedType);
 	}
 
-	@Override
+	
 	public void reset() {
 		lexer.reset();
 	}
 
-	@Override
+	
 	public ICompilationUnit getCompilationUnit() {
 		return unit;
 	}
 
-	@Override
+	
 	public ISymbolTable getSymbolTable() {
 		return symbolTable;
 	}
 
-	@Override
+	
 	public int getCurrentLineNumber() {
 		return lexer.getCurrentLineNumber();
 	}
 
-	@Override
+	
 	public int getCurrentLineStartOffset() {
 		return lexer.getCurrentLineStartOffset();
 	}
 	
-    @Override
+    
     public String toString()
     {
         return eof() ? "Parser is at EOF" : peek().toString()+" ( offset "+currentParseIndex()+" )";
@@ -215,42 +215,42 @@ public class ParseContext implements IParseContext
         return new Identifier( chars );
     }
 
-	@Override
+	
 	public ITextRegion parseWhitespace() throws EOFException, ParseException {
 		return read( TokenType.WHITESPACE );
 	}
 
-	@Override
+	
     public boolean isRecoveringFromParseError()
     {
         return recoveringFromParseError;
     }
 
-    @Override
+    
     public void setRecoveringFromParseError(boolean recoveringFromParseError)
     {
         this.recoveringFromParseError = recoveringFromParseError;
     }
 
-    @Override
+    
     public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
     {
         return this.resourceResolver.resolve( identifier, resourceType );
     }
 
-    @Override
+    
     public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
     {
         return this.resourceResolver.resolveRelative( identifier , parent, resourceType );        
     }
 
-    @Override
+    
     public void addMarker(IMarker marker)
     {
         getCompilationUnit().addMarker( marker );
     }
 
-    @Override
+    
     public void addCompilationError(String message, ASTNode node)
     {
         final CompilationError error = new CompilationError( message , getCompilationUnit() , node );
@@ -259,7 +259,7 @@ public class ParseContext implements IParseContext
         addMarker( error );
     }
 
-    @Override
+    
     public IToken read(String errorMessage, TokenType expectedType) throws ParseException, EOFException
     {
         return lexer.read(errorMessage, expectedType);
@@ -278,7 +278,7 @@ public class ParseContext implements IParseContext
         }
     }
 
-    @Override
+    
     public boolean hasParserOption(ParserOption option)
     {
         if (option == null) {
@@ -287,19 +287,19 @@ public class ParseContext implements IParseContext
         return options.contains( option );
     }
 
-    @Override
+    
     public void setLexerOption(LexerOption option, boolean onOff)
     {
         lexer.setLexerOption( option, onOff);
     }
 
-    @Override
+    
     public boolean hasLexerOption(LexerOption option)
     {
         return lexer.hasLexerOption( option );
     }
 
-	@Override
+	
 	public IParseContext createParseContextForInclude(IResource resource) throws IOException 
 	{
 		final String source = Misc.readSource( resource );
@@ -328,7 +328,7 @@ public class ParseContext implements IParseContext
 		return new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
 	}
 
-	@Override
+	
 	public String parseString(ITextRegion region) throws EOFException, ParseException 
 	{
 		IToken tok = read( TokenType.STRING_DELIMITER );

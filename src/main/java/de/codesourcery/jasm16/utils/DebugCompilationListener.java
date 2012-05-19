@@ -42,13 +42,13 @@ public class DebugCompilationListener extends CompilationListener {
         this.printDetails=printDetails;
     }
 
-    @Override
+    
     public void onCompileStart(ICompilerPhase firstPhase)
     {
         overallTime = -System.currentTimeMillis();
     }
 
-    @Override
+    
     public void afterCompile(ICompilerPhase lastPhase)
     {
         overallTime +=System.currentTimeMillis();
@@ -56,7 +56,7 @@ public class DebugCompilationListener extends CompilationListener {
         out.println("Compiled "+parsedLineCount+" lines in "+overallTime+" ms ( "+speed+" lines/s )");
     }
 
-    @Override
+    
     public void start(ICompilerPhase phase)
     {
         startTime = -System.currentTimeMillis();
@@ -65,7 +65,7 @@ public class DebugCompilationListener extends CompilationListener {
         }
     }
 
-    @Override
+    
     public void success(ICompilerPhase phase)
     {
         startTime += System.currentTimeMillis();
@@ -74,7 +74,7 @@ public class DebugCompilationListener extends CompilationListener {
         }
     }
 
-    @Override
+    
     public void failure(ICompilerPhase phase)
     {
         startTime += System.currentTimeMillis();
@@ -83,18 +83,18 @@ public class DebugCompilationListener extends CompilationListener {
         }
     }
 
-    @Override
+    
     public void failure(ICompilerPhase phase, ICompilationUnit unit) {
         if ( phase.getName().equals( ICompilerPhase.PHASE_PARSE ) ) {
             parsedLineCount = unit.getParsedLineCount();
         }   	    
     }
 
-    @Override
+    
     public void start(ICompilerPhase phase, ICompilationUnit unit) {
     }
 
-    @Override
+    
     public void success(ICompilerPhase phase, ICompilationUnit unit) {
         if ( phase.getName().equals( ICompilerPhase.PHASE_PARSE ) ) {
             parsedLineCount = unit.getParsedLineCount();

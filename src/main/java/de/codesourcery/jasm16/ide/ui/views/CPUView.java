@@ -53,7 +53,7 @@ public class CPUView extends AbstractView
     
     private final IEmulationListener listener = new EmulationListener() {
 
-        @Override
+        
         public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -61,7 +61,7 @@ public class CPUView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterReset(IEmulator emulator)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -69,7 +69,7 @@ public class CPUView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -77,7 +77,7 @@ public class CPUView extends AbstractView
         	}
         }
 
-		@Override
+		
 		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}
@@ -102,7 +102,7 @@ public class CPUView extends AbstractView
         return result;
     }    
     
-    @Override
+    
     public void refreshDisplay() 
     {
         if ( emulator == null ) {
@@ -151,7 +151,7 @@ public class CPUView extends AbstractView
         builder.append("SP: "+Misc.toHexString( cpu.getSP().getValue() )).append("\n");
         
         SwingUtilities.invokeLater( new Runnable() {
-            @Override
+            
             public void run()
             {
                 final StyledDocument doc = textArea.getStyledDocument();
@@ -182,7 +182,7 @@ public class CPUView extends AbstractView
         emulator.addEmulationListener( listener );
     }
     
-    @Override
+    
     public void disposeHook() 
     {
         if ( this.emulator != null ) {
@@ -205,7 +205,7 @@ public class CPUView extends AbstractView
         return panel;
     }
 
-    @Override
+    
     public JPanel getPanel() 
     {
         if ( panel == null ) {
@@ -214,12 +214,12 @@ public class CPUView extends AbstractView
         return panel;
     }
 
-	@Override
+	
 	public String getTitle() {
 		return "CPU view";
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}

@@ -45,7 +45,7 @@ public class LabelNode extends ASTNode
     	return label; 
     }
     
-    @Override
+    
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
         final int startIndex = context.currentParseIndex();
@@ -90,7 +90,7 @@ public class LabelNode extends ASTNode
         return this;
     }
 
-    @Override
+    
     public LabelNode copySingleNode()
     {
         final LabelNode result = new LabelNode();
@@ -99,7 +99,7 @@ public class LabelNode extends ASTNode
         return result;
     }
     
-    @Override
+    
     public boolean supportsChildNodes() {
         return false;
     }    

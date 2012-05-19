@@ -75,7 +75,7 @@ public class DisassemblerView extends AbstractView
     		refreshDisplay();
     	};
     	
-        @Override
+        
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -83,7 +83,7 @@ public class DisassemblerView extends AbstractView
         	}
         }
         
-        @Override
+        
         public void afterCommandExecution(IEmulator emulator, int commandDuration)
         {
         	if ( ! isFullSpeedMode() ) {
@@ -91,13 +91,13 @@ public class DisassemblerView extends AbstractView
         	}
         }
 
-        @Override
+        
         public void afterReset(IEmulator emulator)
         {
        		refreshDisplay();
         }
         
-		@Override
+		
 		public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
 			refreshDisplay();
 		}        
@@ -111,7 +111,7 @@ public class DisassemblerView extends AbstractView
         setEmulator( emulator );
     }
     
-    @Override
+    
     public void refreshDisplay() 
     {
         if ( emulator == null ) {
@@ -156,7 +156,7 @@ public class DisassemblerView extends AbstractView
         
         SwingUtilities.invokeLater( new Runnable() {
 
-            @Override
+            
             public void run()
             {
                 textArea.setText( result.toString() );         
@@ -227,7 +227,7 @@ public class DisassemblerView extends AbstractView
         emulator.addEmulationListener( listener );
     }
     
-    @Override
+    
     public void disposeHook() 
     {
         if ( this.emulator != null ) 
@@ -264,19 +264,19 @@ public class DisassemblerView extends AbstractView
         
         textArea.addKeyListener( new PagingKeyAdapter() {
 			
-			@Override
+			
 			protected void onePageUp() {
 			}
 			
-			@Override
+			
 			protected void onePageDown() {
 			}
 			
-			@Override
+			
 			protected void oneLineUp() {
 			}
 			
-			@Override
+			
 			protected void oneLineDown() {
 			}
 		});        
@@ -295,7 +295,7 @@ public class DisassemblerView extends AbstractView
         
         final JPanel result = new JPanel();
         result.addComponentListener( new ComponentAdapter() {
-        	@Override
+        	
         	public void componentResized(ComponentEvent e) {
         		refreshDisplay();
         	}
@@ -320,7 +320,7 @@ public class DisassemblerView extends AbstractView
     	}
     }
     
-    @Override
+    
     public JPanel getPanel() {
         if ( panel == null ) {
             panel = createPanel();
@@ -328,12 +328,12 @@ public class DisassemblerView extends AbstractView
         return panel;
     }
 
-	@Override
+	
 	public String getTitle() {
 		return "Disassembly view";
 	}
 
-	@Override
+	
 	public String getID() {
 		return VIEW_ID;
 	}

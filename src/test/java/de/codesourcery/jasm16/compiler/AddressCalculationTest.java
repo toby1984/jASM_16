@@ -43,7 +43,7 @@ public class AddressCalculationTest extends TestHelper
 		
 		final ICompilerPhase debugPhase = new CompilerPhase("debug-phase") {
 
-			@Override
+			
 			protected void run(ICompilationUnit unit, ICompilationContext context) throws IOException 
 			{
 				Label label = null;

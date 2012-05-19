@@ -42,7 +42,7 @@ public class FileResourceResolver implements IResourceResolver
         this.baseDir = baseDir;
     }    
     
-    @Override
+    
     public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
     {
         if (StringUtils.isBlank(identifier)) {
@@ -61,7 +61,7 @@ public class FileResourceResolver implements IResourceResolver
         return new FileResource( file , resourceType);
     }
 
-    @Override
+    
     public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
     {
         if ( ! (parent instanceof FileResource) ) {
