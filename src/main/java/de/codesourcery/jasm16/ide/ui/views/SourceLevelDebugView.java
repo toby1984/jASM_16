@@ -384,8 +384,8 @@ public class SourceLevelDebugView extends SourceCodeView
             if ( unit.getAST() != null ) {
                 final Address start = ASTUtils.getEarliestMemoryLocation( unit.getAST() );
                 Address end = ASTUtils.getLatestMemoryLocation( unit.getAST() );
-                end = end.incrementByOne( false ); // AddressRange is (startInclusive, endExclusive[
                 if ( start != null && end != null ) {
+                    end = end.incrementByOne( false ); // AddressRange is (startInclusive, endExclusive[                	
                     if ( new AddressRange( start , end ).contains( address ) ) {
                         return unit;
                     }

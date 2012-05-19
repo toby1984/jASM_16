@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.emulator.devices.impl;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -46,6 +45,7 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.emulator.Emulator.DeviceErrorException;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
@@ -506,7 +506,18 @@ public final class DefaultScreen implements IDevice {
                 disconnect();
             } else {
                 final Address ramStart = Address.wordAddress( b );
+                final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
+                
                 // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+				if ( videoRamEnd > 0xffff ) 
+				{
+					final String msg = "Cannot map video ram to "+ramStart+" because it would "
+                			+" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
+					out.error( msg );
+                	throw new DeviceErrorException(msg , this);
+                }
+
+                out.debug("Mapping video RAM to "+ramStart);
                 connect( ramStart );
             }
         } else if ( a== 1 ) 
@@ -518,6 +529,7 @@ public final class DefaultScreen implements IDevice {
              *    If B is 0, the default font is used instead.
              */
             // TODO: Not implemented
+        	out.warn("Program tried to map font memory, not implemented yet");
         } 
         else if ( a == 2 ) 
         {
@@ -555,6 +567,7 @@ public final class DefaultScreen implements IDevice {
              */
 
             // TODO: Not implemented
+        	out.warn("Program tried to dump font memory, not implemented yet");
         	return 256;
         } else if ( a == 5 ) {
             /*

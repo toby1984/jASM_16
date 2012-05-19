@@ -16,6 +16,8 @@
 package de.codesourcery.jasm16.ide;
 
 import de.codesourcery.jasm16.emulator.Emulator;
+import de.codesourcery.jasm16.emulator.ILogger;
+import de.codesourcery.jasm16.emulator.PrintStreamLogger;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
@@ -24,6 +26,9 @@ public class EmulatorFactory
 {
     public Emulator createEmulator() {
         final Emulator result = new Emulator();
+        ILogger outLogger = new PrintStreamLogger( System.out );
+        outLogger.setDebugEnabled( false );
+		result.setOutput( outLogger );
         result.setMemoryProtectionEnabled( false );
         result.addDevice( new DefaultClock() );
         return result;

@@ -2508,7 +2508,6 @@ public class Emulator implements IEmulator {
 	public void mapRegion(IMemoryRegion region) 
 	{
 		this.memory.mapRegion( region );
-		
 		out.debug("Mapped memory region "+region);
 		this.memory.dumpMemoryLayout( out );
 	}
@@ -2711,7 +2710,7 @@ public class Emulator implements IEmulator {
      * the program tries to write memory that was already part of the execution path (and 
      * thus contains program code and not data).
      * 
-     * @author tobias.gierke@voipfuture.com
+     * @author tobias.gierke@code-sourcery.de
      */
     public static class MemoryProtectionFaultException extends EmulationErrorException {
 
@@ -2749,6 +2748,20 @@ public class Emulator implements IEmulator {
             super(message);
         }
     }  
+    
+    public static final class DeviceErrorException extends EmulationErrorException {
+
+    	private final IDevice device;
+        public DeviceErrorException(String message,IDevice device)
+        {
+            super(message);
+            this.device = device;
+        }
+        
+        public IDevice getDevice() {
+			return device;
+		}
+    }      
     
     public static final class InvalidDeviceSlotNumberException extends EmulationErrorException {
 

@@ -120,7 +120,14 @@ public class DefaultKeyboard implements IDevice {
 			}
 		}
 		
-		private int mapKeyCode(KeyEvent e) {
+		private int mapKeyCode(KeyEvent e) 
+		{
+			final int result = internalMapKeyCode( e );
+			return result;
+		}
+		
+		private int internalMapKeyCode(KeyEvent e) 
+		{
 			 /* Key numbers are:
 				 * 	0x10: Backspace
 				 * 	0x11: Return
@@ -137,7 +144,7 @@ public class DefaultKeyboard implements IDevice {
 			case KeyEvent.VK_BACK_SPACE:
 				return 0x10;
 			case KeyEvent.VK_ENTER:
-			return 0x11;
+				return 0x11;
 			case KeyEvent.VK_INSERT:
 			return 0x12;	
 			case KeyEvent.VK_DELETE:

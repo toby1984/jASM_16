@@ -212,7 +212,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
     // compiler
     private final IResourceResolver resourceResolver;
-    protected final IWorkspace workspace; 
+    protected final IWorkspace workspace;
+    
+    private volatile boolean isBuilding = false;
+    
     private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
 
         public void projectDeleted(IAssemblyProject deletedProject) 
@@ -222,6 +225,18 @@ public class SourceCodeView extends AbstractView implements IEditorView {
                 dispose();
             }
         }
+        
+        public void buildStarted(IAssemblyProject project) {
+        	if ( project.isSame( getCurrentProject() ) ) {
+        		isBuilding = true;
+        	}
+        }
+        
+        public void buildFinished(IAssemblyProject project, boolean success) {
+        	if ( project.isSame( getCurrentProject() ) ) {
+        		isBuilding = false;
+        	}        	
+        };
         
         public void projectClosed(IAssemblyProject closedProject) 
         {
@@ -575,7 +590,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         @Override
         public void caretUpdate(CaretEvent e) 
         {
-            if ( ! isEditable() ) {
+            if ( ! isEditable() || isBuilding() ) {
+            	// do not fire caret updates while building, this 
+            	// causes at least the SourceEditorView to access the AST that
+            	// is still in construction and trigger a NPE in ASTNode#getNodeInRange()
                 return;
             }
 
@@ -702,6 +720,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         updateTitle();
     }
 
+    protected final boolean isBuilding() {
+    	return isBuilding;
+    }
+    
     protected final void validateSourceCode() throws IOException {
 
         disableDocumentListener();

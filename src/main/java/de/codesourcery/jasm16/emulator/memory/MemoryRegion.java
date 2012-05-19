@@ -100,7 +100,7 @@ public class MemoryRegion implements IMemoryRegion {
         final MemoryRegion result = new MemoryRegion( regionName , range );
 
         final int numberOfMemWordsToCopy= range.getSize().toSizeInWords().getValue();
-        int readAddress = range.getStartAddress().toWordAddress().getValue();
+        int readAddress = ( range.getStartAddress().minus( getAddressRange().getStartAddress() ) ).toWordAddress().getValue();
         
         for ( int index = 0 ; index < numberOfMemWordsToCopy; index++ ) 
         {

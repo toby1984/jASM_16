@@ -118,7 +118,7 @@ public class DefaultClock implements IDevice
         {
             stopClock();
             tickCounter = 0;
-            out.info("Clock set to tick "+ticksPerSecond+" times per second");
+            out.debug("Clock set to tick "+ticksPerSecond+" times per second");
             sleepDelay = (int) Math.round( 1000.0 / ticksPerSecond ); 
         }
         
