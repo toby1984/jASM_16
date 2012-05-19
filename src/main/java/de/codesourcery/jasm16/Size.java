@@ -26,12 +26,55 @@ public abstract class Size implements Comparable<Size>
 {
     private final int value;
     
-    public static SizeInBytes bytes(int size) {
-        return new SizeInBytes( size );
+    private static final SizeInWords ZERO_WORDS = new SizeInWords(0);    
+    private static final SizeInWords ONE_WORD = new SizeInWords(1);
+    private static final SizeInWords TWO_WORDS = new SizeInWords(2);
+    private static final SizeInWords THREE_WORDS = new SizeInWords(3);
+    
+    private static final SizeInBytes ZERO_BYTES = new SizeInBytes(0);    
+    private static final SizeInBytes ONE_BYTES = new SizeInBytes(1);
+    private static final SizeInBytes TWO_BYTES = new SizeInBytes(2);
+    private static final SizeInBytes THREE_BYTES = new SizeInBytes(3);  
+    private static final SizeInBytes FOUR_BYTES = new SizeInBytes(4);
+    private static final SizeInBytes FIVE_BYTES = new SizeInBytes(5);
+    private static final SizeInBytes SIX_BYTES = new SizeInBytes(6);      
+    
+    public static SizeInBytes bytes(int size) 
+    {
+    	switch( size ) {
+    	case 0:
+    		return ZERO_BYTES;
+    	case 1:
+    		return ONE_BYTES;
+    	case 2:
+    		return TWO_BYTES;
+    	case 3:
+    		return THREE_BYTES;
+    	case 4:
+    		return FOUR_BYTES;
+    	case 5:
+    		return FIVE_BYTES;
+    	case 6:
+    		return SIX_BYTES;
+    	default:
+    		return new SizeInBytes( size );
+    	}
     }
     
-    public static SizeInWords words(int size) {
-        return new SizeInWords( size );
+    public static SizeInWords words(int size) 
+    {
+    	switch(size) {
+    	case 0:
+    		return ZERO_WORDS;
+    	case 1:
+    		return ONE_WORD;
+    	case 2:
+    		return TWO_WORDS;
+    	case 3:
+    		return THREE_WORDS;
+    	default:
+    		return new SizeInWords( size );
+    	}
     }    
     
     protected Size(int value) 

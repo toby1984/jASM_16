@@ -25,6 +25,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -33,6 +34,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
@@ -46,7 +48,29 @@ public class UIUtils {
 		NO,
 		CANCEL;
 	}
-
+	
+	public static void invokeAndWait(Runnable r) {
+		if ( SwingUtilities.isEventDispatchThread() ) {
+			r.run();
+		} else {
+			try {
+				SwingUtilities.invokeAndWait( r );
+			} catch (InvocationTargetException e) {
+				throw new RuntimeException(e.getCause());
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
+	}
+	
+	public static void invokeLater(Runnable r) {
+		if ( SwingUtilities.isEventDispatchThread() ) {
+			r.run();
+		} else {
+			SwingUtilities.invokeLater( r );
+		}
+	}	
+ 
 	public static DialogResult showConfirmationDialog(Component parent, String title,String message) {
 
 		final Object[] options = {"Yes","No","Cancel"};

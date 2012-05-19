@@ -65,9 +65,6 @@ public interface IEmulator
      *
      * <p>It's obviously not a good idea to enable this feature when running self-modifying code.</p>
      * 
-     * <p>Note that enabling this feature may have a <b>big</b> (big like in ten-fold or more) 
-     * impact on emulation performance (depends on the amount of memory writes the application does).</p>
-     * 
      * @param enabled
      * @see MemoryProtectionFaultException
      * @see #isMemoryProtectionEnabled()

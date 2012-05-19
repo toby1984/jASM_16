@@ -2714,13 +2714,11 @@ public class Emulator implements IEmulator {
     public static class MemoryProtectionFaultException extends EmulationErrorException {
 
         private final Address offendingWriteAddress;
-        private final AddressRange protectedRange;
         
-        public MemoryProtectionFaultException(String message,Address offendingWriteAddress,AddressRange protectedRange)
+        public MemoryProtectionFaultException(String message,Address offendingWriteAddress)
         {
             super(message);
             this.offendingWriteAddress = offendingWriteAddress;
-            this.protectedRange = protectedRange;
         }
         
         /**
@@ -2732,14 +2730,6 @@ public class Emulator implements IEmulator {
             return offendingWriteAddress;
         }
         
-        /**
-         * Returns the protected address range that contained the offending address.
-         * @return
-         */
-        public AddressRange getProtectedMemoryRange()
-        {
-            return protectedRange;
-        }
     }    
     
     public static final class UnknownOpcodeException extends EmulationErrorException {
