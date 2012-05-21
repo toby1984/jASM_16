@@ -564,7 +564,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         private void textChanged(DocumentEvent e) 
         {
-            System.out.println("DOC-EVENT: "+e);
             updateTitle();
 
             if ( compilationThread == null ) 
