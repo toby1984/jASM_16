@@ -39,7 +39,8 @@ DEBUG: keyboard buffer (legacy) - 0x9000 - 0x9001 ( 1 words / 2 bytes )
 DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )		 
 		 */
 		
-		AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) , Address.wordAddress( 0x8000 ) );
+		AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) , 
+				Address.wordAddress( 0x8000 ) );
 		MemoryRegion region1 = new MemoryRegion("region #1" , range1 );
 		memory.mapRegion( region1 );
 		
@@ -56,7 +57,7 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
 		memory.mapRegion( region4 );
 		
 		AddressRange range5 = new AddressRange( Address.wordAddress( 0x9001 ) , Address.wordAddress( 0x10000 ) );
-		MemoryRegion region5 = new MemoryRegion("region #6" , range5 );
+		MemoryRegion region5 = new MemoryRegion("region #5" , range5 );
 		memory.mapRegion( region5 );		
 		
 		System.out.println("Memory layout");
@@ -73,6 +74,13 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
 		assertMemoryContains( region3 , 0x90ab );
 		assertMemoryContains( region4 , 0xcdef );
 		assertMemoryContains( region5 , 0xbeef );
+		
+		AddressRange range6 = new AddressRange( Address.wordAddress( 0x4000 ) , Address.wordAddress( 0x4010 ) );
+		MemoryRegion region6 = new MemoryRegion("region #6" , range6 );
+		memory.mapRegion( region6 );
+		
+		assertMemoryContains( region6 , 0x1234 );
+		
 	}
 	
 	private void fillMemoryRegion(IMemory memory , IMemoryRegion region , int value) {

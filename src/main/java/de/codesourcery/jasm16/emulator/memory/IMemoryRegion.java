@@ -41,16 +41,15 @@ public interface IMemoryRegion extends IMemory
     public String getRegionName();
     
     /**
-     * Removes a specific address range from the address range
-     * currently covered by this region.
+     * Splits this memory region at a specific gap (aAddress range).
      * 
      * <p>
-     * Note that this method does NOT modify this memory region but
-     * instead returns COPIES of this region.
+     * Note that this method does NOT modify this <code>IMemoryRegion</code> instance
+     * but instead returns COPIES of this region.
      * </p>  
      * @param gap
      * @return 
      * @throws IllegalArgumentException if gap is <code>null</code> or does not intersect with this memory region
      */
-    public List<IMemoryRegion> subtract(AddressRange gap) throws IllegalArgumentException;
+    public List<IMemoryRegion> split(AddressRange gap) throws IllegalArgumentException;
 }

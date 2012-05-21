@@ -110,7 +110,7 @@ public class MemoryRegion implements IMemoryRegion {
     }
 
     @Override
-    public List<IMemoryRegion> subtract(AddressRange gap)
+    public List<IMemoryRegion> split(AddressRange gap)
     {
         final List<AddressRange> regions = addressRange.subtract( gap );
         final List<IMemoryRegion> result = new ArrayList<>();

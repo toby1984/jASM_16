@@ -204,7 +204,15 @@ public class Misc {
     } 
 
     public static String toHexString(int val) 
-    {
+    {    	
+    	if ( ( val & 0xff000000 ) != 0 ) {
+    		   return toHexString( (byte) ( (val >>> 24 ) & 0x00ff ) )+
+    				   toHexString( (byte) ( (val >>> 16 ) & 0x00ff ) )+
+    				   toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+
+    				   toHexString( (byte) ( val & 0x00ff ) );             
+    		
+    	}
+    	
         if ( val > 0xffff && val <= 0xffffff )
         {
             return toHexString( (byte) ( (val >>> 16 ) & 0x00ff ) )+toHexString( (byte) ( (val >>> 8 ) & 0x00ff ) )+toHexString( (byte) ( val & 0x00ff ) );             
