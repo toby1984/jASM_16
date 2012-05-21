@@ -93,6 +93,20 @@ public class ExpressionNodeTest extends TestHelper {
         assertEquals( Long.valueOf( 14 ) , calculated );
     }    
     
+    public void testParseExpressionWithDifferentNumberLiteralNotations() throws Exception 
+    {
+        final String source = "2 + 5 - 10 * 0x100 + b10101";
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        ASTUtils.printAST(result );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        Long calculated = expr.calculate( compContext.getSymbolTable() );
+        assertEquals( Long.valueOf( -2532 ) , calculated );
+    }
+    
     public void testParseNegation() throws IOException {
         
         // 111
