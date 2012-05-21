@@ -29,7 +29,8 @@ public enum TokenType
 	ANGLE_BRACKET_CLOSE, // ]
     PARENS_OPEN, // (
     PARENS_CLOSE, // (	
-    STRING_DELIMITER, // "
+    STRING_ESCAPE, // \
+    STRING_DELIMITER, // " or '
 	COMMA, // , 
 	EOL, // DOS or UNIX-style newline
 	COLON, // :

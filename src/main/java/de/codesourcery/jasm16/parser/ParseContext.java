@@ -331,31 +331,57 @@ public class ParseContext implements IParseContext
 	@Override
 	public String parseString(ITextRegion region) throws EOFException, ParseException 
 	{
-		IToken tok = read( TokenType.STRING_DELIMITER );
+	    final IToken delimiter= read( TokenType.STRING_DELIMITER );
 		if ( region != null ) {
-			region.merge( tok );
+			region.merge( delimiter );
 		}
-		StringBuilder contents = new StringBuilder();
+		
+		final StringBuilder contents = new StringBuilder();
+		final boolean isSingleQuoteDelimiter = "'".equals( delimiter.getContents() );
+		boolean characterQuoted = false;
 		do 
 		{
 			if ( eof() ) {
 				throw new ParseException("Unexpected EOF while looking for closing string delimiter",currentParseIndex(),0);
 			}
 			
-			tok = read();
-			if ( region != null ) {
-				region.merge( tok );
-			}
+			IToken tok = peek();
 			
 			if ( tok.isEOL() ) {
 				throw new ParseException("Unexpected EOL while looking for closing string delimiter",currentParseIndex(),0);				
 			}			
-
-			if ( tok.hasType( TokenType.STRING_DELIMITER ) ) {
-				break; // ok
+			
+			if ( tok.hasType( TokenType.STRING_ESCAPE ) && ! characterQuoted ) 
+			{
+			    read();
+			    
+			    characterQuoted = true;
+			    if ( region != null ) {
+			        region.merge( tok );
+			    }
+                continue;
 			}
+			
+			if ( ! characterQuoted && tok.hasType( TokenType.STRING_DELIMITER ) ) 
+			{
+			    if ( ! isSingleQuoteDelimiter || ( isSingleQuoteDelimiter && tok.getContents().equals( "'" )  ) ) 
+			    {
+			        break;
+			    }
+			} 
+			
+			read();
+			
+            if ( region != null ) {
+                region.merge( tok );
+            }			
 			contents.append( tok.getContents() );
+            characterQuoted = false;
 		} while ( true );
+		
+		if ( region != null ) {
+		    region.merge( read(TokenType.STRING_DELIMITER) );
+		}
 		return contents.toString();
 	}
 	

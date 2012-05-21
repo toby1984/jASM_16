@@ -62,10 +62,58 @@ public class LexerTest extends TestHelper {
         assertToken( lexer , TokenType.INCLUDE_BINARY, ".incbin" );
         assertToken( lexer , TokenType.WHITESPACE, " " );
         assertToken( lexer , TokenType.STRING_DELIMITER, "\"" );
-        assertToken( lexer , TokenType.CHARACTERS, "somefile.txt" );
+        assertToken( lexer , TokenType.CHARACTERS, "somefile" );
+        assertToken( lexer , TokenType.DOT, "." );
+        assertToken( lexer , TokenType.CHARACTERS, "txt" );        
         assertToken( lexer , TokenType.STRING_DELIMITER, "\"" );
         assertTrue( lexer.eof() );
     }
+    
+    public void testParseStringInSingleQuotes() 
+    {
+        final String source = "'somefile.txt'";
+
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.STRING_DELIMITER, "'" );
+        assertToken( lexer , TokenType.CHARACTERS, "somefile" );
+        assertToken( lexer , TokenType.DOT, "." );
+        assertToken( lexer , TokenType.CHARACTERS, "txt" );
+        assertToken( lexer , TokenType.STRING_DELIMITER, "'" );
+        assertTrue( lexer.eof() );
+    }    
+    
+    public void testParseStringInDoubleQuotesWithEscape() 
+    {
+        final String source = "\"somefile\\\".txt\"";
+
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.STRING_DELIMITER, "\"" );
+        assertToken( lexer , TokenType.CHARACTERS, "somefile" );
+        assertToken( lexer , TokenType.STRING_ESCAPE, "\\" );        
+        assertToken( lexer , TokenType.STRING_DELIMITER, "\"" );        
+        assertToken( lexer , TokenType.DOT, "." );           
+        assertToken( lexer , TokenType.CHARACTERS, "txt" );        
+        assertToken( lexer , TokenType.STRING_DELIMITER, "\"" );
+        assertTrue( lexer.eof() );
+    }    
+    
+    public void testParseIncludeBinaryWithSingleQuotes() 
+    {
+        final String source = ".incbin 'somefile.txt'";
+
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.INCLUDE_BINARY, ".incbin" );
+        assertToken( lexer , TokenType.WHITESPACE, " " );
+        assertToken( lexer , TokenType.STRING_DELIMITER, "'" );
+        assertToken( lexer , TokenType.CHARACTERS, "somefile" );
+        assertToken( lexer , TokenType.DOT, "." );
+        assertToken( lexer , TokenType.CHARACTERS, "txt" );
+        assertToken( lexer , TokenType.STRING_DELIMITER, "'" );
+        assertTrue( lexer.eof() );
+    }    
     
     public void testLexing() 
     {

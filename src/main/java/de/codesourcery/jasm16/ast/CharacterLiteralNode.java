@@ -24,6 +24,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * An AST node that represents a character literal (characters enclosed by 
@@ -54,30 +55,20 @@ public class CharacterLiteralNode extends ConstantValueNode {
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{
-	    mergeWithAllTokensTextRegion( context.read("Expected a character literal but string delimiter is missing",TokenType.STRING_DELIMITER) );
+	    if ( ! context.peek().hasType( TokenType.STRING_DELIMITER ) ) {
+	        throw new ParseException("Expected a character literal but string delimiter is missing",context.currentParseIndex(),1);
+	    }
 	    
-        final StringBuilder contents = new StringBuilder();
-        while ( ! context.eof() ) 
-        {
-            IToken tok = context.peek();
-            
-            if ( tok.hasType( TokenType.EOL ) ) {
-                throw new ParseException("Character literal lacks closing delimiter",getTextRegion());                
-            } 
-            else if ( tok.hasType( TokenType.STRING_DELIMITER ) ) 
-            {
-            	mergeWithAllTokensTextRegion( context.read() );
-                value = contents.toString();
-                if ( maxLength != UNLIMITED_LENGTH && value.length() > maxLength ) {
-                	context.addCompilationError( "String literal too long, expected at most "+maxLength+" characters",this);
-                }                
-                this.bytes = toByteArray( getBytes() );
-                return this;
-            } 
-            mergeWithAllTokensTextRegion( context.read() );
-            contents.append( tok.getContents() );
-        }
-        throw new ParseException("Premature end of input, character literal lacks closing delimiter",getTextRegion());            
+	    TextRegion region = new TextRegion( context.currentParseIndex() , 0 );
+	    
+	    value = context.parseString( region );
+	    mergeWithAllTokensTextRegion( region );
+	    
+        if ( maxLength != UNLIMITED_LENGTH && value.length() > maxLength ) {
+            context.addCompilationError( "String literal too long, expected at most "+maxLength+" characters",this);
+        }                
+        this.bytes = toByteArray( getBytes() );
+        return this;
 	}
 	
 	private byte[] toByteArray(List<Integer> data) {

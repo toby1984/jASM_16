@@ -144,11 +144,18 @@ public final class Lexer implements ILexer {
                     scanner.read();
                     currentTokens.add( new Token(TokenType.SINGLE_LINE_COMMENT, ";" , scanner.currentParseIndex()-1 ) );
                     return; 
+                case '\\':
+                    handleString( buffer.toString() , startIndex );
+                    startIndex = scanner.currentParseIndex();
+                    scanner.read();
+                    currentTokens.add( new Token(TokenType.STRING_ESCAPE, "\\", scanner.currentParseIndex()-1 ) );
+                    return;                     
+                case '\'':
                 case '"': // string delimiter
                     handleString( buffer.toString() , startIndex );
                     startIndex = scanner.currentParseIndex();
                     scanner.read();
-                    currentTokens.add( new Token(TokenType.STRING_DELIMITER, "\"" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.STRING_DELIMITER, Character.toString( currentChar ) , scanner.currentParseIndex()-1 ) );
                     return;			    
 
                 case '\n':          // parse unix-style newline
@@ -332,13 +339,31 @@ public final class Lexer implements ILexer {
             currentTokens.add( new Token(TokenType.EQUATION , buffer , startIndex ) );
             return ;        	
         }
-
-        if ( ".".equals( buffer ) ) {
-            currentTokens.add( new Token(TokenType.DOT, "." , startIndex ) );
-            return;
-        } else if ( buffer.startsWith("." ) ) {
-            currentTokens.add( new Token(TokenType.DOT, "." , startIndex ) );
-            currentTokens.add( new Token( TokenType.CHARACTERS , buffer.substring( 1 , buffer.length() ) , startIndex+1 ) );            
+        
+        if ( buffer.contains("." ) ) {
+            
+            int idx = startIndex;
+            int lastIndex = startIndex;
+            
+            final StringBuilder tmp = new StringBuilder();
+            final int len = buffer.length();
+            for ( int i = 0 ; i <len ; i++ , idx++) 
+            {
+                final char c = buffer.charAt( i );
+                if ( c == '.' ) {
+                    if ( tmp.length() > 0 ) {
+                        currentTokens.add( new Token(TokenType.CHARACTERS, tmp.toString() , lastIndex ) );
+                        tmp.setLength(0);
+                    }
+                    currentTokens.add( new Token(TokenType.DOT, "." , idx ) );
+                    lastIndex = idx+1;                    
+                    continue;
+                }
+                tmp.append( c );
+            }
+            if ( tmp.length() > 0 ) {
+                currentTokens.add( new Token(TokenType.CHARACTERS, tmp.toString() , lastIndex ) );                
+            }
             return;
         }
         currentTokens.add(  new Token( TokenType.CHARACTERS , buffer , startIndex ) );
