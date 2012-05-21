@@ -42,7 +42,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
  */
 public enum Operator 
 {
-	INCREMENT("++",7,OperatorPosition.POSTFIX) {
+	INCREMENT("++",9,OperatorPosition.POSTFIX) {
 		@Override
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
@@ -54,7 +54,7 @@ public enum Operator
 		    return 1;
 		}
 	},
-	DECREMENT("--",7,OperatorPosition.PREFIX) {
+	DECREMENT("--",9,OperatorPosition.PREFIX) {
 		@Override
 		public long calculate(Long n1, Long n2) {
 			throw new UnsupportedOperationException("not possible");
@@ -65,8 +65,26 @@ public enum Operator
             return 1;
         }		
 	},	
+    BITWISE_OR("|",1,OperatorPosition.INFIX ) {
+        @Override
+        public long calculate(Long n1,Long n2) {
+            return n1 | n2 ;
+        }       
+    },
+    BITWISE_XOR("^",2,OperatorPosition.INFIX ) {
+        @Override
+        public long calculate(Long n1,Long n2) {
+            return n1 ^ n2 ;
+        }       
+    },      
+    BITWISE_AND("&",3,OperatorPosition.INFIX ) {
+        @Override
+        public long calculate(Long n1,Long n2) {
+            return n1 & n2 ;
+        }       
+    },    
 	// == !=
-	EQUAL("==",2,OperatorPosition.INFIX) {
+	EQUAL("==",4,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -77,7 +95,7 @@ public enum Operator
 			return true;
 		}		
 	},	
-	NOT_EQUAL("!=",2,OperatorPosition.INFIX) {
+	NOT_EQUAL("!=",4,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -89,7 +107,7 @@ public enum Operator
 		}			
 	},	
 	// < > <= >=
-	GREATER_OR_EQUAL(">=",3,OperatorPosition.INFIX) {
+	GREATER_OR_EQUAL(">=",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -100,7 +118,7 @@ public enum Operator
 			return true;
 		}			
 	},	
-	LESS_OR_EQUAL("<=",3,OperatorPosition.INFIX) {
+	LESS_OR_EQUAL("<=",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -111,7 +129,7 @@ public enum Operator
 			return true;
 		}			
 	},		
-	GREATER_THAN(">",3,OperatorPosition.INFIX) {
+	GREATER_THAN(">",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -122,7 +140,7 @@ public enum Operator
 			return true;
 		}			
 	},	
-	LESS_THAN("<",3,OperatorPosition.INFIX) {
+	LESS_THAN("<",5,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
@@ -133,49 +151,55 @@ public enum Operator
 			return true;
 		}	
 	},
-	LEFT_SHIFT("<<",4,OperatorPosition.INFIX) {
+	LEFT_SHIFT("<<",6,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1, Long n2)
 		{
 			return n1 << n2;
 		}
 	},	
-	RIGHT_SHIFT(">>",4,OperatorPosition.INFIX) {
+	RIGHT_SHIFT(">>",6,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2)
 		{
 			return n1 >> n2;
 		}
 	},		
-	PLUS("+",5,OperatorPosition.INFIX) {
+	PLUS("+",7,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1+n2;
 		}
 	},
-	MINUS("-",5,OperatorPosition.INFIX) {
+	MINUS("-",7,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1-n2;
 		}
 	},
-	MODULO("%",6,OperatorPosition.INFIX) {
+	MODULO("%",8,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1 % n2;
 		}
 	},	
-	TIMES("*",6,OperatorPosition.INFIX) {
+	TIMES("*",8,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1*n2;
 		}
 	},
-	DIVIDE("/",6,OperatorPosition.INFIX) {
+	DIVIDE("/",8,OperatorPosition.INFIX) {
 		@Override
 		public long calculate(Long n1,Long n2) {
 			return n1 / n2;
 		}
+	},
+	BITWISE_NOT("~",9,OperatorPosition.PREFIX ) {
+        @Override
+        public long calculate(Long n1,Long n2) {
+            return ~n1;
+        }	    
 	},
 	PARENS("(",100,OperatorPosition.PREFIX) {
 
@@ -257,7 +281,16 @@ public enum Operator
 	public Long calculate(ISymbolTable table, OperatorNode node) 
 	{
 		final Long value1 = node.getTerm( 0 ).calculate( table );
-		final Long value2 = node.getTerm( 1 ).calculate( table );
+		final TermNode term2 = node.getTerm(1);
+		final Long value2 = term2 != null ? term2.calculate( table ) : null;
+		
+		// prefix operators receive their argument
+		// as first value only
+		if ( node.getOperator().isPrefixOperator() ) {
+		    if ( value1 != null ) {
+		        return calculate( value1 , null );
+		    }
+		} 
 		if ( value1 != null && value2 != null )
 		{
 			return calculate( value1 , value2 );

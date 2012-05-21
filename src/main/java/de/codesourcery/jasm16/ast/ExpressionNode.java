@@ -234,10 +234,10 @@ public class ExpressionNode extends TermNode
                     if ( node instanceof OperatorNode) 
                     {
                         final OperatorNode operator = (OperatorNode) node;
-                        if ( ! operator.getOperator().isInfixOperator() ) // + - * /
-                        {
-                            throw new ParseException("Not implemented: Cannot handle operator "+operator.getOperator(), operator.getTextRegion() );
-                        }
+//                        if ( ! operator.getOperator().isInfixOperator() ) // + - * /
+//                        {
+//                            throw new ParseException("Not implemented: Cannot handle operator "+operator.getOperator(), operator.getTextRegion() );
+//                        }
                         
                         boolean treatAsNegativeNumber = false;
                         if ( Operator.MINUS == operator.getOperator() ) {
@@ -423,7 +423,7 @@ public class ExpressionNode extends TermNode
                 throw new ParseException("Operator '"+operator.getOperator().getLiteral()+"' requires an operand",operator.getTextRegion().getEndOffset() , 0 );
             }
             ASTNode argument1 = argumentStack.pop();
-            ASTNode argument2 = argumentStack.isEmpty() ? null : argumentStack.pop();
+            ASTNode argument2 = operator.getOperator().getRequiredOperandCount() == 2 ? argumentStack.isEmpty() ? null : argumentStack.pop() : null;
             operator.insertChild( 0 , argument1 , context );
             if ( argument2 != null ) {
                 operator.insertChild( 0 , argument2 , context );

@@ -86,6 +86,14 @@ public interface IMarker
     public static final String TYPE_COMPILATION_ERROR = "compilation_error";
     
     /**
+     * Compilation warning marker.
+     * 
+     * This marker is expected to always have at least {@link #ATTR_SRC_OFFSET} and
+     * in most cases will also have {@link #ATTR_SRC_REGION} and {@link #ATTR_AST_NODE}.
+     */
+    public static final String TYPE_COMPILATION_WARNING= "compilation_warning";
+    
+    /**
      * Generic compilation error marker.
      * 
      * This marker may have {@link #ATTR_SRC_OFFSET} but in a case of an unexpected internal error,

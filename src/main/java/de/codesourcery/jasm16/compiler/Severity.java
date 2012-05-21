@@ -23,7 +23,19 @@ package de.codesourcery.jasm16.compiler;
  */
 public enum Severity
 {
-    INFO,
-    WARNING,
-    ERROR;
+    INFO("INFO"),
+    WARNING("WARNING"),
+    ERROR("ERROR");
+    
+    private final String label;
+    
+    private Severity(String label) {
+        this.label = label;
+    }
+    
+    public String getLabel()
+    {
+        return label;
+    }
+    
 }

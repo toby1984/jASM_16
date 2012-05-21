@@ -92,6 +92,7 @@ public class Main {
     private boolean dumpObjectCode = false;
     private boolean printSourceCode = false;
     private boolean relaxedParsing = false;
+    private boolean relaxedValidation = false;
     
     public static void main(String[] args) throws Exception 
     {
@@ -224,6 +225,10 @@ public class Main {
         if ( relaxedParsing ) {
             compiler.setCompilerOption( CompilerOption.RELAXED_PARSING , true );
         }
+        
+        if ( relaxedValidation ) {
+            compiler.setCompilerOption( CompilerOption.RELAXED_VALIDATION , true );            
+        }
     }
 
     private void setObjectCodeWriterFactory(List<ICompilationUnit> units)
@@ -309,7 +314,12 @@ public class Main {
             
             arguments.pop();
             
-        } else if ( "--relaxed".equalsIgnoreCase( option ) ) {
+        } else if ( "--relaxed-validation".equalsIgnoreCase( option ) ) {
+            this.relaxedValidation = true;
+            
+            arguments.pop();
+            
+        } else if ( "--relaxed-parsing".equalsIgnoreCase( option ) ) {
             this.relaxedParsing = true;
             
             arguments.pop();
@@ -360,7 +370,8 @@ public class Main {
                 "--print         => print formatted source code along with hex dump of generated assembly\n"+
                 "--print-symbols => print symbol table\n"+
                 "--dump          => instead of writing generated object code to a file, write a hexdump to std out\n"+
-                "--relaxed       => relaxed parsing (instructions are parsed case-insensitive)\n"+
+                "--relaxed-parsing       => relaxed parsing (instructions are parsed case-insensitive)\n"+
+                "--relaxed-validation    => out-of-range values only cause a warning)\n"+                
                 "-v or --verbose => print slightly more verbose output during compilation\n\n";
         System.out.println( usage );		
     }

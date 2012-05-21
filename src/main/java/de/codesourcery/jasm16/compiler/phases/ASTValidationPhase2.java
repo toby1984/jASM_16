@@ -28,9 +28,11 @@ import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.CompilationWarning;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.parser.Operator;
 
@@ -165,19 +167,22 @@ public class ASTValidationPhase2 extends CompilerPhase {
 					final TermNode op = (TermNode) node;
 					final Long value = op.calculate( compContext.getSymbolTable() );
 					if ( value == null ) {
-						unit.addMarker( 
-								new CompilationError("Internal error, operand value has no value?",unit,node)
-						);
+						unit.addMarker( new CompilationError("Internal error, operand value has no value?",unit,node) );
 						valueInRange[0]=false;
 						return false;
 					} 
+					
 					if ( value < minValue || value > maxValue ) 
 					{
-						unit.addMarker( 
-							new CompilationError("Operand value "+value+" out-of-range( "+minValue+" - "+maxValue+")",unit,node)
-						);
-						valueInRange[0]=false;
-						return false;
+					    if ( ! compContext.hasCompilerOption( CompilerOption.RELAXED_VALIDATION ) ) {
+    						unit.addMarker( 
+    							new CompilationError("Operand value "+value+" out-of-range( "+minValue+" - "+maxValue+")",unit,node)
+    						);
+					    } else {
+					        unit.addMarker( new CompilationWarning("Operand value "+value+" out-of-range( "+minValue+" - "+maxValue+")",unit,node) );
+					    }
+                        valueInRange[0]=false;
+                        return false;                        
 					}
 				}
 				return true;

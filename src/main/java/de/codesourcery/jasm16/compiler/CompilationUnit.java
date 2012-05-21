@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.compiler;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -67,6 +68,7 @@ public class CompilationUnit implements ICompilationUnit {
         this.ast = null;
         this.symbolTable.clear();
         this.symbolTable.setParent( null );
+        this.markers.remove( IMarker.TYPE_COMPILATION_WARNING);
         this.markers.remove( IMarker.TYPE_COMPILATION_ERROR );
         this.markers.remove( IMarker.TYPE_GENERIC_COMPILATION_ERROR );
         this.objectCodeStartAddress=Address.ZERO;
@@ -298,7 +300,9 @@ public class CompilationUnit implements ICompilationUnit {
             return result;
         }
         
-        for ( String expectedType : types ) 
+        final Set<String> uniqueTypes = new HashSet<String>( Arrays.asList( types ) );
+        
+        for ( String expectedType : uniqueTypes ) 
         {
             final List<IMarker> existing = this.markers.get(expectedType);
             if ( existing != null ) {

@@ -26,12 +26,6 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class CompilationError extends GenericCompilationError 
 {
-	public CompilationError(String message, ICompilationUnit unit , ASTNode node) 
-	{
-	    super(IMarker.TYPE_COMPILATION_ERROR, message,unit);
-		setNodeAndLocation(node,null);
-	}
-	
 	private void setNodeAndLocation(ASTNode node,ITextRegion range) 
 	{
 	    if ( node != null ) 
@@ -54,6 +48,12 @@ public class CompilationError extends GenericCompilationError
             }   	        
 	    }
 	}
+	
+    public CompilationError(String message, ICompilationUnit unit , ASTNode node) 
+    {
+        super(IMarker.TYPE_COMPILATION_ERROR, message,unit);
+        setNodeAndLocation(node,null);
+    }	
 	
 	public CompilationError(String message, ICompilationUnit unit , ASTNode node,Throwable cause) 
 	{

@@ -98,7 +98,7 @@ public abstract class AbstractMarker implements IMarker
         }
         return (String) object;
     }
-
+    
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getAttribute(String name, T defaultValue)

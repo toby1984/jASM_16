@@ -56,7 +56,20 @@ public interface ICompiler
 		 * that their is an include (by just adding a {@link IncludeSourceFileNode} without
 		 * an AST as child node).
 		 */
-		NO_SOURCE_INCLUDE_PROCESSING; // disable .include processing
+		NO_SOURCE_INCLUDE_PROCESSING, // disable .include processing
+		/**
+		 * Switches the compiler from failing the compilation with
+		 * an error to just printing a warning for certain kinds of programming mistakes.
+		 * 
+		 * <p>
+		 * Currently , setting this option prevents the compiler from
+		 * aborting compilation on:
+		 * <ul>
+		 *   <li>value-out-of-range errors</li>
+		 * </ul>
+		 * </p>
+		 */
+		RELAXED_VALIDATION;
 	}
 	
 	/**

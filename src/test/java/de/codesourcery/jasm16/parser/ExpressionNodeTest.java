@@ -28,6 +28,7 @@ import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.utils.Misc;
 
 public class ExpressionNodeTest extends TestHelper {
 
@@ -43,6 +44,70 @@ public class ExpressionNodeTest extends TestHelper {
         ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
         assertEquals( Long.valueOf( -7 ) , expr.calculate( compContext.getSymbolTable() ) );
     }    
+    
+    public void testParseBitwiseAnd() throws IOException {
+        
+        // 111
+        final String source = "7 & 4";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        Long calculated = expr.calculate( compContext.getSymbolTable() );
+        System.out.println("Result: "+Misc.toBinaryString( calculated.intValue() , 16 ) );
+        assertEquals( Long.valueOf( 4 ) , calculated );
+    }
+    
+    public void testParseBitwiseOr() throws IOException {
+        
+        // 111
+        final String source = "2 | 5";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        Long calculated = expr.calculate( compContext.getSymbolTable() );
+        System.out.println("Result: "+Misc.toBinaryString( calculated.intValue() , 16 ) );
+        assertEquals( Long.valueOf( 7 ) , calculated );
+    }
+    
+    public void testParseBitwiseXOR() throws IOException {
+        
+        // 111
+        final String source = "5 ^ 11";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        Long calculated = expr.calculate( compContext.getSymbolTable() );
+        System.out.println("Result: "+Misc.toBinaryString( calculated.intValue() , 16 ) );
+        assertEquals( Long.valueOf( 14 ) , calculated );
+    }    
+    
+    public void testParseNegation() throws IOException {
+        
+        // 111
+        final String source = "2+~5";
+
+        final IParseContext context = createParseContext( source );
+        ASTNode result = new ExpressionNode().parse( context );
+        assertFalse( result.hasErrors() );
+        assertTrue( result instanceof TermNode );
+        TermNode  expr = (TermNode) result;
+        ICompilationContext compContext = createCompilationContext( CompilationUnit.createInstance("string",source) );
+        Long calculated = expr.calculate( compContext.getSymbolTable() );
+        System.out.println("Result: "+Misc.toBinaryString( calculated.intValue() , 16 ) );
+        assertEquals( Long.valueOf( -4 ) , calculated );
+    }      
     
     public void testCalculateValueWithNegativeNumber() throws IOException {
         
