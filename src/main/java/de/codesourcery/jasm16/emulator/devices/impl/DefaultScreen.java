@@ -51,7 +51,6 @@ import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
@@ -89,20 +88,28 @@ public final class DefaultScreen implements IDevice {
             0x1802, 
             0x1c6c8b36 );
     
+    private final boolean connectUponAddDevice;    
+    private BufferedImage defaultFontImage; 
+    
     private volatile Component uiComponent; 
     private volatile ConsoleScreen consoleScreen;
 
     private volatile IEmulator emulator = null;
 
-    private volatile int borderPaletteIndex = 3;
+    // default background color
+    private volatile int borderPaletteIndex = 0;
+    
+    // palette
     private volatile boolean useCustomPaletteRAM = false;
     private volatile PaletteRAM paletteRAM = new PaletteRAM( WordAddress.ZERO );
 
+    // glyph/font RAM
+    private volatile boolean useCustomFontRAM = false;
+    private volatile FontRAM fontRAM = new FontRAM( WordAddress.ZERO );    
+    
+    // Video RAM
     private volatile boolean requiresFullVRAMRendering = true;
-    private volatile IMemoryRegion videoRAM = null;
-    private final boolean connectUponAddDevice;    
-
-    private BufferedImage defaultFontImage;    
+    private volatile VideoRAM videoRAM = null;
     
     public DefaultScreen(boolean connectUponAddDevice) {
     	this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice );
@@ -151,6 +158,13 @@ public final class DefaultScreen implements IDevice {
             emulator.unmapRegion( paletteRAM );
             useCustomPaletteRAM = false;
         }
+        
+        if ( useCustomFontRAM ) {
+        	useCustomFontRAM = false;
+        	emulator.unmapRegion( fontRAM );
+        	fontRAM = null;
+        }
+        
         paletteRAM.setDefaultPalette();
         requiresFullVRAMRendering=true;
         
@@ -161,6 +175,112 @@ public final class DefaultScreen implements IDevice {
         consoleScreen = null;
         renderScreenDisconnectedMessage();
     }
+    
+    protected final class FontRAM extends MemoryRegion 
+    {
+		public FontRAM(Address start) {
+			super("Font RAM", new AddressRange( start , Size.words( 256 ) ) ); // 2 words per character
+		}
+		
+		public void setup(ConsoleScreen scr) {
+			
+			int adr = 0;
+			for ( int glyph = 0 ; glyph < 128 ; glyph++ ) {
+
+				final int words = scr.readGylph( glyph );
+				
+				final int word0 = ( words & 0xffff0000 ) >>> 16;
+    	        final int word1 = ( words & 0x0000ffff );
+    	        super.write( adr++ , word0 );
+    	        super.write( adr++ , word1 );
+			}
+		}
+		
+		@Override
+		public void write(Address address, int value) 
+		{
+			write( address.getWordAddressValue() , value );
+		}
+		
+		@Override
+		public void write(int wordAddress, int value) 
+		{
+			super.write(wordAddress, value);
+			final int glyphIndex = wordAddress >>> 1; // 2 words per glyph
+			final int wordIndex = wordAddress - ( glyphIndex << 1 );
+			
+			// assemble into 32-bit word
+			int newGlyph =0 ;
+			switch( wordIndex ) {
+			case 0: // user changed word0 , we need to merge with address + 1
+				newGlyph = ( (value & 0xffff) << 16 ) | read( wordAddress+1 );
+				break;
+			case 1: // user changed word1 , we need to merge with address - 1
+				newGlyph = (read( wordAddress-1 ) << 16) | ( value & 0xffff );
+				break;
+			default:
+				throw new RuntimeException("Unreachable code reached");
+			}
+			
+			consoleScreen.defineGylph( glyphIndex , newGlyph );
+			
+			// redraw this glyph
+			for ( int y = 0 ; y < SCREEN_ROWS ; y++ ) 
+			{
+				int memAddr = (y * SCREEN_COLUMNS); 
+				for ( int x = 0 ; x < SCREEN_COLUMNS ; x++ ) 
+				{
+					final int memoryValue = videoRAM.read( memAddr++ );
+					
+					if ( (memoryValue & ( 1+2+4+8+16+32+64 ) ) != glyphIndex ) {
+						continue;
+					}
+					
+			        final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
+			        final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
+			        
+					consoleScreen.putChar( x , y , glyphIndex , 
+							paletteRAM.getColor( foregroundPalette ),
+							paletteRAM.getColor( backgroundPalette ) );
+				}
+			}
+			
+			if ( uiComponent != null ) {
+				uiComponent.repaint();
+			}
+		}
+    }
+    
+    protected void setupDefaultFontRAM(ConsoleScreen screen) {
+    	
+    	if ( screen == null ) {
+    		return;
+    	}
+    	
+		FontRAM tmpRAM = new FontRAM(Address.wordAddress( 0 ) );    	
+    	if ( useCustomFontRAM ) 
+    	{
+    		emulator.unmapRegion( fontRAM );
+    		useCustomFontRAM = false;
+    	}
+    	fontRAM = tmpRAM;
+   		fontRAM.setup( screen );
+    }
+    
+    protected void mapFontRAM(Address address) {
+    	
+    	final FontRAM newRam = new FontRAM(address);
+    	
+    	if ( useCustomFontRAM ) {
+    		emulator.unmapRegion( fontRAM );
+    	}
+    	emulator.mapRegion( newRam );
+    	this.useCustomFontRAM = true;
+    	this.fontRAM = newRam;    	
+    	
+    	requiresFullVRAMRendering = true;
+        doFullVRAMRendering();    	
+    }    
     
     protected final class PaletteRAM extends MemoryRegion 
     {
@@ -278,8 +398,6 @@ public final class DefaultScreen implements IDevice {
             if ( paletteRAM.getAddressRange().getStartAddress().equals( address ) ) {
                 return; // nothing to be done
             }
-            // copy video RAM contents to new region before re-assigning
-            MemUtils.memCopy( newRAM , newRAM , Address.wordAddress( 0 ) , newRAM.getSize() );
             emulator.unmapRegion( paletteRAM );
         } 
         paletteRAM = newRAM;
@@ -290,9 +408,9 @@ public final class DefaultScreen implements IDevice {
         return videoRAM != null;
     }
 
-    protected void connect(Address videoRAMAddress) 
+    protected void mapVideoRAM(Address videoRAMAddress) 
     {
-        final IMemoryRegion newRAM = new VideoRAM( videoRAMAddress );		
+        final VideoRAM newRAM = new VideoRAM( videoRAMAddress );		
         if ( isConnected() ) 
         {
             if ( videoRAM.getAddressRange().getStartAddress().equals( videoRAMAddress ) ) {
@@ -301,7 +419,8 @@ public final class DefaultScreen implements IDevice {
             // copy video RAM contents to new region before re-assigning
             MemUtils.memCopy( videoRAM , newRAM , Address.wordAddress( 0 ) , videoRAM.getSize() );
             disconnect();
-        } 
+        }
+        
         videoRAM = newRAM;
         emulator.mapRegion( newRAM );
         
@@ -309,7 +428,6 @@ public final class DefaultScreen implements IDevice {
         doFullVRAMRendering();
     }
     
-    @SuppressWarnings("deprecation")
 	private void doFullVRAMRendering()
     {
         ConsoleScreen screen = screen();
@@ -415,11 +533,11 @@ public final class DefaultScreen implements IDevice {
     	}
         this.emulator = emulator;
         if ( connectUponAddDevice ) {
-            connect( Address.wordAddress( 0x8000 ) );
+            mapVideoRAM( Address.wordAddress( 0x8000 ) );
         }
         this.out = emulator.getOutput();
     }
-
+    
     @Override
     public void beforeRemoveDevice(IEmulator emulator) 
     {
@@ -454,6 +572,12 @@ public final class DefaultScreen implements IDevice {
         return screen != null ? screen.getImage() : null;
     }
     
+    public BufferedImage getFontImage() 
+    {
+        final ConsoleScreen screen = screen();
+        return screen != null ? screen.getFontImage() : null;
+    }    
+    
     protected ConsoleScreen screen() 
     {
         if ( uiComponent == null ) {
@@ -475,6 +599,7 @@ public final class DefaultScreen implements IDevice {
             }
             final Color borderColor = paletteRAM.getColor( borderPaletteIndex );
             this.consoleScreen =  new ConsoleScreen( image , SCREEN_WIDTH , SCREEN_HEIGHT , borderColor );
+            setupDefaultFontRAM( this.consoleScreen );
             renderScreenDisconnectedMessage();
         }
         return this.consoleScreen;
@@ -518,9 +643,10 @@ public final class DefaultScreen implements IDevice {
                 }
 
                 out.debug("Mapping video RAM to "+ramStart);
-                connect( ramStart );
+                mapVideoRAM( ramStart );
             }
-        } else if ( a== 1 ) 
+        }
+        else if ( a== 1 ) 
         {
             /*
              * 1: MEM_MAP_FONT
@@ -528,8 +654,16 @@ public final class DefaultScreen implements IDevice {
              *    at address B. See below for a description of font ram.
              *    If B is 0, the default font is used instead.
              */
-            // TODO: Not implemented
-        	out.warn("Program tried to map font memory, not implemented yet");
+
+        	int value = emulator.getCPU().getRegisterValue(Register.B );
+        	if ( value == 0 ) {
+        		setupDefaultFontRAM( screen() );
+        	} 
+        	else 
+        	{
+        		out.info("Mapping font RAM to 0x"+Misc.toHexString( value ) );
+        		mapFontRAM( Address.wordAddress( value ) );
+        	}
         } 
         else if ( a == 2 ) 
         {
@@ -565,9 +699,12 @@ public final class DefaultScreen implements IDevice {
              *    starting at address B.
              *    Halts the DCPU-16 for 256 cycles
              */
-
-            // TODO: Not implemented
-        	out.warn("Program tried to dump font memory, not implemented yet");
+        	int target = emulator.getCPU().getRegisterValue(Register.B );
+        	out.info("Dumping font RAM to 0x"+Misc.toHexString( target) );
+        	final int len = fontRAM.getSize().getSizeInWords();
+        	for ( int src = 0 ; src < len ; src++ ) {
+        		emulator.getMemory().write( target+src , fontRAM.read( src ) );
+        	}
         	return 256;
         } else if ( a == 5 ) {
             /*
@@ -599,32 +736,142 @@ public final class DefaultScreen implements IDevice {
         
         // an image containing the glyphs for our font
         private final RawImage glyphBitmap;
+        
+        private final Color awtGlyphForegroundColor;        
+        private final Color awtGlyphBackgroundColor;
+        
+        private final int glyphForegroundColor;        
         private final int glyphBackgroundColor;
         
         private final int screenWidth;
         private final int screenHeight;
         
-        public ConsoleScreen(BufferedImage fontImage,
+        public ConsoleScreen(BufferedImage glyphBitmap,
         		int screenWidth,
         		int screenHeight,Color borderColor) 
         {
         	this.screenWidth = screenWidth;
         	this.screenHeight=screenHeight;
-            this.glyphBitmap = new RawImage( "glyphs" , fontImage.getWidth() , fontImage.getHeight() );
-            this.glyphBitmap.getGraphics().drawImage( fontImage , 0 , 0, null );
+            this.glyphBitmap = new RawImage( "glyphs" , glyphBitmap.getWidth() , glyphBitmap.getHeight() );
+            this.glyphBitmap.getGraphics().drawImage( glyphBitmap , 0 , 0, null );
+            this.borderColor = borderColor;
             
             // choose darkest color as background color
-            int[] colors = glyphBitmap.getUniqueColors();
-            int candidate = 0xffffff;
+            int[] colors = this.glyphBitmap.getUniqueColors();
+            int background = 0x00ffffff; // aaRRGGBB
+            int foreground = 0x00000000;
             for ( int col : colors ) {
-                if ( col < candidate ) {
-                    candidate = col;
+                if ( col < background ) {
+                    background = col;
+                }
+                if ( col > foreground ) {
+                	foreground = col;
                 }
             }
-            this.borderColor = borderColor;
-            glyphBackgroundColor=candidate;
+            
+            this.glyphForegroundColor = foreground;
+            this.awtGlyphForegroundColor = new Color( this.glyphForegroundColor );
+            System.out.println("Glyph FG color: "+glyphForegroundColor);
+            
+            this.glyphBackgroundColor = background;
+            this.awtGlyphBackgroundColor = new Color( this.glyphBackgroundColor );
+            System.out.println("Glyph BG color: "+glyphBackgroundColor);
+            
             this.screen = new RawImage( "console" , screenWidth , screenHeight );
             renderBorder();
+        }
+        
+        public void defineGylph(int glyphIndex, int glyphData) 
+        {
+        	if ( 1 != 2 ) {
+        		return;
+        	}
+        	final int glyphRow = glyphIndex / IMG_CHARS_PER_ROW;
+        	final int glyphCol = glyphIndex - ( glyphRow * IMG_CHARS_PER_ROW );
+        	
+        	final int bitmapY = GLYPH_HEIGHT * glyphRow ;
+        	final int bitmapX = GLYPH_WIDTH * glyphCol;
+        	
+        	final Graphics2D g = glyphBitmap.getGraphics();
+        	for ( int y = 0 ; y < GLYPH_HEIGHT ; y++ ) {
+        		for ( int x = 0 ; x < GLYPH_WIDTH ; x ++ ) 
+        		{
+        			Color c;
+        			if ( isPixelSet( x , y , glyphData ) ) {
+        				if ( glyphIndex == 1 ) {
+        					System.out.print( "X" );
+        				}
+        				c = awtGlyphForegroundColor;
+        			} else {
+        				if ( glyphIndex == 1 ) {
+        					System.out.print( "_" );
+        				}
+        				c = awtGlyphBackgroundColor;
+        			}
+        			g.setColor( c );
+       				g.drawLine( bitmapX + x , bitmapY + y , bitmapX + x  , bitmapY + y);
+        		}
+        		if ( glyphIndex == 1 ) {
+        			System.out.println();
+        		}
+        	}
+        }
+        
+        public int readGylph(int glyphIndex) 
+        {
+        	final int glyphRow = glyphIndex / IMG_CHARS_PER_ROW;
+        	final int glyphCol = glyphIndex - ( glyphRow * IMG_CHARS_PER_ROW );
+        	final int bitmapY = GLYPH_HEIGHT * glyphRow ;
+        	final int bitmapX = GLYPH_WIDTH * glyphCol;
+
+        	final BufferedImage image = glyphBitmap.getImage();
+        	
+        	int result = 0;
+        	for ( int y = 0 ; y < GLYPH_HEIGHT ; y++ ) 
+        	{
+        		for ( int x = 0 ; x < GLYPH_WIDTH ; x ++ ) 
+        		{
+        			final int pixelColor =
+        					image.getRGB( bitmapX + x , bitmapY + y ) & 0xffffff;
+        			
+        			if ( pixelColor != glyphBackgroundColor ) 
+        			{
+        				final int bitInByte = y;
+        				final int byteIndex = 3 - x;
+        				final int bitsToShiftRight = ( byteIndex * 8 );
+        				// pixel set
+        				result = result | (( 1 << bitInByte ) << bitsToShiftRight);
+        			} 
+        		}
+        	}
+        	
+        	return result;
+        }        
+        
+        private boolean isPixelSet(int x,int y , int glyphBytes) 
+        {
+        	/*
+		     * word0 = 11111111 /
+		     *         00001001
+		     * word1 = 00001001 /
+		     *         00000000      
+		     *         
+		     *         	 
+		     * needs to be transformed to:
+		     *
+		     *           1110
+		     *           1000
+		     *           1000
+		     *           1110
+		     *           1000
+		     *           1000
+		     *           1000
+		     *           1000        	 
+        	 */
+        	final int bitInByte = y;
+        	final int byteIndex = 3 - x;
+        	final int bitsToShiftRight = ( byteIndex * 8 );
+        	return ( ( glyphBytes >>> bitsToShiftRight) & ( 1 << bitInByte)) != 0;
         }
         
         protected void renderBorder() {
@@ -695,6 +942,10 @@ public final class DefaultScreen implements IDevice {
         
         public BufferedImage getImage() {
             return screen.getImage();
+        }
+        
+        public BufferedImage getFontImage() {
+        	return glyphBitmap.getImage();
         }
         
         public void renderMessage(String s,Color foreground,Color background) {
@@ -769,7 +1020,7 @@ public final class DefaultScreen implements IDevice {
         public int[] getUniqueColors() {
             final Set<Integer> result = new HashSet<Integer>();
             for ( int i = 0 ; i < data.length ; i++ ) {
-                result.add( data[i] );
+                result.add( data[i] & 0xffffff );
             }
             return ArrayUtils.toPrimitive( result.toArray( new Integer[ result.size() ] ));
         }
