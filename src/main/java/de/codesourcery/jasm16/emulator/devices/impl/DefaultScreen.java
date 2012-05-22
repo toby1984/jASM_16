@@ -269,11 +269,16 @@ public final class DefaultScreen implements IDevice {
                             paletteRAM.getColor( backgroundPalette ) );
                 }
             }
-
-            if ( uiComponent != null ) {
-                uiComponent.repaint();
-            }
+            repaintPeer(false);
         }
+    }
+    
+    protected final void repaintPeer(boolean force) 
+    {
+        if ( uiComponent != null ) 
+        {
+            uiComponent.repaint();
+        }        
     }
 
     protected void setupDefaultFontRAM(ConsoleScreen screen) {
@@ -302,7 +307,6 @@ public final class DefaultScreen implements IDevice {
         emulator.mapRegion( newRam );
         this.useCustomFontRAM = true;
         this.fontRAM = newRam;      
-        requiresFullVRAMRendering = true;
         doFullVRAMRendering();      
     }    
 
@@ -440,14 +444,11 @@ public final class DefaultScreen implements IDevice {
             if ( videoRAM.getAddressRange().getStartAddress().equals( videoRAMAddress ) ) {
                 return; // nothing to be done
             }
-            disconnect();
+            emulator.unmapRegion( videoRAM );
         }
 
         videoRAM = newRAM;
         emulator.mapRegion( newRAM );
-
-        requiresFullVRAMRendering = true;
-        doFullVRAMRendering();
     }
 
     private void doFullVRAMRendering()
@@ -457,11 +458,10 @@ public final class DefaultScreen implements IDevice {
             return;
         }
 
-        screen.fillScreen(Color.BLACK);
         for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
-            renderMemoryValue( i , videoRAM.read( i ) , true );
+            renderMemoryValue( i , videoRAM.read( i ) , false );
         }        
-        uiComponent.repaint();
+        repaintPeer(true);
         requiresFullVRAMRendering = false;
     }
 
@@ -480,7 +480,7 @@ public final class DefaultScreen implements IDevice {
         if ( graphics != null ) 
         {
             screen().renderMessage("Screen offline" , Color.BLACK,Color.WHITE);
-            uiComponent.repaint();
+            repaintPeer(true);
         }
     }
 
@@ -489,22 +489,12 @@ public final class DefaultScreen implements IDevice {
         if ( requiresFullVRAMRendering ) {
             doFullVRAMRendering();
         } else {
-            renderMemoryValue( wordAddress , memoryValue );
+            renderMemoryValue(wordAddress,memoryValue,true);
         }
     }
 
-    protected void renderMemoryValue(int wordAddress , int memoryValue) 
-    {
-        renderMemoryValue(wordAddress,memoryValue,true);
-    }
-    
     protected void renderMemoryValue(int wordAddress , int memoryValue,boolean refreshPeerComponent) 
     {
-        final Graphics2D graphics = getGraphics();
-        if ( graphics == null ) {
-            return;
-        }
-
         if ( ! isConnected() ) 
         {
             renderScreenDisconnectedMessage();
@@ -518,24 +508,25 @@ public final class DefaultScreen implements IDevice {
         final int row = wordAddress / SCREEN_COLUMNS;
         final int column = wordAddress - ( row * SCREEN_COLUMNS );
 
-        /*
-         * The video RAM is made up of 32x12 cells of the following bit format (in LSB-0):
-         * 
-         * ffffbbbbBccccccc
-         *
-         * - The lowest 7 bits (ccccccc) select define character to display.
-         * - If B (bit 7) is set the character color will blink slowly.
-         * - ffff selects which foreground color to use.
-         * - bbbb selects which background color to use.    
-         */
-        final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
-        final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
-
         // TODO: Implement blinking...
         final boolean blink = ( memoryValue & ( 1 << 7)) != 0;
         final int asciiCode = memoryValue & (1+2+4+8+16+32+64);
-
+        
+        final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
+        
         if ( asciiCode != 0 ) {
+            
+            /*
+             * The video RAM is made up of 32x12 cells of the following bit format (in LSB-0):
+             * 
+             * ffffbbbbBccccccc
+             *
+             * - The lowest 7 bits (ccccccc) select define character to display.
+             * - If B (bit 7) is set the character color will blink slowly.
+             * - ffff selects which foreground color to use.
+             * - bbbb selects which background color to use.    
+             */
+            final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
             final Color fg = paletteRAM.getColor( foregroundPalette );
             final Color bg = paletteRAM.getColor( backgroundPalette );
             consoleScreen.putChar( column , row , asciiCode , fg , bg );
@@ -543,7 +534,7 @@ public final class DefaultScreen implements IDevice {
             consoleScreen.clearChar( column , row , paletteRAM.getColor( backgroundPalette ) );
         }
         if ( refreshPeerComponent ) {
-            uiComponent.repaint();
+            repaintPeer(false);
         }
     }
 
@@ -690,11 +681,11 @@ public final class DefaultScreen implements IDevice {
             if ( value == 0 ) 
             {
                 ConsoleScreen screen = screen();
-                setupDefaultFontRAM( screen );
+                
                 if ( screen != null && uiComponent != null ) {
                     screen.setFontImage( getDefaultFontImage( (Graphics2D) uiComponent.getGraphics() ) );
                 }
-                doFullVRAMRendering();                
+                setupDefaultFontRAM( screen );
             } 
             else 
             {

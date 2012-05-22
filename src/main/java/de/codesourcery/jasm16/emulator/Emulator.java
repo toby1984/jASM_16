@@ -2499,17 +2499,20 @@ public class Emulator implements IEmulator {
 	@Override
 	public void unmapRegion(IMemoryRegion region) {
 		this.memory.unmapRegion( region );
-		
-		out.debug("Unmapped memory region "+region);
-		this.memory.dumpMemoryLayout(out);
+		if ( out.isDebugEnabled() ) {
+		    out.debug("Unmapped memory region "+region);
+		    this.memory.dumpMemoryLayout(out);
+		}
 	}
 
 	@Override
 	public void mapRegion(IMemoryRegion region) 
 	{
 		this.memory.mapRegion( region );
-		out.debug("Mapped memory region "+region);
-		this.memory.dumpMemoryLayout( out );
+		if ( out.isDebugEnabled() ) {
+		    out.debug("Mapped memory region "+region);
+		    this.memory.dumpMemoryLayout( out );
+		}
 	}
 
 	@Override
