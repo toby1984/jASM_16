@@ -165,6 +165,16 @@ public class InstructionNodeTest extends TestHelper
         assertCompiles(":test SET [ 3 > 2 ] , 1 == 2");
         assertDoesNotCompile(":test SET [ a < 3 ] , 1 == 2");        
     }
+    
+    public void testPushNotValidAsSourceOperand() throws Exception 
+    {
+        assertDoesNotCompile(" SET A , PUSH ");
+    } 
+    
+    public void testPopNotValidAsSourceOperand() throws Exception 
+    {
+        assertDoesNotCompile(" SET POP , 1 ");
+    }     
 	
     public void testAddressingModesParsing() throws Exception {
 

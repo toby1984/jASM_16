@@ -18,6 +18,8 @@ package de.codesourcery.jasm16;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
@@ -316,6 +318,8 @@ public enum OpCode
     private static volatile Map<String,OpCode> LOWER_CASE_MAP;
     private static volatile Map<String,OpCode> UPPER_CASE_MAP;
 
+    private final Logger LOG = Logger.getLogger( OpCode.class );
+    
     private OpCode(String identifier,int operandCount,int opCodeBits) {
         this.identifier = identifier;
         this.operandCount=operandCount;
@@ -623,7 +627,8 @@ public enum OpCode
                 // SET b,[SP++] => VALID
                 // SET [SP++],a => INVALID because there's no opcode for it
                 if ( operandToHandle == OperandPosition.TARGET_OPERAND ) {
-                    throw new RuntimeException("POP/[SP++] cannot be used as TARGET operand");
+                    LOG.warn("POP/[SP++] cannot be used as TARGET operand");
+                    return null;
                 }
                 return operandDesc( 0x18 ); // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
             case INDIRECT_REGISTER_PREDECREMENT:
@@ -635,7 +640,8 @@ public enum OpCode
                 // SET [--SP],a => VALID
                 // SET b,[--SP] => INVALID because there's no opcode for it
                 if ( operandToHandle == OperandPosition.SOURCE_OPERAND ) {
-                    throw new RuntimeException("PUSH/[--SP] cannot be used as SOURCE operand");
+                    LOG.warn("PUSH/[--SP] cannot be used as SOURCE operand");
+                    return null;
                 }                
                 return operandDesc( 0x18 ); // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a                
             case INDIRECT_REGISTER_OFFSET:

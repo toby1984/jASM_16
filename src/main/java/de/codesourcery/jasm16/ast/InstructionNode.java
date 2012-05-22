@@ -133,17 +133,34 @@ public class InstructionNode extends ObjectCodeOutputNode
                 context.clearMark();
             }
             
-            if ( opCode.isBasicOpCode() && i == 0 ) // target operand of basic instruction 
-            {
+            if ( opCode.isBasicOpCode() && i == 1 ) {
                 /*
-                 * SET [SP++] , a is not possible because the instruction bitmask uses the same value for PUSH/POP
+                 * SET a, [--SP] is not possible because the instruction bitmask uses the same value for PUSH/POP
                  * and the meaning only depends on whether is the source or target operand                 
                  */
                 if ( operandNode instanceof OperandNode ) 
                 {
                     final OperandNode opNode = (OperandNode) operandNode;
-                    if ( opNode.getAddressingMode() == AddressingMode.INDIRECT_REGISTER_POSTINCREMENT &&
-                         opNode.getRegister() == Register.SP ) 
+                    if ( opNode.getAddressingMode() == AddressingMode.INDIRECT_REGISTER_PREDECREMENT 
+                    		&& opNode.getRegister() == Register.SP ) 
+                    {
+                        if ( opNode.getRegisterReferenceNode().hasPreDecrement() ) { 
+                            context.addCompilationError("PUSH cannot be used as SOURCE operand",opNode); 
+                        }
+                    }
+                }            	
+            } 
+            else if ( opCode.isBasicOpCode() && i == 0 ) // target operand of basic instruction 
+            {
+                /*
+                 * SET [SP++] , a  is not possible because the instruction bitmask uses the same value for PUSH/POP
+                 * and the meaning only depends on whether is the source or target operand                 
+                 */
+                if ( operandNode instanceof OperandNode ) 
+                {
+                    final OperandNode opNode = (OperandNode) operandNode;
+                    if ( opNode.getAddressingMode() == AddressingMode.INDIRECT_REGISTER_POSTINCREMENT 
+                    		&& opNode.getRegister() == Register.SP ) 
                     {
                         if ( opNode.getRegisterReferenceNode().hasPostIncrement() ) { 
                             context.addCompilationError("POP cannot be used as TARGET operand",opNode); 
