@@ -36,7 +36,7 @@ public class ScreenView extends AbstractView
     private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
     private final DefaultKeyboard keyboard;
-    private volatile boolean debugCustomFonts = true;
+    private volatile boolean debugCustomFonts = false;
     private final EmulatorFactory emulatorFactory;
     
     public ScreenView(EmulatorFactory emulatorFactory , IEmulator emulator) 

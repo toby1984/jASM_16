@@ -19,18 +19,22 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Event;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -39,6 +43,9 @@ import java.util.NoSuchElementException;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -1208,7 +1215,18 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
         addKeyBinding( editor , 
                 KeyStroke.getKeyStroke(KeyEvent.VK_Y,Event.CTRL_MASK),
-                redoAction );       
+                redoAction );   
+        
+        // 'Search' action 
+        addKeyBinding( editor , 
+                KeyStroke.getKeyStroke(KeyEvent.VK_F,Event.CTRL_MASK),
+                new AbstractAction() 
+        {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showSearchDialog();
+            }
+        });        
     }
 
     protected final void saveCurrentFile() {
@@ -1376,5 +1394,244 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             return ast.getNodeInRange( offset );
         }
         return null;
-    }    
+    }
+    
+    private SearchDialog searchDialog;
+    
+    protected final void showSearchDialog() 
+    {
+    	final String selection = editorPane.getSelectedText();
+    	if ( searchDialog == null ) {
+    		searchDialog = new SearchDialog();
+    		searchDialog.setVisible( true );
+    		searchDialog.activate(selection);
+    	} else {
+    		searchDialog.activate(selection);
+    	}
+    }
+    
+	protected static enum Direction {
+		FORWARD {
+
+			@Override
+			public int advance(int index) {
+				return index+1;
+			}
+		} ,
+		BACKWARD {
+
+			@Override
+			public int advance(int index) {
+				return index-1;
+			}
+		} ;
+		
+		public abstract int advance(int index);
+	}
+	
+    protected final class SearchDialog extends JFrame {
+
+    	private final JTextField searchPattern = new JTextField();
+    	private final JCheckBox wrapSearch = new JCheckBox("Wrap",false);
+    	private final JCheckBox caseSensitive = new JCheckBox("Match case",false);    	
+    	
+    	private final JButton nextButton = new JButton("Next");
+    	private final JButton previousButton = new JButton("Previous");
+    	private final JButton closeButton = new JButton("Close");
+    	
+    	private final JTextField messageArea = new JTextField("",25);
+    	
+		private String lastSearchPattern;
+		private int lastMatch = -1;
+    	private int currentIndex = 0;
+    	private Direction lastDirection = Direction.FORWARD;
+    	
+		public SearchDialog() 
+		{
+			super("Search");
+			
+			messageArea.setBackground(null);
+			messageArea.setEditable(false);
+			messageArea.setBorder(null);
+			messageArea.setFocusable(false);			
+			
+			setDefaultCloseOperation( JFrame.HIDE_ON_CLOSE );
+			
+			final JPanel panel = new JPanel();
+			panel.setLayout( new GridBagLayout() );
+			
+			// add search pattern
+			GridBagConstraints cnstrs = constraints( 0 , 0, true , 
+					false , GridBagConstraints.HORIZONTAL );
+			panel.add( searchPattern , cnstrs );
+			
+			searchPattern.addActionListener( new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					search(lastDirection);
+				}
+			});
+			
+			// add wrap checkbox
+			cnstrs = constraints( 0 , 1, false, false , GridBagConstraints.HORIZONTAL );
+			panel.add( wrapSearch , cnstrs );
+			
+			// 'case-sensitive' checkbox
+			cnstrs = constraints( 1 , 1, false, false , GridBagConstraints.HORIZONTAL );
+			panel.add( caseSensitive , cnstrs );
+			
+			// add message area
+			cnstrs = constraints( 0 , 2 , true , false , GridBagConstraints.HORIZONTAL );
+			panel.add( messageArea , cnstrs );			
+			
+			// create button panel
+			final JPanel buttonPanel = new JPanel();
+			buttonPanel.setLayout( new GridBagLayout() );
+			
+			cnstrs = constraints( 0 , 0, false , true , GridBagConstraints.HORIZONTAL );
+			buttonPanel.add( previousButton , cnstrs );
+			previousButton.addActionListener( new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					search(Direction.BACKWARD);
+				}
+			});
+			
+			cnstrs = constraints( 1 , 0, false , true , GridBagConstraints.HORIZONTAL );
+			buttonPanel.add( nextButton , cnstrs );
+			nextButton.addActionListener( new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					search(Direction.FORWARD);
+				}
+			});
+			
+			cnstrs = constraints( 2 , 0, true , true , GridBagConstraints.HORIZONTAL );
+			buttonPanel.add( closeButton , cnstrs );
+			closeButton.addActionListener( new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					setVisible(false);
+				}
+			});
+			
+			// add button panel
+			// add wrap checkbox
+			cnstrs = constraints( 0 , 3 , true , true , GridBagConstraints.HORIZONTAL );
+			panel.add( buttonPanel , cnstrs );			
+			
+			// add everything to content pane
+			getContentPane().add( panel );
+			setAlwaysOnTop(true);
+			pack();
+		}
+		
+		public void activate(String selectedText) 
+		{
+			setVisible(true);
+			final String text = StringUtils.isNotBlank( selectedText ) ? selectedText : lastSearchPattern;
+			if ( text != null ) {
+				searchPattern.setText( selectedText );
+			}
+			searchPattern.requestFocus();
+		}
+		
+		protected void search(Direction direction) {
+
+			showMessage(null);
+
+			final String source = getTextFromTextPane();
+			final String pattern = searchPattern.getText();
+			
+			if ( StringUtils.isBlank( pattern ) ) {
+				showMessage("Please enter a search pattern");
+				return;
+			}
+			lastSearchPattern = pattern;
+
+			lastDirection = direction;
+			
+			if ( lastMatch != -1 ) // advance past last match 
+			{
+				if ( ! advance( source , direction , pattern , lastMatch ) ) {
+					showNotFoundMessage();
+					return;
+				}
+			}
+			
+			// remember start index so we don't loop forever
+			// if the search pattern doesn't match at all
+			final int searchStartIndex = currentIndex;
+			final boolean matchCaseSensitive = caseSensitive.isSelected();
+			do {
+				final String currentText =
+						source.substring( currentIndex , currentIndex+pattern.length() );
+				
+				final boolean matches;
+				if ( matchCaseSensitive ) {
+					matches = currentText.equals( pattern );
+				} else {
+					matches = currentText.equalsIgnoreCase( pattern );
+				}
+				
+				if ( matches ) 
+				{
+					lastMatch = currentIndex;
+					gotoLocation( currentIndex );
+					editorPane.requestFocus();
+					editorPane.setCaretPosition( currentIndex );
+					// TODO: Maybe show 'match found' message ?
+					return;
+				}
+				if ( ! advance( source , direction , pattern , currentIndex ) ) {
+					showNotFoundMessage();
+					break;
+				}
+			} while ( currentIndex != searchStartIndex );
+			
+			if ( lastMatch != -1 ) {
+				currentIndex = lastMatch;
+			}
+			showNotFoundMessage();
+		}
+		
+		private void showNotFoundMessage() {
+			showMessage("No (more) matches");
+		}
+		
+		private boolean advance(String source, Direction direction,String pattern,int index) 
+		{
+			int newIndex = direction.advance( index );
+			if ( newIndex < 0 ) {
+				if ( wrapSearch.isSelected() ) 
+				{
+					showSearchWrappedMessage();
+					newIndex = source.length() - 1 - pattern.length() ;
+				} else {
+					return false; 
+				}
+			} else if ( ( newIndex+pattern.length()) >= source.length() ) {
+				if ( wrapSearch.isSelected() ) {
+					showSearchWrappedMessage();
+					newIndex = 0;
+				} else {
+					return false; 
+				}
+			}
+			currentIndex = newIndex;
+			return true;
+		}
+		
+		private void showSearchWrappedMessage() {
+			showMessage("Search wrapped");
+		}
+
+		private void showMessage(String message) {
+			messageArea.setText( message );
+		}
+    }
 }

@@ -238,6 +238,7 @@ public class DebuggingPerspective extends Perspective
         // setup screen view
         if ( getScreenView() == null ) {
             final ScreenView view = new ScreenView( emulatorFactory , emulator );
+            view.setDebugCustomFonts( false );
             addView( view );
             view.refreshDisplay();
         }     
