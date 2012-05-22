@@ -88,7 +88,9 @@ public final class DefaultScreen implements IDevice {
             0x1802, 
             0x1c6c8b36 );
 
-    private final boolean connectUponAddDevice;    
+    private final boolean connectUponAddDevice;  
+    private final boolean mapFontRAMUponAddDevice;
+    
     private BufferedImage defaultFontImage; 
 
     private volatile Component uiComponent; 
@@ -111,11 +113,24 @@ public final class DefaultScreen implements IDevice {
     private volatile boolean requiresFullVRAMRendering = true;
     private volatile VideoRAM videoRAM = null;
 
-    public DefaultScreen(boolean connectUponAddDevice) {
-        this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice );
+    /**
+     * 
+     * @param connectUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
+     * @param mapFontRAMUponAddDevice whether to map font/glyph RAM to 0x8180 when afterAddDevice() is called
+     */
+    public DefaultScreen(boolean connectUponAddDevice,boolean mapFontRAMUponAddDevice) {
+        this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice , mapFontRAMUponAddDevice );
     }
 
-    public DefaultScreen(int screenColumns,int screenRows, boolean connectUponAddDevice) 
+    /**
+     * 
+     * @param screenColumns
+     * @param screenRows
+     * 
+     * @param connectUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
+     * @param mapFontRAMUponAddDevice whether to map font/glyph RAM to 0x8180 when afterAddDevice() is called     
+     */
+    public DefaultScreen(int screenColumns,int screenRows, boolean connectUponAddDevice,boolean mapFontRAMUponAddDevice) 
     {
         if ( screenColumns < STANDARD_SCREEN_COLUMNS ) {
             throw new IllegalArgumentException("Illegal column count "+screenColumns+", must be at least "+
@@ -133,6 +148,7 @@ public final class DefaultScreen implements IDevice {
         this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+2*(BORDER_HEIGHT);
 
         this.connectUponAddDevice = connectUponAddDevice;
+        this.mapFontRAMUponAddDevice = mapFontRAMUponAddDevice;
         setupDefaultPaletteRAM();
     }
 
@@ -183,7 +199,7 @@ public final class DefaultScreen implements IDevice {
     protected final class FontRAM extends MemoryRegion 
     {
         public FontRAM(Address start) {
-            super("Font RAM", new AddressRange( start , Size.words( 256 ) ) ); // 2 words per character
+            super("Font RAM", new AddressRange( start , Size.words( 256 ) ) , false ); // 2 words per character
         }
 
         public void setup(ConsoleScreen scr) {
@@ -211,6 +227,10 @@ public final class DefaultScreen implements IDevice {
         {
             super.write(wordAddress, value);
 
+            if ( consoleScreen == null ) {
+                return;
+            }
+            
             final int glyphIndex = wordAddress >>> 1; // 2 words per glyph
             final int wordIndex = wordAddress - ( glyphIndex << 1 );
 
@@ -228,7 +248,8 @@ public final class DefaultScreen implements IDevice {
             }
 
             consoleScreen.defineGylph( glyphIndex , newGlyph );
-
+            consoleScreen.debugDefineGlyph(glyphIndex, newGlyph);
+            
             // redraw this glyph
             for ( int y = 0 ; y < SCREEN_ROWS ; y++ ) 
             {
@@ -277,11 +298,11 @@ public final class DefaultScreen implements IDevice {
 
         if ( useCustomFontRAM ) {
             emulator.unmapRegion( fontRAM );
+            this.useCustomFontRAM = false;            
         }
         emulator.mapRegion( newRam );
         this.useCustomFontRAM = true;
         this.fontRAM = newRam;      
-
         requiresFullVRAMRendering = true;
         doFullVRAMRendering();      
     }    
@@ -291,7 +312,7 @@ public final class DefaultScreen implements IDevice {
         private final AtomicReferenceArray<Color> cache = new AtomicReferenceArray<Color>( PALETTE_COLORS );
 
         public PaletteRAM(Address start) {
-            super("Palette RAM",new AddressRange( start , Size.words( PALETTE_COLORS ) ) );
+            super("Palette RAM",new AddressRange( start , Size.words( PALETTE_COLORS ) ) , false );
         }
 
         public void setDefaultPalette() 
@@ -356,7 +377,7 @@ public final class DefaultScreen implements IDevice {
     protected final class VideoRAM extends MemoryRegion {
 
         public VideoRAM(Address start) {
-            super("Video RAM",new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) );
+            super("Video RAM",new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , false );
         }
 
         @Override
@@ -420,8 +441,6 @@ public final class DefaultScreen implements IDevice {
             if ( videoRAM.getAddressRange().getStartAddress().equals( videoRAMAddress ) ) {
                 return; // nothing to be done
             }
-            // copy video RAM contents to new region before re-assigning
-            MemUtils.memCopy( videoRAM , newRAM , Address.wordAddress( 0 ) , videoRAM.getSize() );
             disconnect();
         }
 
@@ -540,13 +559,17 @@ public final class DefaultScreen implements IDevice {
     }
 
     @Override
-    public void afterAddDevice(IEmulator emulator) {
+    public void afterAddDevice(IEmulator emulator) 
+    {
         if ( this.emulator != null ) {
             throw new IllegalStateException("Device "+this+" is already associated with an emulator?");
         }
         this.emulator = emulator;
         if ( connectUponAddDevice ) {
             mapVideoRAM( Address.wordAddress( 0x8000 ) );
+        }
+        if ( mapFontRAMUponAddDevice ) {
+            mapFontRAM( Address.wordAddress( 0x8180 ) );
         }
         this.out = emulator.getOutput();
     }
@@ -607,7 +630,7 @@ public final class DefaultScreen implements IDevice {
             final BufferedImage image = getDefaultFontImage( gg );
             final Color borderColor = paletteRAM.getColor( borderPaletteIndex );
             this.consoleScreen =  new ConsoleScreen( image , SCREEN_WIDTH , SCREEN_HEIGHT , borderColor );
-//            setupDefaultFontRAM( this.consoleScreen );
+            setupDefaultFontRAM( this.consoleScreen );
             renderScreenDisconnectedMessage();
         }
         return this.consoleScreen;
@@ -789,9 +812,9 @@ public final class DefaultScreen implements IDevice {
                 }
             }
             this.glyphForegroundColor = foreground;
-            this.awtGlyphForegroundColor = new Color( this.glyphForegroundColor );
+            this.awtGlyphForegroundColor = new Color( foreground );
             this.glyphBackgroundColor = background;
-            this.awtGlyphBackgroundColor = new Color( this.glyphBackgroundColor );
+            this.awtGlyphBackgroundColor = new Color( background );
         }
 
         public void defineGylph(int glyphIndex, int glyphData) 
@@ -817,6 +840,22 @@ public final class DefaultScreen implements IDevice {
                 }
             }
         }
+        
+        public void debugDefineGlyph(int glyphIndex, int glyphData) 
+        {
+            System.out.println("\nGlyph = "+glyphIndex+" , value = "+Misc.toHexString( glyphData ) );
+            for ( int y = 0 ; y < GLYPH_HEIGHT ; y++ ) {
+                for ( int x = 0 ; x < GLYPH_WIDTH ; x ++ ) 
+                {
+                    if ( isGlyphPixelSet( x , y , glyphData ) ) {
+                        System.out.print("X");
+                    } else {
+                        System.out.print("_");
+                    }
+                }
+                System.out.println();
+            }
+        }        
 
         public int readGylph(int glyphIndex) 
         {
@@ -832,8 +871,7 @@ public final class DefaultScreen implements IDevice {
             {
                 for ( int x = 0 ; x < GLYPH_WIDTH ; x ++ ) 
                 {
-                    final int pixelColor =
-                            image.getRGB( bitmapX + x , bitmapY + y ) & 0xffffff;
+                    final int pixelColor = image.getRGB( bitmapX + x , bitmapY + y ) & 0xffffff;
 
                     if ( pixelColor != glyphBackgroundColor ) 
                     {

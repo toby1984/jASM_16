@@ -41,6 +41,14 @@ public interface IMemoryRegion extends IMemory
     public String getRegionName();
     
     /**
+     * Check whether this memory region may be merged
+     * with adjactant memory regions.
+     * 
+     * @return
+     */
+    public boolean supportsMerging();
+    
+    /**
      * Splits this memory region at a specific gap (aAddress range).
      * 
      * <p>

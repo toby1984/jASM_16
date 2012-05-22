@@ -27,7 +27,7 @@ public class EmulatorFactory
     public Emulator createEmulator() {
         final Emulator result = new Emulator();
         ILogger outLogger = new PrintStreamLogger( System.out );
-        outLogger.setDebugEnabled( false );
+        outLogger.setDebugEnabled( true );
 		result.setOutput( outLogger );
         result.setMemoryProtectionEnabled( false );
         result.addDevice( new DefaultClock() );
@@ -39,6 +39,6 @@ public class EmulatorFactory
     }
     
     public DefaultScreen createScreenDevice() {
-    	return new DefaultScreen( true );
+    	return new DefaultScreen( true , false );
     }
 }

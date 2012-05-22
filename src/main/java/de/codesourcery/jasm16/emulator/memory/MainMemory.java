@@ -67,7 +67,7 @@ public class MainMemory implements IMemory
 	}
 
 	private static IMemoryRegion createMainMemory(AddressRange range) {
-		return new MemoryRegion( "main memory" , range );
+		return new MemoryRegion( "main memory" , range , true );
 	}
 
 	public void dumpMemoryLayout(ILogger logger) 
@@ -139,16 +139,40 @@ public class MainMemory implements IMemory
 
 		synchronized(regions) 
 		{
+		    boolean found = false;
 			for (Iterator<IMemoryRegion> it = regions.iterator(); it.hasNext();) {
 				final IMemoryRegion existing = it.next();
 				if ( existing == region ) 
 				{
 					mapRegion( createMainMemory( existing.getAddressRange() ) );
-					return;
+					found = true;
+					break;
 				}
 			}
+			
+			if ( ! found ) {
+		        throw new IllegalArgumentException("Cannot unmap unknown region "+region);			    
+			}
+			
+            // merge adjactant memory regions that support it
+            for ( int index = 1 ; index < regions.size() ; index++ )
+            {
+                final IMemoryRegion previous = regions.get(index-1);
+                final IMemoryRegion current = regions.get(index);
+                
+                if ( previous.supportsMerging() && current.supportsMerging() && 
+                     previous.getAddressRange().getEndAddress().equals( current.getAddressRange().getStartAddress() ) ) 
+                {
+                    final AddressRange mergedRange = new AddressRange( previous.getAddressRange().getStartAddress() , current.getAddressRange().getEndAddress() );
+                    final IMemoryRegion combined = createMainMemory( mergedRange );
+                    MemUtils.memCopy( this , combined , mergedRange.getStartAddress() , mergedRange.getSize() );
+                    regions.remove( index );
+                    regions.set( index -1 , combined );
+                    index--;
+                }
+            }   	
 		}
-		throw new IllegalArgumentException("Cannot unmap unknown region "+region);
+
 	}
 
 	/**
@@ -163,11 +187,11 @@ public class MainMemory implements IMemory
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
-		// copy existing memory contents
-		MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , 
-				newRegion.getSize() );
+		// copy existing memory contents into new region
+		MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , newRegion.getSize() );
 
-		synchronized( regions ) {
+		synchronized( regions ) 
+		{
 			boolean intersects = false;
 			do 
 			{

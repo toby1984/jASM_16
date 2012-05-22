@@ -39,8 +39,9 @@ public class MemoryRegion implements IMemoryRegion {
     private final String regionName;
     private final AddressRange addressRange;
     private final AtomicIntegerArray memory;
+    private final boolean supportsMerging;
     
-    public MemoryRegion(String regionName , AddressRange range) 
+    public MemoryRegion(String regionName , AddressRange range,boolean supportsMerging) 
     {
         if (StringUtils.isBlank(regionName)) {
             throw new IllegalArgumentException("regionName must not be NULL/blank.");
@@ -53,9 +54,16 @@ public class MemoryRegion implements IMemoryRegion {
         if ( sizeInWords.getValue() < 1 ) {
             throw new IllegalArgumentException("Memory size must be >= 1 word(s), invalid address range passed: "+range);
         }
+        this.supportsMerging = supportsMerging;
         this.memory = new  AtomicIntegerArray( sizeInWords.getValue() );
         this.addressRange = range;
         this.regionName = regionName;
+    }
+    
+    @Override
+    public boolean supportsMerging()
+    {
+        return supportsMerging;
     }
     
     public int read(int wordAddress) {
@@ -97,7 +105,7 @@ public class MemoryRegion implements IMemoryRegion {
     
     private IMemoryRegion createCopy(AddressRange range) {
         
-        final MemoryRegion result = new MemoryRegion( regionName , range );
+        final MemoryRegion result = new MemoryRegion( regionName , range , supportsMerging );
 
         final int numberOfMemWordsToCopy= range.getSize().toSizeInWords().getValue();
         int readAddress = ( range.getStartAddress().minus( getAddressRange().getStartAddress() ) ).toWordAddress().getValue();

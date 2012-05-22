@@ -145,7 +145,7 @@ public final class AddressRange
         else if ( gapEnd.equals( getEndAddress() ) ) 
         {
             // |---- a ----|---- gap ----|
-            result.add( new AddressRange( getStartAddress(), gap.getEndAddress() ) );
+            result.add( new AddressRange( getStartAddress(), gap.getStartAddress() ) );
         } 
         else 
         {
