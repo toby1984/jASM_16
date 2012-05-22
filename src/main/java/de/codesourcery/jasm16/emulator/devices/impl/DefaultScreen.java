@@ -248,7 +248,7 @@ public final class DefaultScreen implements IDevice {
             }
 
             consoleScreen.defineGylph( glyphIndex , newGlyph );
-            consoleScreen.debugDefineGlyph(glyphIndex, newGlyph);
+//            consoleScreen.debugDefineGlyph(glyphIndex, newGlyph);
             
             // redraw this glyph
             for ( int y = 0 ; y < SCREEN_ROWS ; y++ ) 
