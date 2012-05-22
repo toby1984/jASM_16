@@ -41,7 +41,8 @@ public class EmulatorControllerView extends AbstractView
     
     private JPanel panel;
     private final JButton singleStepButton = new JButton("Step");
-    private final JButton stepReturnButton = new JButton("Step return");    
+    private final JButton stepReturnButton = new JButton("Step return");   
+    private final JButton skipButton = new JButton("Skip");    
     private final JButton runButton = new JButton("Run");
     private final JButton stopButton = new JButton("Stop");   
     private final JButton resetButton = new JButton("Reset");
@@ -177,7 +178,20 @@ public class EmulatorControllerView extends AbstractView
         });
         
         cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
-        buttonBar.add( stepReturnButton , cnstrs );        
+        buttonBar.add( stepReturnButton , cnstrs );       
+        
+        // =========== "Skip" button ============        
+        skipButton.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                emulator.skipCurrentInstruction();
+            }
+        });
+        
+        cnstrs = constraints( x++ , 0 , false , true , GridBagConstraints.NONE );          
+        buttonBar.add( skipButton , cnstrs );              
         
         // =========== "RUN" button ============        
         runButton.addActionListener( new ActionListener() {

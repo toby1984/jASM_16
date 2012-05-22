@@ -1062,6 +1062,7 @@ public class Emulator implements IEmulator {
 	{
 		final int sizeInWords = calculateInstructionSizeInWords( pc );
 		pc = pc.plus( Size.words( sizeInWords ) , true );
+		afterCommandExecution( 0 );
 	}
 	
 	private int calculateInstructionSizeInWords(Address address) {
