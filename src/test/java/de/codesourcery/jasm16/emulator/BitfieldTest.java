@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.emulator;
 
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.utils.Bitfield;
-import de.codesourcery.jasm16.utils.Misc;
 
 public class BitfieldTest extends TestCase {
 

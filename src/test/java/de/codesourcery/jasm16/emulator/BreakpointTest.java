@@ -16,9 +16,7 @@
 package de.codesourcery.jasm16.emulator;
 
 import static org.easymock.EasyMock.expect;
-import static org.easymock.classextension.EasyMock.createMock;
-import static org.easymock.classextension.EasyMock.replay;
-import static org.easymock.classextension.EasyMock.verify;
+import static org.easymock.classextension.EasyMock.*;
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;

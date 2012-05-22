@@ -42,10 +42,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
-import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.CompilationMarker;
-import de.codesourcery.jasm16.compiler.CompilationWarning;
-import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.SourceLocation;

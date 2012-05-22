@@ -49,7 +49,7 @@ public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWrit
     {
     	for (Iterator<IObjectCodeWriter> it = objectCodeWriters.values().iterator(); it.hasNext();) 
     	{
-			final IObjectCodeWriter writer = (IObjectCodeWriter) it.next();
+			final IObjectCodeWriter writer = it.next();
 			writer.close();
 			it.remove();
 		}

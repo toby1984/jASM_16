@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.io.PrintStream;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;

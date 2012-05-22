@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;

@@ -45,6 +45,7 @@ public class CPUView extends AbstractView
     public static final String VIEW_ID = "cpu-view";
     
     private JPanel panel;
+    @SuppressWarnings("unused")
     private final SimpleAttributeSet defaultStyle;      
     private final SimpleAttributeSet errorStyle;  
     private final JTextPane textArea = new JTextPane();

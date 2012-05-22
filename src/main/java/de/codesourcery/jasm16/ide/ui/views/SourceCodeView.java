@@ -740,7 +740,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             		if ( ! ( r instanceof FileResource ) ) 
             		{
             			if ( r instanceof InMemorySourceResource) {
-            				r = (FileResource) ((InMemorySourceResource) r).getResourceOnDisk();
+            				r = ((InMemorySourceResource) r).getResourceOnDisk();
             			} 
             		}
             		if ( ! ( r instanceof FileResource ) ) {

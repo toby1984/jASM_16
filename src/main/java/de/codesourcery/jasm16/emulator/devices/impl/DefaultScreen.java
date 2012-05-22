@@ -51,7 +51,6 @@ import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
-import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -636,6 +635,7 @@ public final class DefaultScreen implements IDevice {
         return this.consoleScreen;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public int handleInterrupt(IEmulator emulator) 
     {
@@ -698,7 +698,7 @@ public final class DefaultScreen implements IDevice {
             } 
             else 
             {
-                out.info("Mapping font RAM to 0x"+Misc.toHexString( value ) );
+                out.debug("Mapping font RAM to 0x"+Misc.toHexString( value ) );
                 mapFontRAM( Address.wordAddress( value ) );
             }
         } 
@@ -737,7 +737,7 @@ public final class DefaultScreen implements IDevice {
              *    Halts the DCPU-16 for 256 cycles
              */
             int target = emulator.getCPU().getRegisterValue(Register.B );
-            out.info("Dumping font RAM to 0x"+Misc.toHexString( target) );
+            out.debug("Dumping font RAM to 0x"+Misc.toHexString( target) );
             final int len = fontRAM.getSize().getSizeInWords();
             for ( int src = 0 ; src < len ; src++ ) {
                 emulator.getMemory().write( target+src , fontRAM.read( src ) );
@@ -777,7 +777,6 @@ public final class DefaultScreen implements IDevice {
         private volatile Color awtGlyphForegroundColor;        
         private volatile Color awtGlyphBackgroundColor;
 
-        private volatile int glyphForegroundColor;        
         private volatile int glyphBackgroundColor;
 
         private final int screenWidth;
@@ -811,7 +810,6 @@ public final class DefaultScreen implements IDevice {
                     foreground = col;
                 }
             }
-            this.glyphForegroundColor = foreground;
             this.awtGlyphForegroundColor = new Color( foreground );
             this.glyphBackgroundColor = background;
             this.awtGlyphBackgroundColor = new Color( background );
