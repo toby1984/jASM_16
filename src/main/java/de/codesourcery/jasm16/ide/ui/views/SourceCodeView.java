@@ -714,11 +714,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             doc.putProperty(Document.StreamDescriptionProperty, null);
 
             editorPane.setText( source );
-
+            editorPane.setCaretPosition( 0 );
             if ( panel != null ) {
                 validateSourceCode();
             }
-
         } finally {
             enableDocumentListener();
         }
