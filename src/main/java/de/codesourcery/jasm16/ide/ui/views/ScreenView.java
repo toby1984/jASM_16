@@ -36,6 +36,7 @@ public class ScreenView extends AbstractView
     private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
     private final DefaultKeyboard keyboard;
+    private volatile boolean debugCustomFonts = false;
     private final EmulatorFactory emulatorFactory;
     
     public ScreenView(EmulatorFactory emulatorFactory , IEmulator emulator) 
@@ -62,6 +63,14 @@ public class ScreenView extends AbstractView
         this.emulator.removeDevice( keyboard );
     }
 
+    public void setDebugCustomFonts(boolean debugCustomFonts)
+    {
+        this.debugCustomFonts = debugCustomFonts;
+        if ( panel != null ) {
+            panel.repaint();
+        }
+    }
+    
     @Override
     public void refreshDisplay()
     {
@@ -103,9 +112,23 @@ public class ScreenView extends AbstractView
         	public void paint(java.awt.Graphics g) 
              {
         		super.paint(g);
-        		BufferedImage original = screen.getScreenImage();
-        		final Image scaled = original.getScaledInstance( getWidth() , getHeight() , Image.SCALE_FAST );
-                ((Graphics2D) g).drawImage(  scaled , 0,0, null );
+        		
+        		final int height;
+        		if ( debugCustomFonts ) {
+        		    height = getHeight() / 2;
+        		} else {
+        		    height = getHeight();
+        		}
+        		
+        		BufferedImage original1 = screen.getScreenImage();
+        		final Image scaled1 = original1.getScaledInstance( getWidth() , height  , Image.SCALE_FAST );
+                ((Graphics2D) g).drawImage(  scaled1 , 0,0, null );
+
+                if ( debugCustomFonts ) {
+                    BufferedImage original2 = screen.getFontImage();
+                    final Image scaled2 = original2.getScaledInstance( getWidth() , height , Image.SCALE_FAST );
+                    ((Graphics2D) g).drawImage(  scaled2 , 0, height , null );
+                }
              }        	
         };
         
