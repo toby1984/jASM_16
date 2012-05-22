@@ -844,7 +844,8 @@ public abstract class ASTNode
      */
     public final ASTNode getNodeInRange(int offset) 
     {
-        if ( ! getTextRegion().contains( offset ) ) 
+        final ITextRegion region = getTextRegion();
+        if ( region == null || ! region.contains( offset ) ) 
         {
             return null;
         }
