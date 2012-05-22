@@ -1087,27 +1087,34 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         
         public void mouseClicked(java.awt.event.MouseEvent e) {
             
-            if ( e.getClickCount() == 2 && e.getButton() == MouseEvent.BUTTON1 ) 
+            if ( e.getClickCount() == 1 && 
+            	 e.getButton() == MouseEvent.BUTTON1 &&
+            	 ( e.getModifiers() & KeyEvent.VK_CONTROL) != 0 ) 
             {
                 // navigate to symbol definition
                 final ASTNode node = getASTNodeForLocation( e.getPoint() );
                 if ( node instanceof SymbolReferenceNode) 
                 {
                     final SymbolReferenceNode ref = (SymbolReferenceNode) node;
-                    Identifier identifier = ref.getIdentifier();
-                    if ( getCurrentCompilationUnit() != null ) {
-                        final ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
-                        if ( table.containsSymbol( identifier ) ) {
-                            final ITextRegion location = table.getSymbol( identifier ).getLocation();
-                            gotoLocation( location.getStartingOffset() );
-                        } else {
-                            // TODO: navigate to labels in other source files as well...
-                        }
-                    }
+                    gotoToSymbolDefinition( ref );
                 }
             }
         };
     };
+    
+    protected final void gotoToSymbolDefinition(SymbolReferenceNode ref) 
+    {
+        Identifier identifier = ref.getIdentifier();
+        if ( getCurrentCompilationUnit() != null ) {
+            final ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
+            if ( table.containsSymbol( identifier ) ) {
+                final ITextRegion location = table.getSymbol( identifier ).getLocation();
+                gotoLocation( location.getStartingOffset() );
+            } else {
+                // TODO: navigate to labels in other source files as well...
+            }
+        }
+    }
 
     private final JPanel createPanel() 
     {
