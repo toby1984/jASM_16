@@ -150,17 +150,23 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	@Override
 	public void addView(IView view) 
 	{
-	    final int index = tabbedPane.getTabCount();
-		final ViewWithPanel newView = new ViewWithPanel( view , index );
-		views.add( newView );
-		tabbedPane.add( view.getTitle() , newView.panel );
+	    internalAddView(view);
 	}
+	
+    private ViewWithPanel internalAddView(IView view) 
+    {
+        final int index = tabbedPane.getTabCount();
+        final ViewWithPanel newView = new ViewWithPanel( view , index );
+        views.add( newView );
+        tabbedPane.add( view.getTitle() , newView.panel );
+        return newView;
+    }	
 	
 	protected void selectTab(IView view) 
 	{
 	    for ( ViewWithPanel v : views ) {
 	        if ( v.view == view ) {
-	            v.toFront();
+	            tabbedPane.setSelectedIndex( v.tabIndex );
 	            return;
 	        }
 	    }
@@ -356,7 +362,8 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
         }
         
         editor = EditorFactory.createEditor( workspace , project , resource , this );
-        addView( editor );
+        final ViewWithPanel viewWithPanel = internalAddView( editor );
+        tabbedPane.setSelectedIndex( viewWithPanel.tabIndex );
         // open resource AFTER IView has been added to this container,
         // view may rely on methods of this container
         editor.openResource( project , resource );

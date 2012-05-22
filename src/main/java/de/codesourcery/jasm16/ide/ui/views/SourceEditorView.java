@@ -21,6 +21,10 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.HierarchyBoundsAdapter;
+import java.awt.event.HierarchyBoundsListener;
+import java.awt.event.HierarchyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
@@ -39,6 +43,8 @@ import javax.swing.JTable;
 import javax.swing.JToolBar;
 import javax.swing.JTree;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.event.CaretEvent;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -721,9 +727,24 @@ public class SourceEditorView extends SourceCodeView {
 		setColors( panel );  
 		cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
 		panel.add( splitPane , cnstrs );
+		
+        final AncestorListener l = new AncestorListener() {
+            
+            @Override
+            public void ancestorRemoved(AncestorEvent event) { }
+            
+            @Override
+            public void ancestorMoved(AncestorEvent event) { }
+            
+            @Override
+            public void ancestorAdded(AncestorEvent event) { 
+                splitPane.setDividerLocation( 0.8d );
+            }
+        };
+        panel.addAncestorListener( l );
 		return panel;
 	}
-
+	
 	@Override
 	public void disposeHook2()
 	{
