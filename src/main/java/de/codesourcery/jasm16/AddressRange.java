@@ -99,6 +99,12 @@ public final class AddressRange
     {
         return getStartAddress()+" - "+getEndAddress()+" ( "+size.toSizeInWords()+" / "+size.toSizeInBytes()+" )";
     }
+    
+    public boolean contains(int wordAddress) 
+    {
+    	return wordAddress >= this.start.getWordAddressValue() &&
+    		   wordAddress < this.end.getWordAddressValue();
+    }    
 
     public boolean contains(Address address) 
     {

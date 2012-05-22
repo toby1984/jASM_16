@@ -38,7 +38,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class MainMemory implements IMemory
+public final class MainMemory implements IMemory
 {
 	private static final Logger LOG = Logger.getLogger(MainMemory.class);
 	
@@ -146,13 +146,18 @@ public class MainMemory implements IMemory
 				{
 					mapRegion( createMainMemory( existing.getAddressRange() ) );
 					found = true;
-					break;
+					return; // break;
 				}
 			}
 			
 			if ( ! found ) {
 		        throw new IllegalArgumentException("Cannot unmap unknown region "+region);			    
 			}
+			
+			// TODO: this code is currently never executed because
+			// TODO: it incurs a HEAVY performance hit on 
+			// TODO: emulation performance for applications that
+			// TODO: do double-buffering (=remapping VRAM)
 			
             // merge adjactant memory regions that support it
             for ( int index = 1 ; index < regions.size() ; index++ )
@@ -231,29 +236,21 @@ public class MainMemory implements IMemory
 		}
 	}
 
-	@Override
-	public int read(int wordAddress)
-	{
-		final WordAddress address = Address.wordAddress( wordAddress );
-		final IMemoryRegion region = getRegion( address );
-		return region.read( address.minus( region.getAddressRange().getStartAddress() ) );
-	}
-
-	private IMemoryRegion getRegion(Address address) 
+	private IMemoryRegion getRegion(int wordAddress) 
 	{
 		synchronized( regions ) 
 		{
 			// TODO: performance - Maybe replace with binary search ??
 			for ( IMemoryRegion r : regions ) 
 			{
-				if ( r.getAddressRange().contains( address ) ) {
+				if ( r.getAddressRange().contains( wordAddress ) ) {
 					return r;
 				}
 			}
 		}
 
 		// address not mapped...
-		LOG.error("getRegion(): Access to unmapped address "+address);
+		LOG.error("getRegion(): Access to unmapped address 0x"+Misc.toHexString( wordAddress ) );
 		LOG.error("getRegion(): Memory layout:\n\n");
 		synchronized( regions ) 
 		{
@@ -262,51 +259,57 @@ public class MainMemory implements IMemory
 				LOG.error("getRegion(): " + r );
 			}
 		}
-		throw new RuntimeException("Address not mapped: "+address);
+		throw new RuntimeException("Address not mapped: 0x"+Misc.toHexString( wordAddress ));		
 	}
-
+	
 	@Override
 	public int read(Address adr)
 	{
-		final WordAddress address = adr.toWordAddress();
+		return read( adr.getWordAddressValue() );
+	}
+	
+	@SuppressWarnings("deprecation")
+	@Override
+	public int read(int address)
+	{
 		final IMemoryRegion region = getRegion( address );
-		return region.read( address.minus( region.getAddressRange().getStartAddress() ) );
+        int newValue = address - region.getAddressRange().getStartAddress().getWordAddressValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
+        }		
+		return region.read( newValue );
+	}	
+
+	private void checkWritePermitted(int wordAddress, int value ) throws MemoryProtectionFaultException
+	{
+		if ( writeProtectedMemoryRanges.isSet( wordAddress ) ) 
+		{
+			throw new MemoryProtectionFaultException("Trying to write value "+
+					Misc.toHexString( value )+" to address 0x"+Misc.toHexString( wordAddress )
+					+" that is part of write-protected range.",Address.wordAddress( wordAddress ));
+		}
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void write(int wordAddress, int value) throws MemoryProtectionFaultException
 	{
-		final WordAddress address = Address.wordAddress( wordAddress );
-
 		if ( checkWriteAccess ) {
-			checkWritePermitted(address,value);
+			checkWritePermitted(wordAddress,value);
 		}
-
-		final IMemoryRegion region = getRegion( address );
-		region.write( address.minus( region.getAddressRange().getStartAddress() ) , value );           
+		
+		final IMemoryRegion region = getRegion( wordAddress );
+        int newValue = wordAddress - region.getAddressRange().getStartAddress().getWordAddressValue();
+        if ( newValue < 0 ) {
+            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
+        }			
+		region.write( newValue , value );
 	}
-
-	private void checkWritePermitted(WordAddress address, int value ) throws MemoryProtectionFaultException
-	{
-		if ( writeProtectedMemoryRanges.isSet( address.getWordAddressValue() ) ) 
-		{
-			throw new MemoryProtectionFaultException("Trying to write value "+
-					Misc.toHexString( value )+" to address 0x"+Misc.toHexString( address )
-					+" that is part of write-protected range.",address);
-		}
-	}
-
+	
 	@Override
 	public void write(Address adr, int value) throws MemoryProtectionFaultException
 	{
-		final WordAddress address = adr.toWordAddress();
-
-		if ( checkWriteAccess ) {
-			checkWritePermitted(address,value);
-		}
-
-		final IMemoryRegion region = getRegion( address );
-		region.write( address.minus( region.getAddressRange().getStartAddress() ) , value );        
+		write( adr.getWordAddressValue() , value );
 	}
 
 	@Override

@@ -36,6 +36,52 @@ public class MainMemoryTest extends TestCase {
 	    memory = new MainMemory(65536);
 	}
 	
+	public static void main(String[] args) throws Exception {
+		
+		MainMemoryTest test = new MainMemoryTest();
+		test.setUp();
+		test.testRemappingSpeed();
+	}
+	
+	public void testRemappingSpeed() {
+		
+		AddressRange range1 = new AddressRange( Address.wordAddress( 0x8000 ) , 
+				Size.words( 384 ) );
+		MemoryRegion region1 = new MemoryRegion("region #1" , range1 , false );		
+		
+		AddressRange range2 = new AddressRange( Address.wordAddress( 0x8180 ) , 
+				Size.words( 384 ) );
+		MemoryRegion region2 = new MemoryRegion("region #2" , range2 , false );			
+		
+		MemoryRegion current = null;
+		long delta = -System.currentTimeMillis();
+		long timeUnmap = 0;
+		long timeMap= 0;
+		for ( int i = 0 ; i < 500 ; i++ ) {
+			if ( current == null ) {
+				current = region1;
+			} else {
+				long time1 = -System.currentTimeMillis();
+				memory.unmapRegion( current );
+				time1 += System.currentTimeMillis();
+				timeUnmap += time1;
+				if ( current == region1 ) {
+					current = region2;
+				} else {
+					current = region1;
+				}
+			}
+			long time2 = -System.currentTimeMillis();
+			memory.mapRegion( current );
+			time2 += System.currentTimeMillis();
+			timeMap += time2;
+		}
+		delta += System.currentTimeMillis();
+		System.out.println("Time "+delta+" millis.");
+		System.out.println("MAP: Time "+timeMap+" millis.");
+		System.out.println("UNMAP: Time "+timeUnmap+" millis.");
+	}
+	
 	public void testMemoryRemapping() {
 		
 		/*
