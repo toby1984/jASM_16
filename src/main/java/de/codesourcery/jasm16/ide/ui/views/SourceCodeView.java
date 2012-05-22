@@ -1088,7 +1088,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             
             if ( e.getClickCount() == 1 && 
             	 e.getButton() == MouseEvent.BUTTON1 &&
-            	 ( e.getModifiers() & KeyEvent.VK_CONTROL) != 0 ) 
+            	 ( e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK ) != 0 ) 
             {
                 // navigate to symbol definition
                 final ASTNode node = getASTNodeForLocation( e.getPoint() );
@@ -1406,13 +1406,14 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     
     protected final void showSearchDialog() 
     {
+    	final int cursorPos = editorPane.getCaretPosition();
     	final String selection = editorPane.getSelectedText();
     	if ( searchDialog == null ) {
     		searchDialog = new SearchDialog();
     		searchDialog.setVisible( true );
-    		searchDialog.activate(selection);
+    		searchDialog.activate(selection,cursorPos);
     	} else {
-    		searchDialog.activate(selection);
+    		searchDialog.activate(selection,cursorPos);
     	}
     }
     
@@ -1536,9 +1537,11 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			pack();
 		}
 		
-		public void activate(String selectedText) 
+		public void activate(String selectedText,int cursorPos) 
 		{
 			setVisible(true);
+			
+			currentIndex = cursorPos;
 			final String text = StringUtils.isNotBlank( selectedText ) ? selectedText : lastSearchPattern;
 			if ( text != null ) {
 				searchPattern.setText( selectedText );
