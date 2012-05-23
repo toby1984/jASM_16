@@ -101,6 +101,9 @@ public class SourceEditorView extends SourceCodeView {
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
 	
+	private final JButton navigationHistoryBack = new JButton("<");
+	private final JButton navigationHistoryForward = new JButton(">");
+	
     private final SymbolTableModel symbolTableModel = new SymbolTableModel();
     private final JTable symbolTable = new JTable( symbolTableModel );	
 	
@@ -624,6 +627,13 @@ public class SourceEditorView extends SourceCodeView {
 		return panel;
 	}
 
+	@Override
+	protected void navigationHistoryPointerChanged() 
+	{
+		navigationHistoryBack.setEnabled( canNavigationHistoryBack() );
+		navigationHistoryForward.setEnabled( canNavigationHistoryForward() );
+	}
+	
 	protected JPanel createPanel() 
 	{
 		// button panel
@@ -654,9 +664,20 @@ public class SourceEditorView extends SourceCodeView {
 			}
 		} );
 
-        GridBagConstraints cnstrs = constraints( 0, 0 , GridBagConstraints.NONE );		
+        GridBagConstraints cnstrs = constraints( 0, 0 , false , true , GridBagConstraints.NONE );		
 		toolbar.add( showASTButton , cnstrs );
-
+		
+		// navigation history back button
+		cnstrs = constraints( 1, 0 , false , true , GridBagConstraints.NONE );		
+		toolbar.add( navigationHistoryBack, cnstrs );
+		navigationHistoryBack.setEnabled( false );
+		
+		// navigation history forward button
+		cnstrs = constraints( 2, 0 , true , true  , GridBagConstraints.NONE );		
+		toolbar.add( navigationHistoryForward , cnstrs );
+		navigationHistoryForward.setEnabled( false );
+		
+		// create status area
 		statusArea.setPreferredSize( new Dimension(400, 100 ) );
 		statusArea.setModel( statusModel );
 		setColors( statusArea ); 
