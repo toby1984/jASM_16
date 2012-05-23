@@ -203,10 +203,13 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
        <artifactId>exec-maven-plugin</artifactId>
        <version>1.2.1</version>
        <configuration>
-        <mainClass>de.codesourcery.jasm16.utils.ASTInspector</mainClass>
+        <!-- <mainClass>de.codesourcery.jasm16.utils.ASTInspector</mainClass> -->
+        <mainClass>de.codesourcery.jasm16.ide.IDEMain</mainClass>
+<!--
         <arguments>
           <argument>${basedir}/samples/specsample.dasm16</argument>
         </arguments>
+-->
        </configuration>
      </plugin>
      <plugin>

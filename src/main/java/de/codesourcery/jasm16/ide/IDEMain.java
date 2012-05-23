@@ -85,7 +85,7 @@ public class IDEMain
     		throw new IOException("Unable to create new project '"+projectName+"'");
     	}
     	
-    	final ClassPathResource r = new ClassPathResource("hello_world.dasm16",ResourceType.SOURCE_CODE);
+    	final ClassPathResource r = new ClassPathResource("tetris.dasm16",ResourceType.SOURCE_CODE);
     	
     	final File sourceFile = new File( sourceFolders.get(0) , "sample.dasm16" );
         final IResource file = new FileResource( sourceFile ,ResourceType.SOURCE_CODE );
