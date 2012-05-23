@@ -65,6 +65,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.text.AbstractDocument.DefaultDocumentEvent;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.DefaultStyledDocument.AttributeUndoableEdit;
 import javax.swing.text.Document;
 import javax.swing.text.Highlighter;
@@ -1462,7 +1463,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			messageArea.setBorder(null);
 			messageArea.setFocusable(false);			
 			
-			setDefaultCloseOperation( JFrame.HIDE_ON_CLOSE );
+			setDefaultCloseOperation( JFrame.DO_NOTHING_ON_CLOSE );
 			
 			final JPanel panel = new JPanel();
 			panel.setLayout( new GridBagLayout() );
@@ -1523,6 +1524,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 				@Override
 				public void actionPerformed(ActionEvent e) {
 					setVisible(false);
+					clearHighlight();
 				}
 			});
 			
@@ -1537,7 +1539,40 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			pack();
 		}
 		
-		public void activate(String selectedText,int cursorPos) 
+		private volatile Object currentHighlight;
+		
+		protected final void highlightLocation(ITextRegion region) {
+			
+			if (region == null) {
+				throw new IllegalArgumentException("region must not be null");
+			}
+			
+			try {
+				if ( currentHighlight == null ) {
+					currentHighlight = editorPane.getHighlighter().addHighlight(
+							region.getStartingOffset() ,
+							region.getEndOffset() , 
+							new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
+				} else {
+					editorPane.getHighlighter().changeHighlight( 
+							currentHighlight,
+							region.getStartingOffset() , 
+							region.getEndOffset() );
+				}
+			} catch (BadLocationException e) {
+				LOG.error("highlightLocation(): Bad location "+region,e);
+				throw new RuntimeException("Bad text location "+region,e);
+			}
+		}
+		
+		protected final void clearHighlight() {
+			if ( currentHighlight != null ) {
+				editorPane.getHighlighter().removeHighlight( currentHighlight );
+				currentHighlight = null;
+			}
+		}
+		
+		public final void activate(String selectedText,int cursorPos) 
 		{
 			setVisible(true);
 			
@@ -1567,6 +1602,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			if ( lastMatch != -1 ) // advance past last match 
 			{
 				if ( ! advance( source , direction , pattern , lastMatch ) ) {
+					clearHighlight();
 					showNotFoundMessage();
 					return;
 				}
@@ -1593,10 +1629,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					gotoLocation( currentIndex );
 					editorPane.requestFocus();
 					editorPane.setCaretPosition( currentIndex );
+					highlightLocation( new TextRegion( currentIndex , pattern.length() ) );
 					// TODO: Maybe show 'match found' message ?
 					return;
 				}
 				if ( ! advance( source , direction , pattern , currentIndex ) ) {
+					clearHighlight();
 					showNotFoundMessage();
 					break;
 				}
@@ -1605,6 +1643,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			if ( lastMatch != -1 ) {
 				currentIndex = lastMatch;
 			}
+			clearHighlight();
 			showNotFoundMessage();
 		}
 		
