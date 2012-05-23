@@ -33,6 +33,7 @@ import java.util.NoSuchElementException;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
@@ -58,6 +59,7 @@ import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Label;
@@ -72,6 +74,8 @@ import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
@@ -88,6 +92,8 @@ public class SourceEditorView extends SourceCodeView {
 	// UI widgets
 
 	private volatile JPanel panel;
+	
+	private final ViewContainerManager viewContainerManager;
 	
 	private JFrame astInspector;
 	private final JTree astTree = new JTree();
@@ -131,7 +137,7 @@ public class SourceEditorView extends SourceCodeView {
 		    }
 		}
 	};
-	
+
 	protected  static final class StatusMessage 
 	{
 		private final Severity severity;
@@ -346,10 +352,13 @@ public class SourceEditorView extends SourceCodeView {
 	    return astInspector != null && astInspector.isVisible();
 	}
 	
-	public SourceEditorView(IResourceResolver resourceResolver,IWorkspace workspace) 
+	public SourceEditorView(IResourceResolver resourceResolver,IWorkspace workspace,
+			ViewContainerManager viewContainerManager)
+			
 	{
 	    super( resourceResolver,workspace , true );
 		workspace.addWorkspaceListener( workspaceListener );
+		this.viewContainerManager = viewContainerManager;
 	}
 
 	protected void setStatusMessage(String message) {
@@ -753,10 +762,12 @@ public class SourceEditorView extends SourceCodeView {
 	}
 
 	@Override
-	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
+	public IEditorView getOrCreateEditor(IAssemblyProject project, 
+			IResource resource,
+			IResourceResolver resourceResolver) 
 	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView(resourceResolver,this.workspace);
+			return new SourceEditorView(resourceResolver,this.workspace,viewContainerManager);
 		}
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
 	}
@@ -764,6 +775,45 @@ public class SourceEditorView extends SourceCodeView {
 	@Override
 	public String getID() {
 		return "source-editor";
+	}
+	
+	@Override
+	protected JPopupMenu createPopupMenu(ASTNode node, int caretPosition,
+			String currentSelection) 
+	{
+		final JPopupMenu popup = new JPopupMenu();
+		boolean gotEntries = false;
+		
+		final ICompilationUnit unit = getCurrentCompilationUnit();
+		
+		if ( getCurrentProject() != null && unit != null &&
+			 unit.getAST() != null && ! unit.hasErrors() ) 
+		{
+			try 
+			{
+				if ( WorkspaceExplorer.canOpenInDebugPerspective( getCurrentProject() ) ) 
+				{
+					final IResource executable = getCurrentProject().getBuilder().getExecutable();
+					addMenuEntry( popup , "Open in debugger", new ActionListener() {
+
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							try {
+								WorkspaceExplorer.openDebugPerspective( getCurrentProject() , executable ,
+										viewContainerManager );
+							} catch (IOException e1) {
+								LOG.error("actionPerformed(): ",e1);
+							} 
+						}
+					});
+					gotEntries  = true;
+				}
+			} catch (IOException e) {
+				LOG.error("createPopupMenu(): ",e);
+			}
+		}
+		
+		return gotEntries ? popup : null;
 	}
 
 }

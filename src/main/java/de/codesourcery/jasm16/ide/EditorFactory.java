@@ -18,15 +18,24 @@ package de.codesourcery.jasm16.ide;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.SourceEditorView;
 
 public class EditorFactory {
 
-	public static IEditorView createEditor(IWorkspace workspace , IAssemblyProject project,IResource resource,IResourceResolver resolver) {
-		
+	private final ViewContainerManager viewContainerManager; 
+	private final IWorkspace workspace;
+	
+	public EditorFactory(IWorkspace workspace,ViewContainerManager viewContainerManager) {
+		this.workspace=workspace;
+		this.viewContainerManager= viewContainerManager;
+	}
+	
+	public IEditorView createEditor( IAssemblyProject project, IResource resource, IResourceResolver resolver) 
+	{
 		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView(resolver,workspace);
+			return new SourceEditorView(resolver,workspace,viewContainerManager);
 		}
 		throw new IllegalArgumentException("Unsupported resource: "+resource);
 	}

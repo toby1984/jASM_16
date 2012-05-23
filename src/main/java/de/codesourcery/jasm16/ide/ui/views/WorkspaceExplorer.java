@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -50,12 +49,10 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.ide.EmulatorFactory;
-import de.codesourcery.jasm16.ide.IApplicationConfig;
+import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
@@ -64,7 +61,6 @@ import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -72,32 +68,29 @@ public class WorkspaceExplorer extends AbstractView {
 
 	private static final Logger LOG = Logger.getLogger(WorkspaceExplorer.class);
 
-	private final EmulatorFactory emulatorFactory;
 	private final ViewContainerManager perspectivesManager;
 	private final IWorkspace workspace;
-	private final IApplicationConfig applicationConfig;
-
+	private final EditorFactory editorFactory;
+	
 	private WorkspaceTreeModel treeModel;
 
 	private JPanel panel = null;
 	private final JTree tree = new JTree();
 
-	public WorkspaceExplorer(EmulatorFactory emulatorFactory , IWorkspace workspace,ViewContainerManager perspectivesManager,IApplicationConfig appConfig) 
+	public WorkspaceExplorer(IWorkspace workspace,
+			ViewContainerManager perspectivesManager,
+			EditorFactory editorFactory) 
 	{
-		if ( emulatorFactory == null ) {
-			throw new IllegalArgumentException("emulatorFactory must not be NULL.");
-		}
 		if (workspace == null) {
 			throw new IllegalArgumentException("workspace must not be NULL");
 		}
 		if ( perspectivesManager == null ) {
 			throw new IllegalArgumentException("perspectivesManager must not be NULL.");
 		}
-		if ( appConfig == null ) {
-			throw new IllegalArgumentException("appConfig must not be NULL.");
+		if ( editorFactory == null ) {
+			throw new IllegalArgumentException("editorFactory must not be null");
 		}
-		this.emulatorFactory = emulatorFactory;
-		this.applicationConfig = appConfig;
+		this.editorFactory = editorFactory;
 		this.perspectivesManager = perspectivesManager;
 		this.workspace = workspace;
 	}
@@ -328,7 +321,7 @@ public class WorkspaceExplorer extends AbstractView {
 		EditorContainer editorContainer = (EditorContainer ) getViewContainer().getViewByID( EditorContainer.VIEW_ID );
 
 		if ( editorContainer == null ) {
-			editorContainer = new EditorContainer("Editors",getViewContainer());
+			editorContainer = new EditorContainer("Editors",getViewContainer(),editorFactory);
 			getViewContainer().addView( editorContainer );
 		}
 		editorContainer.openResource( workspace , project , resource );
@@ -412,7 +405,7 @@ public class WorkspaceExplorer extends AbstractView {
 					public void actionPerformed(ActionEvent e) 
 					{
 						try {
-							openDebugPerspective( project , executable );
+							openDebugPerspective( project , executable , perspectivesManager);
 						} 
 						catch (IOException e1) {
 							LOG.error("Failed to open debug perspective for "+project+" , resource "+executable,e1);
@@ -564,8 +557,26 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		return false;
 	}
+	
+	public static boolean canOpenInDebugPerspective(IAssemblyProject project) throws IOException 
+	{
+		// source level view depends on AST being available for  
+		// compilation units and we want the debugger to run
+		// the latest changes anyway... rebuild if necessary
+		if ( project.getBuilder().isBuildRequired() ) 
+		{
+			System.out.println("Building "+project.getName()+" before opening debug perspective");		    
+			if ( ! project.getBuilder().build() ) 
+			{
+				System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
+				return false;
+			}
+		}
+		return true;
+	}
 
-	private void openDebugPerspective(IAssemblyProject project, IResource executable) throws IOException
+	public static void openDebugPerspective(IAssemblyProject project, 
+			IResource executable,ViewContainerManager perspectivesManager) throws IOException
 	{
 		if ( project == null ) {
 			throw new IllegalArgumentException("project must not be NULL.");
@@ -574,56 +585,13 @@ public class WorkspaceExplorer extends AbstractView {
 			throw new IllegalArgumentException("executable must not be NULL.");
 		}
 
-		// source level view depends on AST being available for  
-		// compilation units and we want the debugger to run
-		// the latest changes anyway... rebuild if necessary
-		boolean buildRequired = false;
-		for ( ICompilationUnit unit : project.getBuilder().getCompilationUnits() ) {
-			if ( unit.getAST() == null ) {
-				buildRequired = true;
-				break;
-			}
-		}
-
-		if ( buildRequired ) 
+		if ( canOpenInDebugPerspective( project ) ) 
 		{
-			System.out.println("Building "+project.getName()+" before opening debug perspective");		    
-			if ( ! project.getBuilder().build() ) 
-			{
-				System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
-				return;
-			}
+			final DebuggingPerspective p= perspectivesManager.getOrCreateDebuggingPerspective();
+			p.openExecutable( project , executable );
+			p.setVisible( true );
+			p.toFront();            
 		}
-
-		final List<? extends IViewContainer> perspectives = perspectivesManager.getPerspectives( DebuggingPerspective.ID );
-
-		for ( IViewContainer existing : perspectives ) {
-			if ( existing instanceof DebuggingPerspective) {
-				final DebuggingPerspective p = (DebuggingPerspective) existing;
-				if ( p.getCurrentProject() != null && p.getCurrentProject().getName().equals( project.getName() ) ) {
-					p.openExecutable( project , executable );
-					p.toFront();
-					return;
-				}
-			} 
-		}
-
-	    final List<IViewContainer> editorContainer = perspectivesManager.getPerspectives( EditorContainer.VIEW_ID );
-	      
-		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , workspace , applicationConfig , 
-		        editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
-		p.openExecutable( project , executable );
-		p.setVisible( true );
-		p.toFront();            
-		perspectivesManager.addViewContainer( p );        
-	}
-
-	private void addMenuEntry(JPopupMenu menu,String title, final ActionListener listener) 
-	{
-		final JMenuItem menuItem = new JMenuItem(title);
-		menuItem.addActionListener( listener );
-		menu.add(menuItem);		
 	}
 
 	protected class PopupListener extends MouseAdapter 

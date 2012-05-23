@@ -20,6 +20,11 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.ide.EmulatorFactory;
+import de.codesourcery.jasm16.ide.IApplicationConfig;
+import de.codesourcery.jasm16.ide.IWorkspace;
+
 /**
  * 
  * 
@@ -29,6 +34,16 @@ public class ViewContainerManager implements IViewContainerListener
 {
     // @GuardedBy( containers )
     private final List<IViewContainer> containers = new ArrayList<IViewContainer>();
+    
+    private final EmulatorFactory emulatorFactory;
+    private final IWorkspace workspace;
+    private final IApplicationConfig applicationConfig;
+    
+    public ViewContainerManager(EmulatorFactory emulatorFactory,IWorkspace workspace,IApplicationConfig applicationConfig) {
+    	this.emulatorFactory = emulatorFactory;
+    	this.workspace = workspace;
+    	this.applicationConfig = applicationConfig;
+    }
     
     public void addViewContainer(Perspective p) 
     {
@@ -77,5 +92,34 @@ public class ViewContainerManager implements IViewContainerListener
     public void viewContainerClosed(IViewContainer container)
     {
         removeViewContainer( container );
+    }
+    
+    public DebuggingPerspective getOrCreateDebuggingPerspective() {
+
+		final List<? extends IViewContainer> perspectives = 
+				getPerspectives( DebuggingPerspective.ID );
+
+		for ( IViewContainer existing : perspectives ) {
+			if ( existing instanceof DebuggingPerspective) 
+			{
+				final DebuggingPerspective p = (DebuggingPerspective) existing;
+				p.setVisible( true );
+				p.toFront();
+				return p;
+			} 
+		}
+
+	    final List<IViewContainer> editorContainer = 
+	    		getPerspectives( EditorContainer.VIEW_ID );
+	      
+		// perspective not visible yet, create it
+		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , 
+				workspace , 
+				applicationConfig , 
+		        editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
+		addViewContainer( p );
+		p.setVisible( true );
+	    p.toFront();	
+    	return p;
     }
 }

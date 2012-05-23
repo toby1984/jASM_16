@@ -52,6 +52,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	private final String title;
 	
 	private final ViewContainerHelper helper = new ViewContainerHelper();
+	private final EditorFactory editorFactory;
 	   
 	private final List<ViewWithPanel> views = new ArrayList<ViewWithPanel>();
 	private final JTabbedPane tabbedPane = new JTabbedPane();
@@ -86,8 +87,9 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 	}
 	
-	public EditorContainer(String title, IViewContainer parent) {
+	public EditorContainer(String title, IViewContainer parent,EditorFactory editorFactory) {
 		this.title = title;
+		this.editorFactory = editorFactory;
 	}
 	
 	@Override
@@ -361,7 +363,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
             return editor;
         }
         
-        editor = EditorFactory.createEditor( workspace , project , resource , this );
+        editor = editorFactory.createEditor( project , resource , this );
         final ViewWithPanel viewWithPanel = internalAddView( editor );
         tabbedPane.setSelectedIndex( viewWithPanel.tabIndex );
         // open resource AFTER IView has been added to this container,

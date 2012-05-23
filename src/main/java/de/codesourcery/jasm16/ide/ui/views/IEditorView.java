@@ -25,7 +25,9 @@ public interface IEditorView extends IView
 {
 	public boolean hasUnsavedContent();
 
-	public IEditorView getOrCreateEditor(IAssemblyProject project , IResource resource,IResourceResolver resourceResolver);
+	public IEditorView getOrCreateEditor(IAssemblyProject project , 
+			IResource resource,
+			IResourceResolver resourceResolver);
 	
 	public void openResource(IAssemblyProject project,IResource resource) throws IOException;
 	

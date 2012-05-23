@@ -22,6 +22,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GridBagConstraints;
 import java.awt.Point;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -29,7 +30,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.swing.Action;
 import javax.swing.JComponent;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
@@ -59,6 +62,13 @@ public abstract class AbstractView implements IView
     	return getPanel();
     }
     
+	protected final void addMenuEntry(JPopupMenu menu,String title, final ActionListener listener) 
+	{
+		final JMenuItem menuItem = new JMenuItem(title);
+		menuItem.addActionListener( listener );
+		menu.add(menuItem);		
+	}
+	
     @Override
     public final void dispose()
     {

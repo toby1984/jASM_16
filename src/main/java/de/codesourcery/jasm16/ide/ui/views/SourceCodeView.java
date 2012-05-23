@@ -19,11 +19,11 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Event;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.PopupMenu;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -33,8 +33,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -47,6 +45,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
@@ -72,6 +71,7 @@ import javax.swing.text.Highlighter;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import javax.swing.tree.TreePath;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
@@ -109,6 +109,7 @@ import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
+import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer.WorkspaceTreeNode;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
@@ -130,7 +131,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     // UI widgets
     private volatile JPanel panel;
 
+	private Object currentHighlight;    
     private volatile boolean editable;
+    private SearchDialog searchDialog;
+    private final PopupListener popupListener = new PopupListener();
     private final UndoManager undoManager = new UndoManager();
     private final UndoableEditListener undoListener = new  UndoableEditListener() 
     {
@@ -1130,6 +1134,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
             setColors( editorScrollPane );
             editorPane.addCaretListener( listener );
             editorPane.addMouseListener( mouseListener );
+            editorPane.addMouseListener( popupListener );
         } finally {
             enableDocumentListener();
         }
@@ -1389,6 +1394,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
     protected final int getModelOffsetForLocation(Point p) {
         return editorPane.viewToModel( p );
     }
+    
+    protected final void addPopupMenu(PopupMenu menu) {
+    	editorPane.add( menu );
+    }
 
     protected final ASTNode getASTNodeForLocation(Point p) {
         final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
@@ -1403,7 +1412,33 @@ public class SourceCodeView extends AbstractView implements IEditorView {
         return null;
     }
     
-    private SearchDialog searchDialog;
+	protected class PopupListener extends MouseAdapter 
+	{
+		public void mousePressed(MouseEvent e) {
+			maybeShowPopup(e);
+		}
+
+		public void mouseReleased(MouseEvent e) {
+			maybeShowPopup(e);
+		}
+
+		private void maybeShowPopup(MouseEvent e) 
+		{
+			if (e.isPopupTrigger()) 
+			{
+				final ASTNode node = getASTNodeForLocation( e.getPoint() );
+				final JPopupMenu menu = createPopupMenu( node , editorPane.getCaretPosition(),
+						editorPane.getSelectedText() );
+				if ( menu != null ) {
+					menu.show(e.getComponent(),e.getX(), e.getY());
+				}
+			}
+		}
+	}    
+	
+	protected JPopupMenu createPopupMenu(ASTNode node, int caretPosition,String currentSelection) {
+		return null;
+	}
     
     protected final void showSearchDialog() 
     {
@@ -1538,8 +1573,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			setAlwaysOnTop(true);
 			pack();
 		}
-		
-		private volatile Object currentHighlight;
 		
 		protected final void highlightLocation(ITextRegion region) {
 			
@@ -1682,4 +1715,5 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			messageArea.setText( message );
 		}
     }
+    
 }

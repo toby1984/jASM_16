@@ -248,6 +248,19 @@ public class AssemblyProject implements IAssemblyProject
             }
             throw new RuntimeException("Internal error, more than one executable in project "+AssemblyProject.this+": "+results);
         }
+        
+        public boolean isBuildRequired() 
+        {
+    		for ( ICompilationUnit unit : getCompilationUnits() ) {
+    			if ( unit.getAST() == null ) {
+    				return true;
+    			}
+    		}
+    		if ( getExecutable() == null ) {
+    			return true;
+    		}
+    		return false;
+        }
 
         @Override
         public ICompilationUnit getCompilationUnit(IResource source) 

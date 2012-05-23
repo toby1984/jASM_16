@@ -40,15 +40,15 @@ public class IDEMain
 {
 	private static final Logger LOG = Logger.getLogger(IDEMain.class);
 
-	private final ViewContainerManager viewContainerManager = new ViewContainerManager();
-    private IWorkspace workspace;
+	private final ViewContainerManager viewContainerManager;
+    private final IWorkspace workspace;
     
     public static void main(String[] args) throws IOException, ProjectAlreadyExistsException
     {
-        new IDEMain().run();
+        new IDEMain();
     }
     
-    private void run() throws IOException, ProjectAlreadyExistsException
+    public IDEMain() throws IOException, ProjectAlreadyExistsException
     {
     	final File appConfigFile = new File( Misc.getUserHomeDirectory() , ApplicationConfig.FILE_NAME );
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
@@ -61,7 +61,11 @@ public class IDEMain
 		createSampleProject( "sample-project" );
 		
 		final Perspective desktop = new Perspective( "desktop" , appConfig );
-		desktop.addView( new WorkspaceExplorer( emulatorFactory , workspace , viewContainerManager , appConfig ) );
+		
+		viewContainerManager = new ViewContainerManager(emulatorFactory,workspace,appConfig);
+		
+		EditorFactory editorFactory = new EditorFactory( workspace , viewContainerManager );
+		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , editorFactory ) );
     	desktop.setVisible( true );
     	viewContainerManager.addViewContainer( desktop );
     }
