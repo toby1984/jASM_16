@@ -29,6 +29,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.Operator;
 
 /**
  * An AST node that represents values for initialized memory (.dat /.word/.byte).
@@ -114,9 +115,10 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 
 				if ( expectingData ) 
 				{
-					if ( token.hasType( TokenType.CHARACTERS ) || 
-							token.hasType( TokenType.NUMBER_LITERAL ) ||
-							token.hasType( TokenType.PARENS_OPEN ) ) 
+					if ( (token.hasType(TokenType.OPERATOR ) && Operator.fromString( token.getContents()  ) == Operator.MINUS) ||
+					     token.hasType( TokenType.CHARACTERS )  || 
+					     token.hasType( TokenType.NUMBER_LITERAL ) ||
+						 token.hasType( TokenType.PARENS_OPEN ) ) 
 					{
 						try {
 							context.mark();

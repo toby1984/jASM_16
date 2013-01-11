@@ -52,6 +52,29 @@ public class InitializedMemoryNodeTest extends TestHelper
         assertSourceCode( ".dat 0x01" , result );        
     }  
     
+    public void testParseInitializedMemoryWithSignedValue() throws ParseException, IOException 
+    {
+        final String source = ".dat -2";
+
+        ICompilationUnit unit = CompilationUnit.createInstance("string",source);
+        final IParseContext context = createParseContext( unit );
+        
+        final ASTNode result = new InitializedMemoryNode().parse( context );
+        
+        assertFalse( getErrors( source , result ) , result.hasErrors() );
+        assertEquals( InitializedMemoryNode.class , result.getClass() );
+        
+        final InitializedMemoryNode node = (InitializedMemoryNode) result;
+        resolveSymbols( unit , node );
+        final int size = node.getSizeInBytes( 0 );
+        assertEquals( 2 , size );
+        final byte[] data = node.getBytes();
+        assertEquals( 2 , data.length );
+        assertEquals( -1 , data[0] );
+        assertEquals( -2 , data[1] );
+        assertSourceCode( ".dat -2" , result );        
+    }    
+    
     public void testParseInitializedMemory1() throws ParseException, IOException 
     {
         final String source = ".dat (1+2)";
