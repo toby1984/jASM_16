@@ -137,6 +137,8 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
               <basedir>${basedir}/src</basedir>
               <excludes>
                 <exclude>**/log4j.properties</exclude>
+                <exclude>**/*.dasm16</exclude>
+                <exclude>**/*.dcpu16</exclude>
               </excludes>
           </configuration>
           <executions>
