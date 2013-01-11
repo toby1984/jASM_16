@@ -205,4 +205,6 @@ public interface IEmulator
 	public void setOutput(ILogger logger);
 	
 	public ILogger getOutput();
+	
+	public void setIgnoreAccessToUnknownDevices(boolean yesNo);
 }

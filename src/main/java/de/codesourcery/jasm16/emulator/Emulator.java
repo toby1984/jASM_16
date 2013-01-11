@@ -311,6 +311,7 @@ public class Emulator implements IEmulator {
 
     private final AtomicLong lastStart = new AtomicLong(0);
 
+    private volatile boolean ignoreAccessToUnknownDevices=false;    
     private volatile boolean checkMemoryWrites = false;
 
     private volatile int cycleCountAtLastStart=0;
@@ -1847,15 +1848,19 @@ public class Emulator implements IEmulator {
         final int hardwareSlot = operand.value;
 
         final IDevice device = getDeviceForSlot( hardwareSlot );
+        
+        final int cyclesConsumed;
         if ( device == null ) 
         {
-            LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
-            out.warn("No device at slot #"+hardwareSlot);
-            throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+            if ( ! ignoreAccessToUnknownDevices ) {
+                LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
+                out.warn("No device at slot #"+hardwareSlot);
+                throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+            }
+            cyclesConsumed = 0;
+        } else {
+            cyclesConsumed = device.handleInterrupt( this );
         }
-
-        final int cyclesConsumed = device.handleInterrupt( this );
-
         return 4+operand.value+cyclesConsumed;
     }
 
@@ -2838,5 +2843,11 @@ public class Emulator implements IEmulator {
     public boolean isMemoryProtectionEnabled()
     {
         return checkMemoryWrites;
-    }     
+    }
+    
+    @Override
+    public void setIgnoreAccessToUnknownDevices(boolean yesNo)
+    {
+        this.ignoreAccessToUnknownDevices = yesNo;
+    }
 }

@@ -30,6 +30,7 @@ public class EmulatorFactory
         outLogger.setDebugEnabled( false );
 		result.setOutput( outLogger );
         result.setMemoryProtectionEnabled( false );
+        result.setIgnoreAccessToUnknownDevices( false );
         result.addDevice( new DefaultClock() );
         return result;
     }
