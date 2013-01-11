@@ -155,13 +155,15 @@ public interface IEmulator
     
     public void removeEmulationListener(IEmulationListener listener);     
     
+    public void removeAllEmulationListeners();
+    
     // emulator control
     /**
      * Reset the emulator,optionally clearing the memory as well.
      * 
-     * <p>Note that calling this method will also delete all one-shot breakpoints.</p>     
+     * <p>This method stops the emulator and resets CPU,all devices and (optionally) the memory. Note that calling this method will also delete all one-shot breakpoints.</p>     
      * 
-     * @param clearMemory
+     * @param clearMemory whether the memory should be cleared
      */
     public void reset(boolean clearMemory);
     

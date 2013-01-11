@@ -186,6 +186,17 @@ public class Emulator implements IEmulator {
 			}
 		}        
 
+		public void removeAllEmulationListeners() 
+		{
+            synchronized (emuListeners) {
+                emuListeners.clear();
+                beforeCommandExecListeners.clear();
+                continuousModeBeforeCommandExecListeners.clear();
+                continuousModeAfterCommandExecListeners.clear();
+                afterCommandExecListeners.clear();
+            } 		    
+		}
+		
 		public void removeEmulationListener(IEmulationListener listener)
 		{
 			if (listener == null) {
@@ -573,16 +584,17 @@ public class Emulator implements IEmulator {
 	{
 	    this.lastEmulationError = cause;
 	    
-		clockThread.stopSimulation();
-		
-		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.onStop( emulator , previousPC , cause );
-			}
-		});  
+		if ( clockThread.stopSimulation() ) 
+		{
+    		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+    
+    			@Override
+    			public void invoke(IEmulator emulator, IEmulationListener listener)
+    			{
+    				listener.onStop( emulator , previousPC , cause );
+    			}
+    		});  
+		}
 		
 		// remove all internal breakpoints
 		final List<Breakpoint> internalBPs = new ArrayList<Breakpoint>();
@@ -649,7 +661,12 @@ public class Emulator implements IEmulator {
 			}
 		}		
 		
-        public synchronized void stopSimulation() 
+		/**
+		 * Stop simulation.
+		 * 
+		 * @return true if the simulation was currently running and has been stopped, false if the simulation was already stopped.
+		 */
+        public synchronized boolean stopSimulation() 
         {
             if ( isRunnable == true ) 
             {               
@@ -659,7 +676,9 @@ public class Emulator implements IEmulator {
                 } else {
                     sendToClockThread( Command.stopCommand() );
                 }
-            }
+                return true;
+            } 
+            return false;
         }    		
 		
 		private void sendToClockThread(Command cmd) 
@@ -1504,13 +1523,13 @@ public class Emulator implements IEmulator {
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
 	}
 
-	private int handleASR(int instructionWord) {
+	private int handleASR(int instructionWord) { // ASR b,a
 		// sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
 		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
-		final int acc = target.value >> source.value;
-		ex = (( target.value << 16)>>>source.value ) & 0xffff;
+		final int acc = signed( target.value ) >> source.value;
+		ex = (( signed( target.value ) << 16) >>> source.value ) & 0xffff;
 		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
 	}
 
@@ -1621,7 +1640,11 @@ public class Emulator implements IEmulator {
 		OperandDesc source = loadSourceOperand( instructionWord );		
 		OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
-		final int acc = signed( target.value ) * signed( source.value );
+		final int a = signed( target.value );
+		final int b = signed( source.value );
+		
+		final int acc = a * b;
+        ex = ((a * b) >> 16 ) & 0xffff;		
 		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
 	}
 
@@ -1640,6 +1663,7 @@ public class Emulator implements IEmulator {
 		OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
 		final int acc = target.value * source.value;
+		ex = ((target.value * source.value) >> 16 ) & 0xffff;
 		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
 	}
 
@@ -1767,7 +1791,9 @@ public class Emulator implements IEmulator {
 		case 0x06:
 			return handleUnknownOpCode( instructionWord );
 		case 0x07:
-			return handleHCF( instructionWord );
+		    // HCF was removed in spec 1.7
+//			return handleHCF( instructionWord ); 
+			return handleUnknownOpCode( instructionWord );
 		case 0x08:
 			return handleINT( instructionWord );
 		case 0x09:
@@ -2334,6 +2360,10 @@ public class Emulator implements IEmulator {
 	{
 		listenerHelper.addEmulationListener( listener );
 	}
+	
+    public void removeAllEmulationListeners() {
+        listenerHelper.removeAllEmulationListeners();
+    }
 
 	@Override
 	public void removeEmulationListener(IEmulationListener listener)
