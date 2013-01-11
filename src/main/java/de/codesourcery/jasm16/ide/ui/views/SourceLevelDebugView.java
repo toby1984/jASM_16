@@ -18,9 +18,9 @@ package de.codesourcery.jasm16.ide.ui.views;
 import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -34,22 +34,29 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
+import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.Misc;
 
 public class SourceLevelDebugView extends SourceCodeView
 {
@@ -119,20 +126,42 @@ public class SourceLevelDebugView extends SourceCodeView
         this.emulator.addEmulationListener( listener );
     }
     
-    private final MouseListener mouseListener = new MouseAdapter() {
+    private final MouseAdapter mouseListener = new MouseAdapter() {
         
+    	@Override
+    	public void mouseMoved(MouseEvent e) 
+    	{
+            final ASTNode n = getASTNode( e.getPoint() );
+            if ( n != null && n instanceof SymbolReferenceNode) 
+            {
+            	final Identifier identifier = ((SymbolReferenceNode) n).getIdentifier();
+            	final ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier );
+            	if ( symbol != null && symbol instanceof Label) {
+                	final Address dumpStartAddress = ((Label) symbol).getAddress();
+                	
+                	final int WORDS_TO_SHOW = 6;
+                	final byte[] bytes = MemUtils.getBytes( emulator.getMemory() , dumpStartAddress , Size.words(WORDS_TO_SHOW) , true );
+                	
+            		final String tooltip = Misc.toHexDumpWithAddresses(dumpStartAddress, 
+            				bytes, bytes.length ,  WORDS_TO_SHOW , true , true );
+            		
+            		showTooltip( tooltip );
+            	} else {
+            		clearTooltip();
+            	}
+            } else {
+            	clearTooltip();            	
+            }
+    	}
+    	
+    	@Override
         public void mouseClicked(java.awt.event.MouseEvent e) 
         {
             if ( e.getButton() != MouseEvent.BUTTON3 ) {
                 return;
             }
             
-            final int offset = getModelOffsetForLocation( e.getPoint() );
-            if ( offset == -1 ) {
-                return;
-            }
-            
-            final ASTNode n = getCurrentCompilationUnit().getAST().getNodeInRange( offset );
+            final ASTNode n = getASTNode( e.getPoint() );
             if ( n == null ) {
                 return;
             }
@@ -151,6 +180,15 @@ public class SourceLevelDebugView extends SourceCodeView
                 }
             }
         }
+    	
+    	private ASTNode getASTNode(Point p) {
+            final int offset = getModelOffsetForLocation( p );
+            if ( offset == -1 ) {
+                return null;
+            }
+            
+            return getCurrentCompilationUnit().getAST().getNodeInRange( offset );
+    	}
     };
     
     protected void disposeHook2() {

@@ -53,6 +53,7 @@ import javax.swing.JToolBar;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
@@ -138,6 +139,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			new ArrayList<Integer>();
 	private int navigationHistoryPointer = -1;
 
+	private boolean registeredWithTooltipManager = false;
 	private volatile boolean editable;
 	private SearchDialog searchDialog;
 	private final PopupListener popupListener = new PopupListener();
@@ -216,6 +218,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 	private final JTextField cursorPosition = new JTextField(); 
 	private final JTextPane editorPane = new JTextPane();
+	
 	private volatile int documentListenerDisableCount = 0; 
 	private JScrollPane editorScrollPane;  
 
@@ -1386,6 +1389,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	@Override
 	public final void disposeHook()
 	{
+		if ( registeredWithTooltipManager ) {
+			ToolTipManager.sharedInstance().unregisterComponent( editorPane );
+		}
 		workspace.removeWorkspaceListener( workspaceListener );
 		disposeHook2();
 	}
@@ -1485,12 +1491,27 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		return compilationUnit;
 	}
 
-	protected final void addMouseListener(MouseListener listener) {
+	protected final void addMouseListener(MouseAdapter listener) {
 		editorPane.addMouseListener( listener );
+		editorPane.addMouseMotionListener( listener );
 	}    
+	
+	protected final void showTooltip(String s) 
+	{
+		if ( ! registeredWithTooltipManager ) {
+			ToolTipManager.sharedInstance().registerComponent( editorPane );
+			registeredWithTooltipManager = true;
+		}
+		editorPane.setToolTipText( s );
+	}
+	
+	protected final void clearTooltip() {
+		editorPane.setToolTipText( null );
+	}	
 
-	protected final void removeMouseListener(MouseListener listener) {
-		editorPane.addMouseListener( listener );
+	protected final void removeMouseListener(MouseAdapter listener) {
+		editorPane.removeMouseListener( listener );
+		editorPane.removeMouseMotionListener( listener );
 	}
 
 	protected final int getModelOffsetForLocation(Point p) {

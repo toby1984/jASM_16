@@ -125,6 +125,7 @@ public class CPUView extends AbstractView
         int itemsInLine = 0;
         for ( int i = 0 ; i < ICPU.COMMON_REGISTER_NAMES.length ; i++ ) {
             builder.append( ICPU.COMMON_REGISTER_NAMES[i]+": "+Misc.toHexString( cpu.getCommonRegisters()[i] )+"    ");
+            builder.append("\n");
             itemsInLine++;
             if ( itemsInLine == 4 ) {
                 itemsInLine = 0;

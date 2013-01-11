@@ -29,8 +29,9 @@ public class EmulatorFactory
         ILogger outLogger = new PrintStreamLogger( System.out );
         outLogger.setDebugEnabled( false );
 		result.setOutput( outLogger );
-        result.setMemoryProtectionEnabled( true );
-        result.setIgnoreAccessToUnknownDevices( true );
+        result.setMemoryProtectionEnabled( false );
+        result.setIgnoreAccessToUnknownDevices( false );
+        
         result.addDevice( new DefaultClock() );
         return result;
     }

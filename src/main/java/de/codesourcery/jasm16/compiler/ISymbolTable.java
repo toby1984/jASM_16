@@ -33,7 +33,7 @@ public interface ISymbolTable {
 	 * Look up a symbol by identifier.
 	 * 
 	 * @param identifier
-	 * @return
+	 * @return symbol with this identifier or <code>null</code>
 	 */
 	public ISymbol getSymbol(Identifier identifier);
 	
