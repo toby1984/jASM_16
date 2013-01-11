@@ -15,7 +15,12 @@
  */
 package de.codesourcery.jasm16.emulator.devices.impl;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.emulator.EmulationListener;
+import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
@@ -35,6 +40,23 @@ public class DefaultClock implements IDevice
     private final ClockThread clockThread = new ClockThread();
     
     private volatile ILogger out;
+    
+    private final AtomicBoolean emulationRunning = new AtomicBoolean(false);
+    
+    private final IEmulationListener myEmulationListener = new EmulationListener() {
+        
+        public boolean requiresExplicitRemoval() {
+            return true;
+        }
+        
+        protected void beforeContinuousExecutionHook() {
+            emulationRunning.set( true );
+        }
+        
+        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
+            emulationRunning.set( false);
+        }
+    };    
     
     @Override
     public void reset()
@@ -87,9 +109,13 @@ public class DefaultClock implements IDevice
                         } catch (InterruptedException e) { }
                     }
                 }
-                tickCounter = ( tickCounter+1 ) % 0x10000;
-                if ( irqEnabled && emulator != null ) {
-                    emulator.triggerInterrupt( new HardwareInterrupt( DefaultClock.this , irqMessage ) );
+                
+                if ( emulationRunning.get() ) 
+                {
+                    tickCounter = ( tickCounter+1 ) % 0x10000;
+                    if ( irqEnabled && emulator != null ) {
+                        emulator.triggerInterrupt( new HardwareInterrupt( DefaultClock.this , irqMessage ) );
+                    }
                 }
                 try {
                     Thread.sleep( sleepDelay );
@@ -162,6 +188,7 @@ public class DefaultClock implements IDevice
             throw new IllegalStateException("Clock "+this+" already associated with emulator "+emulator+" ?");
         }
         this.emulator = emulator;
+        this.emulator.addEmulationListener( myEmulationListener );
         this.out = emulator.getOutput();
     }
 
@@ -169,6 +196,7 @@ public class DefaultClock implements IDevice
     public void beforeRemoveDevice(IEmulator emulator)
     {
         clockThread.terminate();
+        this.emulator.removeEmulationListener( myEmulationListener );
         this.emulator = null;
     }
 

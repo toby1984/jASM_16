@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.emulator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -41,11 +42,13 @@ import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
 import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
+import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
 import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
 import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
 import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
@@ -59,6 +62,11 @@ public class Emulator implements IEmulator {
 
     private static final Logger LOG = Logger.getLogger(Emulator.class);
 
+    /**
+     * Maximum number of interrupts the emulator's interrupt queue may hold.
+     */
+    public static final int INTERRUPT_QUEUE_SIZE = 256;
+    
     private static final boolean DEBUG_LISTENER_PERFORMANCE = false;
 
     private final IdentityHashMap<IEmulationListener,Long> listenerPerformance = 
@@ -193,13 +201,23 @@ public class Emulator implements IEmulator {
 
         public void removeAllEmulationListeners() 
         {
-            synchronized (emuListeners) {
-                emuListeners.clear();
-                beforeCommandExecListeners.clear();
-                continuousModeBeforeCommandExecListeners.clear();
-                continuousModeAfterCommandExecListeners.clear();
-                afterCommandExecListeners.clear();
+            synchronized (emuListeners) 
+            {
+                removeAllListenersThatSupportRemoval( emuListeners );
+                removeAllListenersThatSupportRemoval( beforeCommandExecListeners );
+                removeAllListenersThatSupportRemoval( continuousModeBeforeCommandExecListeners );
+                removeAllListenersThatSupportRemoval( continuousModeAfterCommandExecListeners );
+                removeAllListenersThatSupportRemoval( afterCommandExecListeners );
             } 		    
+        }
+        
+        private void removeAllListenersThatSupportRemoval(List<IEmulationListener> list) {
+            
+            for ( Iterator<IEmulationListener> it = list.iterator() ; it.hasNext() ; ) {
+                if ( ! it.next().requiresExplicitRemoval() ) {
+                    it.remove();
+                }
+            }
         }
 
         public void removeEmulationListener(IEmulationListener listener)
@@ -1097,8 +1115,12 @@ public class Emulator implements IEmulator {
         pc = pc.plus( Size.words( sizeInWords ) , true );
         afterCommandExecution( 0 );
     }
-
+    
     private int calculateInstructionSizeInWords(Address address) {
+        return calculateInstructionSizeInWords(address,memory);
+    }
+
+    public static int calculateInstructionSizeInWords(Address address,IReadOnlyMemory memory) {
 
         final int instructionWord = memory.read( address );
 
@@ -1158,25 +1180,25 @@ public class Emulator implements IEmulator {
         return instructionSizeInWords;
     }
 
-    private int getOperandsSizeInWordsForBasicInstruction(int instructionWord)
+    private static int getOperandsSizeInWordsForBasicInstruction(int instructionWord)
     {
         // PC is already pointing at word AFTER current instruction here !
         return getOperandSizeInWords(OperandPosition.SOURCE_OPERAND,instructionWord,false)+getOperandSizeInWords(OperandPosition.TARGET_OPERAND,instructionWord,false) ;
     }
 
-    private int getOperandsSizeInWordsForUnknownInstruction(int instructionWord)
+    private static int getOperandsSizeInWordsForUnknownInstruction(int instructionWord)
     {
         // PC is already pointing at word AFTER current instruction here !
         return 0;
     }
 
-    private int getOperandsSizeInWordsForSpecialInstruction(int instructionWord)
+    private static int getOperandsSizeInWordsForSpecialInstruction(int instructionWord)
     {
         // PC is already pointing at word AFTER current instruction here !        
         return  getOperandSizeInWords(OperandPosition.SOURCE_OPERAND,instructionWord,true);
     }
 
-    private int getOperandSizeInWords(OperandPosition position, int instructionWord,boolean isSpecialOpCode) {
+    private static int getOperandSizeInWords(OperandPosition position, int instructionWord,boolean isSpecialOpCode) {
 
 
         /* SET b,a
@@ -1356,8 +1378,14 @@ public class Emulator implements IEmulator {
         // a,b,c,x,y,z,i,j
         final OperandDesc source = loadSourceOperand( instructionWord );
         final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
-        registers.decrementAndGet( 6 ); // registers[6]-=1; <<< I
-        registers.decrementAndGet( 7 ); // registers[7]-=1; <<< J
+        int address = registers.decrementAndGet( REGISTER_I ); // registers[6]-=1; <<< I
+        if ( address < 0 ) {
+            registers.set( REGISTER_I , (int) WordAddress.MAX_ADDRESS );
+        }
+        address = registers.decrementAndGet( REGISTER_J ); // registers[7]-=1; <<< J
+        if ( address < 0 ) {
+            registers.set( REGISTER_J , (int) WordAddress.MAX_ADDRESS );
+        }        
         return cycles;
     }
 
@@ -1947,7 +1975,7 @@ public class Emulator implements IEmulator {
          * triggered as normal again
          */
         final OperandDesc operand = loadSourceOperand( instructionWord );
-        getCPU().setQueueInterrupts( operand.value == 0 );
+        getCPU().setQueueInterrupts( operand.value != 0 );
         return 2+operand.cycleCount;
     }
 
@@ -2593,7 +2621,11 @@ public class Emulator implements IEmulator {
         {
             if ( currentInterrupt == null && ! getCPU().isQueueInterrupts() ) {
                 currentInterrupt  = interrupt;
-            } else {
+            } else { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
+                if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
+                {
+                    throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
+                }
                 getCPU().setQueueInterrupts( true );
                 interruptQueue.add( interrupt );
             } 

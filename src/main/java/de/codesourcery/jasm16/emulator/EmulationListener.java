@@ -39,6 +39,12 @@ public class EmulationListener implements IEmulationListener {
 		beforeContinuousExecutionHook();
 	}
 	
+	@Override
+	public boolean requiresExplicitRemoval()
+	{
+	    return false;
+	}
+	
 	protected void beforeContinuousExecutionHook() {
 	}
 	

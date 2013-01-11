@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 
 /**
  * Listener that gets called by the {@link IEmulator} whenever important events happen.
@@ -28,6 +29,17 @@ public interface IEmulationListener
     public void beforeEmulatorIsDisposed(IEmulator emulator);
     
     public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed);
+    
+    /**
+     * Returns whether this emulation listener may be removed by {@link IEmulator#removeAllEmulationListeners()}.
+     * 
+     * <p>This method is used to keep client-code from accidently removing listeners that a devices registered
+     * inside {@link IDevice#afterAddDevice(IEmulator)}.</p>
+     * 
+     * </p>
+     * @return <code>true</code> if this listener may only be removed through {@link IEmulator#removeEmulationListener(IEmulationListener)}.
+     */
+    public boolean requiresExplicitRemoval();
     
 	/**
 	 * Invoked before the emulation starts running

@@ -32,10 +32,12 @@ import javax.swing.SwingUtilities;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
+import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
@@ -54,6 +56,9 @@ public class DisassemblerView extends AbstractView
     private IEmulator emulator;
     
     private boolean showHexDump = true;
+    
+    private volatile Address addressAtTopOfScreen = null;
+    private volatile Address addressAtBottomOfScreen = null;
     
     private final Disassembler disassembler = new Disassembler();
     
@@ -123,19 +128,21 @@ public class DisassemblerView extends AbstractView
     
     public void setViewStartingAddress(Address startingAddress) 
     {
+        setViewStartingAddress(startingAddress,true);
+    }
+    
+    private void setViewStartingAddress(Address startingAddress,boolean adjustAddress) 
+    {
     	// show some context before the actual address so the 
     	// use is not completely lost where in the program he is
         final Address offset = Address.wordAddress( 3 ); 
-        final Address realStart = startingAddress.minus( offset );
+        final Address realStart = adjustAddress ? startingAddress.minus( offset ) : startingAddress;
         
         int rows = calculateVisibleTextRowCount( textArea );
         if ( rows < 5 ) {
         	rows = 5;
         }
-        final List<DisassembledLine> lines = disassembler.disassemble( 
-        		emulator.getMemory() , 
-        		realStart , rows , showHexDump 
-        );
+        final List<DisassembledLine> lines = disassembler.disassemble(emulator.getMemory() , realStart , rows , showHexDump );
         
         renderDisassembly(lines);    	
     }
@@ -146,9 +153,23 @@ public class DisassemblerView extends AbstractView
         
 		final StringBuilder result = new StringBuilder();
         final Iterator<DisassembledLine> it = lines.iterator();
+
+        boolean first = true;
         while( it.hasNext() ) 
         {
-            result.append( toString( pc , it.next() ) );
+            final DisassembledLine line = it.next();
+            
+            if ( first ) {
+                first = false;
+                addressAtTopOfScreen = line.getAddress();
+            }
+            
+            if ( ! it.hasNext() ) {
+                addressAtBottomOfScreen = line.getAddress();
+            }
+            
+            // create disassembled line
+            result.append( toString( pc , line ) );
             if ( it.hasNext() ) {
                 result.append("\n");
             }
@@ -273,11 +294,21 @@ public class DisassemblerView extends AbstractView
 			}
 			
 			@Override
-			protected void oneLineUp() {
+			protected void oneLineUp() 
+			{
+			    if ( addressAtTopOfScreen != null ) {
+			        setViewStartingAddress( addressAtTopOfScreen.minus( WordAddress.wordAddress(1) ) , false );
+			    }
 			}
 			
 			@Override
 			protected void oneLineDown() {
+			    
+                if ( addressAtBottomOfScreen != null && addressAtTopOfScreen != null ) 
+                {
+                    final int instructionSize = Emulator.calculateInstructionSizeInWords( addressAtBottomOfScreen , emulator.getMemory() );
+                    setViewStartingAddress( addressAtTopOfScreen.plus( Size.words( instructionSize ) , true ) , false );
+                }			    
 			}
 		});        
         
