@@ -22,6 +22,7 @@ import java.util.concurrent.TimeoutException;
 
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.OpCode;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -30,6 +31,8 @@ import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
+import de.codesourcery.jasm16.emulator.Emulator.EmulationErrorException;
+import de.codesourcery.jasm16.emulator.Emulator.UnknownOpcodeException;
 import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.Identifier;
@@ -63,11 +66,17 @@ public abstract class AbstractEmulatorTest extends TestCase
             this.objectCode = objectCode;
         }
 
+        public IEmulator loadEmulator() {
+            return loadEmulator(null);
+        }
+        
         public IEmulator loadEmulator(IEmulationListener l) {
             emulator.reset(true);
             emulator.loadMemory(compilationUnit.getObjectCodeStartOffset() , objectCode);      
             emulator.setEmulationSpeed( EmulationSpeed.REAL_SPEED );
-            emulator.addEmulationListener( l );
+            if ( l != null ) {
+                emulator.addEmulationListener( l );
+            }
             return emulator;
         }
     }      
@@ -100,34 +109,58 @@ public abstract class AbstractEmulatorTest extends TestCase
     // ==================== helper code ====================
 
     protected final void execute(String source) throws TimeoutException, InterruptedException {
-
-        final CountDownLatch stopped = new CountDownLatch(1);
-
-        final IEmulationListener listener = new EmulationListener() {
-
-            @Override
-            protected void beforeContinuousExecutionHook()
-            {
-                System.out.println("*** Emulator started. ***");
-            }
-            
-            @Override
-            public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError)
-            {
-                System.out.println("*** Emulator stopped "+( emulationError != null ? "("+emulationError.getMessage() +")": "" )+" ***");
-                stopped.countDown();
-            }
-        };
+        execute(source,MAX_TIME_PER_TEST_MILLIS,true);
+    }
+    
+    protected final void execute(String source,long maxWaitTimeMillis,boolean waitForEmulatorToStop) throws TimeoutException, InterruptedException {
 
         compiledCode = compile(source);
-        final IEmulator emu = compiledCode.loadEmulator(listener);
-        emu.start();
 
-        while(true) 
+        final CountDownLatch stopped = new CountDownLatch(1);
+        final IEmulator emu;
+        if (waitForEmulatorToStop) 
+        {
+            final IEmulationListener listener = new EmulationListener() {
+
+                @Override
+                protected void beforeContinuousExecutionHook()
+                {
+//                    System.out.println("*** Emulator started. ***");
+                }
+                
+                @Override
+                public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError)
+                {
+                    boolean suppressError = false;
+                    if ( emulationError instanceof UnknownOpcodeException)
+                     {
+                        final UnknownOpcodeException ex = (UnknownOpcodeException) emulationError;
+                        if ( OpCode.isHaltInstruction( ex.getInstructionWord() ) ) 
+                        {
+                            suppressError = true;
+                        }
+                    }
+                    if ( ! suppressError ) {
+                        System.out.println("*** Emulator stopped "+( emulationError != null ? "("+emulationError.getMessage() +")": "" )+" ***");
+                    }
+                    stopped.countDown();
+                }
+            };
+            emu = compiledCode.loadEmulator(  listener );
+        } else {
+            emu = compiledCode.loadEmulator();            
+        }
+        emu.start();
+        
+        if ( ! waitForEmulatorToStop ) {
+            return;
+        }
+
+        while( true ) 
         {
             try 
             {
-                if ( ! stopped.await(MAX_TIME_PER_TEST_MILLIS , TimeUnit.MILLISECONDS) ) {
+                if ( ! stopped.await( maxWaitTimeMillis , TimeUnit.MILLISECONDS) ) {
                     emu.stop();
                     throw new TimeoutException("Emulator did not stop after "+MAX_TIME_PER_TEST_MILLIS+" milliseconds - maybe stuck in an infinite loop?");
                 }

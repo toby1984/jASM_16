@@ -19,10 +19,15 @@ import java.util.concurrent.TimeoutException;
 
 public class EmulatorTest extends AbstractEmulatorTest
 {
-    
     /* ==========================
      * ============= SET ========
      * ========================== */
+    
+    @Override
+    protected void setUpHook() throws Exception
+    {
+        emulator.setOutput( ILogger.NOP_LOGGER );
+    }
     
     public void testRegisterSetImmediate() throws InterruptedException, TimeoutException {
 

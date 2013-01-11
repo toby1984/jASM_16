@@ -176,6 +176,11 @@ public enum OpCode
             return super.isOperandValidInPosition( OperandPosition.SOURCE_OPERAND , mode , register );
         }
     },
+    /**
+     * Officially no longer supported.
+     * 
+     * @see #isHaltInstruction(int)
+     */
     HCF( "hcf",1,0x07) 
     {
         public boolean isBasicOpCode() { return false; };
@@ -753,5 +758,8 @@ public enum OpCode
     protected boolean isConditionalBranchOpCode() {
         return false;
     }
-
+    
+    public static boolean isHaltInstruction(int instructionWord) {
+        return 0x84e0 == instructionWord;
+    }
 } 

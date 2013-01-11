@@ -17,6 +17,39 @@ package de.codesourcery.jasm16.emulator;
 
 public interface ILogger {
 	
+    public static final ILogger NOP_LOGGER = new ILogger() {
+
+        @Override
+        public void setDebugEnabled(boolean yesNo) {}
+
+        @Override
+        public boolean isDebugEnabled() {return false;}
+
+        @Override
+        public void info(String message) {}
+
+        @Override
+        public void info(String message, Throwable cause) {}
+
+        @Override
+        public void warn(String message) {}
+
+        @Override
+        public void warn(String message, Throwable cause) {}
+
+        @Override
+        public void error(String message) {}
+
+        @Override
+        public void error(String message, Throwable cause) {}
+
+        @Override
+        public void debug(String message) {}
+
+        @Override
+        public void debug(String message, Throwable cause) {}
+    };
+    
 	public void setDebugEnabled(boolean yesNo);
 	
 	public boolean isDebugEnabled();
