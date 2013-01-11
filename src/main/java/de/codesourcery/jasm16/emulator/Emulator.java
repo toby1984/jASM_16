@@ -40,6 +40,10 @@ import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
+import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
+import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
+import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
+import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
@@ -1361,9 +1365,17 @@ public class Emulator implements IEmulator {
         // sets b to a, then increases I and J by 1
         // a,b,c,x,y,z,i,j
         final OperandDesc source = loadSourceOperand( instructionWord );
+        
         final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
-        registers.incrementAndGet( REGISTER_I ); // registers[6]+=1; <<< I
-        registers.incrementAndGet( REGISTER_J ); // registers[7]+=1; <<< J		
+        
+        int newWordAddress = registers.incrementAndGet( REGISTER_I ); // registers[6]+=1; <<< I
+        if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
+            registers.set( REGISTER_I , 0);
+        }
+        newWordAddress = registers.incrementAndGet( REGISTER_J ); // registers[7]+=1; <<< J		
+        if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
+            registers.set( REGISTER_J , 0);
+        }        
         return cycles;
     }
 
@@ -1884,27 +1896,36 @@ public class Emulator implements IEmulator {
         final IDevice device = getDeviceForSlot( hardwareSlot );
         if ( device == null ) 
         {
-            LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
-            out.warn("No device at slot #"+hardwareSlot);
-            throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+            if ( ! ignoreAccessToUnknownDevices ) {
+                LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
+                out.warn("No device at slot #"+hardwareSlot);
+                throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+            }
+            
+            registers.set( REGISTER_A , 0xffff );
+            registers.set( REGISTER_B , 0xffff );
+            registers.set( REGISTER_C , 0xffff );
+            registers.set( REGISTER_X , 0xffff );
+            registers.set( REGISTER_Y , 0xffff );
+        } 
+        else {
+            /* A+(B<<16) is a 32 bit word identifying the hardware id
+             * 
+             * A = LSB hardware ID (16 bit)
+             * B = MSB hardware ID (16 bit)
+             * C = hardware version
+             * X = LSB manufacturer ID (16 bit)
+             * Y = MSB manufacturer ID (16 bit)
+             */
+            final DeviceDescriptor descriptor = device.getDeviceDescriptor();
+    
+            registers.set( REGISTER_A , (int) descriptor.getID() & 0xffff );
+            registers.set( REGISTER_B , (int) ( ( descriptor.getID() >>> 16 ) & 0xffff ) );
+            registers.set( REGISTER_C , descriptor.getVersion() & 0xffff );
+    
+            registers.set( REGISTER_X , (int) descriptor.getManufacturer() & 0xffff );
+            registers.set( REGISTER_Y , (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff ) );	
         }
-
-        /* A+(B<<16) is a 32 bit word identifying the hardware id
-         * 
-         * A = LSB hardware ID (16 bit)
-         * B = MSB hardware ID (16 bit)
-         * C = hardware version
-         * X = LSB manufacturer ID (16 bit)
-         * Y = MSB manufacturer ID (16 bit)
-         */
-        final DeviceDescriptor descriptor = device.getDeviceDescriptor();
-
-        registers.set( REGISTER_A , (int) descriptor.getID() & 0xffff );
-        registers.set( REGISTER_B , (int) ( ( descriptor.getID() >>> 16 ) & 0xffff ) );
-        registers.set( REGISTER_C , descriptor.getVersion() & 0xffff );
-
-        registers.set( REGISTER_X , (int) descriptor.getManufacturer() & 0xffff );
-        registers.set( REGISTER_Y , (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff ) );		
 
         return 4+operand.cycleCount;
     }
@@ -2748,88 +2769,6 @@ public class Emulator implements IEmulator {
     public ILogger getOutput()
     {
         return out;
-    }
-
-    public static class EmulationErrorException extends RuntimeException {
-
-        public EmulationErrorException(String message)
-        {
-            super(message);
-        }
-    }  
-
-    /**
-     * Thrown when the emulator is running with {@link Emulator#checkMemoryWrites} and
-     * the program tries to write memory that was already part of the execution path (and 
-     * thus contains program code and not data).
-     * 
-     * @author tobias.gierke@code-sourcery.de
-     */
-    public static class MemoryProtectionFaultException extends EmulationErrorException {
-
-        private final Address offendingWriteAddress;
-
-        public MemoryProtectionFaultException(String message,Address offendingWriteAddress)
-        {
-            super(message);
-            this.offendingWriteAddress = offendingWriteAddress;
-        }
-
-        /**
-         * Returns the address the program was trying to write to.
-         * @return
-         */
-        public Address getOffendingWriteAddress()
-        {
-            return offendingWriteAddress;
-        }
-
-    }    
-
-    public static final class UnknownOpcodeException extends EmulationErrorException {
-
-        private final int instructionWord;
-        
-        public UnknownOpcodeException(String message,int instructionWord)
-        {
-            super(message);
-            this.instructionWord = instructionWord;
-        }
-        
-        public int getInstructionWord()
-        {
-            return instructionWord;
-        }
-    }    
-
-    public static final class InvalidTargetOperandException extends EmulationErrorException {
-
-        public InvalidTargetOperandException(String message)
-        {
-            super(message);
-        }
-    }  
-
-    public static final class DeviceErrorException extends EmulationErrorException {
-
-        private final IDevice device;
-        public DeviceErrorException(String message,IDevice device)
-        {
-            super(message);
-            this.device = device;
-        }
-
-        public IDevice getDevice() {
-            return device;
-        }
-    }      
-
-    public static final class InvalidDeviceSlotNumberException extends EmulationErrorException {
-
-        public InvalidDeviceSlotNumberException(String message)
-        {
-            super(message);
-        }
     }
 
     @Override

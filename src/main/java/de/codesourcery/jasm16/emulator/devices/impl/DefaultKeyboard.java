@@ -230,8 +230,7 @@ public class DefaultKeyboard implements IDevice {
 		{
 			if ( interruptMessage != null ) 
 			{
-				emulator.triggerInterrupt( new HardwareInterrupt( DefaultKeyboard.this , 
-						interruptMessage ) );
+				emulator.triggerInterrupt( new HardwareInterrupt( DefaultKeyboard.this , interruptMessage ) );
 			}			
 		}
 	};

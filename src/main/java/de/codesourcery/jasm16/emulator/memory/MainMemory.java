@@ -25,8 +25,8 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
-import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.emulator.ILogger;
+import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.utils.Bitfield;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -294,11 +294,12 @@ public final class MainMemory implements IMemory
 	@Override
 	public void write(int wordAddress, int value) throws MemoryProtectionFaultException
 	{
+        final IMemoryRegion region = getRegion( wordAddress );
+        
 		if ( checkWriteAccess ) {
 			checkWritePermitted(wordAddress,value);
 		}
-		
-		final IMemoryRegion region = getRegion( wordAddress );
+
         int newValue = wordAddress - region.getAddressRange().getStartAddress().getWordAddressValue();
         if ( newValue < 0 ) {
             newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );

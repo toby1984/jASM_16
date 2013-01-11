@@ -18,9 +18,9 @@ package de.codesourcery.jasm16.emulator;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.emulator.Emulator.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
