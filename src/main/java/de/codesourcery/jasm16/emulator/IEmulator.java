@@ -46,7 +46,18 @@ public interface IEmulator
     
     public void addBreakpoint(Breakpoint bp);
     
-    public void addDevice(IDevice device);   
+    /**
+     * Adds a device to this emulator.
+     * 
+     * <p> This method will invoke {@link IDevice#afterAddDevice(IEmulator)} after
+     * the device has been registered with the emulator. If this call fails,
+     * the device will be removed from the emulator again before propagating
+     * the exception.</p>.
+     * 
+     * @param device
+     * @return the hardware slot number where the device has been added
+     */
+    public int addDevice(IDevice device);   
     
     public void addEmulationListener(IEmulationListener listener);
 

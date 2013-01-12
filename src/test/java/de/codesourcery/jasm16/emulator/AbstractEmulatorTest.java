@@ -111,6 +111,10 @@ public abstract class AbstractEmulatorTest extends TestCase
         execute(source,MAX_TIME_PER_TEST_MILLIS,true);
     }
     
+    protected final void execute(String source,long maxWaitTimeMillis) throws TimeoutException, InterruptedException {
+        execute(source,maxWaitTimeMillis,true);
+    }    
+    
     protected final void execute(String source,long maxWaitTimeMillis,boolean waitForEmulatorToStop) throws TimeoutException, InterruptedException {
 
         compiledCode = compile(source);
@@ -247,6 +251,16 @@ public abstract class AbstractEmulatorTest extends TestCase
     protected final void assertRegJ(int value) { assertRegister(Register.J,value) ; }
     protected final void assertRegSP(int value) { assertRegister(Register.SP,value) ; }
     
+    protected final void assertRegA(Address value) { assertRegister(Register.A,value) ; }
+    protected final void assertRegB(Address value) { assertRegister(Register.B,value) ; }
+    protected final void assertRegC(Address value) { assertRegister(Register.C,value) ; }
+    protected final void assertRegX(Address value) { assertRegister(Register.X,value) ; }
+    protected final void assertRegY(Address value) { assertRegister(Register.Y,value) ; }
+    protected final void assertRegZ(Address value) { assertRegister(Register.Z,value) ; }
+    protected final void assertRegI(Address value) { assertRegister(Register.I,value) ; }
+    protected final void assertRegJ(Address value) { assertRegister(Register.J,value) ; }
+    protected final void assertRegSP(Address value) { assertRegister(Register.SP,value) ; }    
+    
     protected final void assertRegASigned(int value) { assertRegisterSigned(Register.A,value) ; }
     protected final void assertRegBSigned(int value) { assertRegisterSigned(Register.B,value) ; }
     protected final void assertRegCSigned(int value) { assertRegisterSigned(Register.C,value) ; }
@@ -261,6 +275,10 @@ public abstract class AbstractEmulatorTest extends TestCase
     protected final void assertRegister(Register reg,int expected) {
         assertEquals( "Register "+reg+" has unexpected value", expected , emulator.getCPU().getRegisterValue(reg) );
     }   
+    
+    protected final void assertRegister(Register reg,Address expected) {
+        assertEquals( "Register "+reg+" has unexpected value", expected , Address.wordAddress( emulator.getCPU().getRegisterValue(reg) ) );
+    }     
     
     protected final void assertRegisterSigned(Register reg,int expected) 
     {

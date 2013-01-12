@@ -1429,17 +1429,34 @@ public class Emulator implements IEmulator {
 
     private int handleSBX(int instructionWord) 
     {
-        // sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0 otherwise
+    	// sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0001 if there's an overflow, 0x0 otherwise
+    	
         OperandDesc source = loadSourceOperand( instructionWord );
         OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
-        final int acc = target.value - source.value + ex;
-        if ( acc < 0 ) {
-            ex = 0xFFFF;
-        } else {
-            ex = 0;
+        boolean underflow = false;
+        boolean overflow = false;
+        
+        final int b = target.value;
+        final int a = source.value;
+        
+        final int step1 = b - a;
+        if ( step1 < 0 ) {
+        	underflow = true;
         }
-        return 3+storeTargetOperand( instructionWord , acc)+source.cycleCount;		
+        final int step2 = step1 + ex;
+        if ( step2 > 65535 ) {
+        	overflow = true;
+        }
+        
+        if ( underflow ) {
+        	ex = 0xffff;
+        } else if ( overflow ) {
+        	ex = 0x0001;
+        } else {
+        	ex = 0;
+        }
+        return 3+storeTargetOperand( instructionWord , step2 )+source.cycleCount;		
     }
 
     private int handleADX(int instructionWord) {
@@ -1957,6 +1974,14 @@ public class Emulator implements IEmulator {
             registers.set( REGISTER_Y , 0xffff );
         } 
         else {
+
+    		/* sets A, B, C, X, Y registers to information about hardware a
+    		 * 
+    		 * A+(B<<16) is a 32 bit word identifying the hardware id
+    		 * C is the hardware version
+    		 * X+(Y<<16) is a 32 bit word identifying the manufacturer
+    		 */
+        	
             /* A+(B<<16) is a 32 bit word identifying the hardware id
              * 
              * A = LSB hardware ID (16 bit)
@@ -1969,6 +1994,7 @@ public class Emulator implements IEmulator {
     
             registers.set( REGISTER_A , (int) descriptor.getID() & 0xffff );
             registers.set( REGISTER_B , (int) ( ( descriptor.getID() >>> 16 ) & 0xffff ) );
+            
             registers.set( REGISTER_C , descriptor.getVersion() & 0xffff );
     
             registers.set( REGISTER_X , (int) descriptor.getManufacturer() & 0xffff );
@@ -2654,20 +2680,37 @@ public class Emulator implements IEmulator {
     }
 
     @Override
-    public void addDevice(IDevice device) 
+    public int addDevice(IDevice device) 
     {
         if (device == null) {
             throw new IllegalArgumentException("device must not be null");
         }
-        synchronized( devices ) {
+        final int slotNo;
+        synchronized( devices ) 
+        {
             if ( devices.size() >= 65535 ) {
                 throw new IllegalStateException("Already 65535 devices registered");
             }
+            slotNo = devices.size();
             devices.add( device );
             out.debug("Added device "+device);
             printDevices();
         }
-        device.afterAddDevice( this );
+        
+        boolean success = false;
+        try {
+        	device.afterAddDevice( this );
+        	success = true;
+        } 
+        finally 
+        {
+        	if ( ! success ) {
+        		synchronized( devices ) {
+        			devices.remove( device );
+        		}
+        	}
+        }
+        return slotNo;
     }
 
     private void printDevices() 
