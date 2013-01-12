@@ -70,6 +70,19 @@ public class InstructionNodeTest extends TestHelper
 		assertEquals( AddressingMode.IMMEDIATE, instr.getOperand( 1 ).getAddressingMode() );
 	}	
 	
+	public void testRegisterIndirectWithNegativeOffset() throws Exception {
+		
+		ICompilationUnit unit = compile( "    SET a , [b-3]" );
+		
+		assertFalse( unit.getAST().hasErrors() );
+		
+		StatementNode stmt1 = (StatementNode) unit.getAST().child(0);
+		InstructionNode instr = (InstructionNode) stmt1.child(0);
+		
+		assertEquals( AddressingMode.REGISTER , instr.getOperand( 0 ).getAddressingMode() );
+		assertEquals( AddressingMode.INDIRECT_REGISTER_OFFSET, instr.getOperand( 1 ).getAddressingMode() );
+	}	
+	
 	
 	public void testDetermineAddressingModeWithLabelExpression2() throws Exception {
 		

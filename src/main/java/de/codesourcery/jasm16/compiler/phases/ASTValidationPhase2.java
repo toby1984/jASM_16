@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
@@ -34,6 +33,7 @@ import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
+import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.parser.Operator;
 
 /**
@@ -76,7 +76,9 @@ public class ASTValidationPhase2 extends CompilerPhase {
 				}
 				if ( node.getParent() != null && node.getParent() instanceof OperatorNode) 
 				{
-					if ( ((OperatorNode) node.getParent()).getOperator() != Operator.PLUS) {
+					final Operator operator = ((OperatorNode) node.getParent()).getOperator();
+					
+					if ( operator != Operator.PLUS && operator != Operator.MINUS ) {
 						unit.addMarker( 
 								new CompilationError("Register-indirect with offset did not evaluate to an addition",unit,node)
 						);
@@ -85,7 +87,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 			} 
 			else if ( node instanceof OperatorNode) 
 			{
-				return checkValueInRange( context , (OperatorNode) node , 0L , WordAddress.MAX_ADDRESS );
+				return checkValueInRange( context , (OperatorNode) node );
 			}
 			return true;
 		}
@@ -116,7 +118,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 							{
 								if ( node instanceof OperatorNode) 
 								{
-									return checkValueInRange( compContext , (OperatorNode) node , 0L , 65535 );
+									return checkValueInRange( compContext , (OperatorNode) node );
 								}
 								return true;
 							}
@@ -134,7 +136,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 							{
 								if ( node instanceof OperatorNode) 
 								{
-									return checkValueInRange( compContext , (OperatorNode) node , 0L , WordAddress.MAX_ADDRESS );
+									return checkValueInRange( compContext , (OperatorNode) node );
 								}
 								return true;
 							}
@@ -152,7 +154,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 		ASTUtils.visitInOrder( unit.getAST() , visitor );
 	}
 
-	private static boolean checkValueInRange(final ICompilationContext compContext,OperatorNode node,final long minValue,final long maxValue) 
+	private static boolean checkValueInRange(final ICompilationContext compContext,OperatorNode node) 
 	{
 		final ICompilationUnit unit = compContext.getCurrentCompilationUnit();
 	
@@ -165,22 +167,29 @@ public class ASTValidationPhase2 extends CompilerPhase {
 				if ( node instanceof TermNode) 
 				{
 					final TermNode op = (TermNode) node;
-					final Long value = op.calculate( compContext.getSymbolTable() );
-					if ( value == null ) {
+					final Long longValue = op.calculate( compContext.getSymbolTable() );
+					if ( longValue == null ) {
 						unit.addMarker( new CompilationError("Internal error, operand value has no value?",unit,node) );
 						valueInRange[0]=false;
 						return false;
 					} 
 					
-					if ( value < minValue || value > maxValue ) 
+					final boolean isInRange;
+					if ( longValue.longValue() < 0 ) { 
+						isInRange = longValue >= -32768 && longValue <= 32767;
+					} else { // value is >= 0
+						isInRange = longValue <= 65535;
+					}
+					
+					if ( ! isInRange )
 					{
+						final IMarker marker;
 					    if ( ! compContext.hasCompilerOption( CompilerOption.RELAXED_VALIDATION ) ) {
-    						unit.addMarker( 
-    							new CompilationError("Operand value "+value+" out-of-range( "+minValue+" - "+maxValue+")",unit,node)
-    						);
+					    	marker=new CompilationError("Operand value "+longValue+" out-of-range(does not fit in 16 bits)",unit,node);
 					    } else {
-					        unit.addMarker( new CompilationWarning("Operand value "+value+" out-of-range( "+minValue+" - "+maxValue+")",unit,node) );
+					        marker= new CompilationWarning("Operand value "+longValue+" out-of-range(does not fit in 16 bits)",unit,node);
 					    }
+					    unit.addMarker( marker );
                         valueInRange[0]=false;
                         return false;                        
 					}

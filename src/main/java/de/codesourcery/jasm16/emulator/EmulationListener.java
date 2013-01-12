@@ -40,7 +40,7 @@ public class EmulationListener implements IEmulationListener {
 	}
 	
 	@Override
-	public boolean requiresExplicitRemoval()
+	public boolean belongsToHardwareDevice()
 	{
 	    return false;
 	}

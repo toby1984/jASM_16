@@ -70,7 +70,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private final IEmulationListener myEmulationListener = new EmulationListener() {
 	    
-	    public boolean requiresExplicitRemoval() {
+	    public boolean belongsToHardwareDevice() {
 	        return true;
 	    }
 	    

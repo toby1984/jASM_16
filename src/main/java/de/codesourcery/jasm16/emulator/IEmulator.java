@@ -155,6 +155,12 @@ public interface IEmulator
     
     public void removeEmulationListener(IEmulationListener listener);     
     
+    /**
+     * Removes all registered emulation listeners <b>except</b> listeners
+     * that belong to hardware devices.
+     *  
+     * @see IEmulationListener#belongsToHardwareDevice()  
+     */
     public void removeAllEmulationListeners();
     
     // emulator control

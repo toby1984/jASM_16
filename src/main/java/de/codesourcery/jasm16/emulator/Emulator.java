@@ -214,7 +214,7 @@ public class Emulator implements IEmulator {
         private void removeAllListenersThatSupportRemoval(List<IEmulationListener> list) {
             
             for ( Iterator<IEmulationListener> it = list.iterator() ; it.hasNext() ; ) {
-                if ( ! it.next().requiresExplicitRemoval() ) {
+                if ( ! it.next().belongsToHardwareDevice() ) {
                     it.remove();
                 }
             }

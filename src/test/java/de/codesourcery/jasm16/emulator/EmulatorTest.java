@@ -52,6 +52,22 @@ public class EmulatorTest extends AbstractEmulatorTest
         assertRegI( 6 );
         assertRegJ( 7 );
     }  
+    
+    public void testRegisterSetRegisterIndirectWithNegativeOffset() throws Exception {
+    	final String source = "\n" + 
+    			"SET a,label2\n" + 
+    			"SET b,[a-1]\n" + 
+    			"loop:\n" + 
+    			"HCF 1\n" + 
+    			":label\n" + 
+    			".dat 0xbeef\n" + 
+    			":label2\n" + 
+    			".dat 0";
+    	
+        execute(source);
+        
+        assertRegB( 0xbeef );
+    }
 
     public void testRegisterSetRegisterIndirect() throws InterruptedException, TimeoutException {
 

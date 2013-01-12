@@ -95,7 +95,7 @@ public abstract class AbstractEmulatorTest extends TestCase
     {
         try {
             compiledCode = null;
-            emulator.stop();
+            emulator.reset(true);
             emulator.removeAllEmulationListeners();
         } finally {
             tearDownHook();
