@@ -49,8 +49,7 @@ public class ScreenView extends AbstractView
 		}
         this.emulator = emulator;
         this.emulatorFactory = emulatorFactory;
-        this.keyboard = emulatorFactory.createKeyboardDevice();
-		this.emulator.addDevice( keyboard );
+        this.keyboard = emulatorFactory.getKeyboard( emulator );
     }
     
     @Override
@@ -97,8 +96,7 @@ public class ScreenView extends AbstractView
     	if ( panel == null ) 
     	{
     		panel=createPanel();
-    		screen = emulatorFactory.createScreenDevice();
-    		this.emulator.addDevice( screen );
+    		screen = emulatorFactory.getScreen(emulator);
     		screen.attach( panel );
     		keyboard.setInputComponent( panel );
     	}

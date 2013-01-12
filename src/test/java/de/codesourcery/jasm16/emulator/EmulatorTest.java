@@ -1561,6 +1561,10 @@ public class EmulatorTest extends AbstractEmulatorTest
 			interruptCount.incrementAndGet();
 			return 0;
 		}
+		@Override
+		public boolean supportsMultipleInstances() {
+			return false;
+		}
 		
 	}
 }

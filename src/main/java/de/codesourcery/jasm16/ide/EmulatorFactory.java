@@ -15,32 +15,51 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import java.util.List;
+
+import de.codesourcery.jasm16.emulator.EmulationOptions;
 import de.codesourcery.jasm16.emulator.Emulator;
-import de.codesourcery.jasm16.emulator.ILogger;
-import de.codesourcery.jasm16.emulator.PrintStreamLogger;
-import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
+import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
 
 public class EmulatorFactory
 {
-    public Emulator createEmulator() {
-        final Emulator result = new Emulator();
-        ILogger outLogger = new PrintStreamLogger( System.out );
-        outLogger.setDebugEnabled( false );
-		result.setOutput( outLogger );
-        result.setMemoryProtectionEnabled( false );
-        result.setIgnoreAccessToUnknownDevices( false );
-        
-        result.addDevice( new DefaultClock() );
-        return result;
+	private EmulationOptions options = new EmulationOptions();
+	
+	public EmulatorFactory() {
+	}
+	
+	public EmulationOptions getOptions() {
+		return options;
+	}
+	
+    public Emulator createEmulator() 
+    {
+    	return options.createEmulator();
+    }        
+    
+    public DefaultScreen getScreen(IEmulator emulator) {
+    	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultScreen.DESC );
+    	if ( result.isEmpty() ) {
+    		throw new RuntimeException("Internal error, found no default screen?");
+    	}
+    	if ( result.size() > 1 ) {
+    		throw new RuntimeException("Internal error, found more than one default screen?");
+    	}
+    	return (DefaultScreen) result.get(0);
     }
     
-    public DefaultKeyboard createKeyboardDevice() {
-    	return new DefaultKeyboard( true );
-    }
-    
-    public DefaultScreen createScreenDevice() {
-    	return new DefaultScreen( true , false );
-    }
+    public DefaultKeyboard getKeyboard(IEmulator emulator)
+    {
+    	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultKeyboard.DESC );
+    	if ( result.isEmpty() ) {
+    		throw new RuntimeException("Internal error, found no default keyboard ?");
+    	}
+    	if ( result.size() > 1 ) {
+    		throw new RuntimeException("Internal error, found more than one default keyboard ?");
+    	}
+    	return (DefaultKeyboard) result.get(0);    	
+    }    
 }

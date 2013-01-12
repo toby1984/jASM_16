@@ -48,6 +48,19 @@ public class DeviceDescriptor {
 	}
 	
 	/**
+	 * Compares two <code>DeviceDescriptor</code>s by
+	 * hardware ID,version and manufacturer ID.
+	 * 
+	 * @param other
+	 * @return <code>true</code> if both descriptors have the same hardware IDs,versions and manufacturer IDs.
+	 */
+	public boolean matches(DeviceDescriptor other) {
+		return this.id == other.id &&
+				this.version == other.version &&
+				this.manufacturer == other.manufacturer;
+	}
+	
+	/**
 	 * Returns an informational name for this device, suitable for
 	 * display to the user.
 	 * 

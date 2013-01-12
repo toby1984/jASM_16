@@ -27,6 +27,7 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion.Flag;
 import de.codesourcery.jasm16.utils.Bitfield;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -67,7 +68,7 @@ public final class MainMemory implements IMemory
 	}
 
 	private static IMemoryRegion createMainMemory(AddressRange range) {
-		return new MemoryRegion( "main memory" , range , true );
+		return new MemoryRegion( "main memory" , range , MemoryRegion.Flag.SUPPORTS_MERGING  );
 	}
 
 	public void dumpMemoryLayout(ILogger logger) 
@@ -144,9 +145,9 @@ public final class MainMemory implements IMemory
 				final IMemoryRegion existing = it.next();
 				if ( existing == region ) 
 				{
-					mapRegion( createMainMemory( existing.getAddressRange() ) );
+					mapRegion( createMainMemory( existing.getAddressRange() ) , true );
 					found = true;
-					return; // break;
+					return; // *RETURNS* from method , do not try merging adjacent memory regions because of performance hit on double-buffering
 				}
 			}
 			
@@ -157,7 +158,7 @@ public final class MainMemory implements IMemory
 			// TODO: this code is currently never executed because
 			// TODO: it incurs a HEAVY performance hit on 
 			// TODO: emulation performance for applications that
-			// TODO: do double-buffering (=remapping VRAM)
+			// TODO: do double-buffering (=remapping VRAM constantly)
 			
             // merge adjactant memory regions that support it
             for ( int index = 1 ; index < regions.size() ; index++ )
@@ -165,7 +166,7 @@ public final class MainMemory implements IMemory
                 final IMemoryRegion previous = regions.get(index-1);
                 final IMemoryRegion current = regions.get(index);
                 
-                if ( previous.supportsMerging() && current.supportsMerging() && 
+                if ( supportMerging( previous,current ) && 
                      previous.getAddressRange().getEndAddress().equals( current.getAddressRange().getStartAddress() ) ) 
                 {
                     final AddressRange mergedRange = new AddressRange( previous.getAddressRange().getStartAddress() , current.getAddressRange().getEndAddress() );
@@ -177,9 +178,41 @@ public final class MainMemory implements IMemory
                 }
             }   	
 		}
-
+	}
+	
+	private boolean supportMerging(IMemoryRegion r1,IMemoryRegion r2) 
+	{
+		if ( ! r1.supportsMerging() || ! r2.supportsMerging() ) {
+			return false;
+		}
+		if ( r1.hasFlag(Flag.MEMORY_MAPPED_HW) || r2.hasFlag( Flag.MEMORY_MAPPED_HW ) ) {
+			return false;
+		}
+		return true;
 	}
 
+	/**
+	 * Returns all memory regions that are mapped
+	 * to a specific address range.
+	 * 
+	 * @param range
+	 * @return
+	 */
+	public List<IMemoryRegion> getRegions(AddressRange range) {
+		
+		List<IMemoryRegion> result = new ArrayList<>();
+		synchronized( regions ) 
+		{
+			for ( IMemoryRegion existing : regions ) 
+			{
+				if ( existing.getAddressRange().intersectsWith( range ) ) {
+					result.add( existing );
+				}
+			}
+		}
+		return result;
+	}
+	
 	/**
 	 * Maps main memory to a specific region.
 	 * 
@@ -188,10 +221,26 @@ public final class MainMemory implements IMemory
 	 */
 	public void mapRegion(IMemoryRegion newRegion) 
 	{
+		mapRegion(newRegion,false);
+	}
+	
+	private void mapRegion(IMemoryRegion newRegion,boolean calledFromUnmapRegion) 
+	{
 		if (newRegion == null) {
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
+		// refuse mapping if address range holds HW-mapped RAM
+		if ( ! calledFromUnmapRegion ) 
+		{
+			for ( IMemoryRegion reg : getRegions( newRegion.getAddressRange() ) ) {
+				if ( reg.hasFlag( IMemoryRegion.Flag.MEMORY_MAPPED_HW ) ) {
+					LOG.error("Cannot map region "+newRegion+" , address range already holds hardware-mapped region "+reg);
+					throw new IllegalStateException("Cannot map region "+newRegion+" , address range already holds hardware-mapped region "+reg);
+				}
+			}
+		}
+		
 		// copy existing memory contents into new region
 		MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , newRegion.getSize() );
 

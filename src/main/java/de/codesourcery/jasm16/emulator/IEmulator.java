@@ -18,8 +18,10 @@ package de.codesourcery.jasm16.emulator;
 import java.util.List;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
 import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
@@ -56,8 +58,31 @@ public interface IEmulator
      * 
      * @param device
      * @return the hardware slot number where the device has been added
+     * @throws DeviceErrorException if the {@link IDevice#afterAddDevice(IEmulator)} call failed
      */
-    public int addDevice(IDevice device);   
+    public int addDevice(IDevice device) throws DeviceErrorException;   
+    
+    /**
+     * Returns a list of devices with matching hardware IDs , versions and manufacturer IDs.
+     * 
+     * @param desc
+     * @return
+     * @see DeviceDescriptor#matches(DeviceDescriptor)
+     */
+    public List<IDevice> getDevicesByDescriptor(DeviceDescriptor desc);
+    
+    /**
+     * Adds a new device, replacing any existing device with the same
+     * device descriptor.
+     *
+     *  <p>Devices are replaced if their hardware ID , manufacturer ID and version match.</p>
+     *  
+     * @param device
+     * @return
+     * @throws DeviceErrorException
+     * @throws IllegalStateException if more than one device with matching device descriptor are already registered,
+     */
+    public int addOrReplaceDevice(IDevice device) throws DeviceErrorException; 
     
     public void addEmulationListener(IEmulationListener listener);
 
@@ -162,7 +187,15 @@ public interface IEmulator
      */
     public void mapRegion(IMemoryRegion region);
     
-    public void removeDevice(IDevice device);
+    /**
+     * Remove a registered device.
+     * 
+     * <p>If the device is not registered , does nothing.</p>
+     * 
+     * @param device
+     * @throws DeviceErrorException if the {@link IDevice#beforeRemoveDevice(IEmulator)} call failed     
+     */
+    public void removeDevice(IDevice device) throws DeviceErrorException;
     
     public void removeEmulationListener(IEmulationListener listener);     
     

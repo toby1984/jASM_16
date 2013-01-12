@@ -15,7 +15,10 @@
  */
 package de.codesourcery.jasm16.emulator.memory;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import de.codesourcery.jasm16.AddressRange;
 
@@ -26,6 +29,18 @@ import de.codesourcery.jasm16.AddressRange;
  */
 public interface IMemoryRegion extends IMemory
 {
+	public static final Set<Flag> NO_FLAGS= Collections.unmodifiableSet( new HashSet<Flag>() );
+	
+    public static enum Flag {
+    	MEMORY_MAPPED_HW,
+    	SUPPORTS_MERGING;
+    }
+    
+    public Set<Flag> getFlags();
+    
+    public boolean hasFlag(Flag flag);
+    	
+    
     /**
      * The address range covered by this memory region.
      * 

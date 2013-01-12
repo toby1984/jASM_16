@@ -4,6 +4,11 @@ public class EmulationErrorException extends RuntimeException {
 
     public EmulationErrorException(String message)
     {
-        super(message);
+        this(message,null);
     }
+    
+    public EmulationErrorException(String message,Throwable t)
+    {
+        super(message,t);
+    }    
 }  

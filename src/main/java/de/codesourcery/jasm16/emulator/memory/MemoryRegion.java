@@ -16,7 +16,10 @@
 package de.codesourcery.jasm16.emulator.memory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.apache.commons.lang.StringUtils;
@@ -39,14 +42,14 @@ public class MemoryRegion implements IMemoryRegion {
     private final String regionName;
     private final AddressRange addressRange;
     private final AtomicIntegerArray memory;
-    private final boolean supportsMerging;
+    private final boolean supportsMerging; // distinct field and not just a flag for speed reasons
+    private final Set<Flag> flags = new HashSet<>();
     
-    public MemoryRegion(String regionName , AddressRange range,boolean supportsMerging) 
+    public MemoryRegion(String regionName , AddressRange range,Flag... flags) 
     {
         if (StringUtils.isBlank(regionName)) {
             throw new IllegalArgumentException("regionName must not be NULL/blank.");
         }
-        
         if ( range == null ) {
             throw new IllegalArgumentException("startingAddress must not be NULL.");
         }
@@ -54,10 +57,24 @@ public class MemoryRegion implements IMemoryRegion {
         if ( sizeInWords.getValue() < 1 ) {
             throw new IllegalArgumentException("Memory size must be >= 1 word(s), invalid address range passed: "+range);
         }
-        this.supportsMerging = supportsMerging;
+        if ( flags != null ) {
+        	this.flags.addAll( Arrays.asList( flags ) );
+        }
+    	this.supportsMerging = this.flags.contains( Flag.SUPPORTS_MERGING );
         this.memory = new  AtomicIntegerArray( sizeInWords.getValue() );
         this.addressRange = range;
-        this.regionName = regionName;
+        this.regionName = regionName;    	
+    }
+    
+    public Set<Flag> getFlags() {
+		return new HashSet<Flag>( this.flags );
+	}
+    
+    public boolean hasFlag(Flag flag) {
+    	if (flag == null) {
+			throw new IllegalArgumentException("flag must not be null");
+		}
+    	return flags.contains( flag );
     }
     
     @Override
@@ -105,7 +122,7 @@ public class MemoryRegion implements IMemoryRegion {
     
     private IMemoryRegion createCopy(AddressRange range) {
         
-        final MemoryRegion result = new MemoryRegion( regionName , range , supportsMerging );
+        final MemoryRegion result = new MemoryRegion( regionName , range , this.flags.toArray(new Flag[this.flags.size()]));
 
         final int numberOfMemWordsToCopy= range.getSize().toSizeInWords().getValue();
         int readAddress = ( range.getStartAddress().minus( getAddressRange().getStartAddress() ) ).toWordAddress().getValue();

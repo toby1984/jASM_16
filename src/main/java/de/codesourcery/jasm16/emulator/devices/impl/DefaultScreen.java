@@ -81,13 +81,13 @@ public final class DefaultScreen implements IDevice {
 
     private volatile ILogger out;
 
-    private final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
+    public static final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
             "jASM16 default screen" , 
             0x7349f615,
             0x1802, 
             0x1c6c8b36 );
 
-    private final boolean connectUponAddDevice;  
+    private final boolean mapVideoRamUponAddDevice;  
     private final boolean mapFontRAMUponAddDevice;
     
     private BufferedImage defaultFontImage; 
@@ -114,11 +114,11 @@ public final class DefaultScreen implements IDevice {
 
     /**
      * 
-     * @param connectUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
+     * @param mapVideoRamUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
      * @param mapFontRAMUponAddDevice whether to map font/glyph RAM to 0x8180 when afterAddDevice() is called
      */
-    public DefaultScreen(boolean connectUponAddDevice,boolean mapFontRAMUponAddDevice) {
-        this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , connectUponAddDevice , mapFontRAMUponAddDevice );
+    public DefaultScreen(boolean mapVideoRamUponAddDevice,boolean mapFontRAMUponAddDevice) {
+        this( STANDARD_SCREEN_COLUMNS , STANDARD_SCREEN_ROWS , mapVideoRamUponAddDevice , mapFontRAMUponAddDevice );
     }
 
     /**
@@ -126,10 +126,10 @@ public final class DefaultScreen implements IDevice {
      * @param screenColumns
      * @param screenRows
      * 
-     * @param connectUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
+     * @param mapVideoRamUponAddDevice  whether to map video RAM to 0x8000 when afterAddDevice() is called
      * @param mapFontRAMUponAddDevice whether to map font/glyph RAM to 0x8180 when afterAddDevice() is called     
      */
-    public DefaultScreen(int screenColumns,int screenRows, boolean connectUponAddDevice,boolean mapFontRAMUponAddDevice) 
+    public DefaultScreen(int screenColumns,int screenRows, boolean mapVideoRamUponAddDevice,boolean mapFontRAMUponAddDevice) 
     {
         if ( screenColumns < STANDARD_SCREEN_COLUMNS ) {
             throw new IllegalArgumentException("Illegal column count "+screenColumns+", must be at least "+
@@ -146,7 +146,7 @@ public final class DefaultScreen implements IDevice {
         this.SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+2*(BORDER_WIDTH);
         this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+2*(BORDER_HEIGHT);
 
-        this.connectUponAddDevice = connectUponAddDevice;
+        this.mapVideoRamUponAddDevice = mapVideoRamUponAddDevice;
         this.mapFontRAMUponAddDevice = mapFontRAMUponAddDevice;
         setupDefaultPaletteRAM();
     }
@@ -187,7 +187,7 @@ public final class DefaultScreen implements IDevice {
         paletteRAM.setDefaultPalette();
         requiresFullVRAMRendering=true;
 
-        if ( videoRAM != null && ! connectUponAddDevice ) {
+        if ( videoRAM != null && ! mapVideoRamUponAddDevice ) {
             emulator.unmapRegion( videoRAM );
             videoRAM = null;
         }
@@ -198,7 +198,7 @@ public final class DefaultScreen implements IDevice {
     protected final class FontRAM extends MemoryRegion 
     {
         public FontRAM(Address start) {
-            super("Font RAM", new AddressRange( start , Size.words( 256 ) ) , false ); // 2 words per character
+            super("Font RAM", new AddressRange( start , Size.words( 256 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  ); // 2 words per character
         }
 
         public void setup(ConsoleScreen scr) {
@@ -315,7 +315,7 @@ public final class DefaultScreen implements IDevice {
         private final AtomicReferenceArray<Color> cache = new AtomicReferenceArray<Color>( PALETTE_COLORS );
 
         public PaletteRAM(Address start) {
-            super("Palette RAM",new AddressRange( start , Size.words( PALETTE_COLORS ) ) , false );
+            super("Palette RAM", new AddressRange( start , Size.words( PALETTE_COLORS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  );
         }
 
         public void setDefaultPalette() 
@@ -380,7 +380,7 @@ public final class DefaultScreen implements IDevice {
     protected final class VideoRAM extends MemoryRegion {
 
         public VideoRAM(Address start) {
-            super("Video RAM",new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , false );
+            super("Video RAM", new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW );
         }
 
         @Override
@@ -555,13 +555,18 @@ public final class DefaultScreen implements IDevice {
             throw new IllegalStateException("Device "+this+" is already associated with an emulator?");
         }
         this.emulator = emulator;
-        if ( connectUponAddDevice ) {
+        if ( mapVideoRamUponAddDevice ) {
             mapVideoRAM( Address.wordAddress( 0x8000 ) );
         }
         if ( mapFontRAMUponAddDevice ) {
             mapFontRAM( Address.wordAddress( 0x8180 ) );
         }
         this.out = emulator.getOutput();
+    }
+    
+    @Override
+    public boolean supportsMultipleInstances() {
+    	return false;
     }
 
     @Override
@@ -1076,5 +1081,10 @@ public final class DefaultScreen implements IDevice {
         public int[] getBackingArray() {
             return data;
         }
+    }
+    
+    @Override
+    public String toString() {
+    	return "'"+DESC.getDescription()+"'";
     }
 }

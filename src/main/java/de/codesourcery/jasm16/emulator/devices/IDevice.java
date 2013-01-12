@@ -36,6 +36,13 @@ public interface IDevice {
 	public void reset();
 	
 	/**
+	 * Returns whether more than once instance of this device
+	 * may be added to an emulator.
+	 * @return
+	 */
+	public boolean supportsMultipleInstances();
+	
+	/**
 	 * Invoked before this device is removed from
 	 * an emulator.
 	 * 
@@ -47,7 +54,7 @@ public interface IDevice {
 	 * Returns the device descriptor for this device.
 	 * @return
 	 */
-	public DeviceDescriptor getDeviceDescriptor(); 
+	public DeviceDescriptor getDeviceDescriptor();
 	
 	/**
 	 * Handle a hardware interrupt triggered by the application.

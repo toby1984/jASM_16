@@ -550,26 +550,30 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
 						return;
 					}
-					try {
-						SwingUtilities.invokeAndWait( new Runnable() {
-
-							@Override
-							public void run()
-							{
-								try {
-									validateSourceCode();
-								} catch (IOException e) {
-									e.printStackTrace();
-								} finally {
-
-								}
-							}
-						} );
-					} finally {
-						currentState = WaitState.WAIT_FOR_EDIT;
-					}                        
 				} 
 			}
+			
+			try {
+				SwingUtilities.invokeAndWait( new Runnable() {
+
+					@Override
+					public void run()
+					{
+						try {
+							validateSourceCode();
+						} catch (IOException e) {
+							e.printStackTrace();
+						} finally {
+
+						}
+					}
+				} );
+			} finally {
+				synchronized( LOCK ) 
+				{				
+					currentState = WaitState.WAIT_FOR_EDIT;
+				}					
+			} 			
 		}
 
 		public void documentChanged() 

@@ -41,6 +41,7 @@ import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
+import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
 import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
 import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
 import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
@@ -77,7 +78,7 @@ public class Emulator implements IEmulator {
     private final ListenerHelper listenerHelper = new ListenerHelper();
 
     private static final AtomicLong cmdId = new AtomicLong(0);
-
+    
     protected static final class Command {
 
         private final long id = cmdId.incrementAndGet();
@@ -652,7 +653,7 @@ public class Emulator implements IEmulator {
         });      	
         clockThread.startSimulation();	
     }
-
+    
     public Emulator() {
         clockThread = new ClockThread();
         clockThread.start();
@@ -1936,9 +1937,18 @@ public class Emulator implements IEmulator {
             }
             cyclesConsumed = 0;
         } else {
-            cyclesConsumed = device.handleInterrupt( this );
+        	try {
+        		cyclesConsumed = device.handleInterrupt( this );
+        	} 
+        	catch(RuntimeException e) {
+        		if ( e instanceof DeviceErrorException) {
+        			throw e;
+        		}
+        		LOG.error("handleHWI(): Device "+device+" failed in handleInterrupt(): "+e.getMessage() , e );
+        		throw new DeviceErrorException("Device "+device+" failed in handleInterrupt(): "+e.getMessage() , device , e );
+        	}
         }
-        return 4+operand.value+cyclesConsumed;
+        return 4+operand.cycleCount+cyclesConsumed;
     }
 
     private IDevice getDeviceForSlot(int hardwareSlot) 
@@ -2221,7 +2231,7 @@ public class Emulator implements IEmulator {
 
         switch( operandBits ) {
             case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
-                final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
+                final OperandDesc tmp = operandDesc( memory.read( sp ) );
                 sp = sp.incrementByOne(true);                
                 return tmp;
             case 0x19:
@@ -2678,9 +2688,93 @@ public class Emulator implements IEmulator {
         }
         return true;
     }
+    
+    public int addOrReplaceDevice(IDevice device) throws DeviceErrorException 
+    {
+    	if (device == null) {
+			throw new IllegalArgumentException("device must not be null");
+		}
+    	
+    	int existingSlot = -1;
+    	IDevice existingDevice = null;
+        synchronized( devices ) 
+        {
+        	existingSlot = findDeviceSlotByDescriptor(  device.getDeviceDescriptor() );
+        	if ( existingSlot != -1 ) {
+        		existingDevice = devices.get( existingSlot );
+        	}
+        }
+        
+    	final boolean requiresAdd;
+        if ( existingDevice != null ) 
+        {
+        	// call beforeRemoveDevice() outside of synchronized block
+        	existingDevice.beforeRemoveDevice( this );
+        	
+        	synchronized( devices ) 
+        	{
+    			existingSlot = devices.indexOf( existingDevice );
+        		if ( existingSlot == -1 ) {
+        			requiresAdd = true;
+        		} else {
+        			devices.remove( existingSlot );
+        			devices.add( existingSlot , device );
+        			requiresAdd = false;
+        		}
+        	}
+        } else {
+        	requiresAdd = true;
+        }
+
+        if ( requiresAdd ) {
+        	return addDevice( device );        	
+        } 
+        // replaced
+        device.afterAddDevice( this );
+        return existingSlot;
+    }
+    
+    public List<IDevice> getDevicesByDescriptor(DeviceDescriptor desc) 
+    {
+    	if (desc == null) {
+			throw new IllegalArgumentException("descriptor must not be null");
+		}
+    	final List<IDevice> result = new ArrayList<>();
+        synchronized( devices ) 
+        {
+            for ( IDevice device : devices ) 
+            {
+            	if ( device.getDeviceDescriptor().matches( desc ) ) {
+            		result.add( device );
+            	}
+            }
+        }
+        return result;
+    }
+    
+    private int findDeviceSlotByDescriptor(DeviceDescriptor descriptor) 
+    {
+    	int existingSlot = -1;
+        synchronized( devices ) 
+        {
+            int i = 0;
+            for ( IDevice existing : devices ) 
+            {
+            	if ( existing.getDeviceDescriptor().matches( descriptor) ) 
+            	{
+            		if ( existingSlot != -1 ) {
+                    	throw new IllegalStateException("Found more than one existing device with descriptor "+descriptor );            			
+            		}
+            		existingSlot = i; 
+            	}
+            	i++;
+            }
+        }
+        return existingSlot;
+    }
 
     @Override
-    public int addDevice(IDevice device) 
+    public int addDevice(IDevice device) throws DeviceErrorException
     {
         if (device == null) {
             throw new IllegalArgumentException("device must not be null");
@@ -2688,6 +2782,12 @@ public class Emulator implements IEmulator {
         final int slotNo;
         synchronized( devices ) 
         {
+        	if ( ! device.supportsMultipleInstances() &&
+        	     findDeviceSlotByDescriptor( device.getDeviceDescriptor() ) != -1 ) 
+        	{
+                throw new IllegalStateException("Already one instance of device "+device.getDeviceDescriptor()+" registered.");
+        	}
+        	
             if ( devices.size() >= 65535 ) {
                 throw new IllegalStateException("Already 65535 devices registered");
             }
@@ -2702,6 +2802,13 @@ public class Emulator implements IEmulator {
         	device.afterAddDevice( this );
         	success = true;
         } 
+        catch(RuntimeException e) {
+        	if ( e instanceof DeviceErrorException ) {
+        		throw e;
+        	}
+        	LOG.error("Device "+device+" failed in afterAddDevice() call",e);
+        	throw new DeviceErrorException( "afterAddDevice() failed: "+e.getMessage() , device , e );
+        }
         finally 
         {
         	if ( ! success ) {
@@ -2746,7 +2853,17 @@ public class Emulator implements IEmulator {
         }
 
         if ( isRegistered ) {
-            device.beforeRemoveDevice( this );
+        	try {
+        		device.beforeRemoveDevice( this );
+        	} 
+        	catch(RuntimeException e) 
+        	{
+        		if ( e instanceof DeviceErrorException) {
+        			throw (DeviceErrorException) e;
+        		}
+            	LOG.error("Device "+device+" failed in beforeRemoveDevice() call",e);
+            	throw new DeviceErrorException( "breforeRemoveDevice() failed: "+e.getMessage() , device , e );        		
+        	}
         } else {
             return;
         }
@@ -2755,7 +2872,6 @@ public class Emulator implements IEmulator {
             devices.remove( device );
         }
 
-        // TODO: remove debug output
         if ( isRegistered ) {
             out.debug("Removed device "+device);
             printDevices();

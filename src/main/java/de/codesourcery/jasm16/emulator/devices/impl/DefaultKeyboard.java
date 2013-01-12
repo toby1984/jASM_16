@@ -64,7 +64,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
 	
-	private final DeviceDescriptor desc = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
+	public static final DeviceDescriptor DESC = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
 
 	private final AtomicBoolean emulationRunning = new AtomicBoolean(false);
 	
@@ -87,7 +87,7 @@ public class DefaultKeyboard implements IDevice {
 
         public LegacyKeyboardBuffer(Address range)
         {
-            super("keyboard buffer (legacy)", new AddressRange( range , Size.words( 1 ) ) , false );
+            super("keyboard buffer (legacy)", new AddressRange( range , Size.words( 1 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW);
         }
 	
         public void writeKeyEvent(int keyCode) 
@@ -355,6 +355,11 @@ public class DefaultKeyboard implements IDevice {
 			emulator.mapRegion( legacyKeyboardBuffer );
 		}
 	}
+	
+    @Override
+    public boolean supportsMultipleInstances() {
+    	return false;
+    }	
 
 	@Override
 	public void beforeRemoveDevice(IEmulator emulator) {
@@ -371,7 +376,7 @@ public class DefaultKeyboard implements IDevice {
 
 	@Override
 	public DeviceDescriptor getDeviceDescriptor() {
-		return desc;
+		return DESC;
 	}
 
 	@Override
@@ -418,4 +423,8 @@ public class DefaultKeyboard implements IDevice {
 		}
 	}
 
+    @Override
+    public String toString() {
+    	return "'"+DESC.getDescription()+"'"; 
+    }	
 }

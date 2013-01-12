@@ -32,13 +32,13 @@ public final class AddressRange
 
     public AddressRange(Address start, Address end) {
         if ( start == null ) {
-            throw new IllegalArgumentException("start must not be NULL.");
+            throw new IllegalArgumentException("start of address range must not be NULL.");
         }
         if ( end == null ) {
-            throw new IllegalArgumentException("end must not be NULL.");
+            throw new IllegalArgumentException("end of address range must not be NULL.");
         }
         if ( start.isGreaterThan( end ) ) {
-            throw new IllegalArgumentException("Start must not be greater than end, start: "+start+" , end: "+end);
+            throw new IllegalArgumentException("Start of address range must not be greater than end, start: "+start+" , end: "+end);
         }
         this.start = start;
         this.size = Size.bytes( end.toByteAddress().getValue() - start.toByteAddress().getValue() );
