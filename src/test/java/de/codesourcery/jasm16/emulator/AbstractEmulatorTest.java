@@ -201,7 +201,13 @@ public abstract class AbstractEmulatorTest extends TestCase
     
     protected final void assertMemoryValue(int value,String label) 
     {
-        ISymbol symbol;
+        final int actualValue = emulator.getMemory().read( getLabelAddress(label) );
+        assertEquals( "Expected a different value in memory at label '"+label+"'", value , actualValue );
+    }   
+    
+    protected final Address getLabelAddress(String label) 
+    {
+        final ISymbol symbol;
         try {
             symbol = compiledCode.compilationUnit.getSymbolTable().getSymbol(new Identifier(label) );
         } catch (ParseException e) {
@@ -213,11 +219,24 @@ public abstract class AbstractEmulatorTest extends TestCase
         
         final Label l = (Label) symbol;
         assertNotNull( "Address of "+l+" has no been resolved?" , l.getAddress() );
-        
-        final int actualValue = emulator.getMemory().read( l.getAddress() );
-        assertEquals( "Expected a different value in memory at label "+l , value , actualValue );
-    }    
+        return l.getAddress();
+    }
     
+    protected final void assertMemoryValue(Address expectedValue,Address address) 
+    {
+        final Address actualValue = Address.wordAddress( emulator.getMemory().read( address ) );    	
+        assertEquals( "Expected a different value in memory at address "+address , expectedValue , actualValue );
+    }
+    
+    protected final void assertMemoryValue(int value,Address address) 
+    {
+        final int actualValue = emulator.getMemory().read( address );
+        assertEquals( "Expected a different value in memory at address "+address , value , actualValue );
+    }
+    
+    protected final void assertRegIA(int value) {
+    	assertEquals("Interrupt handler register has unexpected value" , Address.wordAddress( value ) , emulator.getCPU().getInterruptAddress());
+    }    
     protected final void assertRegA(int value) { assertRegister(Register.A,value) ; }
     protected final void assertRegB(int value) { assertRegister(Register.B,value) ; }
     protected final void assertRegC(int value) { assertRegister(Register.C,value) ; }
@@ -226,6 +245,7 @@ public abstract class AbstractEmulatorTest extends TestCase
     protected final void assertRegZ(int value) { assertRegister(Register.Z,value) ; }
     protected final void assertRegI(int value) { assertRegister(Register.I,value) ; }
     protected final void assertRegJ(int value) { assertRegister(Register.J,value) ; }
+    protected final void assertRegSP(int value) { assertRegister(Register.SP,value) ; }
     
     protected final void assertRegASigned(int value) { assertRegisterSigned(Register.A,value) ; }
     protected final void assertRegBSigned(int value) { assertRegisterSigned(Register.B,value) ; }
@@ -234,7 +254,7 @@ public abstract class AbstractEmulatorTest extends TestCase
     protected final void assertRegYSigned(int value) { assertRegisterSigned(Register.Y,value) ; }
     protected final void assertRegZSigned(int value) { assertRegisterSigned(Register.Z,value) ; }
     protected final void assertRegISigned(int value) { assertRegisterSigned(Register.I,value) ; }
-    protected final void assertRegJSigned(int value) { assertRegisterSigned(Register.J,value) ; }    
+    protected final void assertRegJSigned(int value) { assertRegisterSigned(Register.J,value) ; }
     
     protected final void assertRegEX(int value) { assertRegister(Register.EX,value) ; }
     

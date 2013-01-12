@@ -87,6 +87,7 @@ import de.codesourcery.jasm16.ast.EquationNode;
 import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
+import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
@@ -647,8 +648,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		errorStyle = createStyle( Color.RED );
 		registerStyle = createStyle( Color.ORANGE );   
 		commentStyle = createStyle( Color.DARK_GRAY );
-		instructionStyle = createStyle( Color.BLUE );
-		labelStyle = createStyle( Color.GREEN );
+		instructionStyle = createStyle( new Color(50,186,223) );
+		labelStyle = createStyle( new Color(237,237,81) );
 		preProcessorStyle = createStyle( new Color( 200 , 200 , 200 ) ); 
 		workspace.addWorkspaceListener( workspaceListener );
 	}
@@ -919,7 +920,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			highlight( node , preProcessorStyle );
 		}
 
-		if ( node instanceof SymbolReferenceNode ) {
+		if ( node instanceof SymbolReferenceNode || node instanceof LabelNode ) {
 			highlight( node , labelStyle );
 		} else if ( node instanceof CommentNode ) {
 			highlight( node , commentStyle );

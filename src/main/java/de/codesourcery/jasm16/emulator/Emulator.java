@@ -388,7 +388,7 @@ public class Emulator implements IEmulator {
     private volatile boolean queueInterrupts = false;
 
     // @GuardedBy( interruptQueue )
-    private volatile IInterrupt currentInterrupt = null;
+    private IInterrupt currentInterrupt = null;
     // @GuardedBy( interruptQueue )
     private final List<IInterrupt> interruptQueue = new ArrayList<IInterrupt>();
 
@@ -931,28 +931,6 @@ public class Emulator implements IEmulator {
      */
     protected int internalExecuteOneInstruction() 
     {
-        if ( getCPU().interruptsEnabled() ) 
-        { 
-            final IInterrupt irq;
-            synchronized( interruptQueue ) 
-            {
-                if ( currentInterrupt != null ) {
-                    irq = currentInterrupt;
-                    currentInterrupt = null;
-                } 
-                else  if ( ! interruptQueue.isEmpty() && ! getCPU().isQueueInterrupts() ) 
-                {
-                    irq = interruptQueue.remove(0);
-                } else {
-                    irq = null;
-                }
-            }
-
-            if ( irq != null ) {
-                handleInterrupt( irq );
-            }
-        }
-
         beforeCommandExecution();
 
         int execDurationInCycles=-1; 
@@ -969,6 +947,8 @@ public class Emulator implements IEmulator {
             }
             this.previousPC = previousPC;
             currentCycle+=execDurationInCycles;
+            
+            maybeProcessOneInterrupt();               
         } 
         catch(EmulationErrorException e) {
             stop( e );
@@ -987,9 +967,49 @@ public class Emulator implements IEmulator {
             afterCommandExecution( execDurationInCycles );
         }
         return execDurationInCycles;
-    }     
+    }
 
-    private void handleInterrupt(IInterrupt irq) 
+	private boolean maybeProcessOneInterrupt() 
+	{
+		if ( getCPU().interruptsEnabled() ) 
+        { 
+            final IInterrupt irq = getNextProcessableInterrupt( true );
+            if ( irq != null ) {
+                processInterrupt( irq );
+                return true;
+            }
+        }
+		return false;
+	}     
+	
+	private IInterrupt getNextProcessableInterrupt(boolean removeFromQueue) 
+	{
+        synchronized( interruptQueue ) 
+        {
+        	// try to 
+            if ( currentInterrupt != null ) 
+            {
+            	if ( ! removeFromQueue ) {
+            		return currentInterrupt;
+            	}
+            	
+            	final IInterrupt irq = currentInterrupt;
+              	currentInterrupt = null;
+              	return irq;
+            } 
+            
+            if ( ! interruptQueue.isEmpty() && ! getCPU().isQueueInterrupts() ) 
+            {
+            	if ( removeFromQueue ) {
+            		return interruptQueue.remove(0);
+            	} 
+            	return interruptQueue.get(0);
+            }
+        }
+        return null;
+	}
+
+    private void processInterrupt(IInterrupt irq) 
     {
         /* When IA is set to something other than 0, interrupts triggered on the DCPU-16
          * will 
@@ -2023,7 +2043,7 @@ public class Emulator implements IEmulator {
     private int handleINT(int instructionWord) 
     {
         final OperandDesc operand = loadSourceOperand( instructionWord );
-        triggerInterrupt( new SoftwareInterrupt( operand.value ) );
+        triggerInterrupt(new SoftwareInterrupt( operand.value ));
         return 4+operand.cycleCount;
     }
 

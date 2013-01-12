@@ -17,6 +17,9 @@ package de.codesourcery.jasm16.emulator;
 
 import java.util.concurrent.TimeoutException;
 
+import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Size;
+
 public class EmulatorTest extends AbstractEmulatorTest
 {
     /* ==========================
@@ -1091,5 +1094,115 @@ public class EmulatorTest extends AbstractEmulatorTest
         execute(source);
         assertRegA( 0 );
         assertRegC( 0xdead );
-    }      
+    }
+    
+    /* ==========================
+     * ============= JSR ========
+     * ========================== */    
+    
+    public void testJSR() throws InterruptedException, TimeoutException {
+
+        final String source = "       JSR subroutine\n" +
+                               "      SET b,0xbeef\n"+
+        		               "      HCF 0\n"+
+                               "subroutine:  SET a ,0xdead\n"+
+                               "      SET PC,POP";
+        execute(source);
+        
+        assertRegA( 0xdead );
+        assertRegB( 0xbeef );
+    }     
+    
+    /* ==========================
+     * ============= IAS ========
+     * ========================== */    
+    
+    public void testIAS() throws InterruptedException, TimeoutException {
+
+        final String source = "       IAS subroutine\n" +
+        		               "      HCF 0\n"+
+                               "subroutine:";
+        execute(source);
+        assertRegIA( 0x02 );
+    }    
+    
+    /* ==========================
+     * ============= IAG ========
+     * ========================== */    
+    
+    public void testIAG() throws InterruptedException, TimeoutException {
+
+        final String source = "       IAS subroutine\n" +
+                              "       IAG a\n"+
+        		               "      HCF 0\n"+
+                               "subroutine:";
+        execute(source);
+        assertRegA( 0x3 );
+    }    
+    
+    /* ==========================
+     * ============= INT ========
+     * ========================== */    
+    
+    public void testINT1() throws InterruptedException, TimeoutException {
+
+        final String source = "       SET a,0x42\n"+
+                              "       IAS subroutine\n" +
+                              "       INT 0xbeef\n"+ // trigger software interrupt with message 0xbeef
+        		              "contlabel:\n"+                              
+        		              "       SET b, 0xdead\n"+ // never reached
+        		              "       HCF 0\n"+ // never reached
+                              "subroutine:"+
+        		              "       SET b,a\n"+ // a will be set to the interrupt message
+                              "       HCF 0";
+        execute(source);
+        
+        final Address sp = emulator.getCPU().getSP();
+        
+        assertRegB( 0xbeef );
+        
+        /* Stack layout at start of interrupt handler
+         * 
+         * +---------+
+         * |   PC    |
+         * +---------+
+         * |    A    | <-- SP
+         * +---------+
+         */
+        assertEquals( Address.wordAddress( 0xfffe ) , sp );
+        
+        assertMemoryValue( 0x42 , sp ); // saved reg A value 
+        assertMemoryValue( getLabelAddress("contlabel") , sp.plus(Size.words(1), false ) ); // PC of instruction after INT
+    }    
+    
+    /* ==========================
+     * ============= RFI ========
+     * ========================== */    
+    
+    public void testRFI() throws InterruptedException, TimeoutException {
+
+        final String source = "       SET a,0x42\n"+
+                              "       IAS subroutine\n" +
+                              "       INT 0xbeef\n"+ // trigger software interrupt with message 0xbeef
+        		              "contlabel:\n"+                              
+        		              "       SET c, 0xdead\n"+ 
+        		              "       HCF 0\n"+ 
+                              "subroutine:"+
+        		              "       SET b,a\n"+ // a will be set to the interrupt message
+                              "       RFI 0";
+        execute(source);
+        
+        assertRegB( 0xbeef );
+        assertRegC( 0xdead );        
+        
+        /* Stack layout at start of interrupt handler
+         * 
+         * +---------+
+         * |   PC    |
+         * +---------+
+         * |    A    | <-- SP
+         * +---------+
+         */
+        assertRegSP( 0 );
+    }     
 }

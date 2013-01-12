@@ -188,10 +188,10 @@ public interface IEmulator
      * Triggers an interrupt.
      * 
      * <p>If the interrupt queue is empty, the interrupt will be handled
-     * before the next regular instruction execution.If the interrupt queue
+     * <b>after</b> the next regular instruction execution.If the interrupt queue
      * is not yet full ( less than 256 interrupts queued), the interrupt
      * will be added to the queue. If interrupts are currently disabled,
-     * this method will return <code>false</code>.</p>
+     * this method will return <code>false</code> and do nothing.</p>
      * @param interrupt
      * @return <code>false</code> if interrupts are disabled (IA is set to 0),
      * otherwise <code>true</code>
