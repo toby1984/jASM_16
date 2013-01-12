@@ -26,13 +26,20 @@ import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
 
 public class EmulatorFactory
 {
-	private EmulationOptions options = new EmulationOptions();
+	private volatile EmulationOptions options = new EmulationOptions();
 	
 	public EmulatorFactory() {
 	}
 	
 	public EmulationOptions getOptions() {
-		return options;
+		return new EmulationOptions(options);
+	}
+	
+	public void setOptions(EmulationOptions options) {
+		if (options == null) {
+			throw new IllegalArgumentException("options must not be null");
+		}
+		this.options = new EmulationOptions(options);
 	}
 	
     public Emulator createEmulator() 

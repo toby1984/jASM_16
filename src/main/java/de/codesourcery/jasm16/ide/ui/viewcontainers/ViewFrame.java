@@ -100,6 +100,10 @@ public class ViewFrame extends JFrame implements IViewContainer
 	}
 
 	@Override
+	public void toFront(IView view) {
+	}
+	
+	@Override
 	public void addView(IView view) {
 		throw new UnsupportedOperationException("showView()");
 	}

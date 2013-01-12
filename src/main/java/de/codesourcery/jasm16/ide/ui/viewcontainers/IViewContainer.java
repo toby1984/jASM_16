@@ -44,6 +44,13 @@ public interface IViewContainer {
 	public void dispose();
 	
 	/**
+	 * Brings a view to front.
+	 * 
+	 * @param view
+	 */
+	public void toFront(IView view);
+	
+	/**
 	 * Adds a view to this container.
 	 * 
 	 * @param view

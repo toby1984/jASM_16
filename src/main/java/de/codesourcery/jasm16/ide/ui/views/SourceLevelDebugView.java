@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
@@ -51,8 +52,13 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.ui.MenuManager;
+import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
@@ -71,6 +77,7 @@ public class SourceLevelDebugView extends SourceCodeView
     private IAssemblyProject currentProject;
     private volatile ICompilationUnit currentUnit;
     private final DebuggingPerspective perspective;
+    private final EmulatorFactory factory;
     
     // @GuardedBy( breakpointHighlights )
     private final Map<Address,Object> breakpointHighlights = new HashMap<Address,Object>();    
@@ -112,7 +119,8 @@ public class SourceLevelDebugView extends SourceCodeView
         }
     };
     
-    public SourceLevelDebugView(IResourceResolver resourceResolver,IWorkspace workspace,DebuggingPerspective perspective, IEmulator emulator)
+    public SourceLevelDebugView(IResourceResolver resourceResolver,IWorkspace workspace,DebuggingPerspective perspective, 
+    		IEmulator emulator,EmulatorFactory factory)
     {
         super(resourceResolver,workspace, false);
         if ( perspective == null ) {
@@ -121,6 +129,7 @@ public class SourceLevelDebugView extends SourceCodeView
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
+        this.factory = factory;
         this.perspective = perspective;
         this.emulator = emulator;
         this.emulator.addEmulationListener( listener );
@@ -216,8 +225,49 @@ public class SourceLevelDebugView extends SourceCodeView
         {
             panel = createPanel();
             addMouseListener( mouseListener );
+            setupMenu( getViewContainer().getMenuManager() );
         }
         return panel;
+    }
+    
+    private void setupMenu(MenuManager menuManager) {
+    
+    	final MenuEntry entry = new MenuEntry("Options/Emulation options") {
+			
+			@Override
+			public void onClick() 
+			{
+				EmulationOptionsView view = (EmulationOptionsView) getViewContainer().getViewByID( EmulationOptionsView.ID );
+				if ( view == null ) {
+						view = new EmulationOptionsView(factory.getOptions()) 
+						{
+							protected void onSave(de.codesourcery.jasm16.emulator.EmulationOptions options) 
+							{
+								// close window
+								getViewContainer().disposeView( this );
+								
+								// apply changes
+								options.apply( emulator );
+								factory.setOptions( options );
+								
+								if ( options.isNewEmulatorInstanceRequired() ) 
+								{
+									UIUtils.showErrorDialog(null, "Could not apply all changes" , 
+											"Not all of your changes could be applied, close and re-open the debugging perspective to apply them");
+								}
+							}
+							
+							protected void onCancel() {
+								// close window
+								getViewContainer().disposeView( this );
+							}
+						};
+						getViewContainer().addView( view );
+				} 
+				getViewContainer().toFront( view );
+			}
+		};
+		menuManager.addEntry( entry );
     }
     
     private JPanel createPanel() {

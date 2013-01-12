@@ -341,6 +341,19 @@ public class Perspective extends JFrame implements IViewContainer {
 		}		
 		return null;
 	}
+	
+	@Override
+	public final void toFront(IView view) 
+	{
+		for (InternalFrameWithView frame : this.views) 
+		{
+			if ( frame.view.getID().equals( view.getID() ) ) 
+			{
+				frame.frame.toFront();
+				return;
+			}
+		}	
+	}
 
 	@Override
 	public MenuManager getMenuManager() {

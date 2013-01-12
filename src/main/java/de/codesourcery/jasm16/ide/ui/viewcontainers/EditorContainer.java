@@ -99,6 +99,10 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 		return panel;
 	}
+	
+	@Override
+	public void toFront(IView view) {
+	}
 
 	private JPanel createPanel() 
 	{

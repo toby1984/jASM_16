@@ -245,7 +245,7 @@ public class DebuggingPerspective extends Perspective
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) {
-            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator );
+            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator , emulatorFactory );
             addView( view );
             view.refreshDisplay();            
         }

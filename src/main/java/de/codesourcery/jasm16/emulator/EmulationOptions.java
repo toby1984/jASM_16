@@ -18,8 +18,33 @@ public final class EmulationOptions {
 	private boolean mapVideoRamUponAddDevice = true;
 	private boolean mapFontRamUponAddDevice = false;
 	
-	private boolean newEmulatorInstanceRequired = true;
+	private boolean newEmulatorInstanceRequired = false;
 
+	public EmulationOptions() {
+	}
+	
+	public void setEnableDebugOutput(boolean enableDebugOutput) {
+		this.enableDebugOutput = enableDebugOutput;
+	}
+	
+	public boolean isEnableDebugOutput() {
+		return enableDebugOutput;
+	}
+	
+	public EmulationOptions(EmulationOptions other) 
+	{
+		if (other == null) {
+			throw new IllegalArgumentException("options must not be null");
+		}
+		this.enableDebugOutput            = other.enableDebugOutput;
+		this.memoryProtectionEnabled      = other.memoryProtectionEnabled;
+		this.ignoreAccessToUnknownDevices = other.ignoreAccessToUnknownDevices;
+		this.useLegacyKeyboardBuffer      = other.useLegacyKeyboardBuffer;
+		this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
+		this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
+		this.newEmulatorInstanceRequired  = other.newEmulatorInstanceRequired;
+	}
+	
 	public boolean isMemoryProtectionEnabled() {
 		return memoryProtectionEnabled;
 	}
@@ -41,7 +66,7 @@ public final class EmulationOptions {
 	}
 
 	public void setUseLegacyKeyboardBuffer(boolean useLegacyKeyboardBuffer) {
-		newEmulatorInstanceRequired = this.useLegacyKeyboardBuffer != useLegacyKeyboardBuffer;
+		newEmulatorInstanceRequired |= this.useLegacyKeyboardBuffer != useLegacyKeyboardBuffer;
 		this.useLegacyKeyboardBuffer = useLegacyKeyboardBuffer;
 	}
 
@@ -50,7 +75,7 @@ public final class EmulationOptions {
 	}
 
 	public void setMapVideoRamUponAddDevice(boolean mapVideoRamUponAddDevice) {
-		newEmulatorInstanceRequired = this.mapVideoRamUponAddDevice != mapVideoRamUponAddDevice;
+		newEmulatorInstanceRequired |= this.mapVideoRamUponAddDevice != mapVideoRamUponAddDevice;
 		this.mapVideoRamUponAddDevice = mapVideoRamUponAddDevice;
 	}
 
@@ -59,7 +84,7 @@ public final class EmulationOptions {
 	}
 
 	public void setMapFontRamUponAddDevice(boolean mapFontRamUponAddDevice) {
-		this.newEmulatorInstanceRequired = this.mapFontRamUponAddDevice != mapFontRamUponAddDevice;
+		this.newEmulatorInstanceRequired |= this.mapFontRamUponAddDevice != mapFontRamUponAddDevice;
 		this.mapFontRamUponAddDevice = mapFontRamUponAddDevice;
 	}
 	
@@ -67,15 +92,14 @@ public final class EmulationOptions {
 		return newEmulatorInstanceRequired;
 	}
 	
-	public void apply(IEmulator result) 
+	public void apply(IEmulator emulator) 
 	{
         final ILogger outLogger = new PrintStreamLogger( System.out );
         
         outLogger.setDebugEnabled( enableDebugOutput );
-		result.setOutput( outLogger );
-		
-        result.setMemoryProtectionEnabled( false );
-        result.setIgnoreAccessToUnknownDevices( false );
+		emulator.setOutput( outLogger );
+        emulator.setMemoryProtectionEnabled( memoryProtectionEnabled );
+        emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
 	}
 	
     public Emulator createEmulator() 

@@ -333,9 +333,9 @@ public final class MainMemory implements IMemory
 	{
 		if ( writeProtectedMemoryRanges.isSet( wordAddress ) ) 
 		{
-			throw new MemoryProtectionFaultException("Trying to write value "+
+			throw new MemoryProtectionFaultException("Intercepted write of value "+
 					Misc.toHexString( value )+" to address 0x"+Misc.toHexString( wordAddress )
-					+" that is part of write-protected range.",Address.wordAddress( wordAddress ));
+					+" that is part of a write-protected memory range.",Address.wordAddress( wordAddress ));
 		}
 	}
 

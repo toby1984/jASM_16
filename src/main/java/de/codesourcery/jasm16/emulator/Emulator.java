@@ -395,7 +395,52 @@ public class Emulator implements IEmulator {
 
     private volatile int currentCycle = 0;
 
-    private volatile ILogger out = new PrintStreamLogger( System.out );
+    private volatile ILogger loggerDelegate = new PrintStreamLogger( System.out );
+    private final ILogger out = new ILogger() {
+    	
+		public void setDebugEnabled(boolean yesNo) {
+			loggerDelegate.setDebugEnabled(yesNo);
+		}
+
+		public boolean isDebugEnabled() {
+			return loggerDelegate.isDebugEnabled();
+		}
+
+		public void info(String message) {
+			loggerDelegate.info(message);
+		}
+
+		public void info(String message, Throwable cause) {
+			loggerDelegate.info(message, cause);
+		}
+
+		public void warn(String message) {
+			loggerDelegate.warn(message);
+		}
+
+		public void warn(String message, Throwable cause) {
+			loggerDelegate.warn(message, cause);
+		}
+
+		public void error(String message) {
+			loggerDelegate.error(message);
+		}
+
+		public void error(String message, Throwable cause) {
+			loggerDelegate.error(message, cause);
+		}
+
+		public void debug(String message) {
+			loggerDelegate.debug(message);
+		}
+
+		public void debug(String message, Throwable cause) {
+			loggerDelegate.debug(message, cause);
+		}
+    	
+
+    	
+    };
 
     private final ICPU cpuAdaptor = new ICPU() {
 
@@ -937,8 +982,9 @@ public class Emulator implements IEmulator {
         int execDurationInCycles=-1; 
         try 
         {
-            final Address previousPC = pc;		    
-            execDurationInCycles = executeInstruction();
+            final Address previousPC = pc;	
+           	execDurationInCycles = executeInstruction();
+            
             if ( checkMemoryWrites ) {
                 // note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
                 // the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
@@ -1278,12 +1324,24 @@ public class Emulator implements IEmulator {
         // literal value: -1...30 ( 0x20 - 0x3f )
         return 0; // operandDesc( operandBits - 0x21 , 0 ); 
     }
-
+    
     private int executeInstruction() 
     {
         final int instructionWord = memory.read( pc );
+        Address oldPc = pc;
         pc = pc.incrementByOne(true);
+        
+        try {
+        	return executeInstruction(instructionWord);
+        } 
+        catch(UnknownOpcodeException e) {
+        	pc = oldPc;
+        	throw e;
+        }
+    }
 
+    private int executeInstruction(int instructionWord) 
+    {
         final int opCode = (instructionWord & 0x1f);
 
         /*
@@ -2973,7 +3031,10 @@ public class Emulator implements IEmulator {
     @Override
     public void setOutput(ILogger out)
     {
-        this.out = out;
+    	if (out == null) {
+			throw new IllegalArgumentException("out must not be null");
+		}
+        this.loggerDelegate = out;
     }
 
     @Override
