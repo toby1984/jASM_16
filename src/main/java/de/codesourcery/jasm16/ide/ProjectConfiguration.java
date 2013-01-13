@@ -45,6 +45,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import de.codesourcery.jasm16.emulator.EmulationOptions;
+import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -53,7 +55,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class ProjectConfiguration 
+public class ProjectConfiguration implements IEmulationOptionsProvider
 {
 	private static final Logger LOG = Logger.getLogger(ProjectConfiguration.class);
 
@@ -67,8 +69,8 @@ public class ProjectConfiguration
 
 	private String outputFolder;
 	private String projectName;
-
 	private String executableName;
+	private EmulationOptions emulationOptions=new EmulationOptions();
 
 	/**
 	 * Create instance.
@@ -80,6 +82,19 @@ public class ProjectConfiguration
 	{
 		this.baseDir = baseDir;
 	}
+
+    public EmulationOptions getEmulationOptions() {
+    	return new EmulationOptions(emulationOptions);
+    }
+    
+    public void setEmulationOptions(EmulationOptions emulationOptions) 
+    {
+    	if (emulationOptions == null) {
+			throw new IllegalArgumentException(
+					"emulationOptions must not be null");
+		}
+		this.emulationOptions = new EmulationOptions( emulationOptions );
+	}	
 
 	public String getExecutableName() {
 		return executableName;
@@ -157,6 +172,10 @@ public class ProjectConfiguration
 		root.appendChild( createElement("name" , projectName , document ) );
 		root.appendChild( createElement("outputFolder" , outputFolder , document ) );
 		root.appendChild( createElement("executableName" , executableName , document ) );		
+		
+		final Element options = document.createElement("emulationOptions");
+		this.emulationOptions.saveEmulationOptions( options );
+		root.appendChild( options );
 
 		final Element srcFolderNode = createElement("sourceFolders",document);
 		root.appendChild( srcFolderNode );
@@ -171,8 +190,8 @@ public class ProjectConfiguration
 			LOG.error("Failed to save project configuration",e);
 			throw new IOException("Failed to save project configuration",e);
 		}
-	}	
-
+	}
+	
 	private void writeXML(Document doc,File file) throws TransformerFactoryConfigurationError, TransformerException 
 	{
 		final Source source = new DOMSource(doc);
@@ -211,12 +230,20 @@ public class ProjectConfiguration
 		final XPathExpression outputFolderExpr = xpath.compile("/project/outputFolder");
 		final XPathExpression executableNameExpr = xpath.compile("/project/executableName");
 		final XPathExpression srcFoldersExpr = xpath.compile("/project/sourceFolders/sourceFolder");
+		final XPathExpression emulationOptionsExpr = xpath.compile("/project/emulationOptions");		
 
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
 		this.executableName = getValue( executableNameExpr , doc );
 		this.sourceFolders.clear();
 		this.sourceFolders.addAll( getValues( srcFoldersExpr , doc ) );
+		
+		final Element element = getElement(emulationOptionsExpr,doc);
+		if ( element == null ) {
+			this.emulationOptions = new EmulationOptions();
+		} else {
+			this.emulationOptions = EmulationOptions.loadEmulationOptions( element );
+		}
 	}
 
 	private String getValue(XPathExpression expr, Document doc) throws XPathExpressionException 
@@ -230,6 +257,11 @@ public class ProjectConfiguration
 		}
 		return values.get(0);
 	}
+	
+	private Element getElement(XPathExpression expr,Document doc) throws XPathExpressionException 
+	{
+		return (Element) expr.evaluate(doc, XPathConstants.NODE);
+	} 
 
 	private List<String> getValues(XPathExpression expr, Document doc) throws XPathExpressionException {
 

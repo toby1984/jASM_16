@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.swing.JDialog;
 import javax.swing.JPanel;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
@@ -50,15 +49,14 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
+import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
-import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
-import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
@@ -77,7 +75,7 @@ public class SourceLevelDebugView extends SourceCodeView
     private IAssemblyProject currentProject;
     private volatile ICompilationUnit currentUnit;
     private final DebuggingPerspective perspective;
-    private final EmulatorFactory factory;
+    private final IAssemblyProject optionsProvider;
     
     // @GuardedBy( breakpointHighlights )
     private final Map<Address,Object> breakpointHighlights = new HashMap<Address,Object>();    
@@ -119,8 +117,11 @@ public class SourceLevelDebugView extends SourceCodeView
         }
     };
     
-    public SourceLevelDebugView(IResourceResolver resourceResolver,IWorkspace workspace,DebuggingPerspective perspective, 
-    		IEmulator emulator,EmulatorFactory factory)
+    public SourceLevelDebugView(IResourceResolver resourceResolver,
+    		IWorkspace workspace,
+    		DebuggingPerspective perspective, 
+    		IEmulator emulator,
+    		IAssemblyProject optionsProvider)
     {
         super(resourceResolver,workspace, false);
         if ( perspective == null ) {
@@ -129,7 +130,7 @@ public class SourceLevelDebugView extends SourceCodeView
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
-        this.factory = factory;
+        this.optionsProvider = optionsProvider;
         this.perspective = perspective;
         this.emulator = emulator;
         this.emulator.addEmulationListener( listener );
@@ -239,7 +240,7 @@ public class SourceLevelDebugView extends SourceCodeView
 			{
 				EmulationOptionsView view = (EmulationOptionsView) getViewContainer().getViewByID( EmulationOptionsView.ID );
 				if ( view == null ) {
-						view = new EmulationOptionsView(factory.getOptions()) 
+						view = new EmulationOptionsView(optionsProvider.getEmulationOptions()) 
 						{
 							protected void onSave(de.codesourcery.jasm16.emulator.EmulationOptions options) 
 							{
@@ -248,7 +249,12 @@ public class SourceLevelDebugView extends SourceCodeView
 								
 								// apply changes
 								options.apply( emulator );
-								factory.setOptions( options );
+								optionsProvider.setEmulationOptions( options );
+								try {
+									workspace.saveProjectConfiguration( optionsProvider );
+								} catch (IOException e) {
+									LOG.error("setupMenu(): Failed to save options for project "+optionsProvider,e);
+								}
 								
 								if ( options.isNewEmulatorInstanceRequired() ) 
 								{

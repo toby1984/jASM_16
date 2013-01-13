@@ -51,6 +51,7 @@ import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
+import de.codesourcery.jasm16.emulator.EmulationOptions;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.utils.Misc;
 import de.codesourcery.jasm16.utils.Misc.IFileVisitor;
@@ -73,7 +74,7 @@ public class AssemblyProject implements IAssemblyProject
     private final List<ICompilationUnit> units = new ArrayList<ICompilationUnit>();
     private final IWorkspace workspace;
     private boolean isOpen;
-
+    
     private final IProjectBuilder builder = new IProjectBuilder() 
     {
         @Override
@@ -702,4 +703,14 @@ public class AssemblyProject implements IAssemblyProject
     {
         return getConfiguration().getProjectName();
     }
+
+	@Override
+	public EmulationOptions getEmulationOptions() {
+		return getConfiguration().getEmulationOptions();
+	}
+
+	@Override
+	public void setEmulationOptions(EmulationOptions emulationOptions) {
+		getConfiguration().setEmulationOptions( emulationOptions );
+	}
 }

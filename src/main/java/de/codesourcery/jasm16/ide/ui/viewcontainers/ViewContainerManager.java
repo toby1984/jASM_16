@@ -20,8 +20,8 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
-import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
+import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 
 /**
@@ -34,12 +34,10 @@ public class ViewContainerManager implements IViewContainerListener
     // @GuardedBy( containers )
     private final List<IViewContainer> containers = new ArrayList<IViewContainer>();
     
-    private final EmulatorFactory emulatorFactory;
     private final IWorkspace workspace;
     private final IApplicationConfig applicationConfig;
     
-    public ViewContainerManager(EmulatorFactory emulatorFactory,IWorkspace workspace,IApplicationConfig applicationConfig) {
-    	this.emulatorFactory = emulatorFactory;
+    public ViewContainerManager(IWorkspace workspace,IApplicationConfig applicationConfig) {
     	this.workspace = workspace;
     	this.applicationConfig = applicationConfig;
     }
@@ -93,7 +91,7 @@ public class ViewContainerManager implements IViewContainerListener
         removeViewContainer( container );
     }
     
-    public DebuggingPerspective getOrCreateDebuggingPerspective() {
+    public DebuggingPerspective getOrCreateDebuggingPerspective(IAssemblyProject optionsProvider) {
 
 		final List<? extends IViewContainer> perspectives = 
 				getPerspectives( DebuggingPerspective.ID );
@@ -112,7 +110,7 @@ public class ViewContainerManager implements IViewContainerListener
 	    		getPerspectives( EditorContainer.VIEW_ID );
 	      
 		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( emulatorFactory , 
+		final DebuggingPerspective p=new DebuggingPerspective( optionsProvider , 
 				workspace , 
 				applicationConfig , 
 		        editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );

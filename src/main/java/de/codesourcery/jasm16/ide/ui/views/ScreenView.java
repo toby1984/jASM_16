@@ -22,10 +22,10 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JPanel;
 
+import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
-import de.codesourcery.jasm16.ide.EmulatorFactory;
 
 public class ScreenView extends AbstractView
 {
@@ -37,19 +37,16 @@ public class ScreenView extends AbstractView
     private final IEmulator emulator;
     private final DefaultKeyboard keyboard;
     private volatile boolean debugCustomFonts = false;
-    private final EmulatorFactory emulatorFactory;
+    private final IEmulationOptionsProvider optionsProvider;
     
-    public ScreenView(EmulatorFactory emulatorFactory , IEmulator emulator) 
+    public ScreenView(IEmulationOptionsProvider optionsProvider, IEmulator emulator) 
     {
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
-        if ( emulatorFactory == null ) {
-			throw new IllegalArgumentException("emulatorFactory must not be null");
-		}
         this.emulator = emulator;
-        this.emulatorFactory = emulatorFactory;
-        this.keyboard = emulatorFactory.getKeyboard( emulator );
+        this.optionsProvider = optionsProvider;
+        this.keyboard = optionsProvider.getEmulationOptions().getKeyboard( emulator );
     }
     
     @Override
@@ -96,7 +93,7 @@ public class ScreenView extends AbstractView
     	if ( panel == null ) 
     	{
     		panel=createPanel();
-    		screen = emulatorFactory.getScreen(emulator);
+    		screen = optionsProvider.getEmulationOptions().getScreen(emulator);
     		screen.attach( panel );
     		keyboard.setInputComponent( panel );
     	}

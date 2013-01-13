@@ -22,8 +22,10 @@ import java.util.List;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.emulator.EmulationOptions;
+import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 
-public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener
+public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,IEmulationOptionsProvider
 {
     public String getName();
     

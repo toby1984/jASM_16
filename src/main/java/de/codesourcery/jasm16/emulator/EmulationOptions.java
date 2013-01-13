@@ -1,5 +1,10 @@
 package de.codesourcery.jasm16.emulator;
 
+import java.util.List;
+
+import org.w3c.dom.Element;
+
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
@@ -102,6 +107,45 @@ public final class EmulationOptions {
         emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
 	}
 	
+	public void saveEmulationOptions(Element element) {
+		
+		if ( isEnableDebugOutput() ) {
+			element.setAttribute("debug" , "true" );
+		}
+		if ( isIgnoreAccessToUnknownDevices() ) {
+			element.setAttribute("ignoreAccessToUnknownDevices" , "true" );
+		}
+		if ( isMapFontRamUponAddDevice() ) {
+			element.setAttribute("mapFontRamUponAddDevice" , "true" );
+		}	
+		if ( isMapVideoRamUponAddDevice() ) {
+			element.setAttribute("mapVideoRamUponAddDevice" , "true" );
+		}		
+		if ( isMemoryProtectionEnabled() ) {
+			element.setAttribute("memoryProtectionEnabled" , "true" );
+		}		
+		if ( isUseLegacyKeyboardBuffer() ) {
+			element.setAttribute("useLegacyKeyboardBuffer" , "true" );
+		}		
+	}
+	
+	public static EmulationOptions loadEmulationOptions(Element element) 
+	{
+		final EmulationOptions result = new EmulationOptions();
+		result.setEnableDebugOutput( isSet(element,"debug" ) );
+		result.setIgnoreAccessToUnknownDevices( isSet(element,"ignoreAccessToUnknownDevices" ) );
+		result.setMapFontRamUponAddDevice( isSet(element,"mapFontRamUponAddDevice" ) );
+		result.setMapVideoRamUponAddDevice( isSet(element,"mapVideoRamUponAddDevice" ) );
+		result.setMemoryProtectionEnabled( isSet(element,"memoryProtectionEnabled" ) );
+		result.setUseLegacyKeyboardBuffer( isSet(element,"useLegacyKeyboardBuffer" ) );
+		return result;
+	}	
+	
+	private static boolean isSet(Element element,String attribute) {
+		final String value = element.getAttribute(attribute);
+		return "true".equals( value );
+	}
+	
     public Emulator createEmulator() 
     {
         final Emulator result = new Emulator();
@@ -114,4 +158,28 @@ public final class EmulationOptions {
         newEmulatorInstanceRequired = false;
         return result;
     } 		
+    
+    public DefaultScreen getScreen(IEmulator emulator) 
+    {
+    	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultScreen.DESC );
+    	if ( result.isEmpty() ) {
+    		throw new RuntimeException("Internal error, found no default screen?");
+    	}
+    	if ( result.size() > 1 ) {
+    		throw new RuntimeException("Internal error, found more than one default screen?");
+    	}
+    	return (DefaultScreen) result.get(0);
+    }
+    
+    public DefaultKeyboard getKeyboard(IEmulator emulator)
+    {
+    	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultKeyboard.DESC );
+    	if ( result.isEmpty() ) {
+    		throw new RuntimeException("Internal error, found no default keyboard ?");
+    	}
+    	if ( result.size() > 1 ) {
+    		throw new RuntimeException("Internal error, found more than one default keyboard ?");
+    	}
+    	return (DefaultKeyboard) result.get(0);    	
+    }     
 }

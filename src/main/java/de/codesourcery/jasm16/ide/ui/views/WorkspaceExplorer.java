@@ -587,7 +587,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		if ( canOpenInDebugPerspective( project ) ) 
 		{
-			final DebuggingPerspective p= perspectivesManager.getOrCreateDebuggingPerspective();
+			final DebuggingPerspective p= perspectivesManager.getOrCreateDebuggingPerspective(project);
 			p.openExecutable( project , executable );
 			p.setVisible( true );
 			p.toFront();            

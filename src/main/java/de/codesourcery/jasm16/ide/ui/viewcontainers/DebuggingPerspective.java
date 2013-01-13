@@ -27,7 +27,6 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
-import de.codesourcery.jasm16.ide.EmulatorFactory;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -49,7 +48,7 @@ public class DebuggingPerspective extends Perspective
     public static final String ID = "debugger";
 
     private final IResourceResolver resourceResolver;
-    private final EmulatorFactory emulatorFactory;
+    private final IAssemblyProject optionsProvider;
     private final IWorkspace workspace;
     private final IEmulator emulator;
 
@@ -142,20 +141,20 @@ public class DebuggingPerspective extends Perspective
     };
 
 
-    public DebuggingPerspective(EmulatorFactory emulatorFactory , IWorkspace workspace ,IApplicationConfig appConfig,IResourceResolver resourceResolver)
+    public DebuggingPerspective(IAssemblyProject optionsProvider , 
+    		IWorkspace workspace ,
+    		IApplicationConfig appConfig,
+    		IResourceResolver resourceResolver)
     {
         super(ID, appConfig);
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }
-        if ( emulatorFactory == null ) {
-			throw new IllegalArgumentException("emulatorFactory must not be null");
-		}
         this.resourceResolver = resourceResolver;
-        this.emulatorFactory = emulatorFactory;
+        this.optionsProvider = optionsProvider;
         this.workspace = workspace;
         this.workspace.addWorkspaceListener( workspaceListener );
-        this.emulator = emulatorFactory.createEmulator();
+        this.emulator = optionsProvider.getEmulationOptions().createEmulator();
         this.emulator.addEmulationListener( listener );
     }
     
@@ -237,7 +236,7 @@ public class DebuggingPerspective extends Perspective
 
         // setup screen view
         if ( getScreenView() == null ) {
-            final ScreenView view = new ScreenView( emulatorFactory , emulator );
+            final ScreenView view = new ScreenView( optionsProvider , emulator );
             view.setDebugCustomFonts( false );
             addView( view );
             view.refreshDisplay();
@@ -245,7 +244,7 @@ public class DebuggingPerspective extends Perspective
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) {
-            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator , emulatorFactory );
+            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator , optionsProvider );
             addView( view );
             view.refreshDisplay();            
         }

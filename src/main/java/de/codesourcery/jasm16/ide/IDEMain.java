@@ -53,8 +53,6 @@ public class IDEMain
     	final File appConfigFile = new File( Misc.getUserHomeDirectory() , ApplicationConfig.FILE_NAME );
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
 		
-		final EmulatorFactory emulatorFactory = new EmulatorFactory();
-		
 		workspace = new DefaultWorkspace( appConfig );
 		workspace.open();
 		
@@ -62,7 +60,7 @@ public class IDEMain
 		
 		final Perspective desktop = new Perspective( "desktop" , appConfig );
 		
-		viewContainerManager = new ViewContainerManager(emulatorFactory,workspace,appConfig);
+		viewContainerManager = new ViewContainerManager(workspace,appConfig);
 		
 		EditorFactory editorFactory = new EditorFactory( workspace , viewContainerManager );
 		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , editorFactory ) );
