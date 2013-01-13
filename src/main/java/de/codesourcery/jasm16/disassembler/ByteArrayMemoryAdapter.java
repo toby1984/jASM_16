@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.disassembler;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -25,7 +26,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
+public final class ByteArrayMemoryAdapter implements IMemory {
     
 	private final byte[] data;
 	
@@ -73,5 +74,31 @@ public class ByteArrayMemoryAdapter implements IReadOnlyMemory {
     {
         return read( Address.wordAddress( wordAddress ) );
     }
-    
-};
+
+	@Override
+	public void clear() 
+	{
+		final int len = data.length;
+		for ( int i = 0; i < len ; i++ ) {
+			data[i] = 0;
+		}
+	}
+
+	@Override
+	public void write(int wordAddress, int value) 
+	{
+        final int offset = wordAddress << 1;
+        if ( offset >= getSizeInBytes() ) {
+            throw new IllegalArgumentException("Address "+Misc.toHexString( wordAddress )+
+            		" is out-of-range (0-"+getSize()+")");
+        }
+        
+        data[ offset ] = (byte) ( (value >> 8) & 0xff );
+        data[ offset+1 ] = (byte) ( value & 0xff );
+	}
+
+	@Override
+	public void write(Address address, int value) {
+		write( address.getWordAddressValue() , value );
+	}   
+}

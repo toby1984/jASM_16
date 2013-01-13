@@ -1,11 +1,13 @@
 package de.codesourcery.jasm16.emulator;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.w3c.dom.Element;
 
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultFloppyDrive;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
 
@@ -22,6 +24,7 @@ public final class EmulationOptions {
 	private boolean useLegacyKeyboardBuffer = false;
 	private boolean mapVideoRamUponAddDevice = true;
 	private boolean mapFontRamUponAddDevice = false;
+	private boolean runFloppyAtFullSpeed = false;
 	
 	private boolean newEmulatorInstanceRequired = false;
 
@@ -47,7 +50,16 @@ public final class EmulationOptions {
 		this.useLegacyKeyboardBuffer      = other.useLegacyKeyboardBuffer;
 		this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
 		this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
+		this.runFloppyAtFullSpeed = other.runFloppyAtFullSpeed;
 		this.newEmulatorInstanceRequired  = other.newEmulatorInstanceRequired;
+	}
+	
+	public void setRunFloppyAtFullSpeed(boolean runFloppyAtFullSpeed) {
+		this.runFloppyAtFullSpeed = runFloppyAtFullSpeed;
+	}
+	
+	public boolean isRunFloppyAtFullSpeed() {
+		return runFloppyAtFullSpeed;
 	}
 	
 	public boolean isMemoryProtectionEnabled() {
@@ -105,6 +117,11 @@ public final class EmulationOptions {
 		emulator.setOutput( outLogger );
         emulator.setMemoryProtectionEnabled( memoryProtectionEnabled );
         emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
+        try {
+        	getFloppyDrive( emulator ).setRunAtMaxSpeed( runFloppyAtFullSpeed );
+        } catch(NoSuchElementException e) {
+        	// ok , no floppy attached
+        }
 	}
 	
 	public void saveEmulationOptions(Element element) {
@@ -126,7 +143,10 @@ public final class EmulationOptions {
 		}		
 		if ( isUseLegacyKeyboardBuffer() ) {
 			element.setAttribute("useLegacyKeyboardBuffer" , "true" );
-		}		
+		}	
+		if ( isRunFloppyAtFullSpeed() ) {
+			element.setAttribute("runFloppyAtFullSpeed" , "true" );
+		}			
 	}
 	
 	public static EmulationOptions loadEmulationOptions(Element element) 
@@ -138,6 +158,7 @@ public final class EmulationOptions {
 		result.setMapVideoRamUponAddDevice( isSet(element,"mapVideoRamUponAddDevice" ) );
 		result.setMemoryProtectionEnabled( isSet(element,"memoryProtectionEnabled" ) );
 		result.setUseLegacyKeyboardBuffer( isSet(element,"useLegacyKeyboardBuffer" ) );
+		result.setRunFloppyAtFullSpeed( isSet(element,"runFloppyAtFullSpeed" ) );		
 		return result;
 	}	
 	
@@ -155,15 +176,28 @@ public final class EmulationOptions {
         result.addDevice( new DefaultClock() );
         result.addDevice( new DefaultKeyboard( useLegacyKeyboardBuffer ) );
         result.addDevice( new DefaultScreen( mapVideoRamUponAddDevice , mapFontRamUponAddDevice ) );
+        result.addDevice( new DefaultFloppyDrive( runFloppyAtFullSpeed ) );
         newEmulatorInstanceRequired = false;
         return result;
-    } 		
+    } 
+    
+    public DefaultFloppyDrive getFloppyDrive(IEmulator emulator) 
+    {
+    	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultFloppyDrive.DESC );
+    	if ( result.isEmpty() ) {
+    		throw new NoSuchElementException("Internal error, found no default screen?");
+    	}
+    	if ( result.size() > 1 ) {
+    		throw new RuntimeException("Internal error, found more than one default screen?");
+    	}
+    	return (DefaultFloppyDrive) result.get(0);
+    }    
     
     public DefaultScreen getScreen(IEmulator emulator) 
     {
     	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultScreen.DESC );
     	if ( result.isEmpty() ) {
-    		throw new RuntimeException("Internal error, found no default screen?");
+    		throw new NoSuchElementException("Internal error, found no default screen?");
     	}
     	if ( result.size() > 1 ) {
     		throw new RuntimeException("Internal error, found more than one default screen?");
@@ -175,7 +209,7 @@ public final class EmulationOptions {
     {
     	List<IDevice> result = emulator.getDevicesByDescriptor( DefaultKeyboard.DESC );
     	if ( result.isEmpty() ) {
-    		throw new RuntimeException("Internal error, found no default keyboard ?");
+    		throw new NoSuchElementException("Internal error, found no default keyboard ?");
     	}
     	if ( result.size() > 1 ) {
     		throw new RuntimeException("Internal error, found more than one default keyboard ?");

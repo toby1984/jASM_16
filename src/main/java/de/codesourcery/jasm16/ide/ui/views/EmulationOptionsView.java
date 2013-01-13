@@ -24,8 +24,10 @@ public abstract class EmulationOptionsView extends AbstractView {
 	private final JCheckBox box4 = new JCheckBox("Use legacy key buffer ?");
 	private final JCheckBox box5 = new JCheckBox("Map video ram to 0x8000 on startup ?");
 	private final JCheckBox box6 = new JCheckBox("Map font ram to 0x8180 on startup ?");
+	private final JCheckBox box7 = new JCheckBox("Run floppy emulation at max speed ?");
 	
-	public EmulationOptionsView(EmulationOptions options) {
+	public EmulationOptionsView(EmulationOptions options) 
+	{
 		if (options == null) {
 			throw new IllegalArgumentException("options must not be null");
 		}
@@ -34,7 +36,8 @@ public abstract class EmulationOptionsView extends AbstractView {
 		box3.setSelected( options.isIgnoreAccessToUnknownDevices() );
 		box4.setSelected( options.isUseLegacyKeyboardBuffer() );
 		box5.setSelected( options.isMapVideoRamUponAddDevice() );
-		box6.setSelected( options.isMapFontRamUponAddDevice() );		
+		box6.setSelected( options.isMapFontRamUponAddDevice() );
+		box7.setSelected( options.isRunFloppyAtFullSpeed() );
 	}
 	
 	@Override
@@ -58,6 +61,7 @@ public abstract class EmulationOptionsView extends AbstractView {
 		options.setUseLegacyKeyboardBuffer( box4.isSelected() );
 		options.setMapVideoRamUponAddDevice( box5.isSelected() );
 		options.setMapFontRamUponAddDevice( box6.isSelected() );
+		options.setRunFloppyAtFullSpeed( box7.isSelected() );
 	}
 	
 	@Override
@@ -104,6 +108,10 @@ public abstract class EmulationOptionsView extends AbstractView {
 		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth=2;
 		result.add( box6 , cnstrs );
+		
+		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
+		cnstrs.gridwidth=2;
+		result.add( box7 , cnstrs );		
 		
 		// cancel button
 		cnstrs = constraints( 0 , y , false , false , GridBagConstraints.NONE );
