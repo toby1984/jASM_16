@@ -290,7 +290,7 @@ public final class DefaultScreen implements IDevice {
 		@Override
 		public void write(Address address, int value) 
 		{
-			write( address.getWordAddressValue() , value );
+			super.write( address , value );
 			hasChanged = true;
 		}
 
@@ -320,50 +320,6 @@ public final class DefaultScreen implements IDevice {
 		{
 			super.write(wordAddress, value);
 			hasChanged = true;
-
-			if ( consoleScreen == null ) {
-				return;
-			}
-
-			final int glyphIndex = wordAddress >>> 1; // 2 words per glyph
-			final int wordIndex = wordAddress - ( glyphIndex << 1 );
-
-			// assemble into 32-bit word
-			int newGlyph =0 ;
-			switch( wordIndex ) {
-				case 0: // user changed word0 , we need to merge with address + 1
-					newGlyph = ( (value & 0xffff) << 16 ) | read( wordAddress+1 );
-					break;
-				case 1: // user changed word1 , we need to merge with address - 1
-					newGlyph = (read( wordAddress-1 ) << 16) | ( value & 0xffff );
-					break;
-				default:
-					throw new RuntimeException("Unreachable code reached");
-			}
-
-			consoleScreen.defineGylph( glyphIndex , newGlyph );
-
-			// redraw this glyph
-			for ( int y = 0 ; y < SCREEN_ROWS ; y++ ) 
-			{
-				int memAddr = (y * SCREEN_COLUMNS); 
-				for ( int x = 0 ; x < SCREEN_COLUMNS ; x++ ) 
-				{
-					final int memoryValue = videoRAM.read( memAddr++ );
-
-					if ( (memoryValue & ( 1+2+4+8+16+32+64 ) ) != glyphIndex ) {
-						continue;
-					}
-
-					final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
-					final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
-
-					consoleScreen.putChar( x , y , glyphIndex , 
-							paletteRAM.getColor( foregroundPalette ),
-							paletteRAM.getColor( backgroundPalette ) );
-				}
-			}
-			repaintPeer(false);
 		}
 	}
 
