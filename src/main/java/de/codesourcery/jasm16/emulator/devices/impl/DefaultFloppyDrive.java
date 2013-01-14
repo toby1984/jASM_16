@@ -398,7 +398,7 @@ public class DefaultFloppyDrive implements IDevice {
 					ErrorCode newErrorCode=ErrorCode.NONE;
 					try 
 					{
-						updateStatus(StatusCode.BUSY);
+						updateStatus(StatusCode.BUSY,ErrorCode.NONE);
 						newErrorCode = processCommand( command );
 					} 
 					catch(IOException e) 
@@ -669,9 +669,14 @@ public class DefaultFloppyDrive implements IDevice {
 		interruptMessage = 0;
 		synchronized( DISK_LOCK ) 
 		{
-			disk = null;
 			error = ErrorCode.NONE;
-			status = StatusCode.NO_MEDIA;
+			if ( disk == null ) {
+			    status = StatusCode.NO_MEDIA;
+			} else if ( disk.isWriteProtected() ) {
+			    status = StatusCode.READY_WP;
+			} else {
+			    status = StatusCode.READY;
+			}
 		}
 	}
 
@@ -714,6 +719,7 @@ public class DefaultFloppyDrive implements IDevice {
 			 * Sets B to the current state (see below) and C to the last error
 			 * since the last device poll. 
 			 */
+		    logDebug("Device status polled");
 			cpu.setRegisterValue(Register.B , status.getCode() );
 			cpu.setRegisterValue(Register.C , error.getCode() );
 			synchronized(DISK_LOCK) {
@@ -745,17 +751,17 @@ public class DefaultFloppyDrive implements IDevice {
 			 *    fails. Reading is only possible if the state is STATE_READY or
 			 *    STATE_READY_WP.
 			 *    Protects against partial reads.
-			 */				
-			final int sector = cpu.getRegisterValue(Register.X);
-			if ( ! isValidSector( sector ) ) 
+			 */		
+	        final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+			final int readSector = cpu.getRegisterValue(Register.X);
+			logDebug("Read request for sector #"+readSector+" , store at "+targetAddress);
+			if ( ! isValidSector( readSector ) ) 
 			{
-				logError("Invalid sector number "+sector);
-				throw new DeviceErrorException("Invalid sector number "+sector,this);
+				logError("Invalid sector number "+readSector);
+				throw new DeviceErrorException("Invalid sector number "+readSector,this);
 			}
 
-			final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
-
-			if (  getWorkerThread().readSector( sector , targetAddress ) )
+			if (  getWorkerThread().readSector( readSector , targetAddress ) )
 			{
 				cpu.setRegisterValue(Register.B , 1 );
 			} else {
@@ -769,16 +775,18 @@ public class DefaultFloppyDrive implements IDevice {
 			 *    fails. Writing is only possible if the state is STATE_READY.
 			 *    Protects against partial writes.
 			 */		
-
-			final int readSector = cpu.getRegisterValue(Register.X);
-			if ( ! isValidSector( readSector ) ) 
+            final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+			final int writeSector = cpu.getRegisterValue(Register.X);
+			
+			logDebug("Write request for sector #"+writeSector+" , read from "+sourceAddress);
+			
+			if ( ! isValidSector( writeSector ) ) 
 			{
-				logError("Invalid sector number "+readSector);
-				throw new DeviceErrorException("Invalid sector number "+readSector,this);
+				logError("Invalid sector number "+writeSector);
+				throw new DeviceErrorException("Invalid sector number "+writeSector,this);
 			}
-			final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
 
-			if ( getWorkerThread().writeSector( readSector , sourceAddress ) )
+			if ( getWorkerThread().writeSector( writeSector , sourceAddress ) )
 			{
 				cpu.setRegisterValue(Register.B , 1 );
 			} else {

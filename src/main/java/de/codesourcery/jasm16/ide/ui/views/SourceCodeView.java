@@ -651,7 +651,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		defaultStyle = new SimpleAttributeSet();
 		errorStyle = createStyle( Color.RED );
 		registerStyle = createStyle( Color.ORANGE );   
-		commentStyle = createStyle( Color.DARK_GRAY );
+		commentStyle = createStyle( Color.WHITE );
 		instructionStyle = createStyle( new Color(50,186,223) );
 		labelStyle = createStyle( new Color(237,237,81) );
 		preProcessorStyle = createStyle( new Color( 200 , 200 , 200 ) ); 

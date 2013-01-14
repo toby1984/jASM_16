@@ -1,0 +1,136 @@
+.equ DISK_ID_LOW 0x4fd524c5 & 0xffff
+.equ DISK_ID_HI ( 0x4fd524c5 >> 16 ) & 0xffff
+
+; drive IRQ commands
+
+.equ CMD_POLL_STATUS 0
+.equ CMD_SET_IRQ_MSG 1
+.equ CMD_READ_SECTOR 2
+
+; driver status codes
+
+.equ STATUS_NO_MEDIA 0x003
+.equ STATUS_BUSY 0x003
+.equ STATUS_READY 0x001
+.equ STATUS_READY_WP 0x002
+
+.equ EXECUTION_PENDING 0xffff
+
+.equ BUFFER 0x8000
+
+  JSR detect_hardware
+  IFE [disk_slot],-1  
+  SET PC,end
+
+  IAS irq_handler
+
+  JSR test_read
+
+end:
+  HCF 0
+
+test_read:
+  SET x , 0 ; read sector 0
+  SET y , BUFFER ; store it in buffer
+  JSR read_sector
+  SET PC,POP
+
+; -------------------- setup custom interrupt handler with message in X
+; mangles A
+
+enable_interrupt:
+     SET [expected_irq_message] , x 
+     SET a, CMD_SET_IRQ_MSG
+     HWI [disk_slot]
+     SET PC,POP
+
+; -------------------- disable custom interrupt handler
+; mangles A / X
+
+disable_interrupt:
+     SET [expected_irq_message] , 0xffff
+     SET x , 0
+     SET a, CMD_SET_IRQ_MSG
+     HWI [disk_slot]
+     SET PC,POP
+
+; -------------------- read sector X and stores it in memory starting at Y
+
+; returns 1 in B on sucess, something else otherwise
+; mangles A , B 
+
+read_sector:
+     SET [execution_result] , EXECUTION_PENDING
+     ADD x , 1
+     JSR enable_interrupt
+     SUB x , 1 
+     SET a , CMD_READ_SECTOR
+     HWI [disk_slot]
+     IFE b , 1
+     SET PC, wait_for_command_completion
+     JSR disable_interrupt
+     SET PC , POP
+
+; read started , wait for command completion
+wait_for_command_completion:
+     IFE [execution_result] , EXECUTION_PENDING
+     SET PC , wait_for_command_completion
+     JSR disable_interrupt
+     SET PC , POP
+
+irq_handler:
+    IFN a , [expected_irq_message]
+    RFI 0 ; this is not the droid we're looking for...
+; we received an interrupt from the disk drive -> drive status / error code has changed
+    JSR poll_device_status
+    IFE [device_status] , STATUS_BUSY
+    SET PC , command_started
+; command finished
+    SET [execution_result] , [device_error]
+command_started:
+     RFI 0
+
+; -------------------- poll device status --------------
+; mangles A / B / C
+
+poll_device_status:
+   SET PUSH , a
+   SET PUSH , b
+   SET PUSH , c
+   SET a , CMD_POLL_STATUS
+; Sets B to the current state (see below) and C to the last error since the last device poll. 
+   HWI [disk_slot]
+   SET [device_status],b
+   SET [device_error],c
+   SET a , POP
+   SET b , POP
+   SET c , POP
+   SET PC,POP
+
+; -------------------- scan devices --------------
+detect_hardware:
+   HWN i
+detection_loop:
+   IFE 0,i
+   SET PC,POP
+   SUB i,1
+   HWQ i
+   IFE a, DISK_ID_LOW ; A+(B<<16) is a 32 bit word identifying the hardware id
+   IFE b, DISK_ID_HI
+   SET PC , disk_found
+   SET PC , detection_loop
+
+:disk_found
+  SET [disk_slot],i
+  SET PC,detection_loop
+
+; ============== VARIABLES ===============
+
+expected_irq_message: .dat EXECUTION_PENDING
+
+execution_result: .dat 0xffff
+
+device_status: .dat 0
+device_error: .dat 0
+
+disk_slot: .dat -1
