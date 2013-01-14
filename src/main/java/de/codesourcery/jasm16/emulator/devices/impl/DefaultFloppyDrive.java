@@ -5,6 +5,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
@@ -34,20 +35,20 @@ public class DefaultFloppyDrive implements IDevice {
 	 * Emulation read speed.
 	 */
 	public static final int SECTORS_PER_SECOND = 60;
-	
+
 	/**
 	 * Emulation seek speed.
 	 */
 	public static final float SEEK_TIME_IN_MS_PER_TRACK = 2.4f;
-	
+
 	/**
 	 * Name: Mackapar 3.5" Floppy Drive (M35FD) 
-     * ID: 0x4fd524c5, version: 0x000b
-     * Manufacturer: 0x1eb37e91 (MACKAPAR)
+	 * ID: 0x4fd524c5, version: 0x000b
+	 * Manufacturer: 0x1eb37e91 (MACKAPAR)
 	 */
 	public static final DeviceDescriptor DESC = new DeviceDescriptor("Mackapar 3.5\" Floppy Drive (M35FD)" , "Floppy disk drive",
 			0x4fd524c5,0x000b,0x1eb37e91);	
-	
+
 	private volatile boolean interruptsEnabled = false;
 	private volatile int interruptMessage = 0;
 
@@ -55,7 +56,7 @@ public class DefaultFloppyDrive implements IDevice {
 
 	// @GuardedBy( WORKER_THREAD_LOCK )
 	private WorkerThread workerThread;
-	
+
 	// @GuardedBy( WORKER_THREAD_LOCK )
 	private TimerThread timerThread;	
 
@@ -71,11 +72,11 @@ public class DefaultFloppyDrive implements IDevice {
 	private ErrorCode error = ErrorCode.NONE;
 
 	private IEmulator emulator;
-	
+
 	private volatile boolean runAtMaxSpeed = false;
 
 	private final AtomicInteger sectorsLeftThisSecond = new AtomicInteger(SECTORS_PER_SECOND);
-	
+
 	protected static enum CommandType {
 		TERMINATE,
 		READ,
@@ -112,7 +113,7 @@ public class DefaultFloppyDrive implements IDevice {
 		public Address getTargetMemoryAddress() {
 			return targetMemoryAddress;
 		}
-		
+
 		@Override
 		public String toString() {
 			return "READ_SECTOR[ sector = "+sector+" , target memory = "+Misc.toHexString( targetMemoryAddress );
@@ -137,7 +138,7 @@ public class DefaultFloppyDrive implements IDevice {
 		public Address getSourceMemoryAddress() {
 			return sourceMemoryAddress;
 		}
-		
+
 		@Override
 		public String toString() {
 			return "WRITE_SECTOR[ sector = "+sector+" , target memory = "+Misc.toHexString( sourceMemoryAddress );
@@ -149,19 +150,19 @@ public class DefaultFloppyDrive implements IDevice {
 		protected TerminateCommand() {
 			super(CommandType.TERMINATE);
 		}
-		
+
 		@Override
 		public String toString() {
 			return "TERMINATE";
 		}			
 	}		
-	
+
 	protected static final class DiskChangedCommand extends DriveCommand 
 	{
 		protected DiskChangedCommand() {
 			super(CommandType.DISK_CHANGED);
 		}
-		
+
 		@Override
 		public String toString() {
 			return "DISK_CHANGED";
@@ -169,13 +170,13 @@ public class DefaultFloppyDrive implements IDevice {
 	}		
 
 	protected final class TimerThread extends Thread {
-		
+
 		private volatile boolean terminate = false;
 		public TimerThread() {
 			setDaemon( true );
 			setName("floppy-timer-thread");
 		}
-		
+
 		@Override
 		public void run() {
 			while ( ! terminate ) {
@@ -187,12 +188,12 @@ public class DefaultFloppyDrive implements IDevice {
 				}
 			}
 		}
-		
+
 		public void terminate() {
 			this.terminate = true;
 		}
 	}
-	
+
 	public DefaultFloppyDrive(boolean runAtMaxSpeed) {
 		this.runAtMaxSpeed = runAtMaxSpeed;
 	}
@@ -227,7 +228,7 @@ public class DefaultFloppyDrive implements IDevice {
 	public void setRunAtMaxSpeed(boolean runAtMaxSpeed) {
 		this.runAtMaxSpeed = runAtMaxSpeed;
 	}
-	
+
 	public void setDisk(FloppyDisk disk) 
 	{
 		if ( disk == null ) {
@@ -296,7 +297,7 @@ public class DefaultFloppyDrive implements IDevice {
 	protected void stopWorkerThread() 
 	{
 		logDebug("Stopping worker thread");
-		
+
 		synchronized(WORKER_THREAD_LOCK) 
 		{
 			if ( workerThread != null && workerThread.isAlive() ) 
@@ -314,12 +315,12 @@ public class DefaultFloppyDrive implements IDevice {
 
 		private final Object SLEEP_LOCK = new Object();
 
-		private final BlockingQueue<DriveCommand> commandQueue = new ArrayBlockingQueue<DriveCommand>(10);
+		private final BlockingQueue<DriveCommand> commandQueue = new ArrayBlockingQueue<DriveCommand>(1);
 		private final CountDownLatch terminated = new CountDownLatch(1);
 
 		// @GuardedBy( DISK_LOCK )
 		private int currentHeadPosition = 0; // sector the disk's read/write head is currently at
-		
+
 		public WorkerThread() {
 			setDaemon(true);
 			setName("floppy-disk-worker-thread");
@@ -358,14 +359,14 @@ public class DefaultFloppyDrive implements IDevice {
 							logDebug("Worker thread received command "+command);
 							break;
 						}
-						
+
 						if ( command != null ) { // disk changed , reset head position
 							logDebug("Disk changed, reset head position.");
 							currentHeadPosition = 0;
 						}
-						
+
 						setIdleStatus();
-						
+
 						while(true) 
 						{
 							try {
@@ -416,7 +417,7 @@ public class DefaultFloppyDrive implements IDevice {
 				}
 			}
 		}
-		
+
 		private void setIdleStatus() 
 		{
 			synchronized( DISK_LOCK ) 
@@ -428,61 +429,62 @@ public class DefaultFloppyDrive implements IDevice {
 				}
 			}
 		}
-		
+
 		private boolean processCommand(DriveCommand cmd) throws IOException 
 		{
 			logDebug("Executing command "+cmd);
-			
+
 			switch( cmd.getType() ) 
 			{
-				case READ: /* READ */
-					final ReadCommand readCmd = (ReadCommand) cmd;
-					moveHead( readCmd.getSector() );
-					
-					synchronized( DISK_LOCK ) 
+			case READ: /* READ */
+				final ReadCommand readCmd = (ReadCommand) cmd;
+				moveHead( readCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
+
+				synchronized( DISK_LOCK ) 
+				{
+					if ( disk != null ) 
 					{
-						if ( disk != null ) 
+						enforceSpeed();
+						// TODO: Make sure memory write is ATOMIC !!
+						disk.readSector( readCmd.getSector() , emulator.getMemory() , readCmd.getTargetMemoryAddress() );
+						return true;
+					}
+				}
+				updateErrorCode(ErrorCode.NO_MEDIA);
+				return false;
+
+			case WRITE: /* WRITE */
+				final WriteCommand writeCmd = (WriteCommand) cmd;
+				moveHead( writeCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
+				boolean writeProtected=false;
+				synchronized( DISK_LOCK ) 
+				{
+					if ( disk != null ) 
+					{
+						if ( ! disk.isWriteProtected() ) 
 						{
 							enforceSpeed();
 							// TODO: Make sure memory write is ATOMIC !!
-							disk.readSector( readCmd.getSector() , emulator.getMemory() , readCmd.getTargetMemoryAddress() );
+							disk.writeSector( writeCmd.getSector() , emulator.getMemory() , writeCmd.getSourceMemoryAddress() );
 							return true;
-						}
+						} 
+						writeProtected = true;
 					}
-					updateErrorCode(ErrorCode.NO_MEDIA);
-					return false;
-					
-				case WRITE: /* WRITE */
-					final WriteCommand writeCmd = (WriteCommand) cmd;
-					boolean writeProtected=false;
-					synchronized( DISK_LOCK ) 
-					{
-						if ( disk != null ) 
-						{
-							if ( ! disk.isWriteProtected() ) 
-							{
-								enforceSpeed();
-								// TODO: Make sure memory write is ATOMIC !!
-								disk.writeSector( writeCmd.getSector() , emulator.getMemory() , writeCmd.getSourceMemoryAddress() );
-								return true;
-							} 
-							writeProtected = true;
-						}
-					}
-					updateErrorCode( writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA);
-					return false;
-					
-				default:
-					throw new RuntimeException("Internal error,unhandled command type "+cmd);
+				}
+				updateErrorCode( writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA);
+				return false;
+
+			default:
+				throw new RuntimeException("Internal error,unhandled command type "+cmd);
 			}
 		}
-		
+
 		private void enforceSpeed() 
 		{
 			if ( runAtMaxSpeed ) {
 				return;
 			}
-			
+
 			while( sectorsLeftThisSecond.get() <= 0 ) {
 				try {
 					Thread.sleep(10);
@@ -491,7 +493,7 @@ public class DefaultFloppyDrive implements IDevice {
 			}
 			sectorsLeftThisSecond.decrementAndGet();			
 		}		
-		
+
 		private void moveHead(int sector) 
 		{
 
@@ -500,17 +502,12 @@ public class DefaultFloppyDrive implements IDevice {
 				if ( currentHeadPosition != sector ) 
 				{
 					final int delta = Math.abs( currentHeadPosition - sector );
-					try 
-					{
-						if ( ! runAtMaxSpeed ) {
-							java.lang.Thread.sleep( (long) SEEK_TIME_IN_MS_PER_TRACK * delta ); // 2.8ms per track
-						}
-					} 
-					catch(InterruptedException e) {
-						Thread.currentThread().interrupt();
-					} finally {
-						currentHeadPosition = sector; 
+					if ( ! runAtMaxSpeed ) {
+						// 1 ns = 10^-9 seconds
+						// 1 ms = 10^-3 seconds
+						LockSupport.parkNanos( (long) SEEK_TIME_IN_MS_PER_TRACK * delta * 1000000 ); // 2.8ms per track
 					}
+					currentHeadPosition = sector; 
 				}
 			}
 		}
@@ -699,90 +696,90 @@ public class DefaultFloppyDrive implements IDevice {
 		final ICPU cpu = emulator.getCPU();
 		final int msg= cpu.getRegisterValue( Register.A ); 
 		switch( msg) {
-			case 0:
-				/*  0  Poll device. 
-				 * Sets B to the current state (see below) and C to the last error
-				 * since the last device poll. 
-				 */
-				cpu.setRegisterValue(Register.B , status.getCode() );
-				cpu.setRegisterValue(Register.C , error.getCode() );
-				synchronized(DISK_LOCK) {
-					error = ErrorCode.NONE;
-				}
-				break;
-			case 1:
-				/*    
-				 * 1  Set interrupt. Enables interrupts and sets the message to X if X is anything
-				 *    other than 0, disables interrupts if X is 0. When interrupts are enabled,
-				 *    the M35FD will trigger an interrupt on the DCPU-16 whenever the state or
-				 *    error message changes.
-				 */
-				int irqMsg = cpu.getRegisterValue(Register.X);
-				if ( irqMsg == 0 ) {
-					logDebug("Interrupts disabled.");
-					interruptMessage = 0;
-					interruptsEnabled = false;					
-				} else {
-					logDebug("Interrupts enabled with message "+irqMsg);
-					interruptMessage = irqMsg ;
-					interruptsEnabled = true;
-				}
-				break;
-				
-			case 2:
-				/* 2  Read sector. Reads sector X to DCPU ram starting at Y.
-				 *    Sets B to 1 if reading is possible and has been started, anything else if it
-				 *    fails. Reading is only possible if the state is STATE_READY or
-				 *    STATE_READY_WP.
-				 *    Protects against partial reads.
-				 */				
-				final int sector = cpu.getRegisterValue(Register.X);
-				if ( ! isValidSector( sector ) ) 
-				{
-					logError("Invalid sector number "+sector);
-					throw new DeviceErrorException("Invalid sector number "+sector,this);
-				}
-				
-				final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+		case 0:
+			/*  0  Poll device. 
+			 * Sets B to the current state (see below) and C to the last error
+			 * since the last device poll. 
+			 */
+			cpu.setRegisterValue(Register.B , status.getCode() );
+			cpu.setRegisterValue(Register.C , error.getCode() );
+			synchronized(DISK_LOCK) {
+				error = ErrorCode.NONE;
+			}
+			break;
+		case 1:
+			/*    
+			 * 1  Set interrupt. Enables interrupts and sets the message to X if X is anything
+			 *    other than 0, disables interrupts if X is 0. When interrupts are enabled,
+			 *    the M35FD will trigger an interrupt on the DCPU-16 whenever the state or
+			 *    error message changes.
+			 */
+			int irqMsg = cpu.getRegisterValue(Register.X);
+			if ( irqMsg == 0 ) {
+				logDebug("Interrupts disabled.");
+				interruptMessage = 0;
+				interruptsEnabled = false;					
+			} else {
+				logDebug("Interrupts enabled with message "+irqMsg);
+				interruptMessage = irqMsg ;
+				interruptsEnabled = true;
+			}
+			break;
 
-				if (  getWorkerThread().readSector( sector , targetAddress ) )
-				{
-					cpu.setRegisterValue(Register.B , 1 );
-				} else {
-					cpu.setRegisterValue(Register.B , 0 );
-				}
-				break;
-				
-			case 3:
-				/* 3  Write sector. Writes sector X from DCPU ram starting at Y.
-				 *    Sets B to 1 if writing is possible and has been started, anything else if it
-				 *    fails. Writing is only possible if the state is STATE_READY.
-				 *    Protects against partial writes.
-				 */		
+		case 2:
+			/* 2  Read sector. Reads sector X to DCPU ram starting at Y.
+			 *    Sets B to 1 if reading is possible and has been started, anything else if it
+			 *    fails. Reading is only possible if the state is STATE_READY or
+			 *    STATE_READY_WP.
+			 *    Protects against partial reads.
+			 */				
+			final int sector = cpu.getRegisterValue(Register.X);
+			if ( ! isValidSector( sector ) ) 
+			{
+				logError("Invalid sector number "+sector);
+				throw new DeviceErrorException("Invalid sector number "+sector,this);
+			}
 
-				final int readSector = cpu.getRegisterValue(Register.X);
-				if ( ! isValidSector( readSector ) ) 
-				{
-					logError("Invalid sector number "+readSector);
-					throw new DeviceErrorException("Invalid sector number "+readSector,this);
-				}
-				final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+			final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
 
-				if ( getWorkerThread().writeSector( readSector , sourceAddress ) )
-				{
-					cpu.setRegisterValue(Register.B , 1 );
-				} else {
-					cpu.setRegisterValue(Register.B , 0 );
-				}				
-				break;
-			default:
-				logError("Received unknown interrupt message: "+msg);
-				throw new DeviceErrorException("Received unknown interrupt message: "+msg,this);
+			if (  getWorkerThread().readSector( sector , targetAddress ) )
+			{
+				cpu.setRegisterValue(Register.B , 1 );
+			} else {
+				cpu.setRegisterValue(Register.B , 0 );
+			}
+			break;
+
+		case 3:
+			/* 3  Write sector. Writes sector X from DCPU ram starting at Y.
+			 *    Sets B to 1 if writing is possible and has been started, anything else if it
+			 *    fails. Writing is only possible if the state is STATE_READY.
+			 *    Protects against partial writes.
+			 */		
+
+			final int readSector = cpu.getRegisterValue(Register.X);
+			if ( ! isValidSector( readSector ) ) 
+			{
+				logError("Invalid sector number "+readSector);
+				throw new DeviceErrorException("Invalid sector number "+readSector,this);
+			}
+			final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+
+			if ( getWorkerThread().writeSector( readSector , sourceAddress ) )
+			{
+				cpu.setRegisterValue(Register.B , 1 );
+			} else {
+				cpu.setRegisterValue(Register.B , 0 );
+			}				
+			break;
+		default:
+			logError("Received unknown interrupt message: "+msg);
+			throw new DeviceErrorException("Received unknown interrupt message: "+msg,this);
 		}
 
 		return 0;
 	}
-	
+
 	private boolean isValidSector(int sector) 
 	{
 		synchronized (DISK_LOCK) {

@@ -20,14 +20,15 @@ public abstract class FloppyDisk {
 	
 	private static final int WORDS_PER_SECTOR = 512;
 	
-	private String identifier;
-	private boolean writeProtected;
+	private final String identifier;
+	private volatile boolean writeProtected;
 	
 	public FloppyDisk(String identifier) 
 	{
 		if (StringUtils.isBlank(identifier)) {
 			throw new IllegalArgumentException("identifier must not be blank/null");
 		}
+		this.identifier = identifier;
 	}
 	
 	@SuppressWarnings("deprecation")
