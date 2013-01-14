@@ -71,7 +71,7 @@ public class DefaultFloppyDrive implements IDevice {
 	// @GuardedBy( DISK_LOCK )	
 	private ErrorCode error = ErrorCode.NONE;
 
-	private IEmulator emulator;
+	private volatile IEmulator emulator;
 
 	private volatile boolean runAtMaxSpeed = false;
 
@@ -237,8 +237,10 @@ public class DefaultFloppyDrive implements IDevice {
 		synchronized(DISK_LOCK ) {
 			this.disk = disk;
 		}
-		logDebug("Disk "+disk+" inserted.");
-		getWorkerThread().diskChanged();
+		logDebug( "Disk inserted: "+disk);
+		if ( emulator != null ) {
+		    getWorkerThread().diskChanged();
+		}
 	}
 
 	public void eject() 
@@ -254,7 +256,9 @@ public class DefaultFloppyDrive implements IDevice {
 		if ( diskChanged ) 
 		{
 			logDebug("Disk ejected");
-			getWorkerThread().diskChanged();
+			if ( emulator != null ) {
+			    getWorkerThread().diskChanged();
+			}
 		}
 	}
 
@@ -366,6 +370,7 @@ public class DefaultFloppyDrive implements IDevice {
 
 						if ( command != null ) { // disk changed , reset head position
 							logDebug("Disk changed, reset head position.");
+							takeCommand();
 							currentHeadPosition = 0;
 						}
 
@@ -374,7 +379,9 @@ public class DefaultFloppyDrive implements IDevice {
 						while(true) 
 						{
 							try {
-								SLEEP_LOCK.wait(1000); // sleep for 1 second
+							    synchronized(SLEEP_LOCK) {
+							        SLEEP_LOCK.wait(1000); // sleep for 1 second
+							    }
 								break;
 							} catch(InterruptedException e) {
 								Thread.currentThread().interrupt();
@@ -529,16 +536,16 @@ public class DefaultFloppyDrive implements IDevice {
 					if ( wait ) {
 						commandQueue.put( cmd );
 						result = true;
-						break;
-					} else {
-						result = commandQueue.offer( cmd );
-						break;
+					}  else {
+					    result = commandQueue.offer( cmd );
 					}
+					break;
 				} 
 				catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
 				}
 			}
+			
 			if ( result ) 
 			{
 				synchronized (SLEEP_LOCK) {
@@ -679,15 +686,21 @@ public class DefaultFloppyDrive implements IDevice {
 	}
 
 	private void logError(String msg) {
-		emulator.getOutput().error( msg );
+	    if ( emulator != null ) {
+	        emulator.getOutput().error( msg );
+	    }
 	}
 
 	private void logError(String msg,Throwable t) {
-		emulator.getOutput().error( msg , t );
+	    if ( emulator != null ) {
+	        emulator.getOutput().error( msg , t );
+	    }
 	}	
 
 	private void logDebug(String msg) {
-		emulator.getOutput().debug( msg );
+	    if ( emulator != null ) {
+	        emulator.getOutput().debug( msg );
+	    }
 	}
 
 	@Override

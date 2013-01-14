@@ -1,15 +1,22 @@
 package de.codesourcery.jasm16.ide.ui.views;
 
+import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+
+import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.emulator.EmulationOptions;
+import de.codesourcery.jasm16.emulator.EmulationOptions.InsertedDisk;
 
 public abstract class EmulationOptionsView extends AbstractView {
 
@@ -26,6 +33,12 @@ public abstract class EmulationOptionsView extends AbstractView {
 	private final JCheckBox box6 = new JCheckBox("Map font ram to 0x8180 on startup ?");
 	private final JCheckBox box7 = new JCheckBox("Run floppy emulation at max speed ?");
 	
+	private final JPanel diskDrivePanel = new JPanel();
+	private final JTextField selectedFileField = new JTextField();
+	
+	private final JButton fileChooserButton = new JButton("Choose image...");
+	private final JCheckBox writeProtected = new JCheckBox("write-protected");
+	
 	public EmulationOptionsView(EmulationOptions options) 
 	{
 		if (options == null) {
@@ -38,6 +51,51 @@ public abstract class EmulationOptionsView extends AbstractView {
 		box5.setSelected( options.isMapVideoRamUponAddDevice() );
 		box6.setSelected( options.isMapFontRamUponAddDevice() );
 		box7.setSelected( options.isRunFloppyAtFullSpeed() );
+		
+		final InsertedDisk disk = options.getInsertedDisk();
+		if ( disk == null ) 
+		{
+		    selectedFileField.setText( null );
+		    writeProtected.setSelected( false );
+		} else {
+	          selectedFileField.setText( disk.getFile().getAbsolutePath() );
+	          writeProtected.setSelected( disk.isWriteProtected() );
+		}
+		
+		// disk drive panel
+		selectedFileField.setColumns( 25 );
+		diskDrivePanel.setLayout( new GridBagLayout() );
+		GridBagConstraints cnstrs = constraints( 0, 0 , false , true , GridBagConstraints.NONE );
+		cnstrs.anchor = GridBagConstraints.CENTER;
+		diskDrivePanel.add( selectedFileField , cnstrs );
+		
+		cnstrs = constraints( 1, 0 , false , true , GridBagConstraints.NONE );
+		cnstrs.anchor = GridBagConstraints.CENTER;
+        diskDrivePanel.add( fileChooserButton , cnstrs );	
+        
+        fileChooserButton.addActionListener( new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                final JFileChooser chooser;
+                if ( getSelectedFile() != null ) 
+                {
+                    chooser = new JFileChooser( getSelectedFile().getParentFile() );
+                } else {
+                    chooser = new JFileChooser();
+                }
+                final int result = chooser.showOpenDialog(null);
+                if ( result == JFileChooser.APPROVE_OPTION && chooser.getSelectedFile().isFile() ) 
+                {
+                    selectedFileField.setText( chooser.getSelectedFile().getAbsolutePath() );
+                }
+            }
+        } );
+
+        cnstrs = constraints( 2, 0 , false , true , GridBagConstraints.NONE );
+        cnstrs.anchor = GridBagConstraints.CENTER;
+        diskDrivePanel.add( writeProtected , cnstrs );        
 	}
 	
 	@Override
@@ -62,6 +120,17 @@ public abstract class EmulationOptionsView extends AbstractView {
 		options.setMapVideoRamUponAddDevice( box5.isSelected() );
 		options.setMapFontRamUponAddDevice( box6.isSelected() );
 		options.setRunFloppyAtFullSpeed( box7.isSelected() );
+		
+		if ( getSelectedFile() != null ) {
+		    options.setInsertedDisk( new InsertedDisk(getSelectedFile(),writeProtected.isSelected() ) );
+		} else {
+		    options.setInsertedDisk( null );
+		}
+	}
+	
+	private File getSelectedFile() {
+	    final String path = selectedFileField.getText();
+	    return StringUtils.isBlank( path ) ? null : new File(path);
 	}
 	
 	@Override
@@ -112,6 +181,10 @@ public abstract class EmulationOptionsView extends AbstractView {
 		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth=2;
 		result.add( box7 , cnstrs );		
+		
+        cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
+        cnstrs.gridwidth=2;
+        result.add( diskDrivePanel , cnstrs );    		
 		
 		// cancel button
 		cnstrs = constraints( 0 , y , false , false , GridBagConstraints.NONE );

@@ -174,7 +174,7 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		root.appendChild( createElement("executableName" , executableName , document ) );		
 		
 		final Element options = document.createElement("emulationOptions");
-		this.emulationOptions.saveEmulationOptions( options );
+		this.emulationOptions.saveEmulationOptions( options , document );
 		root.appendChild( options );
 
 		final Element srcFolderNode = createElement("sourceFolders",document);
