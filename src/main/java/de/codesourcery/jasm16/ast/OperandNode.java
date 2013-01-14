@@ -367,7 +367,7 @@ public class OperandNode extends ASTNode
 	}
 
 	@Override
-	public OperandNode copySingleNode()
+	protected OperandNode copySingleNode()
 	{
 		final OperandNode result = new OperandNode();
 		result.addressingMode = getAddressingMode();

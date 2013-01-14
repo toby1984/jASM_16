@@ -110,7 +110,7 @@ public class CharacterLiteralNode extends ConstantValueNode {
 	}
 
     @Override
-    public CharacterLiteralNode copySingleNode()
+	protected CharacterLiteralNode copySingleNode()
     {
     	final CharacterLiteralNode result=new CharacterLiteralNode(this.maxLength);
     	result.value = value;

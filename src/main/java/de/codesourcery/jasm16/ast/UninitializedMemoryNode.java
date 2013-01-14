@@ -69,7 +69,7 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
 	}
 
     @Override
-    public UninitializedMemoryNode copySingleNode()
+	protected UninitializedMemoryNode copySingleNode()
     {
         final UninitializedMemoryNode result = new UninitializedMemoryNode();
         result.sizeInBytes = sizeInBytes;

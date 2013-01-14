@@ -44,7 +44,9 @@ public class StatementNode extends ASTNode
 		}
 
 		if ( ! context.eof() ) {
-			if ( context.peek().hasType( TokenType.COLON ) || context.peek().hasType( TokenType.DOT ) || context.peek().hasType( TokenType.CHARACTERS ) ) 
+			if ( context.peek().hasType( TokenType.COLON ) || 
+				 context.peek().hasType( TokenType.DOT ) || 
+				 context.peek().hasType( TokenType.CHARACTERS ) ) 
 			{
 				final int offset = context.currentParseIndex();                
 				try {
@@ -207,7 +209,7 @@ public class StatementNode extends ASTNode
 	}
 
 	@Override
-	public StatementNode copySingleNode()
+	protected StatementNode copySingleNode()
 	{
 		return new StatementNode();
 	}

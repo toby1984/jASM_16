@@ -283,7 +283,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	}
 
 	@Override
-	public InitializedMemoryNode copySingleNode()
+	protected InitializedMemoryNode copySingleNode()
 	{
 		final InitializedMemoryNode  result = new InitializedMemoryNode();
 		result.allowedSize = allowedSize;

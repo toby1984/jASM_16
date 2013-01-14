@@ -17,10 +17,12 @@ package de.codesourcery.jasm16.ide.ui.views;
  */
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Event;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -37,8 +40,10 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.JTextPane;
 import javax.swing.JToolBar;
 import javax.swing.JTree;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
@@ -54,9 +59,12 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
+import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -68,16 +76,20 @@ import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
+import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Crude editor to test the compiler's inner workings.
@@ -86,29 +98,29 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class SourceEditorView extends SourceCodeView {
 
-    private static final Logger LOG = Logger.getLogger(SourceEditorView.class);
-    
+	private static final Logger LOG = Logger.getLogger(SourceEditorView.class);
+
 	// UI widgets
 
 	private volatile JPanel panel;
-	
+
 	private final ViewContainerManager viewContainerManager;
-	
+
 	private JFrame astInspector;
 	private final JTree astTree = new JTree();
-	
+
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
-	
+
 	private final JButton navigationHistoryBack = new JButton("<");
 	private final JButton navigationHistoryForward = new JButton(">");
-	
-    private final SymbolTableModel symbolTableModel = new SymbolTableModel();
-    private final JTable symbolTable = new JTable( symbolTableModel );	
-	
+
+	private final SymbolTableModel symbolTableModel = new SymbolTableModel();
+	private final JTable symbolTable = new JTable( symbolTableModel );	
+
 	// compiler
 	private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
-		
+
 		public void projectDeleted(IAssemblyProject deletedProject) 
 		{
 			if ( deletedProject.isSame( getCurrentProject() ) )
@@ -116,7 +128,7 @@ public class SourceEditorView extends SourceCodeView {
 				dispose();
 			}
 		}
-		
+
 		private void dispose() {
 			if ( getViewContainer() != null ) {
 				getViewContainer().disposeView( SourceEditorView.this );
@@ -124,7 +136,7 @@ public class SourceEditorView extends SourceCodeView {
 				SourceEditorView.this.dispose();
 			}
 		}
-		
+
 		public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
 		{
 			if ( deletedResource.isSame( getCurrentResource() ) ) 
@@ -132,11 +144,11 @@ public class SourceEditorView extends SourceCodeView {
 				dispose();
 			}
 		}
-		
+
 		public void buildFinished(IAssemblyProject project, boolean success) {
-		    if ( isASTInspectorVisible() ) {
-		        symbolTableModel.refresh();
-		    }
+			if ( isASTInspectorVisible() ) {
+				symbolTableModel.refresh();
+			}
 		}
 	};
 
@@ -263,14 +275,14 @@ public class SourceEditorView extends SourceCodeView {
 		public String getColumnName(int columnIndex)
 		{
 			switch(columnIndex) {
-			case COL_SEVERITY:
-				return "Severity";
-			case COL_LOCATION:
-				return "Location";
-			case COL_MESSAGE:
-				return "Message";
-			default:
-				return "no column name?";
+				case COL_SEVERITY:
+					return "Severity";
+				case COL_LOCATION:
+					return "Location";
+				case COL_MESSAGE:
+					return "Message";
+				default:
+					return "no column name?";
 			}
 		}
 
@@ -291,23 +303,23 @@ public class SourceEditorView extends SourceCodeView {
 		{
 			final StatusMessage msg = messages.get( rowIndex );
 			switch(columnIndex) {
-			case COL_SEVERITY:
-				return msg.getSeverity().toString(); 
-			case COL_LOCATION:
-				if ( msg.getLocation() != null ) {
-					SourceLocation location;
-					try {
-						location = getSourceLocation(msg.getLocation());
-						return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
-					} catch (NoSuchElementException e) {
-						// ok, can't help it
-					}
-				} 
-				return "<unknown>";
-			case COL_MESSAGE:
-				return msg.getMessage();
-			default:
-				return "no column name?";
+				case COL_SEVERITY:
+					return msg.getSeverity().toString(); 
+				case COL_LOCATION:
+					if ( msg.getLocation() != null ) {
+						SourceLocation location;
+						try {
+							location = getSourceLocation(msg.getLocation());
+							return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
+						} catch (NoSuchElementException e) {
+							// ok, can't help it
+						}
+					} 
+					return "<unknown>";
+				case COL_MESSAGE:
+					return msg.getMessage();
+				default:
+					return "no column name?";
 			}
 		}
 
@@ -337,34 +349,199 @@ public class SourceEditorView extends SourceCodeView {
 
 	protected void onCaretUpdate(CaretEvent e) 
 	{
-	    final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
-        if ( ast == null ) {
-            return;
-        }
-        
-        final ASTNode n = ast.getNodeInRange( e.getDot() );
-        if ( n != null && isASTInspectorVisible() ) {
-            TreePath path = new TreePath( n.getPathToRoot() );
-            astTree.setSelectionPath( path );
-            astTree.scrollPathToVisible( path );
-        }
+		final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
+		if ( ast == null ) {
+			return;
+		}
+
+		final ASTNode n = ast.getNodeInRange( e.getDot() );
+		if ( n != null && isASTInspectorVisible() ) {
+			TreePath path = new TreePath( n.getPathToRoot() );
+			astTree.setSelectionPath( path );
+			astTree.scrollPathToVisible( path );
+		}
 	}
-	   
+
 	private boolean isASTInspectorVisible() {
-	    return astInspector != null && astInspector.isVisible();
+		return astInspector != null && astInspector.isVisible();
 	}
-	
+
 	public SourceEditorView(IResourceResolver resourceResolver,IWorkspace workspace,
 			ViewContainerManager viewContainerManager)
-			
+
 	{
-	    super( resourceResolver,workspace , true );
+		super( resourceResolver,workspace , true );
 		workspace.addWorkspaceListener( workspaceListener );
 		this.viewContainerManager = viewContainerManager;
 	}
 
 	protected void setStatusMessage(String message) {
+	}
 
+	@Override
+	protected final void setupKeyBindingsHook(final JTextPane editor) 
+	{
+		// 'Rename' action 
+		addKeyBinding( editor , 
+				KeyStroke.getKeyStroke(KeyEvent.VK_R,Event.ALT_MASK|Event.SHIFT_MASK),
+				new AbstractAction() 
+		{
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				maybeRenameLabel( editor.getCaretPosition() );
+			}
+		});
+	}
+
+	private void maybeRenameLabel(int caretPosition) 
+	{
+		final ICompilationUnit compilationUnit = getCurrentCompilationUnit();
+
+		if ( compilationUnit == null || compilationUnit.getAST().hasErrors() ) {
+			System.out.println("*** Renaming not supported for erronous compilation units");
+			return;
+		}
+
+		final ASTNode node = compilationUnit.getAST().getNodeInRange( caretPosition );
+
+		final Identifier symbolToRename;
+		if ( node instanceof LabelNode) 
+		{
+			symbolToRename = ((LabelNode) node).getIdentifier();
+		} else if ( node instanceof SymbolReferenceNode) {
+			symbolToRename = ((SymbolReferenceNode) node).getIdentifier();
+		} else {
+			return;
+		}
+
+		final ISymbol oldSymbol = compilationUnit.getSymbolTable().getSymbol( symbolToRename );
+		if ( oldSymbol == null ) {
+			System.out.println("*** Renaming symbols defined in other source files is currently not implemented, sorry. ***");
+			return;
+		}
+		// TODO: Add support for renaming .equ definitions ...
+		if ( !( oldSymbol instanceof Label ) ) {
+			System.out.println("*** Only labels can currently be renamed, sorry. ***");
+			return;
+		}
+
+		final Identifier oldIdentifier = oldSymbol.getIdentifier();
+
+		String result = UIUtils.showInputDialog(null, "Please choose a new identifier","Enter a new identifier for '"+oldIdentifier.getRawValue()+"'");
+		if ( StringUtils.isBlank(result) || ! Identifier.isValidIdentifier( result ) ) {
+			return;
+		}
+
+		final Identifier newIdentifier;
+		try {
+			newIdentifier = new Identifier(result);
+		} catch(ParseException e) {
+			throw new RuntimeException(e);
+		}
+
+		// rename symbol (this will ALSO update the symbol's ITextRegion !)
+		final ISymbol newSymbol = compilationUnit.getSymbolTable().renameSymbol( oldSymbol , newIdentifier );
+
+		// gather all AST nodes that need to be updated
+		final List<ASTNode> nodesRequiringUpdate = new ArrayList<>();
+
+		final ISimpleASTNodeVisitor<ASTNode> simpleAstVisitor = new ISimpleASTNodeVisitor<ASTNode>() 
+				{
+
+			@Override
+			public boolean visit(ASTNode node) 
+			{
+				if ( node instanceof LabelNode ) {
+					final LabelNode label = (LabelNode) node;
+					if ( oldIdentifier.equals( label.getIdentifier() ) ) 
+					{
+						nodesRequiringUpdate.add( node );
+					}
+				} 
+				else if ( node instanceof SymbolReferenceNode) 
+				{
+					final SymbolReferenceNode ref = (SymbolReferenceNode) node;
+					if ( oldIdentifier.equals( ref.getIdentifier() ) ) 
+					{
+						nodesRequiringUpdate.add( node );
+					}
+				}
+				return true;
+			}
+				};
+
+				ASTUtils.visitInOrder( compilationUnit.getAST() , simpleAstVisitor );
+
+				Collections.sort( nodesRequiringUpdate , new Comparator<ASTNode>() {
+
+					@Override
+					public int compare(ASTNode n1, ASTNode n2) 
+					{
+						final ITextRegion r1 = n1.getTextRegion();
+						final ITextRegion r2 = n2.getTextRegion();
+						if ( r1 != null && r2 != null ) {
+							if ( r1.getStartingOffset() < r2.getStartingOffset() ) {
+								return -1;
+							} 
+							if ( r1.getStartingOffset() > r2.getStartingOffset() ) {
+								return 1;
+							}
+							return 0;
+						} 
+						if ( r1 != null ) {
+							return -1;
+						} 
+						if ( r2 != null )  {
+							return 1;
+						}
+						return 0;
+					}
+				});
+
+				// we now need to offset the location of EVERY AST node 
+				// that has a location > oldSymbol.getLocation()
+				final int lengthDelta;
+				if (  newIdentifier.getRawValue().length() >= oldIdentifier.getRawValue().length() ) {
+					lengthDelta = newIdentifier.getRawValue().length() - oldIdentifier.getRawValue().length();
+				} else {
+					// new identifier is shorter than the old one, need to adjust by a NEGATIVE offset
+					lengthDelta = -( oldIdentifier.getRawValue().length() - newIdentifier.getRawValue().length() );
+				}
+
+				try {
+					int currentOffsetAdjustment = 0;
+					for ( ASTNode n : nodesRequiringUpdate ) 
+					{
+						if ( n instanceof LabelNode ) 
+						{
+							// update symbol in document
+							final ITextRegion oldRegion = oldSymbol.getLocation();
+							final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
+									oldRegion.getLength() );
+
+							replaceText( newRegion , newIdentifier.getRawValue() );
+							((LabelNode) n).setLabel( (Label) newSymbol );
+							n.adjustTextRegion( currentOffsetAdjustment , lengthDelta ); 
+							currentOffsetAdjustment += lengthDelta;
+						} 
+						else if ( n instanceof SymbolReferenceNode) 
+						{
+							((SymbolReferenceNode) n).setIdentifier( newIdentifier );
+
+							final ITextRegion oldRegion = n.getTextRegion();
+							final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
+									oldRegion.getLength() );
+							replaceText( newRegion , newIdentifier.getRawValue() );
+
+							n.adjustTextRegion( currentOffsetAdjustment , lengthDelta );
+							currentOffsetAdjustment += lengthDelta;
+						} else {
+							throw new RuntimeException("Internal error,unhandled node type "+n);
+						}
+					}
+				} finally {
+					notifyDocumentChanged();
+				}
 	}
 
 	private void showASTInspector() 
@@ -375,171 +552,171 @@ public class SourceEditorView extends SourceCodeView {
 
 		if ( ! astInspector.isVisible() ) 
 		{
-		    symbolTableModel.refresh();
+			symbolTableModel.refresh();
 			astInspector.setVisible( true );
 		}
 	}
-	
+
 	private static final int COL_SYMBOL_NAME = 0;
 	private static final int COL_SYMBOL_VALUE = 1;
-    private static final int COL_SYMBOL_RESOURCE = 2;	
-	
+	private static final int COL_SYMBOL_RESOURCE = 2;	
+
 	protected final class SymbolTableModel extends AbstractTableModel {
 
-	    private ISymbolTable getSymbolTable() 
-	    {
-	        ISymbolTable  result = getCurrentCompilationUnit().getSymbolTable();
-	        if ( result != null && result.getParent() != null ) {
-	            return result.getParent();
-	        }
-	        return result;
-	    }
-	    
-	    public void refresh() {
-	        fireTableStructureChanged();
-	    }
-	    
-        @Override
-        public int getRowCount()
-        {
-            ISymbolTable table = getSymbolTable();
-            return table == null ? 0 : getSymbolTable().getSize();
-        }
+		private ISymbolTable getSymbolTable() 
+		{
+			ISymbolTable  result = getCurrentCompilationUnit().getSymbolTable();
+			if ( result != null && result.getParent() != null ) {
+				return result.getParent();
+			}
+			return result;
+		}
 
-        @Override
-        public int getColumnCount()
-        {
-            return 3;
-        }
-        
-        private List<ISymbol> getSortedSymbols() {
-            
-            ISymbolTable table = getSymbolTable();
-            List<ISymbol> all = table == null ? Collections.<ISymbol>emptyList() : table.getSymbols();
-            Collections.sort( all , new Comparator<ISymbol>() {
+		public void refresh() {
+			fireTableStructureChanged();
+		}
 
-                @Override
-                public int compare(ISymbol o1, ISymbol o2)
-                {
-                    return o1.getIdentifier().getRawValue().compareTo( o2.getIdentifier().getRawValue() );
-                }
-            } );
-            return all;
-        }
-        
-        private ISymbol getSymbolForRow(int modelRowIndex) {
-            return getSortedSymbols().get( modelRowIndex );
-        }
-        
-        @Override
-        public String getColumnName(int column)
-        {
-            if ( column == COL_SYMBOL_NAME ) {
-                return "Symbol name";
-            } else if ( column == COL_SYMBOL_VALUE ) {
-                return "Symbol value";
-            } else if ( column == COL_SYMBOL_RESOURCE ) {
-                return "Compilation unit";
-            }
-            throw new IllegalArgumentException("Internal error, unhandled column "+column);
-        }
-        
-        @Override
-        public Class<?> getColumnClass(int columnIndex)
-        {
-            return String.class;
-        }
+		@Override
+		public int getRowCount()
+		{
+			ISymbolTable table = getSymbolTable();
+			return table == null ? 0 : getSymbolTable().getSize();
+		}
 
-        @Override
-        public Object getValueAt(int rowIndex, int columnIndex)
-        {
-            final ISymbol symbol = getSymbolForRow( rowIndex );
-            if ( columnIndex == COL_SYMBOL_NAME ) {
-                return symbol.getIdentifier().getRawValue();
-            } 
-            
-            if ( columnIndex == COL_SYMBOL_VALUE ) 
-            {
-                if ( symbol instanceof Label ) {
-                    final Address address = ((Label) symbol).getAddress();
-                    return address == null ? "<no address assigned>" : address.toString();
-                } else if ( symbol instanceof Equation ) {
-                    
-                    Equation eq = (Equation) symbol;
-                    Long value = eq.getValue( getSymbolTable() );
-                    return value == null ? "<failed to evaluate>" : value.toString();
-                } 
-                return "<unknown symbol type: "+symbol+">";
-            }
-            
-            if ( columnIndex == COL_SYMBOL_RESOURCE ) {
-                return symbol.getCompilationUnit();
-            }
-            throw new IllegalArgumentException("Internal error, unhandled column "+columnIndex);            
-        }
+		@Override
+		public int getColumnCount()
+		{
+			return 3;
+		}
+
+		private List<ISymbol> getSortedSymbols() {
+
+			ISymbolTable table = getSymbolTable();
+			List<ISymbol> all = table == null ? Collections.<ISymbol>emptyList() : table.getSymbols();
+			Collections.sort( all , new Comparator<ISymbol>() {
+
+				@Override
+				public int compare(ISymbol o1, ISymbol o2)
+				{
+					return o1.getIdentifier().getRawValue().compareTo( o2.getIdentifier().getRawValue() );
+				}
+			} );
+			return all;
+		}
+
+		private ISymbol getSymbolForRow(int modelRowIndex) {
+			return getSortedSymbols().get( modelRowIndex );
+		}
+
+		@Override
+		public String getColumnName(int column)
+		{
+			if ( column == COL_SYMBOL_NAME ) {
+				return "Symbol name";
+			} else if ( column == COL_SYMBOL_VALUE ) {
+				return "Symbol value";
+			} else if ( column == COL_SYMBOL_RESOURCE ) {
+				return "Compilation unit";
+			}
+			throw new IllegalArgumentException("Internal error, unhandled column "+column);
+		}
+
+		@Override
+		public Class<?> getColumnClass(int columnIndex)
+		{
+			return String.class;
+		}
+
+		@Override
+		public Object getValueAt(int rowIndex, int columnIndex)
+		{
+			final ISymbol symbol = getSymbolForRow( rowIndex );
+			if ( columnIndex == COL_SYMBOL_NAME ) {
+				return symbol.getIdentifier().getRawValue();
+			} 
+
+			if ( columnIndex == COL_SYMBOL_VALUE ) 
+			{
+				if ( symbol instanceof Label ) {
+					final Address address = ((Label) symbol).getAddress();
+					return address == null ? "<no address assigned>" : address.toString();
+				} else if ( symbol instanceof Equation ) {
+
+					Equation eq = (Equation) symbol;
+					Long value = eq.getValue( getSymbolTable() );
+					return value == null ? "<failed to evaluate>" : value.toString();
+				} 
+				return "<unknown symbol type: "+symbol+">";
+			}
+
+			if ( columnIndex == COL_SYMBOL_RESOURCE ) {
+				return symbol.getCompilationUnit();
+			}
+			throw new IllegalArgumentException("Internal error, unhandled column "+columnIndex);            
+		}
 	}
-	
+
 	private void setupASTInspector() 
 	{
 		astInspector = new JFrame("AST");
 
 		astTree.setCellRenderer( new ASTTreeCellRenderer() ); 
-		
+
 		final JScrollPane pane = new JScrollPane( astTree );
 		setColors( pane );
 		pane.setPreferredSize( new Dimension(400,600) );
-		
+
 		GridBagConstraints cnstrs = constraints( 0, 0 , true , false , GridBagConstraints.REMAINDER );
 		cnstrs.weighty = 0.9;
 		panel.add( pane , cnstrs );
-		
+
 		// add symbol table 
 		symbolTable.setFillsViewportHeight( true );
 		symbolTable.addMouseListener( new MouseAdapter() {
-		    @Override
-		    public void mouseClicked(MouseEvent e)
-		    {
-		        if ( e.getButton() == MouseEvent.BUTTON1 ) {
-		            int viewRow = symbolTable.rowAtPoint( e.getPoint() );
-		            if ( viewRow != -1 ) {
-		                final int modelRow = symbolTable.convertRowIndexToModel( viewRow );
-		                final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
-		                
-		                IEditorView editor = null;
-		                if ( symbol.getCompilationUnit().getResource().isSame( getSourceFromMemory() ) ) {
-		                    editor = SourceEditorView.this;
-		                } 
-		                else if ( getViewContainer() instanceof EditorContainer) 
-		                {
-		                    final EditorContainer parent = (EditorContainer) getViewContainer();
-		                    try {
-                                editor = parent.openResource( workspace , getCurrentProject() , symbol.getCompilationUnit().getResource() );
-                            } 
-		                    catch (IOException e1) {
-                                LOG.error("mouseClicked(): Failed top open "+symbol.getCompilationUnit().getResource(),e1);
-                                return;
-                            }
-		                }
-		                if ( editor instanceof SourceCodeView) {
-		                    ((SourceCodeView) editor).moveCursorTo( symbol.getLocation() );
-		                }
-		            }
-		        }
-		    }
-        });
-		
-		
-        final JScrollPane tablePane = new JScrollPane( symbolTable );
-        setColors( tablePane );
-        tablePane.setPreferredSize( new Dimension(400,200) );	
-        
-        cnstrs = constraints( 0, 1 , true , true , GridBagConstraints.REMAINDER );
-        cnstrs.weighty = 0.1;
-        panel.add( pane , cnstrs );   
-        
-        final JSplitPane split = new JSplitPane( JSplitPane.VERTICAL_SPLIT , pane , tablePane );
-        setColors( split );
-        
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				if ( e.getButton() == MouseEvent.BUTTON1 ) {
+					int viewRow = symbolTable.rowAtPoint( e.getPoint() );
+					if ( viewRow != -1 ) {
+						final int modelRow = symbolTable.convertRowIndexToModel( viewRow );
+						final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
+
+						IEditorView editor = null;
+						if ( symbol.getCompilationUnit().getResource().isSame( getSourceFromMemory() ) ) {
+							editor = SourceEditorView.this;
+						} 
+						else if ( getViewContainer() instanceof EditorContainer) 
+						{
+							final EditorContainer parent = (EditorContainer) getViewContainer();
+							try {
+								editor = parent.openResource( workspace , getCurrentProject() , symbol.getCompilationUnit().getResource() );
+							} 
+							catch (IOException e1) {
+								LOG.error("mouseClicked(): Failed top open "+symbol.getCompilationUnit().getResource(),e1);
+								return;
+							}
+						}
+						if ( editor instanceof SourceCodeView) {
+							((SourceCodeView) editor).moveCursorTo( symbol.getLocation() );
+						}
+					}
+				}
+			}
+		});
+
+
+		final JScrollPane tablePane = new JScrollPane( symbolTable );
+		setColors( tablePane );
+		tablePane.setPreferredSize( new Dimension(400,200) );	
+
+		cnstrs = constraints( 0, 1 , true , true , GridBagConstraints.REMAINDER );
+		cnstrs.weighty = 0.1;
+		panel.add( pane , cnstrs );   
+
+		final JSplitPane split = new JSplitPane( JSplitPane.VERTICAL_SPLIT , pane , tablePane );
+		setColors( split );
+
 		// setup content pane
 		astInspector.getContentPane().add( split );
 		setColors( astInspector.getContentPane() );
@@ -599,20 +776,20 @@ public class SourceEditorView extends SourceCodeView {
 	@Override
 	protected void onSourceCodeValidation()
 	{
-	    statusModel.clearMessages();
+		statusModel.clearMessages();
 	}
 
 	@Override
 	protected void onHighlightingStart()
 	{
-        final ASTTableModelWrapper astModel = new ASTTableModelWrapper( getCurrentCompilationUnit().getAST() ) ;
-        astTree.setModel( astModel );
+		final ASTTableModelWrapper astModel = new ASTTableModelWrapper( getCurrentCompilationUnit().getAST() ) ;
+		astTree.setModel( astModel );
 	}
-	
+
 	@Override
 	protected void onCompilationError(ICompilationError error)
 	{
-       statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
+		statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
 	}
 
 	// ============= view creation ===================
@@ -632,12 +809,12 @@ public class SourceEditorView extends SourceCodeView {
 		navigationHistoryBack.setEnabled( canNavigationHistoryBack() );
 		navigationHistoryForward.setEnabled( canNavigationHistoryForward() );
 	}
-	
+
 	protected JPanel createPanel() 
 	{
 		// button panel
 		final JToolBar toolbar = new JToolBar();
-        toolbar.setLayout( new GridBagLayout() );
+		toolbar.setLayout( new GridBagLayout() );
 		setColors( toolbar );
 
 		final JButton showASTButton = new JButton("Show AST" );
@@ -663,19 +840,19 @@ public class SourceEditorView extends SourceCodeView {
 			}
 		} );
 
-        GridBagConstraints cnstrs = constraints( 0, 0 , false , true , GridBagConstraints.NONE );		
+		GridBagConstraints cnstrs = constraints( 0, 0 , false , true , GridBagConstraints.NONE );		
 		toolbar.add( showASTButton , cnstrs );
-		
+
 		// navigation history back button
 		cnstrs = constraints( 1, 0 , false , true , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryBack, cnstrs );
 		navigationHistoryBack.setEnabled( false );
-		
+
 		// navigation history forward button
 		cnstrs = constraints( 2, 0 , true , true  , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryForward , cnstrs );
 		navigationHistoryForward.setEnabled( false );
-		
+
 		// create status area
 		statusArea.setPreferredSize( new Dimension(400, 100 ) );
 		statusArea.setModel( statusModel );
@@ -687,19 +864,19 @@ public class SourceEditorView extends SourceCodeView {
 		 * cursor position
 		 * status area 
 		 */
-        final JPanel topPanel = new JPanel();		
+		final JPanel topPanel = new JPanel();		
 		topPanel.setLayout( new GridBagLayout() );
 
 		cnstrs = constraints( 0, 0 , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
 		cnstrs.weighty = 0;
 		topPanel.add( toolbar , cnstrs );
-		
-        cnstrs = constraints( 0, 1 , GridBagConstraints.BOTH );
-        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
-        cnstrs.weighty=1.0;
-        topPanel.add( super.getPanel() , cnstrs );
-        
+
+		cnstrs = constraints( 0, 1 , GridBagConstraints.BOTH );
+		cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+		cnstrs.weighty=1.0;
+		topPanel.add( super.getPanel() , cnstrs );
+
 		final JPanel bottomPanel = new JPanel();
 		bottomPanel.setLayout( new GridBagLayout() );
 
@@ -723,8 +900,8 @@ public class SourceEditorView extends SourceCodeView {
 			};
 		} );
 
-        EditorContainer.addEditorCloseKeyListener( statusArea , this );
-        
+		EditorContainer.addEditorCloseKeyListener( statusArea , this );
+
 		statusArea.setFillsViewportHeight( true );
 		statusArea.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -752,24 +929,24 @@ public class SourceEditorView extends SourceCodeView {
 		setColors( panel );  
 		cnstrs = constraints( 0 , 0 , true , true , GridBagConstraints.BOTH );
 		panel.add( splitPane , cnstrs );
-		
-        final AncestorListener l = new AncestorListener() {
-            
-            @Override
-            public void ancestorRemoved(AncestorEvent event) { }
-            
-            @Override
-            public void ancestorMoved(AncestorEvent event) { }
-            
-            @Override
-            public void ancestorAdded(AncestorEvent event) { 
-                splitPane.setDividerLocation( 0.8d );
-            }
-        };
-        panel.addAncestorListener( l );
+
+		final AncestorListener l = new AncestorListener() {
+
+			@Override
+			public void ancestorRemoved(AncestorEvent event) { }
+
+			@Override
+			public void ancestorMoved(AncestorEvent event) { }
+
+			@Override
+			public void ancestorAdded(AncestorEvent event) { 
+				splitPane.setDividerLocation( 0.8d );
+			}
+		};
+		panel.addAncestorListener( l );
 		return panel;
 	}
-	
+
 	@Override
 	public void disposeHook2()
 	{
@@ -796,18 +973,18 @@ public class SourceEditorView extends SourceCodeView {
 	public String getID() {
 		return "source-editor";
 	}
-	
+
 	@Override
 	protected JPopupMenu createPopupMenu(ASTNode node, int caretPosition,
 			String currentSelection) 
 	{
 		final JPopupMenu popup = new JPopupMenu();
 		boolean gotEntries = false;
-		
+
 		final ICompilationUnit unit = getCurrentCompilationUnit();
-		
+
 		if ( getCurrentProject() != null && unit != null &&
-			 unit.getAST() != null && ! unit.hasErrors() ) 
+				unit.getAST() != null && ! unit.hasErrors() ) 
 		{
 			try 
 			{
@@ -832,7 +1009,7 @@ public class SourceEditorView extends SourceCodeView {
 				LOG.error("createPopupMenu(): ",e);
 			}
 		}
-		
+
 		return gotEntries ? popup : null;
 	}
 

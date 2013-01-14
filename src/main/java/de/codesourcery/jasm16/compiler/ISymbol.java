@@ -45,4 +45,13 @@ public interface ISymbol {
 	 * @return
 	 */
 	public ITextRegion getLocation();
+	
+	/**
+	 * Creates a copy of this symbol but with a new identifier assigned.
+	 * 
+	 * @param newIdentifier
+	 * @return
+	 * @see #getIdentifier()
+	 */
+	public ISymbol withIdentifier(Identifier newIdentifier);
 }

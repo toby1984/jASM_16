@@ -230,7 +230,7 @@ public class InstructionNode extends ObjectCodeOutputNode
     }
 
     @Override
-    public InstructionNode copySingleNode()
+	protected InstructionNode copySingleNode()
     {
         final InstructionNode result= new InstructionNode();
         result.opCode = opCode;

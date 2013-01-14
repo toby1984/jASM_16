@@ -64,7 +64,7 @@ public class EquationNode extends ConstantValueNode {
 	}
 	
 	@Override
-	public ASTNode copySingleNode() {
+	protected ASTNode copySingleNode() {
 		final EquationNode result = new EquationNode();
 		result.identifier = identifier;
 		return result;

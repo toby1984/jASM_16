@@ -219,7 +219,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 	private final JTextField cursorPosition = new JTextField(); 
 	private final JTextPane editorPane = new JTextPane();
-	
+
 	private volatile int documentListenerDisableCount = 0; 
 	private JScrollPane editorScrollPane;  
 
@@ -436,14 +436,14 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		public String getColumnName(int columnIndex)
 		{
 			switch(columnIndex) {
-			case COL_SEVERITY:
-				return "Severity";
-			case COL_LOCATION:
-				return "Location";
-			case COL_MESSAGE:
-				return "Message";
-			default:
-				return "no column name?";
+				case COL_SEVERITY:
+					return "Severity";
+				case COL_LOCATION:
+					return "Location";
+				case COL_MESSAGE:
+					return "Message";
+				default:
+					return "no column name?";
 			}
 		}
 
@@ -464,23 +464,23 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		{
 			final StatusMessage msg = messages.get( rowIndex );
 			switch(columnIndex) {
-			case COL_SEVERITY:
-				return msg.getSeverity().toString(); 
-			case COL_LOCATION:
-				if ( msg.getLocation() != null ) {
-					SourceLocation location;
-					try {
-						location = getSourceLocation(msg.getLocation());
-						return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
-					} catch (NoSuchElementException e) {
-						// ok, can't help it
-					}
-				} 
-				return "<unknown>";
-			case COL_MESSAGE:
-				return msg.getMessage();
-			default:
-				return "no column name?";
+				case COL_SEVERITY:
+					return msg.getSeverity().toString(); 
+				case COL_LOCATION:
+					if ( msg.getLocation() != null ) {
+						SourceLocation location;
+						try {
+							location = getSourceLocation(msg.getLocation());
+							return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
+						} catch (NoSuchElementException e) {
+							// ok, can't help it
+						}
+					} 
+					return "<unknown>";
+				case COL_MESSAGE:
+					return msg.getMessage();
+				default:
+					return "no column name?";
 			}
 		}
 
@@ -507,6 +507,19 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		}
 
 	}
+	
+	protected final void replaceText(ITextRegion region,String newValue) 
+	{
+		disableDocumentListener();
+		try {
+			editorPane.getDocument().remove( region.getStartingOffset() , region.getLength() );
+			editorPane.getDocument().insertString( region.getStartingOffset() , newValue , defaultStyle );
+		} catch (BadLocationException e) {
+			throw new RuntimeException(e);
+		} finally {
+			enableDocumentListener();
+		}
+	}	
 
 	protected class CompilationThread extends Thread {
 
@@ -539,20 +552,20 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			{
 				switch( currentState ) 
 				{
-				case WAIT_FOR_EDIT:
-					LOCK.wait();
-					return;
-				case RESTART_TIMEOUT:
-					currentState = WaitState.WAIT_FOR_TIMEOUT; // $FALL-THROUGH$
-					return;
-				case WAIT_FOR_TIMEOUT:
-					LOCK.wait( RECOMPILATION_DELAY_MILLIS );
-					if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
+					case WAIT_FOR_EDIT:
+						LOCK.wait();
 						return;
-					}
+					case RESTART_TIMEOUT:
+						currentState = WaitState.WAIT_FOR_TIMEOUT; // $FALL-THROUGH$
+						return;
+					case WAIT_FOR_TIMEOUT:
+						LOCK.wait( RECOMPILATION_DELAY_MILLIS );
+						if ( currentState != WaitState.WAIT_FOR_TIMEOUT ) {
+							return;
+						}
 				} 
 			}
-			
+
 			try {
 				SwingUtilities.invokeAndWait( new Runnable() {
 
@@ -585,19 +598,24 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			}
 		}
 	}
+	
+	protected final void notifyDocumentChanged() 
+	{
+		updateTitle();
 
+		if ( compilationThread == null ) 
+		{
+			compilationThread = new CompilationThread();
+			compilationThread.start();
+		} 
+		compilationThread.documentChanged();		
+	}
+	
 	private DocumentListener recompilationListener = new DocumentListener() {
 
 		private void textChanged(DocumentEvent e) 
 		{
-			updateTitle();
-
-			if ( compilationThread == null ) 
-			{
-				compilationThread = new CompilationThread();
-				compilationThread.start();
-			} 
-			compilationThread.documentChanged();
+			notifyDocumentChanged();
 		}
 
 		@Override
@@ -1181,8 +1199,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 	// ============= view creation ===================
 
-			@Override
-			public JPanel getPanel()
+	@Override
+	public JPanel getPanel()
 	{
 		if ( panel == null ) {
 			panel = createPanel();
@@ -1317,7 +1335,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		return panel;
 	}
 
-	protected final void setupKeyBindings(JTextPane editor) 
+	protected final void setupKeyBindings(final JTextPane editor) 
 	{
 		// 'Save' action 
 		addKeyBinding( editor , 
@@ -1348,7 +1366,13 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			public void actionPerformed(ActionEvent e) {
 				showSearchDialog();
 			}
-		});        
+		});
+		
+		setupKeyBindingsHook( editor );
+	}
+	
+	protected void setupKeyBindingsHook(JTextPane editor) {
+		
 	}
 
 	protected final void saveCurrentFile() {
@@ -1500,7 +1524,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		editorPane.addMouseListener( listener );
 		editorPane.addMouseMotionListener( listener );
 	}    
-	
+
 	protected final void showTooltip(String s) 
 	{
 		if ( ! registeredWithTooltipManager ) {
@@ -1509,7 +1533,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		}
 		editorPane.setToolTipText( s );
 	}
-	
+
 	protected final void clearTooltip() {
 		editorPane.setToolTipText( null );
 	}	

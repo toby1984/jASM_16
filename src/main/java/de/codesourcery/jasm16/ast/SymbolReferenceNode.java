@@ -49,6 +49,9 @@ public class SymbolReferenceNode extends ConstantValueNode
 		return this;
 	}
 
+	public void setIdentifier(Identifier identifier) {
+		this.identifier = identifier;
+	}
     
     @Override
     public boolean equals(Object obj)
@@ -68,7 +71,7 @@ public class SymbolReferenceNode extends ConstantValueNode
 	}
 
 	@Override
-	public SymbolReferenceNode copySingleNode()
+	protected SymbolReferenceNode copySingleNode()
 	{
 		final SymbolReferenceNode result = new SymbolReferenceNode();
 		result.identifier = identifier;

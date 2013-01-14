@@ -44,7 +44,7 @@ public class IncludeSourceFileNode extends ASTNode {
 	private IResource resource;
 	
 	@Override
-	public ASTNode copySingleNode() 
+	protected ASTNode copySingleNode() 
 	{
 		final IncludeSourceFileNode result = new IncludeSourceFileNode();
 		result.resource = resource;

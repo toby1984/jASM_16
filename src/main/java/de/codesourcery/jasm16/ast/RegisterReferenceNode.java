@@ -141,7 +141,7 @@ public class RegisterReferenceNode extends TermNode
 	}
 
     @Override
-    public RegisterReferenceNode copySingleNode()
+	protected RegisterReferenceNode copySingleNode()
     {
     	final RegisterReferenceNode result = new RegisterReferenceNode();
     	result.register = register;

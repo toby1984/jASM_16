@@ -27,6 +27,7 @@ import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.TermNode;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * A variable assignment (.equ).
@@ -49,6 +50,13 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 			throw new IllegalArgumentException("expression must not be NULL");
 		}
 		this.expression = expression;
+	}
+	
+	@Override
+	public ISymbol withIdentifier(Identifier newIdentifier) 
+	{
+		final TextRegion newLocation = new TextRegion( getLocation().getStartingOffset() , newIdentifier.getRawValue().length() );
+		return new Equation( getCompilationUnit() , newLocation , newIdentifier , expression );
 	}
 	
 	/**
@@ -155,5 +163,5 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		final String errorMsg ="Equations have circular dependency: "+cycle;
 		LOG.error("createParseContextForInclude(): "+errorMsg);
 		throw new CircularEquationsException( cycle.toString() );
-	}	
+	}
 }

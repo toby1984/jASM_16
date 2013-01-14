@@ -140,6 +140,25 @@ public abstract class ASTNode
         return actualTextRegion;
     }
 
+    public final void adjustTextRegion(int offsetAdjust,int lengthAdjust) throws IllegalStateException 
+    {
+    	if ( hasChildren() ) {
+    		throw new IllegalStateException("adjustTextRegion() may only be called on LEAF nodes");
+    	}
+    	
+    	final ITextRegion current = getTextRegion();
+    	if ( current == null ) {
+    		throw new IllegalStateException("Node "+this+" has no text region assigned ?");
+    	}
+
+    	if ( textRegionIncludingAllTokens != null ) 
+    	{
+    		textRegionIncludingAllTokens = new TextRegion( current.getStartingOffset() + offsetAdjust , current.getLength() + lengthAdjust );
+    	} 
+   		actualTextRegion = new TextRegion( current.getStartingOffset() + offsetAdjust , current.getLength() + lengthAdjust );
+   		recalculateTextRegion( true );
+    }
+    
     /**
      * Merges the actual source code region covered by a node with
      * this node's {@link #textRegionIncludingAllTokens}.
@@ -233,6 +252,9 @@ public abstract class ASTNode
             if ( range == null ) {
                 range = new TextRegion( child.getTextRegion() );
             } else {
+            	if ( child.getTextRegion() == null ) {
+            		throw new IllegalStateException("Child "+child+" has NULL text region?");
+            	}
                 range.merge( child.getTextRegion() );
             }
         }
@@ -240,8 +262,8 @@ public abstract class ASTNode
         this.actualTextRegion = range;
 
         if ( recalculateParents &&
-                oldValue != TextRegion.hashCode( this.actualTextRegion ) && 
-                getParent() != null ) 
+             oldValue != TextRegion.hashCode( this.actualTextRegion ) && 
+             getParent() != null ) 
         {
             getParent().recalculateTextRegion(true);
         }
@@ -279,7 +301,7 @@ public abstract class ASTNode
      * 
      * @return
      */
-    public abstract ASTNode copySingleNode(); 
+    protected abstract ASTNode copySingleNode(); 
 
     /**
      * Check this AST node or any of it's child nodes is of class
@@ -854,11 +876,11 @@ public abstract class ASTNode
             ASTNode tmp = child.getNodeInRange( offset );
             if ( tmp != null ) 
             {
-                final int delta1 = Math.abs( offset - result.getTextRegion().getStartingOffset() );
-                final int delta2 = Math.abs( offset - tmp.getTextRegion().getStartingOffset() );
-                if ( delta2 < delta1 || ! child.hasChildren() ) {
+//                final int delta1 = Math.abs( offset - result.getTextRegion().getStartingOffset() );
+//                final int delta2 = Math.abs( offset - tmp.getTextRegion().getStartingOffset() );
+//                if ( delta2 < delta1 || ! child.hasChildren() ) {
                     result = tmp;
-                } 
+//                } 
             }
         }
         return result;

@@ -49,7 +49,7 @@ public class ASTNodeTest extends TestCase
         }
 
         @Override
-        public ASTNode copySingleNode()
+		protected ASTNode copySingleNode()
         {
             return new TestNode();
         }

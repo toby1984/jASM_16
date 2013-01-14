@@ -124,7 +124,7 @@ public class NumberNode extends ConstantValueNode
 	}
 
     @Override
-    public NumberNode copySingleNode()
+	protected NumberNode copySingleNode()
     {
     	final NumberNode result = new NumberNode();
     	result.value = value;

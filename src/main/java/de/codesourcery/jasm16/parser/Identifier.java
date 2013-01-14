@@ -65,6 +65,30 @@ outer:
         this.identifier = identifier;
     }
     
+    public static boolean isValidIdentifier(String identifier) 
+    {
+        if (identifier == null) {
+            return false;
+        }
+        if ( identifier.length() == 0 ) {
+            return false;
+        }
+        final char[] actual = identifier.toCharArray();
+        int i = 0;
+outer:        
+        for ( ; i < actual.length ; i++ ) 
+        {
+            final char got = actual[i];
+            for ( char c : VALID_CHARACTERS ) {
+                if ( got == c ) {
+                    continue outer;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+    
     @Override
     public boolean equals(Object obj) 
     {

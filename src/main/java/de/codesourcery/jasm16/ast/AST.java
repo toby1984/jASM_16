@@ -32,7 +32,7 @@ public class AST extends ASTNode
 {
 
 	@Override
-	public ASTNode copySingleNode() {
+	protected ASTNode copySingleNode() {
 		return new AST();
 	}
 

@@ -66,7 +66,7 @@ public class UnparsedContentNode extends ASTNode
     }
 
     @Override
-    public UnparsedContentNode copySingleNode()
+	protected UnparsedContentNode copySingleNode()
     {
         return new UnparsedContentNode(this.error, this.errorOffset );
     }

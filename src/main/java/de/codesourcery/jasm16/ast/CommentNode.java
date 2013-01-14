@@ -44,7 +44,7 @@ public class CommentNode extends ASTNode
     }
     
     @Override
-    public CommentNode copySingleNode()
+	protected CommentNode copySingleNode()
     {
     	final CommentNode result= new CommentNode();
     	result.value = value;

@@ -57,6 +57,22 @@ public class SymbolTable implements ISymbolTable {
 			symbols.put( identifier, symbol );
 		}
 	}
+	
+	@Override
+	public ISymbol renameSymbol(ISymbol symbol, Identifier newIdentifier) throws DuplicateSymbolException 
+	{
+		final ISymbol existing = getSymbol( symbol.getIdentifier() );
+		if ( existing == null ) {
+			throw new IllegalArgumentException("Symbol "+symbol+" is not part of this symbol table?");
+		}
+		final ISymbol newSymbol = existing.withIdentifier( newIdentifier );
+		if ( containsSymbol( newIdentifier) ) {
+			throw new DuplicateSymbolException( existing , newSymbol ); 
+		}
+		symbols.remove( symbol.getIdentifier() );
+		symbols.put( newIdentifier , newSymbol );
+		return newSymbol;
+	}
 
 	@Override
 	public ISymbol getSymbol(Identifier identifier) 

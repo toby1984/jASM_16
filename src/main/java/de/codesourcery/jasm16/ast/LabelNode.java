@@ -45,6 +45,14 @@ public class LabelNode extends ASTNode
     	return label; 
     }
     
+    public void setLabel(Label newLabel) {
+    	if (newLabel == null) {
+			throw new IllegalArgumentException("newLabel must not be null");
+		}
+    	this.label = newLabel;
+    	this.identifier = newLabel.getIdentifier();
+	}
+    
     @Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException
     {
@@ -57,12 +65,15 @@ public class LabelNode extends ASTNode
     	    leadingCharacterFound = true;
     	} 
         
+    	final int identifierStartIndex = context.currentParseIndex();
+    	
         identifier = context.parseIdentifier( range );
         if ( range == null ) {
             range = new TextRegion( startIndex , context.currentParseIndex() - startIndex );
         }
         
-        this.label = new Label( context.getCompilationUnit() , range , identifier );
+        final ITextRegion symbolRange = new TextRegion(identifierStartIndex, identifier.getRawValue().length() );
+        this.label = new Label( context.getCompilationUnit() , symbolRange , identifier );
         
         if ( ! leadingCharacterFound  ) 
         {
@@ -91,7 +102,7 @@ public class LabelNode extends ASTNode
     }
 
     @Override
-    public LabelNode copySingleNode()
+	protected LabelNode copySingleNode()
     {
         final LabelNode result = new LabelNode();
         result.label = label;

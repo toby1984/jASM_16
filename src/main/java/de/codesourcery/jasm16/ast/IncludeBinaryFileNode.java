@@ -46,7 +46,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode
     private Address address;
     
     @Override
-    public ASTNode copySingleNode()
+	protected ASTNode copySingleNode()
     {
         final IncludeBinaryFileNode result= new IncludeBinaryFileNode();
         result.resourceIdentifier = resourceIdentifier;

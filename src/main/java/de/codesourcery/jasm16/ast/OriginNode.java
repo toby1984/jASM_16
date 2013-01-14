@@ -34,7 +34,7 @@ public class OriginNode extends ObjectCodeOutputNode
     private Address address;
     
     @Override
-    public ASTNode copySingleNode()
+	protected ASTNode copySingleNode()
     {
         final OriginNode result = new OriginNode();
         result.address = this.address;

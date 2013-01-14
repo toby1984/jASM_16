@@ -174,7 +174,7 @@ public class OperatorNode extends TermNode
 	}
 
     @Override
-    public OperatorNode copySingleNode()
+	protected OperatorNode copySingleNode()
     {
         final OperatorNode result = new OperatorNode();
         result.operator = operator;

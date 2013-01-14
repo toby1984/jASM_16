@@ -66,6 +66,16 @@ public interface ISymbolTable {
 	public void setParent(IParentSymbolTable table);
 	
 	/**
+	 * Renames a symbol.
+	 * 
+	 * @param symbol
+	 * @param newIdentifier
+	 * @throws DuplicateSymbolException if the new identifier is already in use
+	 * @return renamed symbol 
+	 */
+	public ISymbol renameSymbol(ISymbol symbol,Identifier newIdentifier) throws DuplicateSymbolException;
+	
+	/**
 	 * Check whether there is a symbol with a given identifier.
 	 * 
 	 * @param identifier

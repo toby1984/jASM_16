@@ -648,7 +648,7 @@ public class ExpressionNode extends TermNode
     }
 
     @Override
-    public ExpressionNode copySingleNode()
+	protected ExpressionNode copySingleNode()
     {
         return new ExpressionNode();
     }

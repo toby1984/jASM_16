@@ -18,6 +18,7 @@ package de.codesourcery.jasm16.compiler;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * A label that identifies a specific location in the
@@ -31,6 +32,15 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 	
 	public Label(ICompilationUnit unit , ITextRegion location , Identifier identifier) {
 		super( unit , location , identifier );
+	}
+	
+	@Override
+	public ISymbol withIdentifier(Identifier newIdentifier) 
+	{
+		final TextRegion newLocation = new TextRegion( getLocation().getStartingOffset() , newIdentifier.getRawValue().length() );
+		final Label result = new Label( getCompilationUnit() , newLocation , newIdentifier );
+		result.address = this.address;
+		return result;
 	}
 	
 	/**

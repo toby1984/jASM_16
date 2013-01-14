@@ -32,11 +32,16 @@ public class ParentSymbolTable implements IParentSymbolTable
     @Override
     public ISymbol getSymbol(Identifier identifier)
     {
+    	final ISymbolTable table = findSymbolTable( identifier );
+    	return table == null ? null : table.getSymbol( identifier );
+    }
+    
+    private ISymbolTable findSymbolTable(Identifier identifier) {
         for ( ISymbolTable table : tables.values() ) 
         {
             final ISymbol result = table.getSymbol( identifier );
             if ( result != null ) {
-                return result;
+                return table;
             }
         }
         return null;
@@ -55,6 +60,19 @@ public class ParentSymbolTable implements IParentSymbolTable
         }        
         return result;
     }    
+    
+	@Override
+	public ISymbol renameSymbol(ISymbol symbol, Identifier newIdentifier) throws DuplicateSymbolException 
+	{
+		final ISymbolTable existingTable = findSymbolTable( symbol.getIdentifier() );
+		
+		final ISymbol existing = existingTable == null ? null : existingTable.getSymbol( symbol.getIdentifier() );
+		if ( existing == null ) {
+			throw new IllegalArgumentException("Symbol "+symbol+" is not part of this symbol table?");
+		}
+		
+		return existingTable.renameSymbol( existing , newIdentifier );
+	}    
     
     @Override
     public List<ISymbol> getSymbols()
