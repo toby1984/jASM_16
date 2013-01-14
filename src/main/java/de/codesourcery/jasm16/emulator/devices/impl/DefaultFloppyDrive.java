@@ -275,19 +275,23 @@ public class DefaultFloppyDrive implements IDevice {
 			}
 		}
 	}
-
-	private void updateErrorCode(ErrorCode ec) 
+	
+	private void updateStatus(StatusCode status,ErrorCode errorCode) 
 	{
 		boolean statusChanged;
 		synchronized(DISK_LOCK ) 
 		{
-			statusChanged = this.error != ec;
-			this.error = ec;
+			statusChanged = this.status != status; 
+			if ( errorCode != null && errorCode != this.error ) {
+				statusChanged = true;
+				this.error=errorCode;
+			}
+			this.status = status;
 		}
 
 		if ( statusChanged ) 
 		{
-			logDebug("New error code: "+status);
+			logDebug("New status: "+status+" / error: "+errorCode);
 			if ( interruptsEnabled ) {
 				emulator.triggerInterrupt( new HardwareInterrupt( this , interruptMessage ) );
 			}
@@ -365,7 +369,7 @@ public class DefaultFloppyDrive implements IDevice {
 							currentHeadPosition = 0;
 						}
 
-						setIdleStatus();
+						setIdleStatus(null);
 
 						while(true) 
 						{
@@ -384,28 +388,26 @@ public class DefaultFloppyDrive implements IDevice {
 						break;
 					}
 
+					ErrorCode newErrorCode=ErrorCode.NONE;
 					try 
 					{
 						updateStatus(StatusCode.BUSY);
-						if ( processCommand( command ) ) 
-						{
-							updateErrorCode(ErrorCode.NONE);
-						}
+						newErrorCode = processCommand( command );
 					} 
 					catch(IOException e) 
 					{
 						logError("Command "+command+" failed",e);
-						updateErrorCode(ErrorCode.BAD_SECTOR);
+						newErrorCode = ErrorCode.BAD_SECTOR;
 					} 					
 					catch(Exception e) 
 					{
 						logError("Command "+command+" failed",e);
-						updateErrorCode(ErrorCode.BROKEN);
+						newErrorCode = ErrorCode.BROKEN;
 					} 
 					finally 
 					{
 						takeCommand();
-						setIdleStatus();
+						setIdleStatus(newErrorCode);
 					}
 				}
 			} 
@@ -418,19 +420,19 @@ public class DefaultFloppyDrive implements IDevice {
 			}
 		}
 
-		private void setIdleStatus() 
+		private void setIdleStatus(ErrorCode errorCode) 
 		{
 			synchronized( DISK_LOCK ) 
 			{
 				if ( disk == null ) {
-					updateStatus(StatusCode.NO_MEDIA);
+					updateStatus(StatusCode.NO_MEDIA,errorCode);
 				} else {
-					updateStatus( disk.isWriteProtected() ? StatusCode.READY_WP : StatusCode.READY );
+					updateStatus( disk.isWriteProtected() ? StatusCode.READY_WP : StatusCode.READY , errorCode );
 				}
 			}
 		}
 
-		private boolean processCommand(DriveCommand cmd) throws IOException 
+		private ErrorCode processCommand(DriveCommand cmd) throws IOException 
 		{
 			logDebug("Executing command "+cmd);
 
@@ -447,11 +449,10 @@ public class DefaultFloppyDrive implements IDevice {
 						enforceSpeed();
 						// TODO: Make sure memory write is ATOMIC !!
 						disk.readSector( readCmd.getSector() , emulator.getMemory() , readCmd.getTargetMemoryAddress() );
-						return true;
+						return ErrorCode.NONE;
 					}
 				}
-				updateErrorCode(ErrorCode.NO_MEDIA);
-				return false;
+				return ErrorCode.NO_MEDIA;
 
 			case WRITE: /* WRITE */
 				final WriteCommand writeCmd = (WriteCommand) cmd;
@@ -466,13 +467,12 @@ public class DefaultFloppyDrive implements IDevice {
 							enforceSpeed();
 							// TODO: Make sure memory write is ATOMIC !!
 							disk.writeSector( writeCmd.getSector() , emulator.getMemory() , writeCmd.getSourceMemoryAddress() );
-							return true;
+							return ErrorCode.NONE;
 						} 
 						writeProtected = true;
 					}
 				}
-				updateErrorCode( writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA);
-				return false;
+				return writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA;
 
 			default:
 				throw new RuntimeException("Internal error,unhandled command type "+cmd);
