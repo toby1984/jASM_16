@@ -32,10 +32,12 @@ import javax.swing.text.StyledDocument;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 import de.codesourcery.jasm16.utils.TextRegion;
@@ -125,6 +127,15 @@ public class CPUView extends AbstractView
         int itemsInLine = 0;
         for ( int i = 0 ; i < ICPU.COMMON_REGISTER_NAMES.length ; i++ ) {
             builder.append( ICPU.COMMON_REGISTER_NAMES[i]+": "+Misc.toHexString( cpu.getCommonRegisters()[i] )+"    ");
+            
+            Address address = Address.wordAddress( cpu.getCommonRegisters()[i] );
+            final byte[] data = MemUtils.getBytes( emulator.getMemory() , 
+                    address ,
+                    Size.words( 4 ) ,
+                    true
+                );
+            
+            builder.append( Misc.toHexDump( address , data , data.length , 4, true , false, true ) );  
             builder.append("\n");
             itemsInLine++;
             if ( itemsInLine == 4 ) {
