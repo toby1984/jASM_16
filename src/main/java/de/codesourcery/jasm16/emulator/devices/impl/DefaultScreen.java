@@ -535,6 +535,12 @@ public final class DefaultScreen implements IDevice {
 		{
 			fontRAM.defineAllGlyphs();
 		}
+		
+		if ( ! isConnected() ) 
+		{
+			renderScreenDisconnectedMessage();
+			return;
+		}		
 
 		if ( updateRequired ) 
 		{ 
@@ -567,12 +573,6 @@ public final class DefaultScreen implements IDevice {
 
 	protected void renderMemoryValue(int wordAddress , int memoryValue,boolean blinkState) 
 	{
-		if ( ! isConnected() ) 
-		{
-			renderScreenDisconnectedMessage();
-			return;
-		}
-
 		/* The LEM1802 is a 128x96 pixel color display compatible with the DCPU-16.
 		 * The display is made up of 32x12 16 bit cells.
 		 * Each cell displays one monochrome 4x8 pixel character out of 128 available.
