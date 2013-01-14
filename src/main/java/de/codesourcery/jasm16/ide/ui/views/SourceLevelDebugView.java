@@ -40,8 +40,10 @@ import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
+import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
+import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.Label;
@@ -49,7 +51,6 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
-import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -156,9 +157,24 @@ public class SourceLevelDebugView extends SourceCodeView
             				bytes, bytes.length ,  WORDS_TO_SHOW , true , true );
             		
             		showTooltip( tooltip );
+            	} else if ( symbol != null && symbol instanceof Equation ) {
+            	    Equation eq = (Equation) symbol;
+            	    Long value = eq.getValue( currentUnit.getSymbolTable() );
+            	    if ( value != null ) 
+            	    {
+            	        if ( value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
+                            showTooltip( "0x"+Misc.toHexString( value.intValue() ) +" ("+value.intValue()+")" );            	            
+            	        } else {
+            	            showTooltip( "0x"+Misc.toHexString( value.longValue() ) +" ("+value.longValue()+")" );
+            	        }
+            	    }
             	} else {
             		clearTooltip();
             	}
+            } else if ( n != null && n instanceof RegisterReferenceNode) {
+                RegisterReferenceNode reg = (RegisterReferenceNode) n;
+                final int value = emulator.getCPU().getRegisterValue( reg.getRegister() );
+                showTooltip( "0x"+Misc.toHexString( value ) +" ("+value+")" ); 
             } else {
             	clearTooltip();            	
             }
