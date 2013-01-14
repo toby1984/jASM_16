@@ -69,7 +69,19 @@ public interface ICompiler
 		 * </ul>
 		 * </p>
 		 */
-		RELAXED_VALIDATION;
+		RELAXED_VALIDATION,
+		/**
+		 * Stops the compiler from inlining literal values &gt;= -1 and &lt;= 30 as part of the instruction word.
+		 * 
+		 * <p>Inlining increases execution speed and decreases code size but cannot be used when trying to generate relocatable code.</p>
+		 */
+		DISABLE_INLINING,		
+		/**
+		 * Whether the compiler should generate relocatable code. 
+		 * 
+		 * <p>Generating relocatable code automatically implies {@link #DISABLE_INLINING}.</p>
+		 */
+		GENERATE_RELOCATION_TABLE;
 	}
 	
 	/**

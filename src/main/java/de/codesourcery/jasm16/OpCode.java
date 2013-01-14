@@ -25,6 +25,7 @@ import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 
 /**
@@ -430,13 +431,13 @@ public enum OpCode
     	final byte[] buffer = new byte[6];
     	final int calculatedSize = writeInstruction( context , operandA , operandB , buffer );
     	if ( calculatedSize == InstructionNode.UNKNOWN_SIZE ) {
-    		return getMinimumInstructionSizeInBytes(); // assume worst-case scenario
+    		return getMaximumInstructionSizeInBytes(); // assume worst-case scenario
     	}
 		return calculatedSize;
 	}
 
-	protected int getMinimumInstructionSizeInBytes() {
-		return 2;
+	protected int getMaximumInstructionSizeInBytes() {
+		return 6;
 	}
 
 	public byte[] generateObjectCode(ICompilationContext context , InstructionNode instruction) 
@@ -495,7 +496,10 @@ public enum OpCode
         OperandDesc descSource=null;
         
         final int OPCODE_BITS = 5;
-
+        
+        final boolean inlineLiterals = ! context.hasCompilerOption(CompilerOption.DISABLE_INLINING ) &&
+                                         ! context.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_TABLE );
+        
         if ( isSpecialOpCode() ) 
         {
             if ( targetOperand == null ) {
@@ -505,7 +509,7 @@ public enum OpCode
                 throw new RuntimeException("Extended instruction "+this+" requires a single operand, got two ?");
             }            
             opcode |= ( opCodeBits << OPCODE_BITS );
-            descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand );
+            descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand , inlineLiterals );
             if ( descTarget == null ) {
                 return ObjectCodeOutputNode.UNKNOWN_SIZE;
             }
@@ -517,14 +521,14 @@ public enum OpCode
             opcode |= ( opCodeBits & 0x1f); // 5-bit opcodes = 0x1F
             if ( targetOperand != null ) 
             {
-                descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand );
+                descTarget = getOperandBits( symbolTable , OperandPosition.TARGET_OPERAND , targetOperand ,sourceOperand , inlineLiterals);
                 if ( descTarget == null ) {
                     return ObjectCodeOutputNode.UNKNOWN_SIZE;
                 }
                 opcode |= ( descTarget.operandBits << OPCODE_BITS );
             }
             if ( sourceOperand != null ) {
-                descSource = getOperandBits( symbolTable , OperandPosition.SOURCE_OPERAND , targetOperand ,sourceOperand );
+                descSource = getOperandBits( symbolTable , OperandPosition.SOURCE_OPERAND , targetOperand ,sourceOperand , inlineLiterals );
                 if ( descSource == null ) {
                     return ObjectCodeOutputNode.UNKNOWN_SIZE;
                 }
@@ -563,7 +567,10 @@ public enum OpCode
         return idx;
     }
     
-    private OperandDesc getOperandBits(ISymbolTable symbolTable,OperandPosition operandToHandle,OperandNode targetOperand,OperandNode sourceOperand) 
+    private OperandDesc getOperandBits(ISymbolTable symbolTable,
+            OperandPosition operandToHandle,
+            OperandNode targetOperand,
+            OperandNode sourceOperand,boolean inlineLiterals) 
     {
     	final OperandNode operand = operandToHandle == OperandPosition.TARGET_OPERAND ? targetOperand : sourceOperand;
     	
@@ -605,8 +612,10 @@ public enum OpCode
                     return null; // => ObjectCodeOutputNode#UNKNOWN_SIZE
                 }
                 long value = value2;
+                
                 // inlining is ONLY supported for source operand (a) OR the only operand in single-operand opcodes 
-                if ( ( operandToHandle == OperandPosition.SOURCE_OPERAND || getOperandCount() == 1 ) && value >= -1 && value <= 30  ) 
+                if ( inlineLiterals && ( operandToHandle == OperandPosition.SOURCE_OPERAND || getOperandCount() == 1 ) && 
+                     value >= -1 && value <= 30  ) 
                 {
                     value+=1; // shift because -1 = 0x20 , 0 = 0x21 , +++
                     return operandDesc( 0x20 + (int) value );
