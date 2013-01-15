@@ -124,11 +124,14 @@ public class CPUView extends AbstractView
             redRegions.add( new TextRegion( 0 , builder.length() ) );
         }        
         
+        
         int itemsInLine = 0;
-        for ( int i = 0 ; i < ICPU.COMMON_REGISTER_NAMES.length ; i++ ) {
-            builder.append( ICPU.COMMON_REGISTER_NAMES[i]+": "+Misc.toHexString( cpu.getCommonRegisters()[i] )+"    ");
+        for ( int i = 0 ; i < ICPU.COMMON_REGISTER_NAMES.length ; i++ ) 
+        {
+        	final int value = cpu.getRegisterValue( ICPU.COMMON_REGISTERS[i] );
+            builder.append( ICPU.COMMON_REGISTER_NAMES[i]+": "+Misc.toHexString( value )+"    ");
             
-            Address address = Address.wordAddress( cpu.getCommonRegisters()[i] );
+            Address address = Address.wordAddress( value );
             final byte[] data = MemUtils.getBytes( emulator.getMemory() , 
                     address ,
                     Size.words( 4 ) ,

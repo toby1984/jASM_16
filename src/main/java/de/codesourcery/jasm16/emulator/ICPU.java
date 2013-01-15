@@ -29,6 +29,8 @@ import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 public interface ICPU
 {
     public static final int COMMON_REGISTER_COUNT=8;
+    
+	public static final Register[] COMMON_REGISTERS = { Register.A, Register.B, Register.C, Register.X, Register.Y, Register.Z, Register.I, Register.J	};
     public static final String[] COMMON_REGISTER_NAMES = {"A","B","C","X","Y","Z","I","J"};
     
     public static final int REG_A=0;
@@ -39,12 +41,6 @@ public interface ICPU
     public static final int REG_Z=5;
     public static final int REG_I=6;
     public static final int REG_J=7;
-    
-    /**
-     * 
-     * @return
-     */
-    public int[] getCommonRegisters();
     
     public Address getPC();
     
