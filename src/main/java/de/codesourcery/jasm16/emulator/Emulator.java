@@ -2650,7 +2650,9 @@ public final class Emulator implements IEmulator {
                     throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
                 }
                 cyclesConsumed = 0;
-            } else {
+            } 
+            else 
+            {
                 try {
                     cyclesConsumed = device.handleInterrupt( Emulator.this );
                 } 

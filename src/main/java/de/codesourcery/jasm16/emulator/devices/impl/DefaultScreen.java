@@ -18,6 +18,8 @@ package de.codesourcery.jasm16.emulator.devices.impl;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -32,10 +34,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.LockSupport;
 
 import javax.imageio.ImageIO;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -53,6 +58,7 @@ import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -212,6 +218,7 @@ public final class DefaultScreen implements IDevice {
 
 	private synchronized BufferedImage getDefaultFontImage(Graphics2D target) 
 	{
+	    System.out.println("--- getDefaultFontImage ---");
 		if ( defaultFontImage == null ) {
 			final ClassPathResource resource = new ClassPathResource("default_font.png",ResourceType.UNKNOWN);
 			try {
@@ -253,17 +260,22 @@ public final class DefaultScreen implements IDevice {
 		renderScreenDisconnectedMessage();
 	}
 
+	private static final AtomicLong DEBUG_ID = new AtomicLong(0);
+	
 	protected final class FontRAM extends MemoryRegion 
 	{
+	    private final long id = DEBUG_ID.incrementAndGet();
+	    
 		private boolean hasChanged = true;
 
 		public FontRAM(Address start) {
 			super("Font RAM", TYPE_FONT_RAM , new AddressRange( start , Size.words( 256 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  ); // 2 words per character
+			System.out.println("--- new font ram created with id #"+id+" ---");
 		}
 
 		public void setup(ConsoleScreen scr) {
 
-		    System.out.println("Reading glyphs from screen");
+		    System.out.println(" -- reading glyphs from screen , ram id # "+id+" ---");
 			int adr = 0;
 			for ( int glyph = 0 ; glyph < 128 ; glyph++ ) {
 
@@ -274,6 +286,7 @@ public final class DefaultScreen implements IDevice {
 				super.write( adr++ , word0 );
 				super.write( adr++ , word1 );
 			}
+			dump();
 			hasChanged = true;
 		}
 
@@ -306,9 +319,15 @@ public final class DefaultScreen implements IDevice {
 			return hasChanged;
 		}        
 
+		private void dump() {
+	          final byte[] data = MemUtils.getBytes( this , WordAddress.ZERO , getSize() , false );
+	          System.out.println( Misc.toHexDump( 0 ,data , data.length , 16 , false , true , false ) );
+		}
+		
 		public void defineAllGlyphs() {
 
-		    System.out.println("Defining all glyphs");
+		    System.out.println("-- defining all glyphs , ram ID #"+id);
+		    dump();
 		    
 			final int end = getSize().getSizeInWords();
 
@@ -323,6 +342,12 @@ public final class DefaultScreen implements IDevice {
 				consoleScreen.defineGylph( glyphIndex , newGlyph );
 			}
 			return;
+		}
+		
+		@Override
+		public String toString()
+		{
+		    return "Font ram #"+id+" , "+super.toString();
 		}
 	}
 
@@ -556,6 +581,8 @@ public final class DefaultScreen implements IDevice {
 			
 			final boolean blink = blinkState;
 			lastBlinkState = blink;
+			
+			System.out.println("--- repainting with fontRAM = "+fontRAM);
 			
 			boolean blinkingChars = false;
 			for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
@@ -901,11 +928,31 @@ public final class DefaultScreen implements IDevice {
 			renderBorder();
 		}
 
-		public void setFontImage(BufferedImage image) 
+		public void setFontImage(final BufferedImage image) 
 		{
+		    System.out.println("-------------------- setFontImage --------------- ");
+		    
+		    JFrame frame = new JFrame();
+		    
+		    final JPanel panel = new JPanel() {
+		        @Override
+		        public void paint(Graphics g)
+		        {
+		            super.paint(g);
+		            g.drawImage( image , 0 , 0 , null );
+		        }
+		    };
+		    
+		    panel.setMinimumSize(new Dimension(400,400 ) );
+		    panel.setMaximumSize(new Dimension(400,400 ) );
+		    panel.setPreferredSize(new Dimension(400,400 ) );
+		    frame.getContentPane().add( panel );
+		    frame.setVisible( true );
+		    
 			// choose darkest color as background color
 			this.glyphBitmap = new RawImage( "glyphs" , image.getWidth() , image.getHeight() );
 			this.glyphBitmap.getGraphics().drawImage( image , 0 , 0, null );            
+
 			final int[] colors = this.glyphBitmap.getUniqueColors();
 			int background = 0x00ffffff; // aaRRGGBB
 			int foreground = 0x00000000;
@@ -920,10 +967,17 @@ public final class DefaultScreen implements IDevice {
 			this.awtGlyphForegroundColor = new Color( foreground );
 			this.glyphBackgroundColor = background;
 			this.awtGlyphBackgroundColor = new Color( background );
+			
+            System.out.println("-------------------- Image defined the following glyphs --------------- ");			
+			for ( int i = 0 ; i < 127 ; i++ ) {
+			    debugDefineGlyph( i , readGylph( i ) );
+			}
 		}
 
 		public void defineGylph(int glyphIndex, int glyphData) 
 		{
+		    debugDefineGlyph(glyphIndex, glyphData);
+		    
 			final int glyphRow = glyphIndex / IMG_CHARS_PER_ROW;
 			final int glyphCol = glyphIndex - ( glyphRow * IMG_CHARS_PER_ROW );
 
@@ -988,7 +1042,6 @@ public final class DefaultScreen implements IDevice {
 					} 
 				}
 			}
-
 			return result;
 		}        
 
