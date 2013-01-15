@@ -60,8 +60,6 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class Emulator implements IEmulator {
 
-    protected static final Register[] REGISTER_BITMASK_MAPPING = { Register.A, Register.B, Register.C, Register.X, Register.Y, Register.Z, Register.I, Register.J };
-    
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 
 	/**
@@ -443,7 +441,7 @@ public class Emulator implements IEmulator {
 
 		public boolean queueInterrupts;
 
-		private IInterrupt currentInterrupt;
+		public IInterrupt currentInterrupt;
 		public final List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
 
 		public int currentCycle;
@@ -560,6 +558,64 @@ public class Emulator implements IEmulator {
 		public int getCurrentCycleCount() {
 			return currentCycle;
 		}
+		
+        public void setRegisterValue(int index, int value) 
+        {
+            switch (index)
+            {
+                case 0:
+                    registerA = value & 0xffff;
+                    break;
+                case 1:
+                    registerB = value & 0xffff;
+                    break;
+                case 2:
+                    registerC = value & 0xffff;
+                    break;
+                case 3:
+                    registerX = value & 0xffff;
+                    break;
+                case 4:
+                    registerY = value & 0xffff;
+                    break;
+                case 5:
+                    registerZ = value & 0xffff;
+                    break;
+                case 6:
+                    registerI = value & 0xffff;
+                    break;
+                case 7:
+                    registerJ = value & 0xffff;
+                    break;
+                default:
+                    throw new IllegalArgumentException("Invalid common register index: " + index);
+            }
+        }
+        
+        public int getRegisterValue(int index) 
+        {
+            switch (index)
+            {
+                case 0:
+                    return registerA;
+                case 1:
+                    return registerB;
+                case 2:
+                    return registerC;
+                case 3:
+                    return registerX;
+                case 4:
+                    return registerY;
+                case 5:
+                    return registerZ;
+                case 6:
+                    return registerI;
+                case 7:
+                    return registerJ;
+                default:
+                    throw new IllegalArgumentException("Invalid common register index: " + index);
+            }
+        }        
 
 		@Override
 		public void setRegisterValue(Register reg, int value) 
@@ -575,7 +631,7 @@ public class Emulator implements IEmulator {
 					registerC = value & 0xffff;
 					break;
 				case EX:
-					ex = value;
+					ex = value & 0xffff;
 					break;
 				case I:
 					registerI = value & 0xffff;
@@ -1203,7 +1259,7 @@ public class Emulator implements IEmulator {
 		push( hiddenCPU.registerA );
 
 		hiddenCPU.pc = hiddenCPU.interruptAddress;
-		hiddenCPU.setRegisterValue( Register.A , irq.getMessage() );
+		hiddenCPU.registerA = irq.getMessage() & 0xffff;
 	}
 
 	@Override
@@ -1322,7 +1378,8 @@ public class Emulator implements IEmulator {
     
 	public static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) {
 
-		final int instructionWord = memory.read( address );
+		@SuppressWarnings("deprecation")
+        final int instructionWord = memory.read( address );
 
 		final int opCode = (instructionWord & 0x1f);
 
@@ -1583,11 +1640,11 @@ public class Emulator implements IEmulator {
 		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
 		int address = --hiddenCPU.registerI; // registers[6]-=1; <<< I
 		if ( address < 0 ) {
-			hiddenCPU.setRegisterValue( Register.I , (int) WordAddress.MAX_ADDRESS );
+			hiddenCPU.registerI = (int) WordAddress.MAX_ADDRESS;
 		}
 		address = --hiddenCPU.registerJ; // registers[7]-=1; <<< J
 		if ( address < 0 ) {
-			hiddenCPU.setRegisterValue( Register.J , (int) WordAddress.MAX_ADDRESS );
+			hiddenCPU.registerJ= (int) WordAddress.MAX_ADDRESS;
 		}        
 		return cycles;
 	}
@@ -1601,11 +1658,11 @@ public class Emulator implements IEmulator {
 
 		int newWordAddress = ++hiddenCPU.registerI; // registers[6]+=1; <<< I
 		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.setRegisterValue(Register.I , 0);
+			hiddenCPU.registerI = 0;
 		}
 		newWordAddress = ++hiddenCPU.registerJ; // registers[7]+=1; <<< J		
 		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.setRegisterValue( Register.J, 0);
+			hiddenCPU.registerJ = 0;
 		}        
 		return cycles;
 	}
@@ -2222,7 +2279,7 @@ public class Emulator implements IEmulator {
    |      |       | pops PC from the stack
 		 */
 		hiddenCPU.setQueueInterrupts( false );
-		hiddenCPU.setRegisterValue( Register.A, pop() ); // pop a from stack
+		hiddenCPU.registerA = pop(); // pop a from stack
 		currentInstructionPtr = pop(); // pop PC from stack
 		return 3;
 	}
@@ -2230,7 +2287,7 @@ public class Emulator implements IEmulator {
 	private int pop() 
 	{
 		// SET a, [SP++]
-		final int result = memory.read( hiddenCPU.sp ) & 0xffff;
+		final int result = memory.read( hiddenCPU.sp );
 		hiddenCPU.sp=hiddenCPU.sp.incrementByOne(true);
 		return result;
 	}
@@ -2329,16 +2386,16 @@ public class Emulator implements IEmulator {
 		}
 
 		if ( operandBits <= 07 ) {
-			hiddenCPU.setRegisterValue( REGISTER_BITMASK_MAPPING[operandBits],  value & 0xffff );
+			hiddenCPU.setRegisterValue( operandBits ,  value & 0xffff );
 			return 0;
 		}
 		if ( operandBits <= 0x0f ) {
-			memory.write( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x08 ] ) , value);
+			memory.write( hiddenCPU.getRegisterValue( operandBits - 0x08 ) , value);
 			return 1;
 		}
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = readNextWordAndAdvance();
-			writeMemoryWithOffsetAndWrapAround( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord , value);
+			writeMemoryWithOffsetAndWrapAround( hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord , value);
 			return 1;
 		}
 		switch( operandBits ) {
@@ -2394,16 +2451,16 @@ public class Emulator implements IEmulator {
 
 		final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
 		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits ] ) );
+			return operandDesc( hiddenCPU.getRegisterValue( operandBits ) );
 		}
 		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x08 ] ) ) , 1 );
+			return operandDesc( memory.read( hiddenCPU.getRegisterValue( operandBits - 0x08 ) ) , 1 );
 		}
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = readNextWordAndAdvance();
 			return operandDesc( 
 			        readMemoryWithOffsetAndWrapAround( 
-			                hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord ) ,1 );
+			                hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord ) ,1 );
 		}
 		switch( operandBits ) {
 			case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
@@ -2480,10 +2537,10 @@ public class Emulator implements IEmulator {
 		}
 
 		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits ] ) );
+			return operandDesc( hiddenCPU.getRegisterValue( operandBits ) );
 		}
 		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x08 ] ) ) , 1 );
+			return operandDesc( memory.read( hiddenCPU.getRegisterValue( operandBits - 0x08 ) ) , 1 );
 		}
 		if ( operandBits <= 0x17 ) 
 		{
@@ -2493,7 +2550,7 @@ public class Emulator implements IEmulator {
 			} else {
 				nextWord = memory.read( currentInstructionPtr );                
 			}
-			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord ) ,1 );
+			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord ) ,1 );
 		}
 
 		switch( operandBits ) {
