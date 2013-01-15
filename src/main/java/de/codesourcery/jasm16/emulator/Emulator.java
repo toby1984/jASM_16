@@ -58,7 +58,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class Emulator implements IEmulator {
+public final class Emulator implements IEmulator {
 
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 
@@ -421,357 +421,7 @@ public class Emulator implements IEmulator {
 			loggerDelegate.debug(message, cause);
 		}
 	};
-
-	protected static final class VisibleCPU implements ICPU {
-
-		public int registerA;
-		public int registerB;
-		public int registerC;
-		public int registerX;
-		public int registerY;
-		public int registerZ;
-		public int registerI;
-		public int registerJ;
-
-		public int ex;
-
-		public Address pc;
-		public Address sp;
-		public Address interruptAddress;
-
-		public boolean queueInterrupts;
-
-		public IInterrupt currentInterrupt;
-		public final List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
-
-		public int currentCycle;
-
-		public VisibleCPU() 
-		{
-			pc = sp = interruptAddress = WordAddress.ZERO;
-		}
-		
-
-        public VisibleCPU(VisibleCPU other) 
-        {
-            this.registerA = other.registerA;
-            this.registerB = other.registerB;
-            this.registerC = other.registerC;
-            this.registerX = other.registerX;
-            this.registerY = other.registerY;
-            this.registerZ = other.registerZ;
-            this.registerI = other.registerI;
-            this.registerJ = other.registerJ;
-
-            this.ex = other.ex;
-
-            this.pc = other.pc;
-            this.sp = other.sp;
-            this.interruptAddress = other.interruptAddress;
-            this.queueInterrupts = other.queueInterrupts;
-            this.currentInterrupt = other.currentInterrupt;
-            this.interruptQueue.addAll(other.interruptQueue);
-            this.currentCycle = other.currentCycle;
-        }		
-
-        public boolean triggerInterrupt(IInterrupt interrupt) 
-        {
-            if ( ! interruptsEnabled() ) {
-                return false;
-            }
-
-            synchronized ( interruptQueue ) 
-            {
-                if ( currentInterrupt == null && ! isQueueInterrupts() ) {
-                    currentInterrupt  = interrupt;
-                } 
-                else 
-                { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
-                    if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
-                    {
-                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
-                    }
-                    setQueueInterrupts( true );
-                    interruptQueue.add( interrupt );
-                } 
-            }
-            return true;
-        }        
-
-		public IInterrupt getNextProcessableInterrupt(boolean removeFromQueue) 
-		{
-			synchronized( interruptQueue ) 
-			{
-			    if ( currentInterrupt != null ) 
-			    {
-			        if ( ! removeFromQueue ) {
-			            return currentInterrupt;
-			        }
-
-			        final IInterrupt irq = currentInterrupt;
-			        currentInterrupt = null;
-			        return irq;
-			    } 
-
-			    if ( ! interruptQueue.isEmpty() && ! isQueueInterrupts() ) 
-			    {
-			        if ( removeFromQueue ) {
-			            return interruptQueue.remove(0);
-			        } 
-			        return interruptQueue.get(0);
-			    }
-			}
-			return null;
-		}        
-
-		public void reset()
-		{
-			currentCycle = 0;
-			queueInterrupts = false;
-			interruptQueue.clear();
-			sp = pc = interruptAddress = WordAddress.ZERO;
-			ex = 0;
-			registerA = registerB =registerC =registerX =registerY = registerZ =registerI =registerJ = 0; 
-		}        
-
-		@Override
-		public Address getPC() {
-			return pc;
-		}
-
-		@Override
-		public Address getSP() {
-			return sp;
-		}
-
-		@Override
-		public int getEX() {
-			return ex;
-		}
-
-		@Override
-		public Address getInterruptAddress() {
-			return interruptAddress;
-		}
-
-		@Override
-		public int getCurrentCycleCount() {
-			return currentCycle;
-		}
-		
-        public void setRegisterValue(int index, int value) 
-        {
-            switch (index)
-            {
-                case 0:
-                    registerA = value & 0xffff;
-                    break;
-                case 1:
-                    registerB = value & 0xffff;
-                    break;
-                case 2:
-                    registerC = value & 0xffff;
-                    break;
-                case 3:
-                    registerX = value & 0xffff;
-                    break;
-                case 4:
-                    registerY = value & 0xffff;
-                    break;
-                case 5:
-                    registerZ = value & 0xffff;
-                    break;
-                case 6:
-                    registerI = value & 0xffff;
-                    break;
-                case 7:
-                    registerJ = value & 0xffff;
-                    break;
-                default:
-                    throw new IllegalArgumentException("Invalid common register index: " + index);
-            }
-        }
-        
-        public int getRegisterValue(int index) 
-        {
-            switch (index)
-            {
-                case 0:
-                    return registerA;
-                case 1:
-                    return registerB;
-                case 2:
-                    return registerC;
-                case 3:
-                    return registerX;
-                case 4:
-                    return registerY;
-                case 5:
-                    return registerZ;
-                case 6:
-                    return registerI;
-                case 7:
-                    return registerJ;
-                default:
-                    throw new IllegalArgumentException("Invalid common register index: " + index);
-            }
-        }        
-
-		@Override
-		public void setRegisterValue(Register reg, int value) 
-		{
-			switch( reg ) {
-				case A:
-					registerA = value & 0xffff;
-					break;
-				case B:
-					registerB = value & 0xffff;
-					break;
-				case C:
-					registerC = value & 0xffff;
-					break;
-				case EX:
-					ex = value & 0xffff;
-					break;
-				case I:
-					registerI = value & 0xffff;
-					break;
-				case J:
-					registerJ = value & 0xffff;
-					break;
-				case PC:
-					pc = Address.wordAddress( value );
-					break;
-				case SP:
-					sp = Address.wordAddress( value );
-					break;
-				case X:
-					registerX = value & 0xffff;
-					break;
-				case Y:
-					registerY = value & 0xffff;
-					break;
-				case Z:
-					registerZ = value & 0xffff;
-					break;
-				default:
-					throw new RuntimeException("Unreachable code reached: "+reg);
-
-			}
-		}
-
-		public int incrementAndGet(Register reg) 
-		{
-			switch( reg ) {
-				case A:
-					return ++registerA;
-				case B:
-					return ++registerB;
-				case C:
-					return ++registerC;
-				case I:
-					return ++registerI;
-				case J:
-					return ++registerJ;
-				case PC:
-					pc = pc.incrementByOne(true);
-					return pc.getValue();
-				case SP:
-					sp = sp.incrementByOne(true);
-					return sp.getValue();
-				case X:
-					return ++registerX;
-				case Y:
-					return ++registerY;
-				case Z:
-					return ++registerZ;
-				default:
-					throw new RuntimeException("Unreachable code reached: "+reg);
-			}
-		}		
-
-		public int decrementAndGet(Register reg) 
-		{
-			switch( reg ) {
-				case A:
-					return --registerA;
-				case B:
-					return --registerB;
-				case C:
-					return --registerC;
-				case I:
-					return --registerI;
-				case J:
-					return --registerJ;
-				case PC:
-					pc = pc.decrementByOne();
-					return pc.getValue();
-				case SP:
-					sp = sp.decrementByOne();
-					return sp.getValue();
-				case X:
-					return --registerX;
-				case Y:
-					return --registerY;
-				case Z:
-					return --registerZ;
-				default:
-					throw new RuntimeException("Unreachable code reached: "+reg);
-			}
-		}	
-
-		@Override
-		public int getRegisterValue(Register reg) {
-			switch( reg ) {
-				case A:
-					return registerA;
-				case B:
-					return registerB;
-				case C:
-					return registerC;
-				case EX:
-					return ex;
-				case I:
-					return registerI;
-				case J:
-					return registerJ;
-				case PC:
-					return pc.getWordAddressValue();
-				case SP:
-					return sp.getWordAddressValue();
-				case X:
-					return registerX;
-				case Y:
-					return registerY;
-				case Z:
-					return registerZ;
-				default:
-					throw new RuntimeException("Unreachable code reached: "+reg);					
-			}
-		}
-
-		@Override
-		public void setQueueInterrupts(boolean yesNo) {
-			this.queueInterrupts = yesNo;
-		}
-
-		@Override
-		public boolean isQueueInterrupts() {
-			return queueInterrupts;
-		}
-
-		@Override
-		public boolean interruptsEnabled() {
-			return interruptAddress != null && interruptAddress.getValue() != 0;
-		}
-
-		@Override
-		public List<IInterrupt> getInterruptQueue() {
-			return interruptQueue;
-		}
-
-	}
-
+	
 	/* (non-Javadoc)
 	 * @see de.codesourcery.jasm16.emulator.IEmulator#reset()
 	 */
@@ -790,7 +440,7 @@ public class Emulator implements IEmulator {
 		resetDevices();
 
 		synchronized( CPU_LOCK ) {
-			hiddenCPU.reset();
+		    hiddenCPU.reset();
 			visibleCPU.reset();
 		}
 
@@ -948,7 +598,7 @@ public class Emulator implements IEmulator {
 
 			do 
 			{
-				final Long cmdId = safePeek( ackQueue );
+				final Long cmdId = ackQueue.peek();
 				if ( cmdId != null && cmdId.longValue() == cmd.getId() ) 
 				{
 					safeTake( ackQueue );
@@ -961,6 +611,19 @@ public class Emulator implements IEmulator {
 				}
 			} while ( true );  		    
 		}
+		
+	    private <T> T safeTake(BlockingQueue<T> queue) 
+	    {
+	        while(true) 
+	        {
+	            try {
+	                return queue.take();
+	            } 
+	            catch (InterruptedException e) {
+	                Thread.currentThread();
+	            }
+	        }
+	    }   		
 
 		public double getRuntimeInSeconds() 
 		{
@@ -1138,7 +801,8 @@ public class Emulator implements IEmulator {
 					acknowledgeCommand(cmd);
 				}
 
-				final int durationInCycles = internalExecuteOneInstruction();
+				final int durationInCycles = internalExecuteOneInstruction(hiddenCPU);
+				
 				if ( emulationSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
 					if ( ( hiddenCPU.currentCycle % 10000 ) == 0 ) {
@@ -1163,7 +827,7 @@ public class Emulator implements IEmulator {
 	 * 
 	 * @return number of DCPU-16 cycles the command execution took 
 	 */
-	protected int internalExecuteOneInstruction() 
+	protected int internalExecuteOneInstruction(VisibleCPU hiddenCPU) 
 	{
 		beforeCommandExecution();
 
@@ -1190,7 +854,7 @@ public class Emulator implements IEmulator {
 					hiddenCPU.currentCycle+=execDurationInCycles;
 					hiddenCPU.pc = Address.wordAddress( currentInstructionPtr );
 					
-					maybeProcessOneInterrupt(); 
+					maybeProcessOneInterrupt( hiddenCPU ); 
 					
 					success = true;
 				} 
@@ -1198,6 +862,9 @@ public class Emulator implements IEmulator {
 				{
 					if ( success ) {
 						visibleCPU = new VisibleCPU(hiddenCPU);
+					} else {
+					    // restore CPU register state on error
+					    hiddenCPU.copyFrom(visibleCPU);
 					}
 				}
 			}
@@ -1216,25 +883,25 @@ public class Emulator implements IEmulator {
 		} 
 		finally 
 		{
-			afterCommandExecution( execDurationInCycles );
+			afterCommandExecution( execDurationInCycles , hiddenCPU );
 		}
 		return execDurationInCycles;
 	}
 
-	private boolean maybeProcessOneInterrupt() 
+	private boolean maybeProcessOneInterrupt(VisibleCPU hiddenCPU) 
 	{
 		if ( hiddenCPU.interruptsEnabled() ) 
 		{ 
 			final IInterrupt irq = hiddenCPU.getNextProcessableInterrupt( true );
 			if ( irq != null ) {
-				processInterrupt( irq );
+				processInterrupt( irq , hiddenCPU );
 				return true;
 			}
 		}
 		return false;
 	}     
 
-	private void processInterrupt(IInterrupt irq) 
+	private void processInterrupt(IInterrupt irq,VisibleCPU hiddenCPU) 
 	{
 		/* When IA is set to something other than 0, interrupts triggered on the DCPU-16
 		 * will 
@@ -1256,17 +923,19 @@ public class Emulator implements IEmulator {
 		push( hiddenCPU.pc.getValue() );
 
 		// push A to stack
-		push( hiddenCPU.registerA );
+		push( hiddenCPU.commonRegisters[0] );
 
 		hiddenCPU.pc = hiddenCPU.interruptAddress;
-		hiddenCPU.registerA = irq.getMessage() & 0xffff;
+		hiddenCPU.commonRegisters[0] = irq.getMessage() & 0xffff;
 	}
 
 	@Override
 	public void executeOneInstruction() 
 	{
 		stop(null);
-		internalExecuteOneInstruction();
+		synchronized(CPU_LOCK) {
+		    internalExecuteOneInstruction(hiddenCPU);
+		}
 	}   
 
 	protected void beforeCommandExecution() 
@@ -1278,16 +947,16 @@ public class Emulator implements IEmulator {
 	 * 
 	 * @param executedCommandDuration duration (in cycles) of last command or -1 if execution failed with an internal emulator error
 	 */
-	protected void afterCommandExecution(final int executedCommandDuration) 
+	protected void afterCommandExecution(final int executedCommandDuration,VisibleCPU hiddenCPU) 
 	{
 		// invoke listeners
 		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable.get() , executedCommandDuration );
 
 		// check whether we reached a breakpoint
-		maybeHandleBreakpoint();
+		maybeHandleBreakpoint(hiddenCPU);
 	}
 
-	private void maybeHandleBreakpoint() 
+	private void maybeHandleBreakpoint(VisibleCPU hiddenCPU) 
 	{
 		/*
 		 * We can have at most 2 breakpoints at any address,
@@ -1356,11 +1025,13 @@ public class Emulator implements IEmulator {
    @Override
     public void skipCurrentInstruction() 
     {
+       final VisibleCPU cpu;
        synchronized(CPU_LOCK) {
            hiddenCPU.pc = Address.wordAddress( skipInstructionAt( hiddenCPU.pc.getWordAddressValue() ) );
            visibleCPU = new VisibleCPU(hiddenCPU);
+           cpu = visibleCPU;
        }
-       afterCommandExecution( 0 );
+       afterCommandExecution( 0 , cpu );
     }
    
 	private int skipInstructionAt(int currentAddress) 
@@ -1638,13 +1309,13 @@ public class Emulator implements IEmulator {
 		// a,b,c,x,y,z,i,j
 		final OperandDesc source = loadSourceOperand( instructionWord );
 		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
-		int address = --hiddenCPU.registerI; // registers[6]-=1; <<< I
+		int address = --hiddenCPU.commonRegisters[6]; // registers[6]-=1; <<< I
 		if ( address < 0 ) {
-			hiddenCPU.registerI = (int) WordAddress.MAX_ADDRESS;
+			hiddenCPU.commonRegisters[6] = (int) WordAddress.MAX_ADDRESS;
 		}
-		address = --hiddenCPU.registerJ; // registers[7]-=1; <<< J
+		address = --hiddenCPU.commonRegisters[7]; // registers[7]-=1; <<< J
 		if ( address < 0 ) {
-			hiddenCPU.registerJ= (int) WordAddress.MAX_ADDRESS;
+			hiddenCPU.commonRegisters[7]= (int) WordAddress.MAX_ADDRESS;
 		}        
 		return cycles;
 	}
@@ -1656,13 +1327,13 @@ public class Emulator implements IEmulator {
 
 		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
 
-		int newWordAddress = ++hiddenCPU.registerI; // registers[6]+=1; <<< I
+		int newWordAddress = ++hiddenCPU.commonRegisters[6]; // registers[6]+=1; <<< I
 		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.registerI = 0;
+			hiddenCPU.commonRegisters[6] = 0;
 		}
-		newWordAddress = ++hiddenCPU.registerJ; // registers[7]+=1; <<< J		
+		newWordAddress = ++hiddenCPU.commonRegisters[7]; // registers[7]+=1; <<< J		
 		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.registerJ = 0;
+			hiddenCPU.commonRegisters[7] = 0;
 		}        
 		return cycles;
 	}
@@ -2200,90 +1871,6 @@ public class Emulator implements IEmulator {
 		return null;
 	}
 
-	private int handleHWQ(int instructionWord) {
-
-		// Sets A, B, C, X, Y registers to information about hardware a.
-
-		final OperandDesc operand = loadSourceOperand(instructionWord);
-		final int hardwareSlot = operand.value;
-
-		final IDevice device = getDeviceForSlot( hardwareSlot );
-		if ( device == null ) 
-		{
-			if ( ! ignoreAccessToUnknownDevices ) {
-				LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
-				out.warn("No device at slot #"+hardwareSlot);
-				throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
-			}
-
-			hiddenCPU.registerA = 0xffff;
-			hiddenCPU.registerB = 0xffff;
-			hiddenCPU.registerC = 0xffff;
-			hiddenCPU.registerX = 0xffff;
-			hiddenCPU.registerY = 0xffff;
-		} 
-		else {
-
-			/* sets A, B, C, X, Y registers to information about hardware a
-			 * 
-			 * A+(B<<16) is a 32 bit word identifying the hardware id
-			 * C is the hardware version
-			 * X+(Y<<16) is a 32 bit word identifying the manufacturer
-			 */
-
-			/* A+(B<<16) is a 32 bit word identifying the hardware id
-			 * 
-			 * A = LSB hardware ID (16 bit)
-			 * B = MSB hardware ID (16 bit)
-			 * C = hardware version
-			 * X = LSB manufacturer ID (16 bit)
-			 * Y = MSB manufacturer ID (16 bit)
-			 */
-			final DeviceDescriptor descriptor = device.getDeviceDescriptor();
-
-			hiddenCPU.registerA = (int) descriptor.getID() & 0xffff;
-			hiddenCPU.registerB = (int) ( ( descriptor.getID() >>> 16 ) & 0xffff );
-			hiddenCPU.registerC = descriptor.getVersion() & 0xffff;
-			hiddenCPU.registerX = (int) descriptor.getManufacturer() & 0xffff;
-			hiddenCPU.registerY = (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff );	
-		}
-
-		return 4+operand.cycleCount;
-	}
-
-	private int handleHWN(int instructionWord) 
-	{
-		// sets a to number of connected hardware devices
-		final int deviceCount;
-		synchronized( devices ) {
-			deviceCount=devices.size();
-		}
-		return 2 + storeTargetOperand( instructionWord , deviceCount , true );
-	}
-
-	private int handleIAQ(int instructionWord) {
-
-		/* if a is nonzero, interrupts will be added to the queue
-		 * instead of triggered. if a is zero, interrupts will be
-		 * triggered as normal again
-		 */
-		final OperandDesc operand = loadSourceOperand( instructionWord );
-		hiddenCPU.setQueueInterrupts( operand.value != 0 );
-		return 2+operand.cycleCount;
-	}
-
-	private int handleRFI(int instructionWord) 
-	{
-		/*
-		 *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
-   |      |       | pops PC from the stack
-		 */
-		hiddenCPU.setQueueInterrupts( false );
-		hiddenCPU.registerA = pop(); // pop a from stack
-		currentInstructionPtr = pop(); // pop PC from stack
-		return 3;
-	}
-
 	private int pop() 
 	{
 		// SET a, [SP++]
@@ -2298,6 +1885,99 @@ public class Emulator implements IEmulator {
 		hiddenCPU.sp = hiddenCPU.sp.decrementByOne();
 		memory.write( hiddenCPU.sp , value & 0xffff );
 	}	
+	
+    private int handleHWQ(int instructionWord) {
+
+        // Sets A, B, C, X, Y registers to information about hardware a.
+
+        final OperandDesc operand = loadSourceOperand(instructionWord);
+        final int hardwareSlot = operand.value;
+
+        final IDevice device = getDeviceForSlot( hardwareSlot );
+        if ( device == null ) 
+        {
+            if ( ! ignoreAccessToUnknownDevices ) {
+                LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
+                out.warn("No device at slot #"+hardwareSlot);
+                throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+            }
+
+            hiddenCPU.commonRegisters[0] = 0xffff;
+            hiddenCPU.commonRegisters[1] = 0xffff;
+            hiddenCPU.commonRegisters[2] = 0xffff;
+            hiddenCPU.commonRegisters[3] = 0xffff;
+            hiddenCPU.commonRegisters[4] = 0xffff;
+        } 
+        else {
+
+            /* sets A, B, C, X, Y registers to information about hardware a
+             * 
+             * A+(B<<16) is a 32 bit word identifying the hardware id
+             * C is the hardware version
+             * X+(Y<<16) is a 32 bit word identifying the manufacturer
+             */
+
+            /* A+(B<<16) is a 32 bit word identifying the hardware id
+             * 
+             * A = LSB hardware ID (16 bit)
+             * B = MSB hardware ID (16 bit)
+             * C = hardware version
+             * X = LSB manufacturer ID (16 bit)
+             * Y = MSB manufacturer ID (16 bit)
+             */
+            final DeviceDescriptor descriptor = device.getDeviceDescriptor();
+
+            hiddenCPU.commonRegisters[0] = (int) descriptor.getID() & 0xffff;
+            hiddenCPU.commonRegisters[1] = (int) ( ( descriptor.getID() >>> 16 ) & 0xffff );
+            hiddenCPU.commonRegisters[2] = descriptor.getVersion() & 0xffff;
+            hiddenCPU.commonRegisters[3] = (int) descriptor.getManufacturer() & 0xffff;
+            hiddenCPU.commonRegisters[4] = (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff );  
+        }
+
+        return 4+operand.cycleCount;
+    }
+
+    private int handleHWN(int instructionWord) 
+    {
+        // sets a to number of connected hardware devices
+        final int deviceCount;
+        synchronized( devices ) {
+            deviceCount=devices.size();
+        }
+        return 2 + storeTargetOperand( instructionWord , deviceCount , true );
+    }
+
+    private int handleIAQ(int instructionWord) {
+
+        /* if a is nonzero, interrupts will be added to the queue
+         * instead of triggered. if a is zero, interrupts will be
+         * triggered as normal again
+         */
+        final OperandDesc operand = loadSourceOperand( instructionWord );
+        hiddenCPU.setQueueInterrupts( operand.value != 0 );
+        return 2+operand.cycleCount;
+    }
+
+    private int handleRFI(int instructionWord) 
+    {
+        /*
+         *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
+   |      |       | pops PC from the stack
+         */
+        hiddenCPU.setQueueInterrupts( false );
+        hiddenCPU.commonRegisters[0] = pop(); // pop A from stack
+        currentInstructionPtr = pop(); // pop PC from stack
+        return 3;
+    }	
+    
+    private int handleIllegalTargetOperand(int instructionWord) 
+    {
+        final String msg = "Illegal target operand in instruction word 0x"+
+                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( hiddenCPU.pc );
+        LOG.error("handleIllegalTargetOperand(): "+msg);
+        out.warn( msg);
+        throw new InvalidTargetOperandException( msg );
+    }    
 
 	private int handleIAS(int instructionWord) 
 	{
@@ -2386,16 +2066,16 @@ public class Emulator implements IEmulator {
 		}
 
 		if ( operandBits <= 07 ) {
-			hiddenCPU.setRegisterValue( operandBits ,  value & 0xffff );
+			hiddenCPU.commonRegisters[ operandBits ] = value & 0xffff;
 			return 0;
 		}
 		if ( operandBits <= 0x0f ) {
-			memory.write( hiddenCPU.getRegisterValue( operandBits - 0x08 ) , value);
+			memory.write( hiddenCPU.commonRegisters[ operandBits - 0x08 ] , value);
 			return 1;
 		}
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = readNextWordAndAdvance();
-			writeMemoryWithOffsetAndWrapAround( hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord , value);
+			writeMemoryWithOffsetAndWrapAround( hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord , value);
 			return 1;
 		}
 		switch( operandBits ) {
@@ -2428,15 +2108,6 @@ public class Emulator implements IEmulator {
 		}
 	}
 
-	private int handleIllegalTargetOperand(int instructionWord) 
-	{
-		final String msg = "Illegal target operand in instruction word 0x"+
-				Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( hiddenCPU.pc );
-		LOG.error("handleIllegalTargetOperand(): "+msg);
-		out.warn( msg);
-		throw new InvalidTargetOperandException( msg );
-	}
-
 	private OperandDesc loadSourceOperand(int instructionWord) {
 
 		/* SET b,a
@@ -2451,16 +2122,16 @@ public class Emulator implements IEmulator {
 
 		final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
 		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.getRegisterValue( operandBits ) );
+			return operandDesc( hiddenCPU.commonRegisters[ operandBits ] );
 		}
 		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.getRegisterValue( operandBits - 0x08 ) ) , 1 );
+			return operandDesc( memory.read( hiddenCPU.commonRegisters[ operandBits - 0x08 ] ) , 1 );
 		}
 		if ( operandBits <= 0x17 ) {
 			final int nextWord = readNextWordAndAdvance();
 			return operandDesc( 
 			        readMemoryWithOffsetAndWrapAround( 
-			                hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord ) ,1 );
+			                hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
 		}
 		switch( operandBits ) {
 			case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
@@ -2537,10 +2208,10 @@ public class Emulator implements IEmulator {
 		}
 
 		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.getRegisterValue( operandBits ) );
+			return operandDesc( hiddenCPU.commonRegisters[ operandBits ] );
 		}
 		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.getRegisterValue( operandBits - 0x08 ) ) , 1 );
+			return operandDesc( memory.read( hiddenCPU.commonRegisters[ operandBits - 0x08 ] ) , 1 );
 		}
 		if ( operandBits <= 0x17 ) 
 		{
@@ -2550,7 +2221,7 @@ public class Emulator implements IEmulator {
 			} else {
 				nextWord = memory.read( currentInstructionPtr );                
 			}
-			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.getRegisterValue( operandBits - 0x10 ) , nextWord ) ,1 );
+			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
 		}
 
 		switch( operandBits ) {
@@ -2595,7 +2266,8 @@ public class Emulator implements IEmulator {
 		return operandDesc( operandBits - 0x21 , 0 ); 
 	}
 
-	protected static final class OperandDesc {
+	protected static final class OperandDesc 
+	{
 		public final int value;
 		public final int cycleCount; // how long it takes to perform the operation
 
@@ -3131,19 +2803,6 @@ public class Emulator implements IEmulator {
 		return lastEmulationError;
 	}
 
-	private static <T> T safePeek(BlockingQueue<T> queue) {
-		return queue.peek();
-	}      
-
-	private static <T> T safeTake(BlockingQueue<T> queue) {
-		while(true) 
-		{
-			try {
-				return queue.take();
-			} catch (InterruptedException e) {}
-		}
-	}     
-
 	private static <T> void safePut(BlockingQueue<T> queue, T value) {
 		while(true) 
 		{
@@ -3212,4 +2871,243 @@ public class Emulator implements IEmulator {
 	{
 		this.ignoreAccessToUnknownDevices = yesNo;
 	}
+	
+    protected static final class VisibleCPU implements ICPU {
+
+        /* Register A = Index 0
+         * Register B = Index 1
+         * Register C = Index 2
+         * Register X = Index 3
+         * Register Y = Index 4
+         * Register Z = Index 5
+         * Register I = Index 6
+         * Register J = Index 7      
+         */
+        public int[] commonRegisters = new int[ 8 ];
+
+        public int ex;
+
+        public Address pc;
+        public Address sp;
+        public Address interruptAddress;
+
+        public boolean queueInterrupts;
+
+        public IInterrupt currentInterrupt;
+        public final List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
+
+        public int currentCycle;
+
+        public VisibleCPU() 
+        {
+            pc = sp = interruptAddress = WordAddress.ZERO;
+        }
+
+        public VisibleCPU(VisibleCPU other) 
+        {
+            copyFrom(other);
+        }   
+        
+        public void copyFrom(VisibleCPU other) 
+        {
+            this.commonRegisters[0] = other.commonRegisters[0];
+            this.commonRegisters[1] = other.commonRegisters[1];
+            this.commonRegisters[2] = other.commonRegisters[2];
+            this.commonRegisters[3] = other.commonRegisters[3];
+            this.commonRegisters[4] = other.commonRegisters[4];
+            this.commonRegisters[5] = other.commonRegisters[5];
+            this.commonRegisters[6] = other.commonRegisters[6];
+            this.commonRegisters[7] = other.commonRegisters[7];
+            
+            this.ex = other.ex;
+
+            this.pc = other.pc;
+            this.sp = other.sp;
+            this.interruptAddress = other.interruptAddress;
+            this.queueInterrupts = other.queueInterrupts;
+            this.currentInterrupt = other.currentInterrupt;
+            this.interruptQueue.addAll(other.interruptQueue);
+            this.currentCycle = other.currentCycle;
+        }           
+
+        public boolean triggerInterrupt(IInterrupt interrupt) 
+        {
+            if ( ! interruptsEnabled() ) {
+                return false;
+            }
+
+            synchronized ( interruptQueue ) 
+            {
+                if ( currentInterrupt == null && ! isQueueInterrupts() ) {
+                    currentInterrupt  = interrupt;
+                } 
+                else 
+                { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
+                    if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
+                    {
+                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
+                    }
+                    setQueueInterrupts( true );
+                    interruptQueue.add( interrupt );
+                } 
+            }
+            return true;
+        }        
+
+        public IInterrupt getNextProcessableInterrupt(boolean removeFromQueue) 
+        {
+            synchronized( interruptQueue ) 
+            {
+                if ( currentInterrupt != null ) 
+                {
+                    if ( ! removeFromQueue ) {
+                        return currentInterrupt;
+                    }
+
+                    final IInterrupt irq = currentInterrupt;
+                    currentInterrupt = null;
+                    return irq;
+                } 
+
+                if ( ! interruptQueue.isEmpty() && ! isQueueInterrupts() ) 
+                {
+                    if ( removeFromQueue ) {
+                        return interruptQueue.remove(0);
+                    } 
+                    return interruptQueue.get(0);
+                }
+            }
+            return null;
+        }        
+
+        public void reset()
+        {
+            currentCycle = 0;
+            queueInterrupts = false;
+            interruptQueue.clear();
+            sp = pc = interruptAddress = WordAddress.ZERO;
+            ex = 0;
+            commonRegisters = new int[ 8 ];
+        }        
+
+        @Override
+        public Address getPC() {
+            return pc;
+        }
+
+        @Override
+        public Address getSP() {
+            return sp;
+        }
+
+        @Override
+        public int getEX() {
+            return ex;
+        }
+
+        @Override
+        public Address getInterruptAddress() {
+            return interruptAddress;
+        }
+
+        @Override
+        public int getCurrentCycleCount() {
+            return currentCycle;
+        }
+        
+        @Override
+        public void setRegisterValue(Register reg, int value) 
+        {
+            switch( reg ) 
+            {
+                case A:
+                    commonRegisters[0] = value & 0xffff;
+                    break;
+                case B:
+                    commonRegisters[1] = value & 0xffff;
+                    break;
+                case C:
+                    commonRegisters[2] = value & 0xffff;
+                    break;
+                case EX:
+                    ex = value & 0xffff;
+                    break;
+                case I:
+                    commonRegisters[6] = value & 0xffff;
+                    break;
+                case J:
+                    commonRegisters[7] = value & 0xffff;
+                    break;
+                case PC:
+                    pc = Address.wordAddress( value );
+                    break;
+                case SP:
+                    sp = Address.wordAddress( value );
+                    break;
+                case X:
+                    commonRegisters[3] = value & 0xffff;
+                    break;
+                case Y:
+                    commonRegisters[4] = value & 0xffff;
+                    break;
+                case Z:
+                    commonRegisters[5] = value & 0xffff;
+                    break;
+                default:
+                    throw new RuntimeException("Unreachable code reached: "+reg);
+
+            }
+        }
+
+        @Override
+        public int getRegisterValue(Register reg) {
+            switch( reg ) {
+                case A:
+                    return commonRegisters[0];
+                case B:
+                    return commonRegisters[1];
+                case C:
+                    return commonRegisters[2];
+                case EX:
+                    return ex;
+                case I:
+                    return commonRegisters[6];
+                case J:
+                    return commonRegisters[7];
+                case PC:
+                    return pc.getWordAddressValue();
+                case SP:
+                    return sp.getWordAddressValue();
+                case X:
+                    return commonRegisters[3];
+                case Y:
+                    return commonRegisters[4];
+                case Z:
+                    return commonRegisters[5];
+                default:
+                    throw new RuntimeException("Unreachable code reached: "+reg);                   
+            }
+        }
+
+        @Override
+        public void setQueueInterrupts(boolean yesNo) {
+            this.queueInterrupts = yesNo;
+        }
+
+        @Override
+        public boolean isQueueInterrupts() {
+            return queueInterrupts;
+        }
+
+        @Override
+        public boolean interruptsEnabled() {
+            return interruptAddress != null && interruptAddress.getValue() != 0;
+        }
+
+        @Override
+        public List<IInterrupt> getInterruptQueue() {
+            return interruptQueue;
+        }
+
+    }	
 }
