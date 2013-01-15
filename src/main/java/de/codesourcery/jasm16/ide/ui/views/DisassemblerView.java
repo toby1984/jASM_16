@@ -287,10 +287,20 @@ public class DisassemblerView extends AbstractView
 			
 			@Override
 			protected void onePageUp() {
+			    if ( addressAtTopOfScreen != null && addressAtBottomOfScreen != null) 
+			    {
+			    	final Size distanceInBytes = Address.calcDistanceInBytes( addressAtTopOfScreen , addressAtBottomOfScreen );
+			        setViewStartingAddress( addressAtTopOfScreen.minus( distanceInBytes ) , false );
+			    }
 			}
 			
 			@Override
 			protected void onePageDown() {
+			    if ( addressAtTopOfScreen != null && addressAtBottomOfScreen != null) 
+			    {
+			    	final Size distanceInBytes = Address.calcDistanceInBytes( addressAtTopOfScreen , addressAtBottomOfScreen );
+			        setViewStartingAddress( addressAtTopOfScreen.plus( distanceInBytes , true ) , false );
+			    }				
 			}
 			
 			@Override
