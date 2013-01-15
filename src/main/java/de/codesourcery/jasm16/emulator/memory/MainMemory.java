@@ -39,7 +39,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public final class MainMemory implements IMemory
+public final class MainMemory implements IMemory, IMemoryTypes
 {
 	private static final Logger LOG = Logger.getLogger(MainMemory.class);
 	
@@ -68,7 +68,7 @@ public final class MainMemory implements IMemory
 	}
 
 	private static IMemoryRegion createMainMemory(AddressRange range) {
-		return new MemoryRegion( "main memory" , range , MemoryRegion.Flag.SUPPORTS_MERGING  );
+		return new MemoryRegion( "main memory" , TYPE_RAM , range , MemoryRegion.Flag.SUPPORTS_MERGING  );
 	}
 
 	public void dumpMemoryLayout(ILogger logger) 
@@ -224,28 +224,31 @@ public final class MainMemory implements IMemory
 		mapRegion(newRegion,false);
 	}
 	
-	private void mapRegion(IMemoryRegion newRegion,boolean calledFromUnmapRegion) 
+	private void mapRegion(IMemoryRegion newRegion,boolean calledFromUnmap) 
 	{
 		if (newRegion == null) {
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
-		// refuse mapping if address range holds HW-mapped RAM
-		if ( ! calledFromUnmapRegion ) 
+		// refuse mapping if address holds regions of different types
+		if ( ! calledFromUnmap ) 
 		{
-			for ( IMemoryRegion reg : getRegions( newRegion.getAddressRange() ) ) {
-				if ( reg.hasFlag( IMemoryRegion.Flag.MEMORY_MAPPED_HW ) ) {
-					LOG.error("Cannot map region "+newRegion+" , address range already holds hardware-mapped region "+reg);
-					throw new IllegalStateException("Cannot map region "+newRegion+" , address range already holds hardware-mapped region "+reg);
+			final long newTypeId = newRegion.getTypeId();
+			for ( IMemoryRegion existing : getRegions( newRegion.getAddressRange() ) ) 
+			{
+				if ( existing.getTypeId() != TYPE_RAM && existing.getTypeId() != newTypeId ) 
+				{
+					LOG.error("Cannot map region "+newRegion+" , address range already holds region "+existing);
+					throw new IllegalStateException("Cannot map region "+newRegion+" , address range already holds region "+existing);
 				}
 			}
 		}
 		
-		// copy existing memory contents into new region
-		MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , newRegion.getSize() );
-
 		synchronized( regions ) 
 		{
+			// copy existing memory contents into new region
+			MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , newRegion.getSize() );
+			
 			boolean intersects = false;
 			do 
 			{

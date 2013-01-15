@@ -25,6 +25,8 @@ import de.codesourcery.jasm16.AddressRange;
 /**
  * A memory region.
  * 
+ * <p>A memory region represents a continous block of memory with the same type (see {@link #getTypeId()}).</p>
+ * 
  * @author tobias.gierke@code-sourcery.de
  */
 public interface IMemoryRegion extends IMemory
@@ -33,12 +35,25 @@ public interface IMemoryRegion extends IMemory
 	
     public static enum Flag {
     	MEMORY_MAPPED_HW,
+    	/**
+    	 * Whether adjacent memory regions with the same
+    	 * type may be joined.
+    	 */
     	SUPPORTS_MERGING;
     }
     
     public Set<Flag> getFlags();
     
     public boolean hasFlag(Flag flag);
+    
+	/**
+	 * Returns this memory region's type ID.
+	 * 
+	 * <p>Memory regions with the same type ID and
+	 * {@link Flag#SUPPORTS_MERGING} may be combined.</p>
+	 * @return
+	 */
+	public long getTypeId();    
     	
     
     /**
@@ -51,6 +66,7 @@ public interface IMemoryRegion extends IMemory
     /**
      * Returns an informal name for this memory region.
      * 
+     * <p>This identifier must only be used for debugging.</p>
      * @return
      */
     public String getRegionName();

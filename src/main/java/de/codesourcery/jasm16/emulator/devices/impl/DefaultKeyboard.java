@@ -87,7 +87,7 @@ public class DefaultKeyboard implements IDevice {
 
         public LegacyKeyboardBuffer(Address range)
         {
-            super("keyboard buffer (legacy)", new AddressRange( range , Size.words( 1 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW);
+            super("keyboard buffer (legacy)", TYPE_KEYBOARD_BUFFER , new AddressRange( range , Size.words( 1 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW);
         }
 	
         public void writeKeyEvent(int keyCode) 

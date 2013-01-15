@@ -114,9 +114,9 @@ public final class DefaultScreen implements IDevice {
 	private volatile VideoRAM videoRAM = null;
 
 	private volatile RefreshThread refreshThread = null;
-	
+
 	private volatile boolean blinkState;
-	
+
 	private final class RefreshThread extends Thread {
 
 		private volatile boolean terminate = false;
@@ -125,7 +125,7 @@ public final class DefaultScreen implements IDevice {
 		private int fpsCounter;
 		private int lastFps;
 		private long lastTimestamp=System.currentTimeMillis();
-		
+
 		@Override
 		public void run() 
 		{
@@ -133,13 +133,13 @@ public final class DefaultScreen implements IDevice {
 				while(!terminate) 
 				{
 					LockSupport.parkNanos( (1000 / 30) * 1000000 );
-					
+
 					doFullVRAMRendering();
 					int counter = fpsCounter++;
 					if ( (counter % 30) == 0 ) {
 						blinkState = ! blinkState;
 					}
-					
+
 					if ( (counter % 300 ) == 0 ) 
 					{
 						final long now = System.currentTimeMillis();
@@ -256,7 +256,7 @@ public final class DefaultScreen implements IDevice {
 		private boolean hasChanged = true;
 
 		public FontRAM(Address start) {
-			super("Font RAM", new AddressRange( start , Size.words( 256 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  ); // 2 words per character
+			super("Font RAM", TYPE_FONT_RAM , new AddressRange( start , Size.words( 256 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  ); // 2 words per character
 		}
 
 		public void setup(ConsoleScreen scr) {
@@ -267,25 +267,12 @@ public final class DefaultScreen implements IDevice {
 				final int words = scr.readGylph( glyph );
 
 				final int word0 = ( words & 0xffff0000 ) >>> 16;
-		final int word1 = ( words & 0x0000ffff );
-		super.write( adr++ , word0 );
-		super.write( adr++ , word1 );
+				final int word1 = ( words & 0x0000ffff );
+				super.write( adr++ , word0 );
+				super.write( adr++ , word1 );
 			}
 			hasChanged = true;
 		}
-
-		@Override
-		public void clear() {
-			super.clear();
-			hasChanged = true;
-		}
-
-		public boolean hasChanged() 
-		{
-			final boolean result = hasChanged;
-			hasChanged=false;
-			return result;
-		}        
 
 		@Override
 		public void write(Address address, int value) 
@@ -294,16 +281,38 @@ public final class DefaultScreen implements IDevice {
 			hasChanged = true;
 		}
 
+
+		@Override
+		public void write(int wordAddress, int value) 
+		{
+			super.write(wordAddress, value);
+			hasChanged = true;
+		}		
+
+		@Override
+		public void clear() {
+			super.clear();
+			hasChanged = true;
+		}
+		
+		public void clearChanged() {
+			hasChanged = false;
+		}
+
+		public boolean hasChanged() 
+		{
+			return hasChanged;
+		}        
+
 		public void defineAllGlyphs() {
 
 			if ( consoleScreen == null ) {
 				return;
 			}
 
-			int start = getAddressRange().getStartAddress().getWordAddressValue();        	
-			final int end = getAddressRange().getStartAddress().getWordAddressValue();
+			final int end = getSize().getSizeInWords();
 
-			for ( int wordAddress = start ; wordAddress < end ; wordAddress +=2 ) 
+			for ( int wordAddress = 0 ; wordAddress < end ; wordAddress +=2 ) 
 			{
 				final int glyphIndex = wordAddress >>> 1; // 2 words per glyph
 
@@ -313,13 +322,7 @@ public final class DefaultScreen implements IDevice {
 				final int newGlyph = ( (value1 & 0xffff) << 16 ) | value2;
 				consoleScreen.defineGylph( glyphIndex , newGlyph );
 			}
-		}
-
-		@Override
-		public void write(int wordAddress, int value) 
-		{
-			super.write(wordAddress, value);
-			hasChanged = true;
+			return;
 		}
 	}
 
@@ -366,15 +369,17 @@ public final class DefaultScreen implements IDevice {
 		private volatile boolean hasChanged = true;
 
 		public PaletteRAM(Address start) {
-			super("Palette RAM", new AddressRange( start , Size.words( PALETTE_COLORS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  );
+			super("Palette RAM", TYPE_PALETTE_RAM , new AddressRange( start , Size.words( PALETTE_COLORS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  );
 		}
 
 		public boolean hasChanged() 
 		{
-			final boolean result = hasChanged;
-			hasChanged=false;
-			return result;
+			return hasChanged;
 		}
+		
+		public void clearChanged() {
+			hasChanged = false;
+		}		
 
 		public void setDefaultPalette() 
 		{
@@ -442,7 +447,7 @@ public final class DefaultScreen implements IDevice {
 		private volatile boolean hasChanged = true;
 
 		public VideoRAM(Address start) {
-			super("Video RAM", new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW );
+			super("Video RAM", TYPE_VRAM , new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW );
 		}
 
 		@Override
@@ -451,11 +456,13 @@ public final class DefaultScreen implements IDevice {
 			hasChanged = true;
 		}
 
+		public void clearChanged() {
+			hasChanged = false;
+		}
+		
 		public boolean hasChanged() 
 		{
-			final boolean result = hasChanged;
-			hasChanged=false;
-			return result;
+			return hasChanged;
 		}
 
 		@Override
@@ -489,14 +496,17 @@ public final class DefaultScreen implements IDevice {
 
 	protected void mapPaletteRAM(Address address) 
 	{
-		final PaletteRAM newRAM = new PaletteRAM( address );
+		final PaletteRAM newRAM;
 		if ( isUseCustomPaletteRAM() ) 
 		{
 			if ( paletteRAM.getAddressRange().getStartAddress().equals( address ) ) {
 				return; // nothing to be done
 			}
+			newRAM = new PaletteRAM( address );
 			emulator.unmapRegion( paletteRAM );
-		} 
+		} else {
+			newRAM = new PaletteRAM( address );
+		}
 		paletteRAM = newRAM;
 		emulator.mapRegion( paletteRAM );
 	}
@@ -507,15 +517,17 @@ public final class DefaultScreen implements IDevice {
 
 	protected void mapVideoRAM(Address videoRAMAddress) 
 	{
-		final VideoRAM newRAM = new VideoRAM( videoRAMAddress );        
+		final VideoRAM newRAM;
 		if ( isConnected() ) 
 		{
 			if ( videoRAM.getAddressRange().getStartAddress().equals( videoRAMAddress ) ) {
 				return; // nothing to be done
 			}
+			newRAM = new VideoRAM( videoRAMAddress );
 			emulator.unmapRegion( videoRAM );
+		} else {
+			newRAM = new VideoRAM( videoRAMAddress );
 		}
-
 		videoRAM = newRAM;
 		emulator.mapRegion( newRAM );
 	}
@@ -527,34 +539,49 @@ public final class DefaultScreen implements IDevice {
 			return;
 		}
 
-		// hasChanged() will ALWAYS CLEAR the flag before it returns 
-		final boolean fontRAMChanged = fontRAM.hasChanged();
-		final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();
-
-		if ( fontRAMChanged ) 
-		{
-			fontRAM.defineAllGlyphs();
-		}
-		
 		if ( ! isConnected() ) 
 		{
 			renderScreenDisconnectedMessage();
 			return;
-		}		
+		}
+		
+		final boolean fontRAMChanged = fontRAM.hasChanged();
+		final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
 
 		if ( updateRequired ) 
 		{ 
+			if ( fontRAMChanged ) 
+			{
+				fontRAM.defineAllGlyphs();
+			}
 			final boolean blink = blinkState;
 			for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
 				renderMemoryValue( i , videoRAM.read( i ) , blink );
 			}        
 			repaintPeer(true);
+			
+			fontRAM.clearChanged();
+			paletteRAM.clearChanged();
+			videoRAM.clearChanged();
 		}
 	}
 
 	protected void disconnect() 
 	{
 		if ( isConnected() ) {
+			
+			if ( useCustomFontRAM ) {
+				emulator.unmapRegion( fontRAM );
+				useCustomFontRAM = false;
+				fontRAM = null;
+			}
+			
+			if ( useCustomPaletteRAM ) {
+				emulator.unmapRegion( paletteRAM );
+				useCustomPaletteRAM = false;
+				paletteRAM = null;
+			}     
+			
 			emulator.unmapRegion( videoRAM );
 			videoRAM = null;
 			renderScreenDisconnectedMessage();
@@ -635,7 +662,7 @@ public final class DefaultScreen implements IDevice {
 			mapFontRAM( Address.wordAddress( 0x8180 ) );
 		}
 		this.out = emulator.getOutput();
-		
+
 		if ( refreshThread == null || ! refreshThread.isAlive() ) {
 			refreshThread = new RefreshThread();
 			refreshThread.start();
@@ -653,12 +680,7 @@ public final class DefaultScreen implements IDevice {
 		if ( isConnected() ) {
 			disconnect();
 		}
-		if ( useCustomPaletteRAM ) {
-			emulator.unmapRegion( paletteRAM );
-			useCustomPaletteRAM = false;
-			paletteRAM = null;
-		}       
-		
+
 		if ( refreshThread != null && refreshThread.isAlive() ) {
 			refreshThread.terminate();
 		}

@@ -21,11 +21,12 @@ import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IMemoryTypes;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
-public class MainMemoryTest extends TestCase {
+public class MainMemoryTest extends TestCase implements IMemoryTypes {
 
 	private MainMemory memory;
 	
@@ -47,11 +48,11 @@ public class MainMemoryTest extends TestCase {
 		
 		AddressRange range1 = new AddressRange( Address.wordAddress( 0x8000 ) , 
 				Size.words( 384 ) );
-		MemoryRegion region1 = new MemoryRegion("region #1" , range1 );		
+		MemoryRegion region1 = new MemoryRegion("region #1" , TYPE_RAM , range1 );		
 		
 		AddressRange range2 = new AddressRange( Address.wordAddress( 0x8180 ) , 
 				Size.words( 384 ) );
-		MemoryRegion region2 = new MemoryRegion("region #2" , range2 );			
+		MemoryRegion region2 = new MemoryRegion("region #2" , TYPE_RAM , range2 );			
 		
 		MemoryRegion current = null;
 		long delta = -System.currentTimeMillis();
@@ -95,23 +96,23 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
 		
 		AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) , 
 				Address.wordAddress( 0x8000 ) );
-		MemoryRegion region1 = new MemoryRegion("region #1" , range1 );
+		MemoryRegion region1 = new MemoryRegion("region #1" , TYPE_RAM , range1 );
 		memory.mapRegion( region1 );
 		
 		AddressRange range2 = new AddressRange( Address.wordAddress( 0x8000 ) , Address.wordAddress( 0x8180 ) );
-		MemoryRegion region2 = new MemoryRegion("region #2" , range2 );
+		MemoryRegion region2 = new MemoryRegion("region #2" , TYPE_RAM , range2 );
 		memory.mapRegion( region2 );
 		
 		AddressRange range3 = new AddressRange( Address.wordAddress( 0x8180) , Address.wordAddress( 0x9000 ) );
-		MemoryRegion region3 = new MemoryRegion("region #3" , range3 );
+		MemoryRegion region3 = new MemoryRegion("region #3" , TYPE_RAM , range3 );
 		memory.mapRegion( region3 );
 		
 		AddressRange range4 = new AddressRange( Address.wordAddress( 0x9000 ) , Address.wordAddress( 0x9001 ) );
-		MemoryRegion region4 = new MemoryRegion("region #4" , range4 );
+		MemoryRegion region4 = new MemoryRegion("region #4" , TYPE_RAM , range4 );
 		memory.mapRegion( region4 );
 		
 		AddressRange range5 = new AddressRange( Address.wordAddress( 0x9001 ) , Address.wordAddress( 0x10000 ) );
-		MemoryRegion region5 = new MemoryRegion("region #5" , range5 );
+		MemoryRegion region5 = new MemoryRegion("region #5" , TYPE_RAM , range5 );
 		memory.mapRegion( region5 );		
 		
 		System.out.println("Memory layout");
@@ -130,7 +131,7 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
 		assertMemoryContains( region5 , 0xbeef );
 		
 		AddressRange range6 = new AddressRange( Address.wordAddress( 0x4000 ) , Address.wordAddress( 0x4010 ) );
-		MemoryRegion region6 = new MemoryRegion("region #6" , range6 );
+		MemoryRegion region6 = new MemoryRegion("region #6" , TYPE_RAM , range6 );
 		memory.mapRegion( region6 );
 		
 		assertMemoryContains( region6 , 0x1234 );
@@ -168,9 +169,9 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
         AddressRange range2 = new AddressRange( Address.wordAddress( 0x8000 ) , Address.wordAddress( 0x8180 ) );
         AddressRange range3 = new AddressRange( Address.wordAddress( 0x8180) , Address.wordAddress( 0x9000 ) );
         
-        MemoryRegion region1 = new MemoryRegion("region #1" , range1 );
-        MemoryRegion region2 = new MemoryRegion("region #2" , range2 );
-        MemoryRegion region3 = new MemoryRegion("region #3" , range3 );        
+        MemoryRegion region1 = new MemoryRegion("region #1" , TYPE_RAM , range1 );
+        MemoryRegion region2 = new MemoryRegion("region #2" , TYPE_RAM , range2 );
+        MemoryRegion region3 = new MemoryRegion("region #3" , TYPE_RAM , range3 );        
         
         memory.mapRegion( region1 );
         memory.mapRegion( region2 );
@@ -181,23 +182,23 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
         
         AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) , 
                 Address.wordAddress( 0x8000 ) );
-        MemoryRegion region1 = new MemoryRegion("region #1" , range1 );
+        MemoryRegion region1 = new MemoryRegion("region #1" , TYPE_RAM , range1 );
         memory.mapRegion( region1 );
         
         AddressRange range2 = new AddressRange( Address.wordAddress( 0x8000 ) , Address.wordAddress( 0x8180 ) );
-        MemoryRegion region2 = new MemoryRegion("region #2" , range2 );
+        MemoryRegion region2 = new MemoryRegion("region #2" , TYPE_RAM , range2 );
         memory.mapRegion( region2 );
         
         AddressRange range3 = new AddressRange( Address.wordAddress( 0x8180) , Address.wordAddress( 0x9000 ) );
-        MemoryRegion region3 = new MemoryRegion("region #3" , range3 );
+        MemoryRegion region3 = new MemoryRegion("region #3" , TYPE_RAM , range3 );
         memory.mapRegion( region3 );
         
         AddressRange range4 = new AddressRange( Address.wordAddress( 0x9000 ) , Address.wordAddress( 0x9001 ) );
-        MemoryRegion region4 = new MemoryRegion("region #4" , range4 );
+        MemoryRegion region4 = new MemoryRegion("region #4" , TYPE_RAM , range4 );
         memory.mapRegion( region4 );
         
         AddressRange range5 = new AddressRange( Address.wordAddress( 0x9001 ) , Address.wordAddress( 0x10000 ) );
-        MemoryRegion region5 = new MemoryRegion("region #5" , range5 );
+        MemoryRegion region5 = new MemoryRegion("region #5" , TYPE_RAM , range5 );
         memory.mapRegion( region5 );        
         
         fillMemoryRegion( memory, region1 , 0x1234 );

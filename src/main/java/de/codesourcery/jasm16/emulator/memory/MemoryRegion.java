@@ -37,15 +37,16 @@ import de.codesourcery.jasm16.Size.SizeInWords;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class MemoryRegion implements IMemoryRegion {
+public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     
     private final String regionName;
     private final AddressRange addressRange;
     private final AtomicIntegerArray memory;
     private final boolean supportsMerging; // distinct field and not just a flag for speed reasons
     private final Set<Flag> flags = new HashSet<>();
+    private final long typeId;
     
-    public MemoryRegion(String regionName , AddressRange range,Flag... flags) 
+    public MemoryRegion(String regionName , long typeId , AddressRange range,Flag... flags) 
     {
         if (StringUtils.isBlank(regionName)) {
             throw new IllegalArgumentException("regionName must not be NULL/blank.");
@@ -60,10 +61,16 @@ public class MemoryRegion implements IMemoryRegion {
         if ( flags != null ) {
         	this.flags.addAll( Arrays.asList( flags ) );
         }
+        this.typeId = typeId;
     	this.supportsMerging = this.flags.contains( Flag.SUPPORTS_MERGING );
         this.memory = new  AtomicIntegerArray( sizeInWords.getValue() );
         this.addressRange = range;
         this.regionName = regionName;    	
+    }
+    
+    @Override
+    public long getTypeId() {
+    	return typeId;
     }
     
     public Set<Flag> getFlags() {
@@ -122,7 +129,7 @@ public class MemoryRegion implements IMemoryRegion {
     
     private IMemoryRegion createCopy(AddressRange range) {
         
-        final MemoryRegion result = new MemoryRegion( regionName , range , this.flags.toArray(new Flag[this.flags.size()]));
+        final MemoryRegion result = new MemoryRegion( regionName , this.typeId , range , this.flags.toArray(new Flag[this.flags.size()]));
 
         final int numberOfMemWordsToCopy= range.getSize().toSizeInWords().getValue();
         int readAddress = ( range.getStartAddress().minus( getAddressRange().getStartAddress() ) ).toWordAddress().getValue();
