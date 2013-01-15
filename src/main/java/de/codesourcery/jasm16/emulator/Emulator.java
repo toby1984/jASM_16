@@ -60,6 +60,8 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class Emulator implements IEmulator {
 
+    protected static final Register[] REGISTER_BITMASK_MAPPING = { Register.A, Register.B, Register.C, Register.X, Register.Y, Register.Z, Register.I, Register.J };
+    
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 
 	/**
@@ -362,6 +364,9 @@ public class Emulator implements IEmulator {
 
 	// ============ CPU =============== 
 
+	// transient, only used inside of executeOneInstruction() code path
+	private int currentInstructionPtr;
+	
 	private final Object CPU_LOCK = new Object();
 
 	// @GuardedBy( CPU_LOCK )
@@ -419,9 +424,7 @@ public class Emulator implements IEmulator {
 		}
 	};
 
-	private static final Register[] REGISTER_BITMASK_MAPPING = { Register.A, Register.B, Register.C, Register.X, Register.Y, Register.Z, Register.I, Register.J	};
-
-	protected final class VisibleCPU implements ICPU {
+	protected static final class VisibleCPU implements ICPU {
 
 		public int registerA;
 		public int registerB;
@@ -440,6 +443,7 @@ public class Emulator implements IEmulator {
 
 		public boolean queueInterrupts;
 
+		private IInterrupt currentInterrupt;
 		public final List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
 
 		public int currentCycle;
@@ -448,64 +452,79 @@ public class Emulator implements IEmulator {
 		{
 			pc = sp = interruptAddress = WordAddress.ZERO;
 		}
+		
 
-		public boolean triggerInterrupt(IInterrupt interrupt) 
-		{
-			if ( ! interruptsEnabled() ) {
-				return false;
-			}
+        public VisibleCPU(VisibleCPU other) 
+        {
+            this.registerA = other.registerA;
+            this.registerB = other.registerB;
+            this.registerC = other.registerC;
+            this.registerX = other.registerX;
+            this.registerY = other.registerY;
+            this.registerZ = other.registerZ;
+            this.registerI = other.registerI;
+            this.registerJ = other.registerJ;
 
-			synchronized ( interruptQueue ) 
-			{
-				if ( ! queueInterrupts && ! interruptQueue.isEmpty() ) {
-					return false;
-				}
+            this.ex = other.ex;
 
-				if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
-				{
-					throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
-				}
-				queueInterrupts = true;
-				interruptQueue.add( interrupt );
-			}
-			return true;
-		}        
+            this.pc = other.pc;
+            this.sp = other.sp;
+            this.interruptAddress = other.interruptAddress;
+            this.queueInterrupts = other.queueInterrupts;
+            this.currentInterrupt = other.currentInterrupt;
+            this.interruptQueue.addAll(other.interruptQueue);
+            this.currentCycle = other.currentCycle;
+        }		
+
+        public boolean triggerInterrupt(IInterrupt interrupt) 
+        {
+            if ( ! interruptsEnabled() ) {
+                return false;
+            }
+
+            synchronized ( interruptQueue ) 
+            {
+                if ( currentInterrupt == null && ! isQueueInterrupts() ) {
+                    currentInterrupt  = interrupt;
+                } 
+                else 
+                { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
+                    if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
+                    {
+                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
+                    }
+                    setQueueInterrupts( true );
+                    interruptQueue.add( interrupt );
+                } 
+            }
+            return true;
+        }        
 
 		public IInterrupt getNextProcessableInterrupt(boolean removeFromQueue) 
 		{
 			synchronized( interruptQueue ) 
 			{
-				if ( ! interruptQueue.isEmpty() && ! isQueueInterrupts() ) 
-				{
-					if ( removeFromQueue ) {
-						return interruptQueue.remove(0);
-					} 
-					return interruptQueue.get(0);
-				}
+			    if ( currentInterrupt != null ) 
+			    {
+			        if ( ! removeFromQueue ) {
+			            return currentInterrupt;
+			        }
+
+			        final IInterrupt irq = currentInterrupt;
+			        currentInterrupt = null;
+			        return irq;
+			    } 
+
+			    if ( ! interruptQueue.isEmpty() && ! isQueueInterrupts() ) 
+			    {
+			        if ( removeFromQueue ) {
+			            return interruptQueue.remove(0);
+			        } 
+			        return interruptQueue.get(0);
+			    }
 			}
 			return null;
 		}        
-
-		public VisibleCPU(VisibleCPU other) 
-		{
-			this.registerA = other.registerA;
-			this.registerB = other.registerB;
-			this.registerC = other.registerC;
-			this.registerX = other.registerX;
-			this.registerY = other.registerY;
-			this.registerZ = other.registerZ;
-			this.registerI = other.registerI;
-			this.registerJ = other.registerJ;
-
-			this.ex = other.ex;
-
-			this.pc = other.pc;
-			this.sp = other.sp;
-			this.interruptAddress = other.interruptAddress;
-			this.queueInterrupts = other.queueInterrupts;
-			this.interruptQueue.addAll(other.interruptQueue);
-			this.currentCycle = other.currentCycle;
-		}
 
 		public void reset()
 		{
@@ -1098,19 +1117,25 @@ public class Emulator implements IEmulator {
 			boolean success = false;
 			synchronized( CPU_LOCK ) 
 			{
-				try {
-					execDurationInCycles = executeInstruction();
+				try 
+				{
+				    currentInstructionPtr = hiddenCPU.pc.getValue();
+				    
+					execDurationInCycles = executeInstruction( readNextWordAndAdvance() );
 	
 					if ( checkMemoryWrites ) {
 						// note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
 						// the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
 						// a jump into an interrupt handler that skipped over non-instruction memory
-						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc );
+						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc.getWordAddressValue() );
 						memory.writeProtect( new AddressRange( visibleCPU.pc , Size.words( sizeInWords )) );
 					}
+					
 					hiddenCPU.currentCycle+=execDurationInCycles;
+					hiddenCPU.pc = Address.wordAddress( currentInstructionPtr );
 					
 					maybeProcessOneInterrupt(); 
+					
 					success = true;
 				} 
 				finally 
@@ -1272,19 +1297,30 @@ public class Emulator implements IEmulator {
 		return ( opCode >= 0x10 && opCode <= 0x17);
 	}
 
-	@Override
-	public void skipCurrentInstruction() 
+   @Override
+    public void skipCurrentInstruction() 
+    {
+       synchronized(CPU_LOCK) {
+           hiddenCPU.pc = Address.wordAddress( skipInstructionAt( hiddenCPU.pc.getWordAddressValue() ) );
+           visibleCPU = new VisibleCPU(hiddenCPU);
+       }
+       afterCommandExecution( 0 );
+    }
+   
+	private int skipInstructionAt(int currentAddress) 
 	{
-		final int sizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc );
-		hiddenCPU.pc = hiddenCPU.pc.plus( Size.words( sizeInWords ) , true );
-		afterCommandExecution( 0 );
+		return currentAddress + calculateInstructionSizeInWords( currentAddress );
 	}
 
-	private int calculateInstructionSizeInWords(Address address) {
+	private int calculateInstructionSizeInWords(int address) {
 		return calculateInstructionSizeInWords(address,memory);
 	}
 
-	public static int calculateInstructionSizeInWords(Address address,IReadOnlyMemory memory) {
+    public static int calculateInstructionSizeInWords(Address address,IReadOnlyMemory memory) {
+        return calculateInstructionSizeInWords(address.getWordAddressValue() , memory );
+    }
+    
+	public static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) {
 
 		final int instructionWord = memory.read( address );
 
@@ -1422,21 +1458,12 @@ public class Emulator implements IEmulator {
 		return 0; // operandDesc( operandBits - 0x21 , 0 ); 
 	}
 
-	private int executeInstruction() 
-	{
-		final int instructionWord = memory.read( hiddenCPU.pc );
-		Address oldPc = hiddenCPU.pc;
-		hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
-
-		try {
-			return executeInstruction(instructionWord);
-		} 
-		catch(UnknownOpcodeException e) {
-			hiddenCPU.pc = oldPc;
-			throw e;
-		}
+	private int readNextWordAndAdvance() {
+	    final int word = memory.read( currentInstructionPtr );
+	    currentInstructionPtr = (currentInstructionPtr+1) & 0xffff;
+	    return word;
 	}
-
+	
 	private int executeInstruction(int instructionWord) 
 	{
 		final int opCode = (instructionWord & 0x1f);
@@ -1661,13 +1688,13 @@ public class Emulator implements IEmulator {
 
 	private int handleConditionFailure() 
 	{
-		final boolean isSkippingConditional = isConditionalInstruction( memory.read( hiddenCPU.pc ) );
+		final boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
 
-		skipCurrentInstruction();
+		currentInstructionPtr = skipInstructionAt( currentInstructionPtr );
 
-		if ( isSkippingConditional ) 
+		if ( skippedInstructionIsConditional ) 
 		{
-			skipCurrentInstruction();		    
+		    currentInstructionPtr = skipInstructionAt( currentInstructionPtr );
 			return 2;
 		}
 		return 1;
@@ -1958,7 +1985,7 @@ public class Emulator implements IEmulator {
 			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
 		}
 
-		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc );
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc.getWordAddressValue() );
 		final Address nextInstruction = hiddenCPU.pc.plus( Size.words( currentInstructionSizeInWords ) , true );
 		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
 		start();
@@ -2195,9 +2222,8 @@ public class Emulator implements IEmulator {
    |      |       | pops PC from the stack
 		 */
 		hiddenCPU.setQueueInterrupts( false );
-
 		hiddenCPU.setRegisterValue( Register.A, pop() ); // pop a from stack
-		hiddenCPU.pc = Address.wordAddress( pop() ); // pop PC from stack
+		currentInstructionPtr = pop(); // pop PC from stack
 		return 3;
 	}
 
@@ -2248,8 +2274,8 @@ public class Emulator implements IEmulator {
 	{
 		// pushes the address of the next instruction to the stack, then sets PC to a
 		OperandDesc source= loadSourceOperand( instructionWord );
-		push( hiddenCPU.pc.getValue() );
-		hiddenCPU.pc = Address.wordAddress( source.value );
+		push( currentInstructionPtr );
+		currentInstructionPtr = source.value;
 		return 3+source.cycleCount;
 	}
 
@@ -2311,8 +2337,7 @@ public class Emulator implements IEmulator {
 			return 1;
 		}
 		if ( operandBits <= 0x17 ) {
-			final int nextWord = memory.read( hiddenCPU.pc );
-			hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+			final int nextWord = readNextWordAndAdvance();
 			writeMemoryWithOffsetAndWrapAround( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord , value);
 			return 1;
 		}
@@ -2324,8 +2349,7 @@ public class Emulator implements IEmulator {
 				memory.write( hiddenCPU.sp , value );
 				return 0;
 			case 0x1a:
-				int nextWord = memory.read( hiddenCPU.pc );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+				int nextWord = readNextWordAndAdvance();
 				Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true);
 				memory.write( dst , value );
 				return 1;
@@ -2333,14 +2357,13 @@ public class Emulator implements IEmulator {
 				hiddenCPU.sp = Address.wordAddress( value );
 				return 0;
 			case 0x1c:
-				hiddenCPU.pc = Address.wordAddress( value );
+				currentInstructionPtr = value;
 				return 0;
 			case 0x1d:
 				hiddenCPU.ex = value;
 				return 0;
 			case 0x1e:
-				nextWord = memory.read( hiddenCPU.pc );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+				nextWord = readNextWordAndAdvance();
 				memory.write( nextWord , value);
 				return 1;
 			default:
@@ -2351,7 +2374,7 @@ public class Emulator implements IEmulator {
 	private int handleIllegalTargetOperand(int instructionWord) 
 	{
 		final String msg = "Illegal target operand in instruction word 0x"+
-				Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( hiddenCPU.pc.decrementByOne() );
+				Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( hiddenCPU.pc );
 		LOG.error("handleIllegalTargetOperand(): "+msg);
 		out.warn( msg);
 		throw new InvalidTargetOperandException( msg );
@@ -2377,9 +2400,10 @@ public class Emulator implements IEmulator {
 			return operandDesc( memory.read( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x08 ] ) ) , 1 );
 		}
 		if ( operandBits <= 0x17 ) {
-			final int nextWord = memory.read( hiddenCPU.pc );
-			hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
-			return operandDesc( readMemoryWithOffsetAndWrapAround( hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord ) ,1 );
+			final int nextWord = readNextWordAndAdvance();
+			return operandDesc( 
+			        readMemoryWithOffsetAndWrapAround( 
+			                hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord ) ,1 );
 		}
 		switch( operandBits ) {
 			case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
@@ -2389,8 +2413,7 @@ public class Emulator implements IEmulator {
 			case 0x19:
 				return operandDesc( memory.read( hiddenCPU.sp ) , 1 );
 			case 0x1a:
-				int nextWord = memory.read( hiddenCPU.pc );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+				int nextWord = readNextWordAndAdvance();
 				final Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true );
 				return operandDesc( memory.read( dst ) , 1 );
 			case 0x1b:
@@ -2400,13 +2423,10 @@ public class Emulator implements IEmulator {
 			case 0x1d:
 				return operandDesc( hiddenCPU.ex );
 			case 0x1e:
-				nextWord = memory.read( hiddenCPU.pc );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+				nextWord = readNextWordAndAdvance();
 				return operandDesc( memory.read( nextWord ) ,1 );
 			case 0x1f:
-				final OperandDesc result = operandDesc( memory.read( hiddenCPU.pc ) , 1 );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
-				return result;
+				return operandDesc( readNextWordAndAdvance() , 1 );
 		}
 
 		// literal value: -1...30 ( 0x20 - 0x3f )
@@ -2469,10 +2489,9 @@ public class Emulator implements IEmulator {
 		{
 			final int nextWord;
 			if ( performIncrementDecrement ) {
-				nextWord = memory.read( hiddenCPU.pc );
-				hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+				nextWord = readNextWordAndAdvance();
 			} else {
-				nextWord = memory.read( hiddenCPU.pc );                
+				nextWord = memory.read( currentInstructionPtr );                
 			}
 			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.getRegisterValue( REGISTER_BITMASK_MAPPING[ operandBits - 0x10 ] ) , nextWord ) ,1 );
 		}
@@ -2487,10 +2506,9 @@ public class Emulator implements IEmulator {
 			case 0x1a:
 				int nextWord = 0;
 				if ( performIncrementDecrement ) {
-					nextWord = memory.read( hiddenCPU.pc );
-					hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+					nextWord = readNextWordAndAdvance();
 				} else {
-					nextWord = memory.read( hiddenCPU.pc );                    
+					nextWord = memory.read( currentInstructionPtr );                    
 				}
 				final Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true );
 				return operandDesc( memory.read( dst ) , 1 );
@@ -2502,18 +2520,16 @@ public class Emulator implements IEmulator {
 				return operandDesc( hiddenCPU.ex );
 			case 0x1e:
 				if ( performIncrementDecrement ) {
-					nextWord = memory.read( hiddenCPU.pc );
-					hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+					nextWord = readNextWordAndAdvance();
 				} else {
-					nextWord = memory.read( hiddenCPU.pc );
+					nextWord = memory.read( currentInstructionPtr );
 				}
 				return operandDesc( memory.read( nextWord ) ,1 );
 			case 0x1f:
 				if ( performIncrementDecrement ) {
-					nextWord = memory.read( hiddenCPU.pc );
-					hiddenCPU.pc = hiddenCPU.pc.incrementByOne(true);
+					nextWord = readNextWordAndAdvance();
 				} else {
-					nextWord = memory.read( hiddenCPU.pc );                    
+					nextWord = memory.read( currentInstructionPtr );                    
 				}
 				return operandDesc( nextWord , 1 );
 		}

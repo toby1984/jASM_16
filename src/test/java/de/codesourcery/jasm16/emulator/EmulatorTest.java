@@ -208,6 +208,17 @@ public class EmulatorTest extends AbstractEmulatorTest
 
 		assertOnTopOfStack( 0xbeef );
 	}     
+	
+    public void testSetFromPC() throws InterruptedException, TimeoutException {
+
+        final String source = 
+                "       SET a, 0x01\n" +
+                "       SET a,PC\n"+ 
+                        "       HCF 0\n"; // illegal opcode
+
+        execute(source);
+        assertRegA( 0x01 );
+    }  	
 
 	public void testMemorySetRegisterIndirectWithOffsetImmediate() throws InterruptedException, TimeoutException {
 
@@ -397,6 +408,19 @@ public class EmulatorTest extends AbstractEmulatorTest
 		assertRegA(1);
 		assertRegEX(0);
 	}
+	
+    public void testAddWithPC() throws InterruptedException, TimeoutException {
+
+        final String source = "       SET a,0\n"+
+                "       ADD PC ,2\n"+
+                "       HCF 0\n"+
+                "       SET a,0x42\n"+
+                "       HCF 0";
+        
+        execute(source);
+        assertRegA(0x42);
+        assertRegEX(0);        
+    }  	
 
 	public void testRegisterAddOverflow() throws InterruptedException, TimeoutException {
 
