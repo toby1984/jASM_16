@@ -19,7 +19,10 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
+import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
 import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
@@ -115,10 +118,13 @@ public class ScreenView extends AbstractView
         		    height = getHeight();
         		}
         		
-        		BufferedImage original1 = screen.getScreenImage();
-        		final Image scaled1 = original1.getScaledInstance( getWidth() , height  , Image.SCALE_FAST );
-                ((Graphics2D) g).drawImage(  scaled1 , 0,0, null );
-
+        		final BufferedImage original1 = screen.getScreenImage();
+        		
+                final Graphics2D g2 = (Graphics2D) g;
+                
+        		final Image scaled = original1.getScaledInstance( getWidth() , height  , Image.SCALE_FAST );
+                g2.drawImage(  scaled , 0,0, null );
+        		
                 if ( debugCustomFonts ) {
                     BufferedImage original2 = screen.getFontImage();
                     final Image scaled2 = original2.getScaledInstance( getWidth() , height , Image.SCALE_FAST );

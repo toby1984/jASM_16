@@ -18,15 +18,17 @@ package de.codesourcery.jasm16.emulator.devices.impl;
 
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.color.ColorSpace;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
+import java.awt.image.DataBuffer;
 import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
 import java.awt.image.Raster;
 import java.awt.image.SampleModel;
+import java.awt.image.SinglePixelPackedSampleModel;
 import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.io.InputStream;
@@ -426,7 +428,7 @@ public final class DefaultScreen implements IDevice {
 		{
 			final int size = getSize().toSizeInWords().getValue();
 			for ( int i = 0 ; i < size ; i++ ) {
-				write( 0 , 0 );
+				write( i , 0 );
 			}
 		}
 
@@ -659,6 +661,11 @@ public final class DefaultScreen implements IDevice {
 			final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
 			final Color fg = paletteRAM.getColor( foregroundPalette );
 			final Color bg = paletteRAM.getColor( backgroundPalette );
+			
+			final int glyphData = consoleScreen.readGylph( asciiCode );
+			System.out.println("--- printing "+((char) asciiCode ) );
+			consoleScreen.debugDefineGlyph( asciiCode , glyphData );
+			
 			if ( blink && ! blinkState ) 
 			{
 				consoleScreen.putChar( column , row , asciiCode , bg , fg );					
@@ -923,36 +930,17 @@ public final class DefaultScreen implements IDevice {
 			this.screenWidth = screenWidth;
 			this.screenHeight=screenHeight;
 			this.borderColor = borderColor;
-			this.screen = new RawImage( "console" , screenWidth , screenHeight );
+			this.screen = new RawImage( glyphBitmap , "console" , screenWidth , screenHeight );
 			setFontImage( glyphBitmap );
 			renderBorder();
 		}
 
-		public void setFontImage(final BufferedImage image) 
+		public synchronized void setFontImage(final BufferedImage image) 
 		{
-		    System.out.println("-------------------- setFontImage --------------- ");
-		    
-		    JFrame frame = new JFrame();
-		    
-		    final JPanel panel = new JPanel() {
-		        @Override
-		        public void paint(Graphics g)
-		        {
-		            super.paint(g);
-		            g.drawImage( image , 0 , 0 , null );
-		        }
-		    };
-		    
-		    panel.setMinimumSize(new Dimension(400,400 ) );
-		    panel.setMaximumSize(new Dimension(400,400 ) );
-		    panel.setPreferredSize(new Dimension(400,400 ) );
-		    frame.getContentPane().add( panel );
-		    frame.setVisible( true );
-		    
 			// choose darkest color as background color
-			this.glyphBitmap = new RawImage( "glyphs" , image.getWidth() , image.getHeight() );
-			this.glyphBitmap.getGraphics().drawImage( image , 0 , 0, null );            
-
+			this.glyphBitmap = new RawImage( image, "glyphs" , image.getWidth() , image.getHeight() );
+			this.glyphBitmap.getGraphics().drawImage( image , 0 , 0, null );  
+			
 			final int[] colors = this.glyphBitmap.getUniqueColors();
 			int background = 0x00ffffff; // aaRRGGBB
 			int foreground = 0x00000000;
@@ -968,16 +956,17 @@ public final class DefaultScreen implements IDevice {
 			this.glyphBackgroundColor = background;
 			this.awtGlyphBackgroundColor = new Color( background );
 			
+            System.out.println("-------------------- Foreground color: "+awtGlyphForegroundColor);
+            System.out.println("-------------------- Background color: "+awtGlyphBackgroundColor);
+            
             System.out.println("-------------------- Image defined the following glyphs --------------- ");			
 			for ( int i = 0 ; i < 127 ; i++ ) {
 			    debugDefineGlyph( i , readGylph( i ) );
 			}
 		}
 
-		public void defineGylph(int glyphIndex, int glyphData) 
+		public synchronized void defineGylph(int glyphIndex, int glyphData) 
 		{
-		    debugDefineGlyph(glyphIndex, glyphData);
-		    
 			final int glyphRow = glyphIndex / IMG_CHARS_PER_ROW;
 			final int glyphCol = glyphIndex - ( glyphRow * IMG_CHARS_PER_ROW );
 
@@ -1163,6 +1152,10 @@ public final class DefaultScreen implements IDevice {
 
 		public void putChar(int screenColumn, int screenRow, int glyphIndex, Color fg, Color bg) 
 		{
+		    System.out.println("Putchar with color fg = "+fg+" , bg = "+bg);
+		    
+		    debugDefineGlyph( glyphIndex , readGylph( glyphIndex ) );
+		    
 			// start of character in font img raster
 			final int glyphRow = glyphIndex / IMG_CHARS_PER_ROW;
 			final int glyphColumn = glyphIndex - ( glyphRow * IMG_CHARS_PER_ROW );
@@ -1176,16 +1169,18 @@ public final class DefaultScreen implements IDevice {
 			final int glyphBitmapWidth = glyphBitmap.getWidth();
 			final int screenBitmapWidth = screen.getWidth();
 
-			int firstGlyphPixel = glyphY * glyphBitmapWidth + glyphX;
-			int firstTargetPixel = screenY * screenBitmapWidth + screenX;            
+			int glyphOffset = glyphY * glyphBitmapWidth + glyphX;
+			int targetPixelOffset = screenY * screenBitmapWidth + screenX;            
 
 			final int[] glyphPixels = glyphBitmap.getBackingArray();
 			final int[] targetPixels = screen.getBackingArray();
 
+			final WritableRaster raster = screen.getImage().getRaster();
+			
 			for (int i = 0; i < GLYPH_HEIGHT; i++) 
 			{
-				int src = firstGlyphPixel;
-				int dst = firstTargetPixel;
+				int src = glyphOffset;
+				int dst = targetPixelOffset;
 				for (int j = 0; j < GLYPH_WIDTH ; j++) 
 				{
 					if ( glyphPixels[src++] != glyphBackgroundColor ) {
@@ -1194,8 +1189,8 @@ public final class DefaultScreen implements IDevice {
 						targetPixels[dst++] = bg.getRGB();
 					}
 				}
-				firstGlyphPixel += glyphBitmapWidth;
-				firstTargetPixel += screenBitmapWidth;
+				glyphOffset += glyphBitmapWidth;
+				targetPixelOffset += screenBitmapWidth;
 			}
 		}
 	}
@@ -1205,16 +1200,24 @@ public final class DefaultScreen implements IDevice {
 		private final BufferedImage image;
 		private final int[] data;
 
-		public RawImage(String name,int width,int height) 
+		public RawImage(BufferedImage proto, String name,int width,int height) 
 		{
 			data = new int[ width*height ];
 
-			Arrays.fill(data, 0xff000000);
+			Arrays.fill(data, 0xff00000);
 
 			final DataBufferInt dataBuffer = new DataBufferInt(data, width * height);
-			final ColorModel cm = ColorModel.getRGBdefault();
-			final SampleModel sm = cm.createCompatibleSampleModel(width, height);
+			
+			// aarrggbb
+//			final ColorModel cm = ColorModel.getRGBdefault();
+//	        final ColorModel cm = new DirectColorModel(ColorSpace.getInstance( ColorSpace.CS_LINEAR_RGB )  
+//	                , 24, 0xff0000, 0xff00, 0xff , 0x00000000, false, DataBuffer.TYPE_INT ); // ColorModel.getRGBdefault();
+	         final ColorModel cm = new DirectColorModel(24, 0xff0000, 0xff00, 0xff ); // ColorModel.getRGBdefault();
+			final SinglePixelPackedSampleModel sm = new SinglePixelPackedSampleModel(
+			        DataBuffer.TYPE_INT, width, height , new int[] { 0xff0000, 0xff00, 0xff } ); // cm.createCompatibleSampleModel(width, height);
+			
 			final WritableRaster wr = Raster.createWritableRaster(sm, dataBuffer, null);
+			
 			image = new BufferedImage(cm, wr, false, null);
 		}       
 
