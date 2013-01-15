@@ -362,16 +362,15 @@ public final class Emulator implements IEmulator {
 
 	// ============ CPU =============== 
 
-	// transient, only used inside of executeOneInstruction() code path
-	private int currentInstructionPtr;
-	
 	private final Object CPU_LOCK = new Object();
 
-	// @GuardedBy( CPU_LOCK )
-	private final VisibleCPU hiddenCPU = new VisibleCPU();
+	private Address lastValidInstruction = null;
 	
 	// @GuardedBy( CPU_LOCK )
-	private VisibleCPU visibleCPU = new VisibleCPU();    
+	private final VisibleCPU hiddenCPU = new VisibleCPU(memory);
+	
+	// @GuardedBy( CPU_LOCK )
+	private final VisibleCPU visibleCPU = new VisibleCPU(memory);    
 
 	// a,b,c,x,y,z,i,j
 	// all CPU registers needs to be thread-safe since the emulation runs in a separate thread
@@ -767,8 +766,12 @@ public final class Emulator implements IEmulator {
 			{
 				if ( isRunnable.get() == false ) 
 				{
+				    /*
+				     * Halt execution.
+				     */
+				    
 					lastStop.set( System.currentTimeMillis() );
-					cycleCountAtLastStop=hiddenCPU.currentCycle;
+					cycleCountAtLastStop = hiddenCPU.currentCycle;
 
 					if ( DEBUG_LISTENER_PERFORMANCE ) 
 					{
@@ -796,12 +799,12 @@ public final class Emulator implements IEmulator {
 
 					lastEmulationError = null;					
 					lastStart.set( System.currentTimeMillis() );   
-					cycleCountAtLastStart=hiddenCPU.currentCycle;
+					cycleCountAtLastStart = hiddenCPU.currentCycle;
 
 					acknowledgeCommand(cmd);
 				}
 
-				final int durationInCycles = internalExecuteOneInstruction(hiddenCPU);
+				final int durationInCycles = internalExecuteOneInstruction();
 				
 				if ( emulationSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
@@ -827,7 +830,7 @@ public final class Emulator implements IEmulator {
 	 * 
 	 * @return number of DCPU-16 cycles the command execution took 
 	 */
-	protected int internalExecuteOneInstruction(VisibleCPU hiddenCPU) 
+	protected int internalExecuteOneInstruction() 
 	{
 		beforeCommandExecution();
 
@@ -839,32 +842,32 @@ public final class Emulator implements IEmulator {
 			{
 				try 
 				{
-				    currentInstructionPtr = hiddenCPU.pc.getValue();
-				    
-					execDurationInCycles = executeInstruction( readNextWordAndAdvance() );
+					execDurationInCycles = hiddenCPU.executeInstruction();
 	
+					lastValidInstruction = visibleCPU.pc;
+					
 					if ( checkMemoryWrites ) {
 						// note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
 						// the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
 						// a jump into an interrupt handler that skipped over non-instruction memory
-						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc.getWordAddressValue() );
+						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc.getWordAddressValue() , memory );
 						memory.writeProtect( new AddressRange( visibleCPU.pc , Size.words( sizeInWords )) );
 					}
 					
 					hiddenCPU.currentCycle+=execDurationInCycles;
-					hiddenCPU.pc = Address.wordAddress( currentInstructionPtr );
+					hiddenCPU.pc = Address.wordAddress( hiddenCPU.currentInstructionPtr );
 					
-					maybeProcessOneInterrupt( hiddenCPU ); 
+					hiddenCPU.maybeProcessOneInterrupt(); 
 					
 					success = true;
 				} 
 				finally 
 				{
 					if ( success ) {
-						visibleCPU = new VisibleCPU(hiddenCPU);
+						visibleCPU.populateFrom( hiddenCPU );
 					} else {
 					    // restore CPU register state on error
-					    hiddenCPU.copyFrom(visibleCPU);
+					    hiddenCPU.populateFrom(visibleCPU);
 					}
 				}
 			}
@@ -888,54 +891,11 @@ public final class Emulator implements IEmulator {
 		return execDurationInCycles;
 	}
 
-	private boolean maybeProcessOneInterrupt(VisibleCPU hiddenCPU) 
-	{
-		if ( hiddenCPU.interruptsEnabled() ) 
-		{ 
-			final IInterrupt irq = hiddenCPU.getNextProcessableInterrupt( true );
-			if ( irq != null ) {
-				processInterrupt( irq , hiddenCPU );
-				return true;
-			}
-		}
-		return false;
-	}     
-
-	private void processInterrupt(IInterrupt irq,VisibleCPU hiddenCPU) 
-	{
-		/* When IA is set to something other than 0, interrupts triggered on the DCPU-16
-		 * will 
-		 * 
-		 * - push PC to the stack, 
-		 * - push A to the stack
-		 * - set the PC to IA
-		 * - set A to the interrupt message
-		 * 
-		 * A well formed interrupt handler must 
-		 * - pop A from the stack 
-		 * - popping PC from the stack
-		 * 
-		 * when returning.     	 
-		 */
-
-		// push PC to stack
-		// SET [ --SP ] , PC
-		push( hiddenCPU.pc.getValue() );
-
-		// push A to stack
-		push( hiddenCPU.commonRegisters[0] );
-
-		hiddenCPU.pc = hiddenCPU.interruptAddress;
-		hiddenCPU.commonRegisters[0] = irq.getMessage() & 0xffff;
-	}
-
 	@Override
 	public void executeOneInstruction() 
 	{
 		stop(null);
-		synchronized(CPU_LOCK) {
-		    internalExecuteOneInstruction(hiddenCPU);
-		}
+	    internalExecuteOneInstruction();
 	}   
 
 	protected void beforeCommandExecution() 
@@ -1025,24 +985,16 @@ public final class Emulator implements IEmulator {
    @Override
     public void skipCurrentInstruction() 
     {
-       final VisibleCPU cpu;
-       synchronized(CPU_LOCK) {
-           hiddenCPU.pc = Address.wordAddress( skipInstructionAt( hiddenCPU.pc.getWordAddressValue() ) );
-           visibleCPU = new VisibleCPU(hiddenCPU);
-           cpu = visibleCPU;
+       synchronized(CPU_LOCK) 
+       {
+           int adr = hiddenCPU.pc.getWordAddressValue();
+           adr += calculateInstructionSizeInWords( adr , memory );
+           hiddenCPU.pc = Address.wordAddress( adr );
+           visibleCPU.populateFrom( hiddenCPU );
        }
-       afterCommandExecution( 0 , cpu );
+       afterCommandExecution( 0 , visibleCPU );
     }
    
-	private int skipInstructionAt(int currentAddress) 
-	{
-		return currentAddress + calculateInstructionSizeInWords( currentAddress );
-	}
-
-	private int calculateInstructionSizeInWords(int address) {
-		return calculateInstructionSizeInWords(address,memory);
-	}
-
     public static int calculateInstructionSizeInWords(Address address,IReadOnlyMemory memory) {
         return calculateInstructionSizeInWords(address.getWordAddressValue() , memory );
     }
@@ -1128,7 +1080,6 @@ public final class Emulator implements IEmulator {
 
 	private static int getOperandSizeInWords(OperandPosition position, int instructionWord,boolean isSpecialOpCode) {
 
-
 		/* SET b,a
 		 * 
 		 * b is always handled by the processor after a, and is the lower five bits.
@@ -1186,521 +1137,6 @@ public final class Emulator implements IEmulator {
 		return 0; // operandDesc( operandBits - 0x21 , 0 ); 
 	}
 
-	private int readNextWordAndAdvance() {
-	    final int word = memory.read( currentInstructionPtr );
-	    currentInstructionPtr = (currentInstructionPtr+1) & 0xffff;
-	    return word;
-	}
-	
-	private int executeInstruction(int instructionWord) 
-	{
-		final int opCode = (instructionWord & 0x1f);
-
-		/*
-		 *   |--- Basic opcodes (5 bits) ----------------------------------------------------
-		 *   |C | VAL  | NAME     | DESCRIPTION
-		 *   +---+------+----------+---------------------------------------------------------
-		 *   |- | 0x00 | n/a      | special instruction - see below
-		 *   |1 | 0x01 | SET b, a | sets b to a
-		 *   |2 | 0x02 | ADD b, a | sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
-		 *   |2 | 0x03 | SUB b, a | sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
-		 *   |2 | 0x04 | MUL b, a | sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
-		 *   |2 | 0x05 | MLI b, a | like MUL, but treat b, a as signed
-		 *   |3 | 0x06 | DIV b, a | sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
-		 *   |3 | 0x07 | DVI b, a | like DIV, but treat b, a as signed. Rounds towards 0
-		 *   |3 | 0x08 | MOD b, a | sets b to b%a. if a==0, sets b to 0 instead.
-		 *   |3 | 0x09 | MDI b, a | like MOD, but treat b, a as signed. Rounds towards 0
-		 *   |1 | 0x0a | AND b, a | sets b to b&a
-		 *   |1 | 0x0b | BOR b, a | sets b to b|a
-		 *   |1 | 0x0c | XOR b, a | sets b to b^a
-		 *   |2 | 0x0d | SHR b, a | sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
-		 *   |2 | 0x0e | ASR b, a | sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
-		 *   |2 | 0x0f | SHL b, a | sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
-		 *   |
-		 *   |2+| 0x10 | IFB b, a | performs next instruction only if (b&a)!=0
-		 *   |2+| 0x11 | IFC b, a | performs next instruction only if (b&a)==0
-		 *   |2+| 0x12 | IFE b, a | performs next instruction only if b==a 
-		 *   |2+| 0x13 | IFN b, a | performs next instruction only if b!=a 
-		 *   |2+| 0x14 | IFG b, a | performs next instruction only if b>a 
-		 *   |2+| 0x15 | IFA b, a | performs next instruction only if b>a (signed)
-		 *   |2+| 0x16 | IFL b, a | performs next instruction only if b<a 
-		 *   |2+| 0x17 | IFU b, a | performs next instruction only if b<a (signed)
-		 *   |- | 0x18 | -        |
-		 *   |- | 0x19 | -        |
-		 *   |3 | 0x1a | ADX b, a | sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
-		 *   |3 | 0x1b | SBX b, a | sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0 otherwise
-		 *   |- | 0x1c | -        | 
-		 *   |- | 0x1d | -        |
-		 *   |2 | 0x1e | STI b, a | sets b to a, then increases I and J by 1
-		 *   |2 | 0x1f | STD b, a | sets b to a, then decreases I and J by 1
-		 *   +---+------+----------+----------------------------------------------------------			 
-		 */
-
-		switch( opCode ) {
-			case 0x00:
-				return handleSpecialOpCode( instructionWord );
-			case 0x01:
-				return handleSET( instructionWord );
-			case 0x02:
-				return handleADD( instructionWord );
-			case 0x03:
-				return handleSUB( instructionWord );
-			case 0x04:
-				return handleMUL( instructionWord );
-			case 0x05:
-				return handleMLI( instructionWord );
-			case 0x06:
-				return handleDIV( instructionWord );
-			case 0x07:
-				return handleDVI( instructionWord );
-			case 0x08:
-				return handleMOD( instructionWord );
-			case 0x09:
-				return handleMDI( instructionWord );
-			case 0x0a:
-				return handleAND( instructionWord );
-			case 0x0b:
-				return handleBOR( instructionWord );
-			case 0x0c:
-				return handleXOR( instructionWord );
-			case 0x0d:
-				return handleSHR( instructionWord );
-			case 0x0e:
-				return handleASR( instructionWord );
-			case 0x0f:
-				return handleSHL( instructionWord );
-			case 0x10:
-				return handleIFB( instructionWord );
-			case 0x11:
-				return handleIFC( instructionWord );
-			case 0x12:
-				return handleIFE( instructionWord );
-			case 0x13:
-				return handleIFN( instructionWord );
-			case 0x14:
-				return handleIFG( instructionWord );
-			case 0x15:
-				return handleIFA( instructionWord );
-			case 0x16:
-				return handleIFL( instructionWord );
-			case 0x17:
-				return handleIFU( instructionWord );
-			case 0x18:
-			case 0x19:
-				return handleUnknownOpCode( instructionWord );
-			case 0x1a:
-				return handleADX( instructionWord );
-			case 0x1b:
-				return handleSBX( instructionWord );
-			case 0x1c:
-			case 0x1d:
-				return handleUnknownOpCode( instructionWord );
-			case 0x1e:
-				return handleSTI( instructionWord );
-			case 0x1f:
-				return handleSTD( instructionWord );
-			default:
-				return handleUnknownOpCode( instructionWord );
-		}
-	}
-
-	private int handleSTD(int instructionWord) {
-		// sets b to a, then decreases I and J by 1
-		// a,b,c,x,y,z,i,j
-		final OperandDesc source = loadSourceOperand( instructionWord );
-		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
-		int address = --hiddenCPU.commonRegisters[6]; // registers[6]-=1; <<< I
-		if ( address < 0 ) {
-			hiddenCPU.commonRegisters[6] = (int) WordAddress.MAX_ADDRESS;
-		}
-		address = --hiddenCPU.commonRegisters[7]; // registers[7]-=1; <<< J
-		if ( address < 0 ) {
-			hiddenCPU.commonRegisters[7]= (int) WordAddress.MAX_ADDRESS;
-		}        
-		return cycles;
-	}
-
-	private int handleSTI(int instructionWord) {
-		// sets b to a, then increases I and J by 1
-		// a,b,c,x,y,z,i,j
-		final OperandDesc source = loadSourceOperand( instructionWord );
-
-		final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
-
-		int newWordAddress = ++hiddenCPU.commonRegisters[6]; // registers[6]+=1; <<< I
-		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.commonRegisters[6] = 0;
-		}
-		newWordAddress = ++hiddenCPU.commonRegisters[7]; // registers[7]+=1; <<< J		
-		if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
-			hiddenCPU.commonRegisters[7] = 0;
-		}        
-		return cycles;
-	}
-
-	private int handleSBX(int instructionWord) 
-	{
-		// sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0001 if there's an overflow, 0x0 otherwise
-
-		OperandDesc source = loadSourceOperand( instructionWord );
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		boolean underflow = false;
-		boolean overflow = false;
-
-		final int b = target.value;
-		final int a = source.value;
-
-		final int step1 = b - a;
-		if ( step1 < 0 ) {
-			underflow = true;
-		}
-		final int step2 = step1 + hiddenCPU.ex;
-		if ( step2 > 65535 ) {
-			overflow = true;
-		}
-
-		if ( underflow ) {
-			hiddenCPU.ex = 0xffff;
-		} else if ( overflow ) {
-			hiddenCPU.ex = 0x0001;
-		} else {
-			hiddenCPU.ex = 0;
-		}
-		return 3+storeTargetOperand( instructionWord , step2 )+source.cycleCount;		
-	}
-
-	private int handleADX(int instructionWord) {
-		// sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value + source.value + hiddenCPU.ex;
-		if ( acc > 0xffff) {
-			hiddenCPU.ex = 0x0001;
-		} else {
-			hiddenCPU.ex = 0;
-		}
-		return 3+storeTargetOperand( instructionWord , acc)+source.cycleCount;
-	}
-
-	private int handleUnknownOpCode(int instructionWord) 
-	{
-		final Disassembler dis = new Disassembler();
-
-		// assume worst-case , each instruction only is one word
-		final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , visibleCPU.pc ).toSizeInWords().getValue();
-		List<DisassembledLine> lines = dis.disassemble( getMemory() , Address.wordAddress( 0 ) , instructionCount , true );
-		for (DisassembledLine line : lines) {
-			out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
-		}
-		final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+" at address "+"0x"+Misc.toHexString( hiddenCPU.pc.decrementByOne() )+
-				" (last valid: "+Misc.toHexString( visibleCPU.pc )+")";
-		out.warn(msg );
-		throw new UnknownOpcodeException( msg , instructionWord & 0xffff );
-	}
-
-	private int handleIFU(int instructionWord) {
-		// performs next instruction only if b<a (signed)
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty = 0;
-		if ( signed( target.value ) >= signed( source.value ) ) 
-		{
-			penalty = handleConditionFailure();
-
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;			
-	}
-
-	private int handleConditionFailure() 
-	{
-		final boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
-
-		currentInstructionPtr = skipInstructionAt( currentInstructionPtr );
-
-		if ( skippedInstructionIsConditional ) 
-		{
-		    currentInstructionPtr = skipInstructionAt( currentInstructionPtr );
-			return 2;
-		}
-		return 1;
-	}
-
-	private int handleIFL(int instructionWord) {
-		// performs next instruction only if b<a
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty = 0;
-		if ( target.value >= source.value ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;		
-	}
-
-	private int handleIFA(int instructionWord) {
-		// performs next instruction only if b>a (signed)
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty = 0;
-		if ( signed( target.value ) <= signed( source.value ) ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;		
-	}
-
-	private int handleIFG(int instructionWord) {
-		// performs next instruction only if b>a
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty=0;
-		if ( target.value <= source.value ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;			
-	}
-
-	private int handleIFN(int instructionWord) {
-		// performs next instruction only if b!=a
-		OperandDesc source = loadSourceOperand( instructionWord );
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty = 0;
-		if ( target.value == source.value ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;			
-	}
-
-	private int handleIFE(int instructionWord) {
-		// performs next instruction only if b==a
-		OperandDesc source = loadSourceOperand( instructionWord );
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty=0;
-		if ( target.value != source.value ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;		
-	}
-
-	private int handleIFC(int instructionWord) {
-		// performs next instruction only if (b&a)==0
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty = 0;
-		if ( (target.value & source.value) != 0 ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;
-	}
-
-	private int handleIFB(int instructionWord) {
-		// performs next instruction only if (b&a)!=0
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , true );
-
-		int penalty=0;
-		if ( (target.value & source.value) == 0 ) {
-			penalty = handleConditionFailure();
-		}
-		return 2+target.cycleCount+source.cycleCount+penalty;
-	}
-
-	private int handleSHL(int instructionWord) {
-		// sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value << source.value;
-		hiddenCPU.ex = (( target.value << source.value)>>16 ) & 0xffff;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
-	}
-
-	private int handleASR(int instructionWord) { // ASR b,a
-		// sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = signed( target.value ) >> source.value;
-		hiddenCPU.ex = (( signed( target.value ) << 16) >>> source.value ) & 0xffff;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
-	}
-
-	private int handleSHR(int instructionWord) {
-		//  sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value >>> source.value;
-		hiddenCPU.ex = (( target.value << 16)>>source.value ) & 0xffff;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
-	}
-
-	private int handleXOR(int instructionWord) 
-	{
-		//  sets b to b^a
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value ^ source.value;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
-	}
-
-	private int handleBOR(int instructionWord) 
-	{
-		//  sets b to b|a
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value | source.value;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;		
-	}
-
-	private int handleAND(int instructionWord) {
-		// sets b to b&a
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value & source.value;
-		return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;			
-	}
-
-	private int handleMDI(int instructionWord) {
-		// like MOD, but treat b, a as signed. Rounds towards 0
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc;
-		if ( source.value == 0 ) {
-			acc=0;
-		} else {
-			acc = signed( target.value ) % signed( source.value );
-		}
-		return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;		
-	}
-
-	private int handleMOD(int instructionWord) {
-		// sets b to b%a. if a==0, sets b to 0 instead.
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc;
-		if ( source.value == 0 ) {
-			acc=0;
-		} else {
-			acc = target.value % source.value;
-		}
-		return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;		
-	}
-
-	private int handleDVI(int instructionWord) {
-		// e DIV, but treat b, a as signed. Rounds towards 0
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc;
-		if ( source.value == 0 ) {
-			hiddenCPU.ex = 0;
-			acc=0;
-		} else {
-			acc = signed( target.value ) / signed( source.value );
-			hiddenCPU.ex = (( signed( target.value ) << 16) / signed( source.value) )& 0xffff;
-		}
-		return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount; 	
-	}
-
-	private int handleDIV(int instructionWord) 
-	{
-		/* set b (TARGET) ,a (SOURCE) 
-		 * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
-		 */
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc;
-		if ( source.value == 0 ) {
-			hiddenCPU.ex = 0;
-			acc=0;
-		} else {
-			acc = target.value / source.value;
-			hiddenCPU.ex = (( target.value << 16) / source.value) & 0xffff;
-		}
-		return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
-	}
-
-	private int handleMLI(int instructionWord) {
-		//  like MUL, but treat b, a as signed
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int a = signed( target.value );
-		final int b = signed( source.value );
-
-		final int acc = a * b;
-		hiddenCPU.ex = ((a * b) >> 16 ) & 0xffff;		
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
-	}
-
-	private int signed( int value) 
-	{
-		if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
-			return value | 0xffff0000;
-		}
-		return value;
-	}
-
-	private int handleMUL(int instructionWord) 
-	{
-		// sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value * source.value;
-		hiddenCPU.ex = ((target.value * source.value) >> 16 ) & 0xffff;
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
-	}
-
-	private int handleSUB(int instructionWord) {
-		// sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
-		OperandDesc source = loadSourceOperand( instructionWord );		
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value - source.value;
-		if ( acc < 0 ) {
-			hiddenCPU.ex = 0xffff;
-		} else {
-			hiddenCPU.ex = 0;
-		}
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 		
-	}
-
-	private int handleADD(int instructionWord) 
-	{
-		// sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
-		OperandDesc source = loadSourceOperand( instructionWord );
-		OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-		final int acc = target.value + source.value;
-		if ( acc > 0xffff) {
-			hiddenCPU.ex = 0x0001;
-		} else {
-			hiddenCPU.ex = 0;
-		}
-		return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
-	}
-
-	private int handleSET(int instructionWord) 
-	{
-		final OperandDesc desc = loadSourceOperand( instructionWord );
-		return 1+storeTargetOperand( instructionWord , desc.value ) + desc.cycleCount;
-	}
-
 	@Override
 	public boolean canStepReturn() {
 		return isJSR( memory.read( hiddenCPU.pc ) );
@@ -1713,13 +1149,13 @@ public final class Emulator implements IEmulator {
 			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
 		}
 
-		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc.getWordAddressValue() );
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc.getWordAddressValue() , memory );
 		final Address nextInstruction = hiddenCPU.pc.plus( Size.words( currentInstructionSizeInWords ) , true );
 		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
 		start();
 	}
 
-	private boolean isJSR(int instructionWord) {
+	protected static boolean isJSR(int instructionWord) {
 
 		final int basicOpCode = (instructionWord & 0x1f);
 		if ( basicOpCode != 0 ) {
@@ -1727,138 +1163,6 @@ public final class Emulator implements IEmulator {
 		}
 		final int specialOpCode = ( instructionWord >>> 5 ) &0x1f;
 		return specialOpCode == 0x01; // JSR
-	}
-
-	private int handleSpecialOpCode(int instructionWord) {
-
-		final int opCode = ( instructionWord >>> 5 ) &0x1f;
-
-		/*
-		 *  |--- Special opcodes: (5 bits) --------------------------------------------------
-		 *  | C | VAL  | NAME  | DESCRIPTION
-		 *  |---+------+-------+-------------------------------------------------------------
-		 *  | - | 0x00 | n/a   | reserved for future expansion
-		 *  | 3 | 0x01 | JSR a | pushes the address of the next instruction to the stack, then sets PC to a
-		 *  | - | 0x02 | -     |
-		 *  | - | 0x03 | -     |
-		 *  | - | 0x04 | -     |
-		 *  | - | 0x05 | -     |
-		 *  | - | 0x06 | -     |
-		 *  | 9 | 0x07 | HCF a | use sparingly
-		 *  | 4 | 0x08 | INT a | triggers a software interrupt with message a
-		 *  | 1 | 0x09 | IAG a | sets a to IA 
-		 *  | 1 | 0x0a | IAS a | sets IA to a
-		 *  | 3 | 0x0b | IAP a | if IA is 0, does nothing, otherwise pushes IA to the stack,
-		 *  |   |      |       | then sets IA to a
-		 *  | 2 | 0x0c | IAQ a | if a is nonzero, interrupts will be added to the queue
-		 *  |   |      |       | instead of triggered. if a is zero, interrupts will be
-		 *  |   |      |       | triggered as normal again
-		 *  | - | 0x0d | -     |
-		 *  | - | 0x0e | -     |
-		 *  | - | 0x0f | -     |
-		 *  | 2 | 0x10 | HWN a | sets a to number of connected hardware devices
-		 *  | 4 | 0x11 | HWQ a | sets A, B, C, X, Y registers to information about hardware a
-		 *  |   |      |       | A+(B<<16) is a 32 bit word identifying the hardware id
-		 *  |   |      |       | C is the hardware version
-		 *  |   |      |       | X+(Y<<16) is a 32 bit word identifying the manufacturer
-		 *  | 4+| 0x12 | HWI a | sends an interrupt to hardware a
-		 *  | - | 0x13 | -     |
-		 *  | - | 0x14 | -     |
-		 *  | - | 0x15 | -     |
-		 *  | - | 0x16 | -     |
-		 *  | - | 0x17 | -     |
-		 *  | - | 0x18 | -     |
-		 *  | - | 0x19 | -     |
-		 *  | - | 0x1a | -     |
-		 *  | - | 0x1b | -     |
-		 *  | - | 0x1c | -     |
-		 *  | - | 0x1d | -     |
-		 *  | - | 0x1e | -     |
-		 *  | - | 0x1f | -     |
-		 *  |---+------+-------+-------------------------------------------------------------		 
-		 */
-
-		switch( opCode ) {
-			case 0x00:
-				return handleUnknownOpCode( instructionWord );
-			case 0x01:
-				return handleJSR( instructionWord );
-			case 0x02:
-			case 0x03:
-			case 0x04:
-			case 0x05:
-			case 0x06:
-				return handleUnknownOpCode( instructionWord );
-			case 0x07:
-				// HCF was removed in spec 1.7
-				//			return handleHCF( instructionWord ); 
-				return handleUnknownOpCode( instructionWord );
-			case 0x08:
-				return handleINT( instructionWord );
-			case 0x09:
-				return handleIAG( instructionWord );
-			case 0x0a:
-				return handleIAS( instructionWord );
-			case 0x0b:
-				return handleRFI( instructionWord );
-			case 0x0c:
-				return handleIAQ( instructionWord );
-			case 0x0d:
-			case 0x0e:
-			case 0x0f:
-				return handleUnknownOpCode( instructionWord );
-			case 0x10:
-				return handleHWN( instructionWord );
-			case 0x11:
-				return handleHWQ( instructionWord );
-			case 0x12:
-				return handleHWI( instructionWord );
-			case 0x14:
-			case 0x15:
-			case 0x16:
-			case 0x17:
-			case 0x18:
-			case 0x19:
-			case 0x1a:
-			case 0x1b:
-			case 0x1c:
-			case 0x1d:
-			case 0x1e:
-			case 0x1f:
-			default:
-				return handleUnknownOpCode( instructionWord );
-		}
-	}
-
-	private int handleHWI(int instructionWord) 
-	{
-		final OperandDesc operand = loadSourceOperand(instructionWord);
-		final int hardwareSlot = operand.value;
-
-		final IDevice device = getDeviceForSlot( hardwareSlot );
-
-		final int cyclesConsumed;
-		if ( device == null ) 
-		{
-			if ( ! ignoreAccessToUnknownDevices ) {
-				LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
-				out.warn("No device at slot #"+hardwareSlot);
-				throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
-			}
-			cyclesConsumed = 0;
-		} else {
-			try {
-				cyclesConsumed = device.handleInterrupt( this );
-			} 
-			catch(RuntimeException e) {
-				if ( e instanceof DeviceErrorException) {
-					throw e;
-				}
-				LOG.error("handleHWI(): Device "+device+" failed in handleInterrupt(): "+e.getMessage() , e );
-				throw new DeviceErrorException("Device "+device+" failed in handleInterrupt(): "+e.getMessage() , device , e );
-			}
-		}
-		return 4+operand.cycleCount+cyclesConsumed;
 	}
 
 	private IDevice getDeviceForSlot(int hardwareSlot) 
@@ -1869,401 +1173,6 @@ public final class Emulator implements IEmulator {
 			}
 		}
 		return null;
-	}
-
-	private int pop() 
-	{
-		// SET a, [SP++]
-		final int result = memory.read( hiddenCPU.sp );
-		hiddenCPU.sp=hiddenCPU.sp.incrementByOne(true);
-		return result;
-	}
-
-	private void push(int value) 
-	{
-		// SET [--SP] , blubb
-		hiddenCPU.sp = hiddenCPU.sp.decrementByOne();
-		memory.write( hiddenCPU.sp , value & 0xffff );
-	}	
-	
-    private int handleHWQ(int instructionWord) {
-
-        // Sets A, B, C, X, Y registers to information about hardware a.
-
-        final OperandDesc operand = loadSourceOperand(instructionWord);
-        final int hardwareSlot = operand.value;
-
-        final IDevice device = getDeviceForSlot( hardwareSlot );
-        if ( device == null ) 
-        {
-            if ( ! ignoreAccessToUnknownDevices ) {
-                LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
-                out.warn("No device at slot #"+hardwareSlot);
-                throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
-            }
-
-            hiddenCPU.commonRegisters[0] = 0xffff;
-            hiddenCPU.commonRegisters[1] = 0xffff;
-            hiddenCPU.commonRegisters[2] = 0xffff;
-            hiddenCPU.commonRegisters[3] = 0xffff;
-            hiddenCPU.commonRegisters[4] = 0xffff;
-        } 
-        else {
-
-            /* sets A, B, C, X, Y registers to information about hardware a
-             * 
-             * A+(B<<16) is a 32 bit word identifying the hardware id
-             * C is the hardware version
-             * X+(Y<<16) is a 32 bit word identifying the manufacturer
-             */
-
-            /* A+(B<<16) is a 32 bit word identifying the hardware id
-             * 
-             * A = LSB hardware ID (16 bit)
-             * B = MSB hardware ID (16 bit)
-             * C = hardware version
-             * X = LSB manufacturer ID (16 bit)
-             * Y = MSB manufacturer ID (16 bit)
-             */
-            final DeviceDescriptor descriptor = device.getDeviceDescriptor();
-
-            hiddenCPU.commonRegisters[0] = (int) descriptor.getID() & 0xffff;
-            hiddenCPU.commonRegisters[1] = (int) ( ( descriptor.getID() >>> 16 ) & 0xffff );
-            hiddenCPU.commonRegisters[2] = descriptor.getVersion() & 0xffff;
-            hiddenCPU.commonRegisters[3] = (int) descriptor.getManufacturer() & 0xffff;
-            hiddenCPU.commonRegisters[4] = (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff );  
-        }
-
-        return 4+operand.cycleCount;
-    }
-
-    private int handleHWN(int instructionWord) 
-    {
-        // sets a to number of connected hardware devices
-        final int deviceCount;
-        synchronized( devices ) {
-            deviceCount=devices.size();
-        }
-        return 2 + storeTargetOperand( instructionWord , deviceCount , true );
-    }
-
-    private int handleIAQ(int instructionWord) {
-
-        /* if a is nonzero, interrupts will be added to the queue
-         * instead of triggered. if a is zero, interrupts will be
-         * triggered as normal again
-         */
-        final OperandDesc operand = loadSourceOperand( instructionWord );
-        hiddenCPU.setQueueInterrupts( operand.value != 0 );
-        return 2+operand.cycleCount;
-    }
-
-    private int handleRFI(int instructionWord) 
-    {
-        /*
-         *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
-   |      |       | pops PC from the stack
-         */
-        hiddenCPU.setQueueInterrupts( false );
-        hiddenCPU.commonRegisters[0] = pop(); // pop A from stack
-        currentInstructionPtr = pop(); // pop PC from stack
-        return 3;
-    }	
-    
-    private int handleIllegalTargetOperand(int instructionWord) 
-    {
-        final String msg = "Illegal target operand in instruction word 0x"+
-                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( hiddenCPU.pc );
-        LOG.error("handleIllegalTargetOperand(): "+msg);
-        out.warn( msg);
-        throw new InvalidTargetOperandException( msg );
-    }    
-
-	private int handleIAS(int instructionWord) 
-	{
-		// IAS a => sets IA to a
-		final OperandDesc operand = loadSourceOperand( instructionWord );
-		hiddenCPU.interruptAddress = Address.wordAddress( operand.value );
-		return 1+operand.cycleCount;
-	}
-
-	private int handleIAG(int instructionWord) {
-		// IAG a => sets A to IA
-		return 1+storeTargetOperand( instructionWord , hiddenCPU.interruptAddress.getValue() , true );
-	}
-
-	private int handleINT(int instructionWord) 
-	{
-		final OperandDesc operand = loadSourceOperand( instructionWord );
-		hiddenCPU.triggerInterrupt(new SoftwareInterrupt( operand.value ));
-		return 4+operand.cycleCount;
-	}
-
-	@SuppressWarnings("unused")
-	private int handleHCF(int instructionWord) 
-	{
-		final OperandDesc operand = loadSourceOperand( instructionWord );
-		stop(null);
-		return 1+operand.cycleCount;
-	}
-
-	private int handleJSR(int instructionWord) 
-	{
-		// pushes the address of the next instruction to the stack, then sets PC to a
-		OperandDesc source= loadSourceOperand( instructionWord );
-		push( currentInstructionPtr );
-		currentInstructionPtr = source.value;
-		return 3+source.cycleCount;
-	}
-
-	/*
-	 * 
-	 * b is always handled by the processor after a, and is the lower five bits.
-	 * In bits (in LSB-0 format), a basic instruction has the format: 
-	 * 
-	 *    aaaaaabbbbbooooo
-	 *    
-	 * SET b,a
-	 * 
-	 * b = TARGET operand
-	 * a = SOURCE operand
-	 * 
-	 * --- Values: (5/6 bits) ---------------------------------------------------------
-	 * 
-	 * | C | VALUE     | DESCRIPTION
-	 * +---+-----------+----------------------------------------------------------------
-	 * | 0 | 0x00-0x07 | register (A, B, C, X, Y, Z, I or J, in that order)
-	 * | 0 | 0x08-0x0f | [register]
-	 * | 1 | 0x10-0x17 | [register + next word]
-	 * | 0 |      0x18 | (PUSH / [--SP]) if in TARGET, or (POP / [SP++]) if in SOURCE
-	 * | 0 |      0x19 | [SP] / PEEK
-	 * | 1 |      0x1a | [SP + next word] / PICK n
-	 * | 0 |      0x1b | SP
-	 * | 0 |      0x1c | PC
-	 * | 0 |      0x1d | EX
-	 * | 1 |      0x1e | [next word]
-	 * | 1 |      0x1f | next word (literal)
-	 * | 0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for SOURCE)
-	 * +---+-----------+----------------------------------------------------------------	 
-	 */
-	private int storeTargetOperand(int instructionWord,int value) 
-	{
-		return storeTargetOperand( instructionWord , value , false );
-	}
-	private int storeTargetOperand(int instructionWord,int value,boolean isSpecialOpcode) 
-	{
-		final int operandBits;
-		/*
-		 * Special opcodes always have their lower five bits unset, have one value and a
-		 * five bit opcode. 
-		 * 
-		 * In binary, they have the format:    aaaaaaooooo00000
-		 */
-		if ( isSpecialOpcode ) {
-			operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32);
-		} else {
-			operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);			
-		}
-
-		if ( operandBits <= 07 ) {
-			hiddenCPU.commonRegisters[ operandBits ] = value & 0xffff;
-			return 0;
-		}
-		if ( operandBits <= 0x0f ) {
-			memory.write( hiddenCPU.commonRegisters[ operandBits - 0x08 ] , value);
-			return 1;
-		}
-		if ( operandBits <= 0x17 ) {
-			final int nextWord = readNextWordAndAdvance();
-			writeMemoryWithOffsetAndWrapAround( hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord , value);
-			return 1;
-		}
-		switch( operandBits ) {
-			case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
-				push( value );
-				return 0;
-			case 0x19: // PEEK/[SP]
-				memory.write( hiddenCPU.sp , value );
-				return 0;
-			case 0x1a:
-				int nextWord = readNextWordAndAdvance();
-				Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true);
-				memory.write( dst , value );
-				return 1;
-			case 0x1b:
-				hiddenCPU.sp = Address.wordAddress( value );
-				return 0;
-			case 0x1c:
-				currentInstructionPtr = value;
-				return 0;
-			case 0x1d:
-				hiddenCPU.ex = value;
-				return 0;
-			case 0x1e:
-				nextWord = readNextWordAndAdvance();
-				memory.write( nextWord , value);
-				return 1;
-			default:
-				return handleIllegalTargetOperand(instructionWord); // assignment to literal value
-		}
-	}
-
-	private OperandDesc loadSourceOperand(int instructionWord) {
-
-		/* SET b,a
-		 * 
-		 * b = TARGET operand
-		 * a = SOURCE operand
-		 * 
-		 * Special opcodes always have their lower five bits unset, have one value and a
-		 * five bit opcode. In binary, they have the format: aaaaaaooooo00000
-		 * The value (a) is in the same six bit format as defined earlier.
-		 */
-
-		final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
-		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.commonRegisters[ operandBits ] );
-		}
-		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.commonRegisters[ operandBits - 0x08 ] ) , 1 );
-		}
-		if ( operandBits <= 0x17 ) {
-			final int nextWord = readNextWordAndAdvance();
-			return operandDesc( 
-			        readMemoryWithOffsetAndWrapAround( 
-			                hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
-		}
-		switch( operandBits ) {
-			case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
-				final OperandDesc tmp = operandDesc( memory.read( hiddenCPU.sp ) );
-				hiddenCPU.sp = hiddenCPU.sp.incrementByOne(true);                
-				return tmp;
-			case 0x19:
-				return operandDesc( memory.read( hiddenCPU.sp ) , 1 );
-			case 0x1a:
-				int nextWord = readNextWordAndAdvance();
-				final Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true );
-				return operandDesc( memory.read( dst ) , 1 );
-			case 0x1b:
-				return operandDesc( hiddenCPU.sp.getValue() );
-			case 0x1c:
-				return operandDesc( hiddenCPU.pc.getValue() );
-			case 0x1d:
-				return operandDesc( hiddenCPU.ex );
-			case 0x1e:
-				nextWord = readNextWordAndAdvance();
-				return operandDesc( memory.read( nextWord ) ,1 );
-			case 0x1f:
-				return operandDesc( readNextWordAndAdvance() , 1 );
-		}
-
-		// literal value: -1...30 ( 0x20 - 0x3f )
-		return operandDesc( operandBits - 0x21 , 0 ); 
-	}	
-
-	private int readMemoryWithOffsetAndWrapAround(int address,int offset) {
-		int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
-		return memory.read( realAddress );
-	}
-
-	private void writeMemoryWithOffsetAndWrapAround(int address,int offset,int value) {
-		int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
-		memory.write( realAddress , value );
-	}	
-
-	/**
-	 * 
-	 * @param instructionWord
-	 * @param specialInstruction
-	 * @param performIncrementDecrement Whether this invocation should also increment/decrement registers as necessary or 
-	 * whether this is handled by the caller (because a subsequent STORE will be performed )
-	 * @return
-	 */
-	protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
-		/* 
-		 * SET b,a
-		 * 
-		 * b = TARGET operand
-		 * a = SOURCE operand
-		 * 
-		 * SOURCE is always handled by the processor BEFORE TARGET, and is the lower five bits.
-		 * In bits (in LSB-0 format), a basic instruction has the format: 
-		 * 
-		 * aaaaaabbbbbooooo		 
-		 * 
-		 * SPECIAL opcodes always have their lower five bits unset, have one value and a
-		 * five bit opcode. In binary, they have the format: 
-		 * 
-		 * aaaaaaooooo00000
-		 * 
-		 * The value (a) is in the same six bit format as defined earlier.
-		 */
-
-		final int operandBits;
-
-		if ( specialInstruction ) {
-			operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
-		} else {
-			operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);			
-		}
-
-		if ( operandBits <= 0x07 ) {
-			return operandDesc( hiddenCPU.commonRegisters[ operandBits ] );
-		}
-		if ( operandBits <= 0x0f ) {
-			return operandDesc( memory.read( hiddenCPU.commonRegisters[ operandBits - 0x08 ] ) , 1 );
-		}
-		if ( operandBits <= 0x17 ) 
-		{
-			final int nextWord;
-			if ( performIncrementDecrement ) {
-				nextWord = readNextWordAndAdvance();
-			} else {
-				nextWord = memory.read( currentInstructionPtr );                
-			}
-			return operandDesc( readMemoryWithOffsetAndWrapAround(  hiddenCPU.commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
-		}
-
-		switch( operandBits ) {
-			case 0x18: // (POP / [SP++]) if in a
-				final OperandDesc tmp = operandDesc( memory.read( hiddenCPU.sp ) , 1 );
-				hiddenCPU.sp = hiddenCPU.sp.incrementByOne(true);
-				return tmp;
-			case 0x19:
-				return operandDesc( memory.read( hiddenCPU.sp ) , 1 );
-			case 0x1a:
-				int nextWord = 0;
-				if ( performIncrementDecrement ) {
-					nextWord = readNextWordAndAdvance();
-				} else {
-					nextWord = memory.read( currentInstructionPtr );                    
-				}
-				final Address dst = hiddenCPU.sp.plus( Address.wordAddress( nextWord ) , true );
-				return operandDesc( memory.read( dst ) , 1 );
-			case 0x1b:
-				return operandDesc( hiddenCPU.sp.getValue() );
-			case 0x1c:
-				return operandDesc( hiddenCPU.pc.getValue() );
-			case 0x1d:
-				return operandDesc( hiddenCPU.ex );
-			case 0x1e:
-				if ( performIncrementDecrement ) {
-					nextWord = readNextWordAndAdvance();
-				} else {
-					nextWord = memory.read( currentInstructionPtr );
-				}
-				return operandDesc( memory.read( nextWord ) ,1 );
-			case 0x1f:
-				if ( performIncrementDecrement ) {
-					nextWord = readNextWordAndAdvance();
-				} else {
-					nextWord = memory.read( currentInstructionPtr );                    
-				}
-				return operandDesc( nextWord , 1 );
-		}
-
-		// literal value: -1...30 ( 0x20 - 0x3f )
-		return operandDesc( operandBits - 0x21 , 0 ); 
 	}
 
 	protected static final class OperandDesc 
@@ -2282,11 +1191,11 @@ public final class Emulator implements IEmulator {
 		}
 	}
 
-	private OperandDesc operandDesc(int value) {
+	protected static OperandDesc operandDesc(int value) {
 		return new OperandDesc( value );
 	}
 
-	private OperandDesc operandDesc(int value,int cycleCount) {
+	protected static OperandDesc operandDesc(int value,int cycleCount) {
 		return new OperandDesc( value , cycleCount );
 	}
 
@@ -2872,8 +1781,13 @@ public final class Emulator implements IEmulator {
 		this.ignoreAccessToUnknownDevices = yesNo;
 	}
 	
-    protected static final class VisibleCPU implements ICPU {
+    protected final class VisibleCPU implements ICPU {
 
+        // transient, only used inside of executeOneInstruction() code path
+        public int currentInstructionPtr;
+        
+        public final MainMemory memory;
+        
         /* Register A = Index 0
          * Register B = Index 1
          * Register C = Index 2
@@ -2883,7 +1797,7 @@ public final class Emulator implements IEmulator {
          * Register I = Index 6
          * Register J = Index 7      
          */
-        public int[] commonRegisters = new int[ 8 ];
+        public final int[] commonRegisters = new int[ 8 ];
 
         public int ex;
 
@@ -2898,29 +1812,16 @@ public final class Emulator implements IEmulator {
 
         public int currentCycle;
 
-        public VisibleCPU() 
+        public VisibleCPU(MainMemory memory) 
         {
             pc = sp = interruptAddress = WordAddress.ZERO;
+            this.memory = memory;
         }
 
-        public VisibleCPU(VisibleCPU other) 
+        public void populateFrom(VisibleCPU other) 
         {
-            copyFrom(other);
-        }   
-        
-        public void copyFrom(VisibleCPU other) 
-        {
-            this.commonRegisters[0] = other.commonRegisters[0];
-            this.commonRegisters[1] = other.commonRegisters[1];
-            this.commonRegisters[2] = other.commonRegisters[2];
-            this.commonRegisters[3] = other.commonRegisters[3];
-            this.commonRegisters[4] = other.commonRegisters[4];
-            this.commonRegisters[5] = other.commonRegisters[5];
-            this.commonRegisters[6] = other.commonRegisters[6];
-            this.commonRegisters[7] = other.commonRegisters[7];
-            
+            System.arraycopy( other.commonRegisters , 0 , this.commonRegisters , 0 , 8 );
             this.ex = other.ex;
-
             this.pc = other.pc;
             this.sp = other.sp;
             this.interruptAddress = other.interruptAddress;
@@ -2987,7 +1888,9 @@ public final class Emulator implements IEmulator {
             interruptQueue.clear();
             sp = pc = interruptAddress = WordAddress.ZERO;
             ex = 0;
-            commonRegisters = new int[ 8 ];
+            for ( int i = 0 ; i < commonRegisters.length ; i++ ) {
+                commonRegisters[i]=0;
+            }
         }        
 
         @Override
@@ -3109,5 +2012,1091 @@ public final class Emulator implements IEmulator {
             return interruptQueue;
         }
 
-    }	
+        // ==============
+        
+        public int executeInstruction() 
+        {
+            currentInstructionPtr = pc.getValue();
+            
+            final int instructionWord = readNextWordAndAdvance();
+            
+            final int opCode = (instructionWord & 0x1f);
+
+            /*
+             *   |--- Basic opcodes (5 bits) ----------------------------------------------------
+             *   |C | VAL  | NAME     | DESCRIPTION
+             *   +---+------+----------+---------------------------------------------------------
+             *   |- | 0x00 | n/a      | special instruction - see below
+             *   |1 | 0x01 | SET b, a | sets b to a
+             *   |2 | 0x02 | ADD b, a | sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
+             *   |2 | 0x03 | SUB b, a | sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
+             *   |2 | 0x04 | MUL b, a | sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
+             *   |2 | 0x05 | MLI b, a | like MUL, but treat b, a as signed
+             *   |3 | 0x06 | DIV b, a | sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
+             *   |3 | 0x07 | DVI b, a | like DIV, but treat b, a as signed. Rounds towards 0
+             *   |3 | 0x08 | MOD b, a | sets b to b%a. if a==0, sets b to 0 instead.
+             *   |3 | 0x09 | MDI b, a | like MOD, but treat b, a as signed. Rounds towards 0
+             *   |1 | 0x0a | AND b, a | sets b to b&a
+             *   |1 | 0x0b | BOR b, a | sets b to b|a
+             *   |1 | 0x0c | XOR b, a | sets b to b^a
+             *   |2 | 0x0d | SHR b, a | sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
+             *   |2 | 0x0e | ASR b, a | sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
+             *   |2 | 0x0f | SHL b, a | sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+             *   |
+             *   |2+| 0x10 | IFB b, a | performs next instruction only if (b&a)!=0
+             *   |2+| 0x11 | IFC b, a | performs next instruction only if (b&a)==0
+             *   |2+| 0x12 | IFE b, a | performs next instruction only if b==a 
+             *   |2+| 0x13 | IFN b, a | performs next instruction only if b!=a 
+             *   |2+| 0x14 | IFG b, a | performs next instruction only if b>a 
+             *   |2+| 0x15 | IFA b, a | performs next instruction only if b>a (signed)
+             *   |2+| 0x16 | IFL b, a | performs next instruction only if b<a 
+             *   |2+| 0x17 | IFU b, a | performs next instruction only if b<a (signed)
+             *   |- | 0x18 | -        |
+             *   |- | 0x19 | -        |
+             *   |3 | 0x1a | ADX b, a | sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
+             *   |3 | 0x1b | SBX b, a | sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0 otherwise
+             *   |- | 0x1c | -        | 
+             *   |- | 0x1d | -        |
+             *   |2 | 0x1e | STI b, a | sets b to a, then increases I and J by 1
+             *   |2 | 0x1f | STD b, a | sets b to a, then decreases I and J by 1
+             *   +---+------+----------+----------------------------------------------------------           
+             */
+
+            switch( opCode ) {
+                case 0x00:
+                    return handleSpecialOpCode( instructionWord );
+                case 0x01:
+                    return handleSET( instructionWord );
+                case 0x02:
+                    return handleADD( instructionWord );
+                case 0x03:
+                    return handleSUB( instructionWord );
+                case 0x04:
+                    return handleMUL( instructionWord );
+                case 0x05:
+                    return handleMLI( instructionWord );
+                case 0x06:
+                    return handleDIV( instructionWord );
+                case 0x07:
+                    return handleDVI( instructionWord );
+                case 0x08:
+                    return handleMOD( instructionWord );
+                case 0x09:
+                    return handleMDI( instructionWord );
+                case 0x0a:
+                    return handleAND( instructionWord );
+                case 0x0b:
+                    return handleBOR( instructionWord );
+                case 0x0c:
+                    return handleXOR( instructionWord );
+                case 0x0d:
+                    return handleSHR( instructionWord );
+                case 0x0e:
+                    return handleASR( instructionWord );
+                case 0x0f:
+                    return handleSHL( instructionWord );
+                case 0x10:
+                    return handleIFB( instructionWord );
+                case 0x11:
+                    return handleIFC( instructionWord );
+                case 0x12:
+                    return handleIFE( instructionWord );
+                case 0x13:
+                    return handleIFN( instructionWord );
+                case 0x14:
+                    return handleIFG( instructionWord );
+                case 0x15:
+                    return handleIFA( instructionWord );
+                case 0x16:
+                    return handleIFL( instructionWord );
+                case 0x17:
+                    return handleIFU( instructionWord );
+                case 0x18:
+                case 0x19:
+                    return handleUnknownOpCode( instructionWord );
+                case 0x1a:
+                    return handleADX( instructionWord );
+                case 0x1b:
+                    return handleSBX( instructionWord );
+                case 0x1c:
+                case 0x1d:
+                    return handleUnknownOpCode( instructionWord );
+                case 0x1e:
+                    return handleSTI( instructionWord );
+                case 0x1f:
+                    return handleSTD( instructionWord );
+                default:
+                    return handleUnknownOpCode( instructionWord );
+            }
+        }
+
+        private int handleSTD(int instructionWord) {
+            // sets b to a, then decreases I and J by 1
+            // a,b,c,x,y,z,i,j
+            final OperandDesc source = loadSourceOperand( instructionWord );
+            final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
+            int address = --commonRegisters[6]; // registers[6]-=1; <<< I
+            if ( address < 0 ) {
+                commonRegisters[6] = (int) WordAddress.MAX_ADDRESS;
+            }
+            address = --commonRegisters[7]; // registers[7]-=1; <<< J
+            if ( address < 0 ) {
+                commonRegisters[7]= (int) WordAddress.MAX_ADDRESS;
+            }        
+            return cycles;
+        }
+
+        private int handleSTI(int instructionWord) {
+            // sets b to a, then increases I and J by 1
+            // a,b,c,x,y,z,i,j
+            final OperandDesc source = loadSourceOperand( instructionWord );
+
+            final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
+
+            int newWordAddress = ++commonRegisters[6]; // registers[6]+=1; <<< I
+            if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
+                commonRegisters[6] = 0;
+            }
+            newWordAddress = ++commonRegisters[7]; // registers[7]+=1; <<< J      
+            if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
+                commonRegisters[7] = 0;
+            }        
+            return cycles;
+        }
+
+        private int handleSBX(int instructionWord) 
+        {
+            // sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0001 if there's an overflow, 0x0 otherwise
+
+            OperandDesc source = loadSourceOperand( instructionWord );
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            boolean underflow = false;
+            boolean overflow = false;
+
+            final int b = target.value;
+            final int a = source.value;
+
+            final int step1 = b - a;
+            if ( step1 < 0 ) {
+                underflow = true;
+            }
+            final int step2 = step1 + ex;
+            if ( step2 > 65535 ) {
+                overflow = true;
+            }
+
+            if ( underflow ) {
+                ex = 0xffff;
+            } else if ( overflow ) {
+                ex = 0x0001;
+            } else {
+                ex = 0;
+            }
+            return 3+storeTargetOperand( instructionWord , step2 )+source.cycleCount;       
+        }
+
+        private int handleADX(int instructionWord) {
+            // sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value + source.value + ex;
+            if ( acc > 0xffff) {
+                ex = 0x0001;
+            } else {
+                ex = 0;
+            }
+            return 3+storeTargetOperand( instructionWord , acc)+source.cycleCount;
+        }
+
+        private int handleUnknownOpCode(int instructionWord) 
+        {
+            final Disassembler dis = new Disassembler();
+
+            // assume worst-case , each instruction only is one word
+            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , pc ).toSizeInWords().getValue();
+            List<DisassembledLine> lines = dis.disassemble( memory , Address.wordAddress( 0 ) , instructionCount , true );
+            for (DisassembledLine line : lines) {
+                out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
+            }
+            
+            Address lastValid = lastValidInstruction;
+            if ( lastValid == null ) {
+                lastValid = pc;
+            }
+            final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+
+                    " at address "+"0x"+Misc.toHexString( pc )+
+                    " (last valid PC: "+Misc.toHexString( lastValid )+")";
+            out.warn(msg );
+            throw new UnknownOpcodeException( msg , instructionWord & 0xffff );
+        }
+
+        private int handleIFU(int instructionWord) {
+            // performs next instruction only if b<a (signed)
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty = 0;
+            if ( signed( target.value ) >= signed( source.value ) ) 
+            {
+                penalty = handleConditionFailure();
+
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;           
+        }
+
+        private int handleConditionFailure() 
+        {
+            final boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
+
+            currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+
+            if ( skippedInstructionIsConditional ) 
+            {
+                currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+                return 2;
+            }
+            return 1;
+        }
+
+        private int handleIFL(int instructionWord) {
+            // performs next instruction only if b<a
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty = 0;
+            if ( target.value >= source.value ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;       
+        }
+
+        private int handleIFA(int instructionWord) {
+            // performs next instruction only if b>a (signed)
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty = 0;
+            if ( signed( target.value ) <= signed( source.value ) ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;       
+        }
+
+        private int handleIFG(int instructionWord) {
+            // performs next instruction only if b>a
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty=0;
+            if ( target.value <= source.value ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;           
+        }
+
+        private int handleIFN(int instructionWord) {
+            // performs next instruction only if b!=a
+            OperandDesc source = loadSourceOperand( instructionWord );
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty = 0;
+            if ( target.value == source.value ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;           
+        }
+
+        private int handleIFE(int instructionWord) {
+            // performs next instruction only if b==a
+            OperandDesc source = loadSourceOperand( instructionWord );
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty=0;
+            if ( target.value != source.value ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;       
+        }
+
+        private int handleIFC(int instructionWord) {
+            // performs next instruction only if (b&a)==0
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty = 0;
+            if ( (target.value & source.value) != 0 ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;
+        }
+
+        private int handleIFB(int instructionWord) {
+            // performs next instruction only if (b&a)!=0
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+
+            int penalty=0;
+            if ( (target.value & source.value) == 0 ) {
+                penalty = handleConditionFailure();
+            }
+            return 2+target.cycleCount+source.cycleCount+penalty;
+        }
+
+        private int handleSHL(int instructionWord) {
+            // sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value << source.value;
+            ex = (( target.value << source.value)>>16 ) & 0xffff;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleASR(int instructionWord) { // ASR b,a
+            // sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = signed( target.value ) >> source.value;
+            ex = (( signed( target.value ) << 16) >>> source.value ) & 0xffff;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleSHR(int instructionWord) {
+            //  sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value >>> source.value;
+            ex = (( target.value << 16)>>source.value ) & 0xffff;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleXOR(int instructionWord) 
+        {
+            //  sets b to b^a
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value ^ source.value;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleBOR(int instructionWord) 
+        {
+            //  sets b to b|a
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value | source.value;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+        }
+
+        private int handleAND(int instructionWord) {
+            // sets b to b&a
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value & source.value;
+            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleMDI(int instructionWord) {
+            // like MOD, but treat b, a as signed. Rounds towards 0
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc;
+            if ( source.value == 0 ) {
+                acc=0;
+            } else {
+                acc = signed( target.value ) % signed( source.value );
+            }
+            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+        }
+
+        private int handleMOD(int instructionWord) {
+            // sets b to b%a. if a==0, sets b to 0 instead.
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc;
+            if ( source.value == 0 ) {
+                acc=0;
+            } else {
+                acc = target.value % source.value;
+            }
+            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+        }
+
+        private int handleDVI(int instructionWord) {
+            // e DIV, but treat b, a as signed. Rounds towards 0
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc;
+            if ( source.value == 0 ) {
+                ex = 0;
+                acc=0;
+            } else {
+                acc = signed( target.value ) / signed( source.value );
+                ex = (( signed( target.value ) << 16) / signed( source.value) )& 0xffff;
+            }
+            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+        }
+
+        private int handleDIV(int instructionWord) 
+        {
+            /* set b (TARGET) ,a (SOURCE) 
+             * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
+             */
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc;
+            if ( source.value == 0 ) {
+                ex = 0;
+                acc=0;
+            } else {
+                acc = target.value / source.value;
+                ex = (( target.value << 16) / source.value) & 0xffff;
+            }
+            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleMLI(int instructionWord) {
+            //  like MUL, but treat b, a as signed
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int a = signed( target.value );
+            final int b = signed( source.value );
+
+            final int acc = a * b;
+            ex = ((a * b) >> 16 ) & 0xffff;       
+            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int signed( int value) 
+        {
+            if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
+                return value | 0xffff0000;
+            }
+            return value;
+        }
+
+        private int handleMUL(int instructionWord) 
+        {
+            // sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value * source.value;
+            ex = ((target.value * source.value) >> 16 ) & 0xffff;
+            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
+        }
+
+        private int handleSUB(int instructionWord) {
+            // sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
+            OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value - source.value;
+            if ( acc < 0 ) {
+                ex = 0xffff;
+            } else {
+                ex = 0;
+            }
+            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+        }
+
+        private int handleADD(int instructionWord) 
+        {
+            // sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
+            OperandDesc source = loadSourceOperand( instructionWord );
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+
+            final int acc = target.value + source.value;
+            if ( acc > 0xffff) {
+                ex = 0x0001;
+            } else {
+                ex = 0;
+            }
+            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
+        }
+
+        private int handleSET(int instructionWord) 
+        {
+            final OperandDesc desc = loadSourceOperand( instructionWord );
+            return 1+storeTargetOperand( instructionWord , desc.value ) + desc.cycleCount;
+        }
+        
+        private int handleSpecialOpCode(int instructionWord) {
+
+            final int opCode = ( instructionWord >>> 5 ) &0x1f;
+
+            /*
+             *  |--- Special opcodes: (5 bits) --------------------------------------------------
+             *  | C | VAL  | NAME  | DESCRIPTION
+             *  |---+------+-------+-------------------------------------------------------------
+             *  | - | 0x00 | n/a   | reserved for future expansion
+             *  | 3 | 0x01 | JSR a | pushes the address of the next instruction to the stack, then sets PC to a
+             *  | - | 0x02 | -     |
+             *  | - | 0x03 | -     |
+             *  | - | 0x04 | -     |
+             *  | - | 0x05 | -     |
+             *  | - | 0x06 | -     |
+             *  | 9 | 0x07 | HCF a | use sparingly
+             *  | 4 | 0x08 | INT a | triggers a software interrupt with message a
+             *  | 1 | 0x09 | IAG a | sets a to IA 
+             *  | 1 | 0x0a | IAS a | sets IA to a
+             *  | 3 | 0x0b | IAP a | if IA is 0, does nothing, otherwise pushes IA to the stack,
+             *  |   |      |       | then sets IA to a
+             *  | 2 | 0x0c | IAQ a | if a is nonzero, interrupts will be added to the queue
+             *  |   |      |       | instead of triggered. if a is zero, interrupts will be
+             *  |   |      |       | triggered as normal again
+             *  | - | 0x0d | -     |
+             *  | - | 0x0e | -     |
+             *  | - | 0x0f | -     |
+             *  | 2 | 0x10 | HWN a | sets a to number of connected hardware devices
+             *  | 4 | 0x11 | HWQ a | sets A, B, C, X, Y registers to information about hardware a
+             *  |   |      |       | A+(B<<16) is a 32 bit word identifying the hardware id
+             *  |   |      |       | C is the hardware version
+             *  |   |      |       | X+(Y<<16) is a 32 bit word identifying the manufacturer
+             *  | 4+| 0x12 | HWI a | sends an interrupt to hardware a
+             *  | - | 0x13 | -     |
+             *  | - | 0x14 | -     |
+             *  | - | 0x15 | -     |
+             *  | - | 0x16 | -     |
+             *  | - | 0x17 | -     |
+             *  | - | 0x18 | -     |
+             *  | - | 0x19 | -     |
+             *  | - | 0x1a | -     |
+             *  | - | 0x1b | -     |
+             *  | - | 0x1c | -     |
+             *  | - | 0x1d | -     |
+             *  | - | 0x1e | -     |
+             *  | - | 0x1f | -     |
+             *  |---+------+-------+-------------------------------------------------------------        
+             */
+
+            switch( opCode ) {
+                case 0x00:
+                    return handleUnknownOpCode( instructionWord );
+                case 0x01:
+                    return handleJSR( instructionWord );
+                case 0x02:
+                case 0x03:
+                case 0x04:
+                case 0x05:
+                case 0x06:
+                    return handleUnknownOpCode( instructionWord );
+                case 0x07:
+                    // HCF was removed in spec 1.7
+                    //          return handleHCF( instructionWord ); 
+                    return handleUnknownOpCode( instructionWord );
+                case 0x08:
+                    return handleINT( instructionWord );
+                case 0x09:
+                    return handleIAG( instructionWord );
+                case 0x0a:
+                    return handleIAS( instructionWord );
+                case 0x0b:
+                    return handleRFI( instructionWord );
+                case 0x0c:
+                    return handleIAQ( instructionWord );
+                case 0x0d:
+                case 0x0e:
+                case 0x0f:
+                    return handleUnknownOpCode( instructionWord );
+                case 0x10:
+                    return handleHWN( instructionWord );
+                case 0x11:
+                    return handleHWQ( instructionWord );
+                case 0x12:
+                    return handleHWI( instructionWord );
+                case 0x14:
+                case 0x15:
+                case 0x16:
+                case 0x17:
+                case 0x18:
+                case 0x19:
+                case 0x1a:
+                case 0x1b:
+                case 0x1c:
+                case 0x1d:
+                case 0x1e:
+                case 0x1f:
+                default:
+                    return handleUnknownOpCode( instructionWord );
+            }
+        }
+
+        private int handleHWI(int instructionWord) 
+        {
+            final OperandDesc operand = loadSourceOperand(instructionWord);
+            final int hardwareSlot = operand.value;
+
+            final IDevice device = getDeviceForSlot( hardwareSlot );
+
+            final int cyclesConsumed;
+            if ( device == null ) 
+            {
+                if ( ! ignoreAccessToUnknownDevices ) {
+                    LOG.error("handleHWI(): No device at slot #"+hardwareSlot);
+                    out.warn("No device at slot #"+hardwareSlot);
+                    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+                }
+                cyclesConsumed = 0;
+            } else {
+                try {
+                    cyclesConsumed = device.handleInterrupt( Emulator.this );
+                } 
+                catch(RuntimeException e) {
+                    if ( e instanceof DeviceErrorException) {
+                        throw e;
+                    }
+                    LOG.error("handleHWI(): Device "+device+" failed in handleInterrupt(): "+e.getMessage() , e );
+                    throw new DeviceErrorException("Device "+device+" failed in handleInterrupt(): "+e.getMessage() , device , e );
+                }
+            }
+            return 4+operand.cycleCount+cyclesConsumed;
+        }
+        
+        /*
+         * 
+         * b is always handled by the processor after a, and is the lower five bits.
+         * In bits (in LSB-0 format), a basic instruction has the format: 
+         * 
+         *    aaaaaabbbbbooooo
+         *    
+         * SET b,a
+         * 
+         * b = TARGET operand
+         * a = SOURCE operand
+         * 
+         * --- Values: (5/6 bits) ---------------------------------------------------------
+         * 
+         * | C | VALUE     | DESCRIPTION
+         * +---+-----------+----------------------------------------------------------------
+         * | 0 | 0x00-0x07 | register (A, B, C, X, Y, Z, I or J, in that order)
+         * | 0 | 0x08-0x0f | [register]
+         * | 1 | 0x10-0x17 | [register + next word]
+         * | 0 |      0x18 | (PUSH / [--SP]) if in TARGET, or (POP / [SP++]) if in SOURCE
+         * | 0 |      0x19 | [SP] / PEEK
+         * | 1 |      0x1a | [SP + next word] / PICK n
+         * | 0 |      0x1b | SP
+         * | 0 |      0x1c | PC
+         * | 0 |      0x1d | EX
+         * | 1 |      0x1e | [next word]
+         * | 1 |      0x1f | next word (literal)
+         * | 0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for SOURCE)
+         * +---+-----------+----------------------------------------------------------------     
+         */
+        private int storeTargetOperand(int instructionWord,int value) 
+        {
+            return storeTargetOperand( instructionWord , value , false );
+        }
+        private int storeTargetOperand(int instructionWord,int value,boolean isSpecialOpcode) 
+        {
+            final int operandBits;
+            /*
+             * Special opcodes always have their lower five bits unset, have one value and a
+             * five bit opcode. 
+             * 
+             * In binary, they have the format:    aaaaaaooooo00000
+             */
+            if ( isSpecialOpcode ) {
+                operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32);
+            } else {
+                operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);          
+            }
+
+            if ( operandBits <= 07 ) {
+                commonRegisters[ operandBits ] = value & 0xffff;
+                return 0;
+            }
+            if ( operandBits <= 0x0f ) {
+                memory.write( commonRegisters[ operandBits - 0x08 ] , value);
+                return 1;
+            }
+            if ( operandBits <= 0x17 ) {
+                final int nextWord = readNextWordAndAdvance();
+                writeMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord , value);
+                return 1;
+            }
+            switch( operandBits ) {
+                case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
+                    push( value );
+                    return 0;
+                case 0x19: // PEEK/[SP]
+                    memory.write( sp , value );
+                    return 0;
+                case 0x1a:
+                    int nextWord = readNextWordAndAdvance();
+                    Address dst = sp.plus( Address.wordAddress( nextWord ) , true);
+                    memory.write( dst , value );
+                    return 1;
+                case 0x1b:
+                    sp = Address.wordAddress( value );
+                    return 0;
+                case 0x1c:
+                    currentInstructionPtr = value;
+                    return 0;
+                case 0x1d:
+                    ex = value;
+                    return 0;
+                case 0x1e:
+                    nextWord = readNextWordAndAdvance();
+                    memory.write( nextWord , value);
+                    return 1;
+                default:
+                    return handleIllegalTargetOperand(instructionWord); // assignment to literal value
+            }
+        }
+        
+        private int readNextWordAndAdvance() {
+            final int word = memory.read( currentInstructionPtr );
+            currentInstructionPtr = (currentInstructionPtr+1) & 0xffff;
+            return word;
+        }        
+
+        private OperandDesc loadSourceOperand(int instructionWord) {
+
+            /* SET b,a
+             * 
+             * b = TARGET operand
+             * a = SOURCE operand
+             * 
+             * Special opcodes always have their lower five bits unset, have one value and a
+             * five bit opcode. In binary, they have the format: aaaaaaooooo00000
+             * The value (a) is in the same six bit format as defined earlier.
+             */
+
+            final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
+            if ( operandBits <= 0x07 ) {
+                return operandDesc( commonRegisters[ operandBits ] );
+            }
+            if ( operandBits <= 0x0f ) {
+                return operandDesc( memory.read( commonRegisters[ operandBits - 0x08 ] ) , 1 );
+            }
+            if ( operandBits <= 0x17 ) {
+                final int nextWord = readNextWordAndAdvance();
+                return operandDesc( 
+                        readMemoryWithOffsetAndWrapAround( 
+                                commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
+            }
+            switch( operandBits ) {
+                case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
+                    final OperandDesc tmp = operandDesc( memory.read( sp ) );
+                    sp = sp.incrementByOne(true);                
+                    return tmp;
+                case 0x19:
+                    return operandDesc( memory.read( sp ) , 1 );
+                case 0x1a:
+                    int nextWord = readNextWordAndAdvance();
+                    final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
+                    return operandDesc( memory.read( dst ) , 1 );
+                case 0x1b:
+                    return operandDesc( sp.getValue() );
+                case 0x1c:
+                    return operandDesc( pc.getValue() );
+                case 0x1d:
+                    return operandDesc( ex );
+                case 0x1e:
+                    nextWord = readNextWordAndAdvance();
+                    return operandDesc( memory.read( nextWord ) ,1 );
+                case 0x1f:
+                    return operandDesc( readNextWordAndAdvance() , 1 );
+            }
+
+            // literal value: -1...30 ( 0x20 - 0x3f )
+            return operandDesc( operandBits - 0x21 , 0 ); 
+        }   
+
+        private int readMemoryWithOffsetAndWrapAround(int address,int offset) {
+            int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
+            return memory.read( realAddress );
+        }
+
+        private void writeMemoryWithOffsetAndWrapAround(int address,int offset,int value) {
+            int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
+            memory.write( realAddress , value );
+        }   
+
+        /**
+         * 
+         * @param instructionWord
+         * @param specialInstruction
+         * @param performIncrementDecrement Whether this invocation should also increment/decrement registers as necessary or 
+         * whether this is handled by the caller (because a subsequent STORE will be performed )
+         * @return
+         */
+        protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
+            /* 
+             * SET b,a
+             * 
+             * b = TARGET operand
+             * a = SOURCE operand
+             * 
+             * SOURCE is always handled by the processor BEFORE TARGET, and is the lower five bits.
+             * In bits (in LSB-0 format), a basic instruction has the format: 
+             * 
+             * aaaaaabbbbbooooo      
+             * 
+             * SPECIAL opcodes always have their lower five bits unset, have one value and a
+             * five bit opcode. In binary, they have the format: 
+             * 
+             * aaaaaaooooo00000
+             * 
+             * The value (a) is in the same six bit format as defined earlier.
+             */
+
+            final int operandBits;
+
+            if ( specialInstruction ) {
+                operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
+            } else {
+                operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);           
+            }
+
+            if ( operandBits <= 0x07 ) {
+                return operandDesc( commonRegisters[ operandBits ] );
+            }
+            if ( operandBits <= 0x0f ) {
+                return operandDesc( memory.read( commonRegisters[ operandBits - 0x08 ] ) , 1 );
+            }
+            if ( operandBits <= 0x17 ) 
+            {
+                final int nextWord;
+                if ( performIncrementDecrement ) {
+                    nextWord = readNextWordAndAdvance();
+                } else {
+                    nextWord = memory.read( currentInstructionPtr );                
+                }
+                return operandDesc( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
+            }
+
+            switch( operandBits ) {
+                case 0x18: // (POP / [SP++]) if in a
+                    final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
+                    sp = sp.incrementByOne(true);
+                    return tmp;
+                case 0x19:
+                    return operandDesc( memory.read( sp ) , 1 );
+                case 0x1a:
+                    int nextWord = 0;
+                    if ( performIncrementDecrement ) {
+                        nextWord = readNextWordAndAdvance();
+                    } else {
+                        nextWord = memory.read( currentInstructionPtr );                    
+                    }
+                    final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
+                    return operandDesc( memory.read( dst ) , 1 );
+                case 0x1b:
+                    return operandDesc( sp.getValue() );
+                case 0x1c:
+                    return operandDesc( pc.getValue() );
+                case 0x1d:
+                    return operandDesc( ex );
+                case 0x1e:
+                    if ( performIncrementDecrement ) {
+                        nextWord = readNextWordAndAdvance();
+                    } else {
+                        nextWord = memory.read( currentInstructionPtr );
+                    }
+                    return operandDesc( memory.read( nextWord ) ,1 );
+                case 0x1f:
+                    if ( performIncrementDecrement ) {
+                        nextWord = readNextWordAndAdvance();
+                    } else {
+                        nextWord = memory.read( currentInstructionPtr );                    
+                    }
+                    return operandDesc( nextWord , 1 );
+            }
+
+            // literal value: -1...30 ( 0x20 - 0x3f )
+            return operandDesc( operandBits - 0x21 , 0 ); 
+        }
+        
+        private int handleHWQ(int instructionWord) {
+
+            // Sets A, B, C, X, Y registers to information about hardware a.
+
+            final OperandDesc operand = loadSourceOperand(instructionWord);
+            final int hardwareSlot = operand.value;
+
+            final IDevice device = getDeviceForSlot( hardwareSlot );
+            if ( device == null ) 
+            {
+                if ( ! ignoreAccessToUnknownDevices ) {
+                    LOG.error("handleHWQ(): No device at slot #"+hardwareSlot);
+                    out.warn("No device at slot #"+hardwareSlot);
+                    throw new InvalidDeviceSlotNumberException("No device at slot #"+hardwareSlot);
+                }
+
+                commonRegisters[0] = 0xffff;
+                commonRegisters[1] = 0xffff;
+                commonRegisters[2] = 0xffff;
+                commonRegisters[3] = 0xffff;
+                commonRegisters[4] = 0xffff;
+            } 
+            else {
+
+                /* sets A, B, C, X, Y registers to information about hardware a
+                 * 
+                 * A+(B<<16) is a 32 bit word identifying the hardware id
+                 * C is the hardware version
+                 * X+(Y<<16) is a 32 bit word identifying the manufacturer
+                 */
+
+                /* A+(B<<16) is a 32 bit word identifying the hardware id
+                 * 
+                 * A = LSB hardware ID (16 bit)
+                 * B = MSB hardware ID (16 bit)
+                 * C = hardware version
+                 * X = LSB manufacturer ID (16 bit)
+                 * Y = MSB manufacturer ID (16 bit)
+                 */
+                final DeviceDescriptor descriptor = device.getDeviceDescriptor();
+
+                commonRegisters[0] = (int) descriptor.getID() & 0xffff;
+                commonRegisters[1] = (int) ( ( descriptor.getID() >>> 16 ) & 0xffff );
+                commonRegisters[2] = descriptor.getVersion() & 0xffff;
+                commonRegisters[3] = (int) descriptor.getManufacturer() & 0xffff;
+                commonRegisters[4] = (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff );  
+            }
+
+            return 4+operand.cycleCount;
+        }
+
+        private int handleHWN(int instructionWord) 
+        {
+            // sets a to number of connected hardware devices
+            final int deviceCount;
+            synchronized( devices ) {
+                deviceCount=devices.size();
+            }
+            return 2 + storeTargetOperand( instructionWord , deviceCount , true );
+        }
+
+        private int handleIAQ(int instructionWord) {
+
+            /* if a is nonzero, interrupts will be added to the queue
+             * instead of triggered. if a is zero, interrupts will be
+             * triggered as normal again
+             */
+            final OperandDesc operand = loadSourceOperand( instructionWord );
+            setQueueInterrupts( operand.value != 0 );
+            return 2+operand.cycleCount;
+        }
+
+        private int handleRFI(int instructionWord) 
+        {
+            /*
+             *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
+       |      |       | pops PC from the stack
+             */
+            setQueueInterrupts( false );
+            commonRegisters[0] = pop(); // pop A from stack
+            currentInstructionPtr = pop(); // pop PC from stack
+            return 3;
+        }   
+        
+        private int handleIllegalTargetOperand(int instructionWord) 
+        {
+            final String msg = "Illegal target operand in instruction word 0x"+
+                    Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc );
+            LOG.error("handleIllegalTargetOperand(): "+msg);
+            out.warn( msg);
+            throw new InvalidTargetOperandException( msg );
+        }    
+
+        private int handleIAS(int instructionWord) 
+        {
+            // IAS a => sets IA to a
+            final OperandDesc operand = loadSourceOperand( instructionWord );
+            interruptAddress = Address.wordAddress( operand.value );
+            return 1+operand.cycleCount;
+        }
+
+        private int handleIAG(int instructionWord) {
+            // IAG a => sets A to IA
+            return 1+storeTargetOperand( instructionWord , interruptAddress.getValue() , true );
+        }
+
+        private int handleINT(int instructionWord) 
+        {
+            final OperandDesc operand = loadSourceOperand( instructionWord );
+            triggerInterrupt(new SoftwareInterrupt( operand.value ));
+            return 4+operand.cycleCount;
+        }
+
+        private int handleJSR(int instructionWord) 
+        {
+            // pushes the address of the next instruction to the stack, then sets PC to a
+            OperandDesc source= loadSourceOperand( instructionWord );
+            push( currentInstructionPtr );
+            currentInstructionPtr = source.value;
+            return 3+source.cycleCount;
+        }        
+ 
+        private int pop() 
+        {
+            // SET a, [SP++]
+            final int result = memory.read( sp );
+            sp= sp.incrementByOne(true);
+            return result;
+        }
+
+        private void push(int value) 
+        {
+            // SET [--SP] , blubb
+            sp = sp.decrementByOne();
+            memory.write( sp , value & 0xffff );
+        }           
+        
+        public boolean maybeProcessOneInterrupt() 
+        {
+            if ( interruptsEnabled() ) 
+            { 
+                final IInterrupt irq = getNextProcessableInterrupt( true );
+                if ( irq != null ) {
+                    processInterrupt( irq );
+                    return true;
+                }
+            }
+            return false;
+        }     
+
+        public void processInterrupt(IInterrupt irq) 
+        {
+            /* When IA is set to something other than 0, interrupts triggered on the DCPU-16
+             * will 
+             * 
+             * - push PC to the stack, 
+             * - push A to the stack
+             * - set the PC to IA
+             * - set A to the interrupt message
+             * 
+             * A well formed interrupt handler must 
+             * - pop A from the stack 
+             * - popping PC from the stack
+             * 
+             * when returning.       
+             */
+
+            // push PC to stack
+            // SET [ --SP ] , PC
+            push( pc.getValue() );
+
+            // push A to stack
+            push( commonRegisters[0] );
+
+            pc = interruptAddress;
+            commonRegisters[0] = irq.getMessage() & 0xffff;
+        }        
+    } // end of class: VisibleCPU	
 }

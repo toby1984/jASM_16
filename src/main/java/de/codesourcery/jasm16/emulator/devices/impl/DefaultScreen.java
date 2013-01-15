@@ -115,6 +115,8 @@ public final class DefaultScreen implements IDevice {
 
 	private volatile RefreshThread refreshThread = null;
 
+	private volatile boolean blinkingCharactersOnScreen = false;
+	private volatile boolean lastBlinkState;
 	private volatile boolean blinkState;
 
 	private final class RefreshThread extends Thread {
@@ -134,7 +136,7 @@ public final class DefaultScreen implements IDevice {
 				{
 					LockSupport.parkNanos( (1000 / 30) * 1000000 );
 
-					doFullVRAMRendering();
+					renderScreen();
 					int counter = fpsCounter++;
 					if ( (counter % 30) == 0 ) {
 						blinkState = ! blinkState;
@@ -261,6 +263,7 @@ public final class DefaultScreen implements IDevice {
 
 		public void setup(ConsoleScreen scr) {
 
+		    System.out.println("Reading glyphs from screen");
 			int adr = 0;
 			for ( int glyph = 0 ; glyph < 128 ; glyph++ ) {
 
@@ -280,7 +283,6 @@ public final class DefaultScreen implements IDevice {
 			super.write( address , value );
 			hasChanged = true;
 		}
-
 
 		@Override
 		public void write(int wordAddress, int value) 
@@ -306,10 +308,8 @@ public final class DefaultScreen implements IDevice {
 
 		public void defineAllGlyphs() {
 
-			if ( consoleScreen == null ) {
-				return;
-			}
-
+		    System.out.println("Defining all glyphs");
+		    
 			final int end = getSize().getSizeInWords();
 
 			for ( int wordAddress = 0 ; wordAddress < end ; wordAddress +=2 ) 
@@ -336,16 +336,15 @@ public final class DefaultScreen implements IDevice {
 
 	protected void setupDefaultFontRAM(ConsoleScreen screen) {
 
-		FontRAM tmpRAM = new FontRAM(Address.wordAddress( 0 ) );        
+		FontRAM tmpRAM = new FontRAM( Address.wordAddress( 0 ) );        
 		if ( useCustomFontRAM ) 
 		{
 			emulator.unmapRegion( fontRAM );
 			useCustomFontRAM = false;
 		}
 		fontRAM = tmpRAM;
-
 		if ( screen != null ) {
-			fontRAM.setup( screen );
+		    fontRAM.setup( screen );
 		}
 	}
 
@@ -532,7 +531,7 @@ public final class DefaultScreen implements IDevice {
 		emulator.mapRegion( newRAM );
 	}
 
-	private void doFullVRAMRendering()
+	private void renderScreen()
 	{
 		ConsoleScreen screen = screen();
 		if ( screen == null ) {
@@ -548,16 +547,23 @@ public final class DefaultScreen implements IDevice {
 		final boolean fontRAMChanged = fontRAM.hasChanged();
 		final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
 
-		if ( updateRequired ) 
+		if ( updateRequired || (blinkingCharactersOnScreen && lastBlinkState != blinkState) ) 
 		{ 
 			if ( fontRAMChanged ) 
 			{
 				fontRAM.defineAllGlyphs();
 			}
+			
 			final boolean blink = blinkState;
+			lastBlinkState = blink;
+			
+			boolean blinkingChars = false;
 			for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
-				renderMemoryValue( i , videoRAM.read( i ) , blink );
+			    blinkingChars |= renderMemoryValue( i , videoRAM.read( i ) , blink );
 			}        
+			
+			blinkingCharactersOnScreen = blinkingChars;
+			
 			repaintPeer(true);
 			
 			fontRAM.clearChanged();
@@ -598,7 +604,7 @@ public final class DefaultScreen implements IDevice {
 		}
 	}
 
-	protected void renderMemoryValue(int wordAddress , int memoryValue,boolean blinkState) 
+	protected boolean renderMemoryValue(int wordAddress , int memoryValue,boolean blinkState) 
 	{
 		/* The LEM1802 is a 128x96 pixel color display compatible with the DCPU-16.
 		 * The display is made up of 32x12 16 bit cells.
@@ -613,7 +619,6 @@ public final class DefaultScreen implements IDevice {
 		final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
 
 		if ( asciiCode != 0 ) {
-
 			/*
 			 * The video RAM is made up of 32x12 cells of the following bit format (in LSB-0):
 			 * 
@@ -636,6 +641,7 @@ public final class DefaultScreen implements IDevice {
 		} else {
 			consoleScreen.clearChar( column , row , paletteRAM.getColor( backgroundPalette ) );
 		}
+		return blink;
 	}
 
 	private Graphics2D getGraphics() 
