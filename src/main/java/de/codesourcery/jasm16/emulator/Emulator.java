@@ -58,8 +58,8 @@ import de.codesourcery.jasm16.utils.Misc;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public final class Emulator implements IEmulator {
-
+public final class Emulator implements IEmulator 
+{
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 
 	/**
@@ -78,6 +78,18 @@ public final class Emulator implements IEmulator {
 	private static final AtomicLong cmdId = new AtomicLong(0);
 
 	/**
+	 * Worker thread command types.
+	 *
+	 * @author tobias.gierke@code-sourcery.de
+	 */
+	protected enum CommandType {
+		START,
+		STOP,
+		TERMINATE,
+		SPEED_CHANGE;
+	}
+	
+	/**
 	 * Command to control the emulation's worker thread responsible
 	 * for the actual DCPU-16 instruction execution.
 	 *
@@ -92,49 +104,68 @@ public final class Emulator implements IEmulator {
 
 		private final long id = cmdId.incrementAndGet();
 
-		private final boolean isStopCommand;
-		private final boolean isTerminateCommand;
+		private final Object payload;
+		private final CommandType type;		
 		private final boolean requiresACK; 
 
 		public static Command terminateClockThread() {
-			return new Command(true,false,true);
+			return new Command(CommandType.TERMINATE , true );
 		}
 
 		public static Command stopCommandWithoutACK() {
-			return new Command(true,false,false);
+			return new Command(CommandType.TERMINATE,false);
 		}
 
 		public static Command stopCommand() {
-			return new Command(true,true,false);
+			return new Command(CommandType.STOP,true);
 		}
 
 		public static Command startCommand() {
-			return new Command(false,true,false);
-		}	    
-
-		protected Command(boolean isStopCommand,boolean requiresACK,boolean isTerminateCommand) {
-			this.isStopCommand=isStopCommand;
-			this.requiresACK = requiresACK;
-			this.isTerminateCommand = isTerminateCommand;
+			return new Command(CommandType.START, true);
 		}
+		
+		public static Command changeSpeedCommand(EmulationSpeed newSpeed) {
+			return new Command(CommandType.SPEED_CHANGE,true,newSpeed);
+		}
+		
+		protected Command(CommandType type, boolean requiresACK) {
+			this(type,requiresACK,null);
+		}
+		
+		protected Command(CommandType type, boolean requiresACK,Object payload) {
+			this.type = type;
+			this.payload = payload;
+			this.requiresACK = requiresACK;
+		}
+		
+		public Object getPayload() { return payload; }
+		
+		public boolean hasType(CommandType t) { return t.equals( this.type ); }
 
 		public boolean requiresACK() { return requiresACK; }
 
-		public boolean isTerminateCommand() { return isTerminateCommand; }	    
+		public boolean isTerminateCommand() { return type == CommandType.TERMINATE; }	    
 
-		public boolean isStopCommand() { return isStopCommand|| isTerminateCommand(); }
+		public boolean isStopCommand() { return type == CommandType.STOP|| type == CommandType.TERMINATE; }
 
-		public boolean isStartCommand() { return ! isStopCommand() || isTerminateCommand(); }   	    
+		/**
+		 * Check whether this is a command that should make the
+		 * worker thread enter it's main <code>while()</code> loop.
+		 * 
+		 * <p>When this method returns <code>true</code> , it does <b>not</b> mean
+		 * that the worker thread will actually start executing instructions , it will
+		 * only wake it up.
+		 * </p>
+		 * @return
+		 */
+		public boolean isStartWorkerMainLoopCommand() { return ! isStopCommand() || isTerminateCommand(); }   	    
 
 		public long getId() { return id; }
 
 		@Override
 		public String toString()
 		{
-			if ( isStopCommand ) {
-				return "STOP( "+id+" )";
-			} 
-			return "START( "+id+" )";
+			return type+" ( "+id+" )";
 		} 
 	}
 
@@ -360,7 +391,7 @@ public final class Emulator implements IEmulator {
 	private Address lastValidInstruction = null;
 	
 	// @GuardedBy( CPU_LOCK )
-	private final CPU hiddenCPU = new CPU(memory);
+	private final CPU cpu = new CPU(memory);
 	
 	// @GuardedBy( CPU_LOCK )
 	private final CPU visibleCPU = new CPU(memory);    
@@ -432,7 +463,7 @@ public final class Emulator implements IEmulator {
 		resetDevices();
 
 		synchronized( CPU_LOCK ) {
-		    hiddenCPU.reset();
+		    cpu.reset();
 			visibleCPU.reset();
 		}
 
@@ -468,19 +499,17 @@ public final class Emulator implements IEmulator {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see de.codesourcery.jasm16.emulator.IEmulator#stop()
-	 */
 	@Override
-	public void stop() {
-		stop( null  );
+	public boolean stop() {
+		return stop( null  );
 	}
 
-	protected void stop(final Throwable cause) 
+	protected boolean stop(final Throwable cause) 
 	{
 		this.lastEmulationError = cause;
 
-		if ( clockThread.stopSimulation() ) 
+		final boolean emulationWasRunning = clockThread.stopSimulation(); 
+		if ( emulationWasRunning ) 
 		{
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
@@ -510,11 +539,9 @@ public final class Emulator implements IEmulator {
 		for ( Breakpoint bp : internalBPs ) {
 			deleteBreakpoint( bp );
 		}
+		return emulationWasRunning;
 	}
 
-	/* (non-Javadoc)
-	 * @see de.codesourcery.jasm16.emulator.IEmulator#start()
-	 */
 	@Override
 	public void start() 
 	{
@@ -546,6 +573,7 @@ public final class Emulator implements IEmulator {
 	 */
 	public final class ClockThread extends Thread {
 
+		// values used for emulation speed calculations
 		private long lastStart = 0;
 		private int cycleCountAtLastStart=0;
 		private long lastStop = 0;
@@ -554,18 +582,108 @@ public final class Emulator implements IEmulator {
 		private final AtomicBoolean isRunnable = new AtomicBoolean(false);
 
 		private final BlockingQueue<Command> cmdQueue = new ArrayBlockingQueue<Command>(1);
-
 		private final BlockingQueue<Long> ackQueue = new ArrayBlockingQueue<Long>(300);
 
+		// execution delay loop parameters determined by calibrate() method
 		private volatile double adjustmentFactor = 1.0d;
 		private volatile int oneCycleDelay = -1;
 
+		// just a dummy value used in our delay loop 
 		private int dummy;		
+		
+		// the current emulation speed
+		private EmulationSpeed currentSpeed = emulationSpeed;
 
 		public ClockThread() 
 		{
 			setName("emulation-clock-thread");
 			setDaemon(true);
+		}
+
+		@Override
+		public void run() {
+
+			lastEmulationError = null;
+
+			Command cmd = waitForStartCommand();
+
+			if ( cmd.isTerminateCommand() ) {
+				out.info("Emulator thread terminated.");
+				acknowledgeCommand( cmd );
+				return;
+			}		   
+
+			lastStart = System.currentTimeMillis();
+			cycleCountAtLastStart=cpu.currentCycle;
+
+			acknowledgeCommand( cmd );			
+
+			while ( true ) 
+			{
+				if ( isRunnable.get() == false ) 
+				{
+				    //  halt execution
+					lastStop = System.currentTimeMillis();
+					cycleCountAtLastStop = cpu.currentCycle;
+
+					if ( DEBUG_LISTENER_PERFORMANCE ) 
+					{
+						for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
+							out.debug( entry.getKey()+" = "+entry.getValue()+" millis" );	
+						}
+					}
+
+					out.info("Emulator stopped.");
+					out.info("Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
+					out.info("Estimated clock rate: "+getEstimatedClockSpeed() );
+
+					cmd = waitForStopCommand();
+					
+					if ( cmd.isTerminateCommand() ) {
+						acknowledgeCommand( cmd );                        
+						break;
+					}
+					acknowledgeCommand( cmd );
+
+					cmd = waitForStartCommand();
+					
+					if ( cmd.isTerminateCommand() ) {
+						acknowledgeCommand( cmd );                        
+						break;
+					}   					
+
+					lastEmulationError = null;					
+					cycleCountAtLastStart = cpu.currentCycle;
+					
+					lastStart = System.currentTimeMillis();  
+					acknowledgeCommand(cmd);
+				}
+
+				/* ================
+				 * Execute ONE instruction
+				 * ================
+				 */
+				final int durationInCycles = internalExecuteOneInstruction();
+				
+				if ( currentSpeed == EmulationSpeed.REAL_SPEED ) 
+				{
+					// adjust execution speed every 10000 cycles
+					// to account for CPU load changes / JIT / different instruction profiles
+					if ( ( cpu.currentCycle % 10000 ) == 0 ) {
+						final double cyclesPerSecond = (cpu.currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart ) / 1000d);
+						adjustmentFactor = ( cyclesPerSecond / 100000.0d ); 
+					}
+					
+					// delay execution, this code is exactly the same code as the one timed in
+					// measureDelayLoop()
+					int j = (int) (oneCycleDelay*durationInCycles*adjustmentFactor);
+					for (  ; j > 0 ; j-- ) {
+						dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
+					}					
+				}
+			}
+
+			out.info("Emulator thread terminated.");
 		}
 
 		public void startSimulation() 
@@ -594,6 +712,10 @@ public final class Emulator implements IEmulator {
 			} 
 			return false;
 		}    		
+		
+		public void changeSpeed(EmulationSpeed newSpeed) {
+			sendToClockThread( Command.changeSpeedCommand( newSpeed ) );
+		}
 
 		private void sendToClockThread(Command cmd) 
 		{
@@ -717,14 +839,35 @@ public final class Emulator implements IEmulator {
 			}
 			return 0.0d;
 		}
+		
+		private Command waitForStopCommand()
+		{
+			return waitForCommand(false);
+		}
+		
+		private Command waitForStartCommand()
+		{
+			return waitForCommand(true);
+		}		
 
 		private Command waitForCommand(boolean expectingStartCommand) 
 		{
 			while ( true ) 
 			{
 				final Command result = safeTake( cmdQueue );
-				if ( ( expectingStartCommand && result.isStartCommand() ) ||
-						( ! expectingStartCommand && result.isStopCommand() ) ) 
+				
+				// note that everything that is NOT a stop/terminate command
+				// is considered to be a START command so we need to adjust
+				// the speed here before checking Command#isStartCommand()
+				if ( result.hasType( CommandType.SPEED_CHANGE ) ) {
+					currentSpeed = (EmulationSpeed) result.getPayload();
+					out.info("Emulation speed changed changed to "+currentSpeed);
+					acknowledgeCommand( result );
+					continue;
+				}
+				
+				if ( ( expectingStartCommand && result.isStartWorkerMainLoopCommand() ) ||
+					 ( ! expectingStartCommand && result.isStopCommand() ) ) 
 				{
 					return result;
 				}
@@ -738,99 +881,6 @@ public final class Emulator implements IEmulator {
 				safePut( ackQueue , cmd.getId() );
 			}
 		}
-
-		private Command waitForStopCommand()
-		{
-			return waitForCommand(false);
-		}		
-
-		private Command waitForStartCommand()
-		{
-			return waitForCommand(true);
-		}
-
-		@Override
-		public void run() {
-
-			lastEmulationError = null;
-
-			Command cmd = waitForStartCommand();
-
-			if ( cmd.isTerminateCommand() ) {
-				out.info("Emulator thread terminated.");
-				acknowledgeCommand( cmd );
-				return;
-			}		   
-
-			lastStart = System.currentTimeMillis();
-			cycleCountAtLastStart=hiddenCPU.currentCycle;
-
-			acknowledgeCommand( cmd );			
-
-			while ( true ) 
-			{
-				if ( isRunnable.get() == false ) 
-				{
-				    /*
-				     * Halt execution.
-				     */
-				    
-					lastStop = System.currentTimeMillis();
-					cycleCountAtLastStop = hiddenCPU.currentCycle;
-
-					if ( DEBUG_LISTENER_PERFORMANCE ) 
-					{
-						for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
-							out.debug( entry.getKey()+" = "+entry.getValue()+" millis" );	
-						}
-					}
-
-					out.info("Emulator stopped.");
-					out.info( "Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
-					out.info("Estimated clock rate: "+getEstimatedClockSpeed() );
-
-					cmd = waitForStopCommand();
-					
-					if ( cmd.isTerminateCommand() ) {
-						acknowledgeCommand( cmd );                        
-						break;
-					}
-					acknowledgeCommand( cmd );
-
-					cmd = waitForStartCommand();
-					
-					if ( cmd.isTerminateCommand() ) {
-						acknowledgeCommand( cmd );                        
-						break;
-					}   					
-
-					lastEmulationError = null;					
-					cycleCountAtLastStart = hiddenCPU.currentCycle;
-					
-					lastStart = System.currentTimeMillis();  
-					acknowledgeCommand(cmd);
-				}
-
-				final int durationInCycles = internalExecuteOneInstruction();
-				
-				if ( emulationSpeed == EmulationSpeed.REAL_SPEED ) 
-				{
-					if ( ( hiddenCPU.currentCycle % 10000 ) == 0 ) {
-						final double cyclesPerSecond = (hiddenCPU.currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart ) / 1000d);
-						// NOTE: 0.1 is a magic number determined on my i7 with JDK1.7.3 (32-bit) that accounts for the overhead of the if () condition and 
-						//       calculation of the actual delay loop iteration count
-						adjustmentFactor = ( cyclesPerSecond / 100000.0d ) - 0.1d; ; 
-					}
-					int j = (int) (oneCycleDelay*durationInCycles*adjustmentFactor);
-					for (  ; j > 0 ; j-- ) {
-						dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
-					}					
-				}
-			}
-
-			out.info("Emulator thread terminated.");
-		} // END: ClockThread
-
 	}
 
 	/**
@@ -849,7 +899,7 @@ public final class Emulator implements IEmulator {
 			{
 				try 
 				{
-					execDurationInCycles = hiddenCPU.executeInstruction();
+					execDurationInCycles = cpu.executeInstruction();
 	
 					lastValidInstruction = visibleCPU.pc;
 					
@@ -861,20 +911,20 @@ public final class Emulator implements IEmulator {
 						memory.writeProtect( new AddressRange( visibleCPU.pc , Size.words( sizeInWords )) );
 					}
 					
-					hiddenCPU.currentCycle+=execDurationInCycles;
-					hiddenCPU.pc = Address.wordAddress( hiddenCPU.currentInstructionPtr );
+					cpu.currentCycle+=execDurationInCycles;
+					cpu.pc = Address.wordAddress( cpu.currentInstructionPtr );
 					
-					hiddenCPU.maybeProcessOneInterrupt(); 
+					cpu.maybeProcessOneInterrupt(); 
 					
 					success = true;
 				} 
 				finally 
 				{
 					if ( success ) {
-						visibleCPU.populateFrom( hiddenCPU );
+						visibleCPU.populateFrom( cpu );
 					} else {
 					    // restore CPU register state on error
-					    hiddenCPU.populateFrom(visibleCPU);
+					    cpu.populateFrom(visibleCPU);
 					}
 				}
 			}
@@ -893,7 +943,7 @@ public final class Emulator implements IEmulator {
 		} 
 		finally 
 		{
-			afterCommandExecution( execDurationInCycles , hiddenCPU );
+			afterCommandExecution( execDurationInCycles , cpu );
 		}
 		return execDurationInCycles;
 	}
@@ -994,10 +1044,10 @@ public final class Emulator implements IEmulator {
     {
        synchronized(CPU_LOCK) 
        {
-           int adr = hiddenCPU.pc.getWordAddressValue();
+           int adr = cpu.pc.getWordAddressValue();
            adr += calculateInstructionSizeInWords( adr , memory );
-           hiddenCPU.pc = Address.wordAddress( adr );
-           visibleCPU.populateFrom( hiddenCPU );
+           cpu.pc = Address.wordAddress( adr );
+           visibleCPU.populateFrom( cpu );
        }
        afterCommandExecution( 0 , visibleCPU );
     }
@@ -1146,7 +1196,7 @@ public final class Emulator implements IEmulator {
 
 	@Override
 	public boolean canStepReturn() {
-		return isJSR( memory.read( hiddenCPU.pc ) );
+		return isJSR( memory.read( cpu.pc ) );
 	}
 
 	@Override
@@ -1156,8 +1206,8 @@ public final class Emulator implements IEmulator {
 			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
 		}
 
-		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( hiddenCPU.pc.getWordAddressValue() , memory );
-		final Address nextInstruction = hiddenCPU.pc.plus( Size.words( currentInstructionSizeInWords ) , true );
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( cpu.pc.getWordAddressValue() , memory );
+		final Address nextInstruction = cpu.pc.plus( Size.words( currentInstructionSizeInWords ) , true );
 		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
 		start();
 	}
@@ -1483,7 +1533,7 @@ public final class Emulator implements IEmulator {
 	@Override
 	public boolean triggerInterrupt(IInterrupt interrupt) 
 	{
-		return hiddenCPU.triggerInterrupt( interrupt );
+		return cpu.triggerInterrupt( interrupt );
 	}
 
 	public int addOrReplaceDevice(IDevice device) throws DeviceErrorException 
@@ -1696,6 +1746,10 @@ public final class Emulator implements IEmulator {
 		}
 
 		final EmulationSpeed oldSpeed = this.emulationSpeed;
+		
+		final boolean wasRunning = stop();
+		
+		clockThread.changeSpeed( newSpeed );
 		this.emulationSpeed = newSpeed;  		
 
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
@@ -1706,6 +1760,10 @@ public final class Emulator implements IEmulator {
 				listener.onEmulationSpeedChange( oldSpeed , newSpeed );
 			}
 		});           
+		
+		if ( wasRunning ) {
+			start();
+		}
 	}
 
 	@Override
@@ -3107,5 +3165,5 @@ public final class Emulator implements IEmulator {
             pc = interruptAddress;
             commonRegisters[0] = irq.getMessage() & 0xffff;
         }        
-    } // end of class: VisibleCPU	
+    } // end of class: CPU	
 }

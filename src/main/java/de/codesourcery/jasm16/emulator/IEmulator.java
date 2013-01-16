@@ -225,8 +225,9 @@ public interface IEmulator
      * Stop the emulation.
      * 
      * <p>Note that calling this method will also delete all one-shot breakpoints.</p>
+     * @return <code>true</code> if the emulation was currently running and has been stopped.
      */
-    public void stop();
+    public boolean stop();
     
     /**
      * Triggers an interrupt.
