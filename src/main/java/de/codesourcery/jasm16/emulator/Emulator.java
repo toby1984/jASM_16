@@ -69,8 +69,7 @@ public final class Emulator implements IEmulator {
 
 	private static final boolean DEBUG_LISTENER_PERFORMANCE = false;
 
-	private final IdentityHashMap<IEmulationListener,Long> listenerPerformance = 
-			new IdentityHashMap<IEmulationListener,Long>();
+	private final IdentityHashMap<IEmulationListener,Long> listenerPerformance =  new IdentityHashMap<IEmulationListener,Long>();
 
 	private final ClockThread clockThread;
 
@@ -78,12 +77,22 @@ public final class Emulator implements IEmulator {
 
 	private static final AtomicLong cmdId = new AtomicLong(0);
 
+	/**
+	 * Command to control the emulation's worker thread responsible
+	 * for the actual DCPU-16 instruction execution.
+	 *
+	 * <p>Command senders may request an acknowledge message
+	 * from the worker thread and block until it is received.Each
+	 * command carries a unique ID so that an
+	 * acknowledge message can be matched with the corresponding command.</p>
+	 * 
+	 * @author tobias.gierke@code-sourcery.de
+	 */
 	protected static final class Command {
 
 		private final long id = cmdId.incrementAndGet();
 
 		private final boolean isStopCommand;
-
 		private final boolean isTerminateCommand;
 		private final boolean requiresACK; 
 
@@ -109,29 +118,15 @@ public final class Emulator implements IEmulator {
 			this.isTerminateCommand = isTerminateCommand;
 		}
 
-		public boolean requiresACK() {
-			return requiresACK;
-		}
+		public boolean requiresACK() { return requiresACK; }
 
-		public boolean isTerminateCommand()
-		{
-			return isTerminateCommand;
-		}	    
+		public boolean isTerminateCommand() { return isTerminateCommand; }	    
 
-		public boolean isStopCommand()
-		{
-			return isStopCommand|| isTerminateCommand();
-		}
+		public boolean isStopCommand() { return isStopCommand|| isTerminateCommand(); }
 
-		public boolean isStartCommand()
-		{
-			return ! isStopCommand() || isTerminateCommand();
-		}   	    
+		public boolean isStartCommand() { return ! isStopCommand() || isTerminateCommand(); }   	    
 
-		public long getId()
-		{
-			return id;
-		}
+		public long getId() { return id; }
 
 		@Override
 		public String toString()
@@ -141,12 +136,15 @@ public final class Emulator implements IEmulator {
 			} 
 			return "START( "+id+" )";
 		} 
-
-
 	}
 
 	/**
 	 * Helper to manage IEmulationListeners. 
+	 * This class manages multiple internal lists , each for a specific listener type.
+	 * That way we avoid having to look-up listeners with a specific type each
+	 * time a notification needs to be send.
+	 * 
+	 * @author tobias.gierke@code-sourcery.de
 	 */
 	protected final class ListenerHelper {
 
@@ -331,16 +329,11 @@ public final class Emulator implements IEmulator {
 		}
 	}
 
-	private final AtomicLong lastStart = new AtomicLong(0);
-
 	private volatile boolean ignoreAccessToUnknownDevices=false;    
 	private volatile boolean checkMemoryWrites = false;
 
-	private volatile int cycleCountAtLastStart=0;
-	private final AtomicLong lastStop = new AtomicLong(0);
-	private volatile int cycleCountAtLastStop=0;
-
 	private volatile Throwable lastEmulationError = null;
+	
 	private volatile EmulationSpeed emulationSpeed = EmulationSpeed.MAX_SPEED;
 
 	// ============ BreakPoints =======
@@ -367,10 +360,10 @@ public final class Emulator implements IEmulator {
 	private Address lastValidInstruction = null;
 	
 	// @GuardedBy( CPU_LOCK )
-	private final VisibleCPU hiddenCPU = new VisibleCPU(memory);
+	private final CPU hiddenCPU = new CPU(memory);
 	
 	// @GuardedBy( CPU_LOCK )
-	private final VisibleCPU visibleCPU = new VisibleCPU(memory);    
+	private final CPU visibleCPU = new CPU(memory);    
 
 	// a,b,c,x,y,z,i,j
 	// all CPU registers needs to be thread-safe since the emulation runs in a separate thread
@@ -541,8 +534,23 @@ public final class Emulator implements IEmulator {
 		clockThread.start();
 	}
 
-	public class ClockThread extends Thread {
+	/**
+	 * Thread responsible for execution of the 
+	 * actual instruction emulation.
+	 * 
+	 * <p>This thread's main loop supports two
+	 * execution modes, either {@link EmulationSpeed#MAX_SPEED}
+	 * or {@link EmulationSpeed#REAL_SPEED}.</p>
+	 *
+	 * @author tobias.gierke@code-sourcery.de
+	 */
+	public final class ClockThread extends Thread {
 
+		private long lastStart = 0;
+		private int cycleCountAtLastStart=0;
+		private long lastStop = 0;
+		private int cycleCountAtLastStop=0;
+		
 		private final AtomicBoolean isRunnable = new AtomicBoolean(false);
 
 		private final BlockingQueue<Command> cmdQueue = new ArrayBlockingQueue<Command>(1);
@@ -626,20 +634,17 @@ public final class Emulator implements IEmulator {
 
 		public double getRuntimeInSeconds() 
 		{
-			final long start = lastStart.get();
-			final long stop = lastStop.get();
-
-			if ( start != 0 && stop != 0 )
+			if ( lastStart != 0 && lastStop != 0 )
 			{
-				final long delta = stop - start;
+				final long delta = lastStop - lastStart;
 				if ( delta >= 0) {
 					return delta / 1000.0d;
 				}
-				LOG.error("getRuntimeInSeconds(): Negative runtime ? "+delta+" ( lastStart: "+start+" / lastStop: "+stop,new Exception());
+				LOG.error("getRuntimeInSeconds(): Negative runtime ? "+delta+" ( lastStart: "+lastStart+" / lastStop: "+lastStop,new Exception());
 				throw new RuntimeException("Unreachable code reached");				
-			} else if ( start != 0 ) {
-				return ( (double) System.currentTimeMillis() - (double) start) / 1000.0d;
-			} else if ( start == 0 && stop == 0 ) {
+			} else if ( lastStart != 0 ) {
+				return ( (double) System.currentTimeMillis() - (double) lastStart) / 1000.0d;
+			} else if ( lastStart == 0 && lastStop == 0 ) {
 				return 0;
 			}
 			LOG.error("getRuntimeInSeconds(): Unreachable code reached");
@@ -703,7 +708,7 @@ public final class Emulator implements IEmulator {
 
 		public double getCyclesPerSecond() 
 		{
-			if ( lastStart.get() != 0 )
+			if ( lastStart != 0 )
 			{
 				final double runtime = getRuntimeInSeconds();
 				if ( runtime != 0.0d ) {
@@ -757,7 +762,7 @@ public final class Emulator implements IEmulator {
 				return;
 			}		   
 
-			lastStart.set( System.currentTimeMillis() );
+			lastStart = System.currentTimeMillis();
 			cycleCountAtLastStart=hiddenCPU.currentCycle;
 
 			acknowledgeCommand( cmd );			
@@ -770,7 +775,7 @@ public final class Emulator implements IEmulator {
 				     * Halt execution.
 				     */
 				    
-					lastStop.set( System.currentTimeMillis() );
+					lastStop = System.currentTimeMillis();
 					cycleCountAtLastStop = hiddenCPU.currentCycle;
 
 					if ( DEBUG_LISTENER_PERFORMANCE ) 
@@ -785,6 +790,7 @@ public final class Emulator implements IEmulator {
 					out.info("Estimated clock rate: "+getEstimatedClockSpeed() );
 
 					cmd = waitForStopCommand();
+					
 					if ( cmd.isTerminateCommand() ) {
 						acknowledgeCommand( cmd );                        
 						break;
@@ -792,15 +798,16 @@ public final class Emulator implements IEmulator {
 					acknowledgeCommand( cmd );
 
 					cmd = waitForStartCommand();
+					
 					if ( cmd.isTerminateCommand() ) {
 						acknowledgeCommand( cmd );                        
 						break;
 					}   					
 
 					lastEmulationError = null;					
-					lastStart.set( System.currentTimeMillis() );   
 					cycleCountAtLastStart = hiddenCPU.currentCycle;
-
+					
+					lastStart = System.currentTimeMillis();  
 					acknowledgeCommand(cmd);
 				}
 
@@ -809,7 +816,7 @@ public final class Emulator implements IEmulator {
 				if ( emulationSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
 					if ( ( hiddenCPU.currentCycle % 10000 ) == 0 ) {
-						final double cyclesPerSecond = (hiddenCPU.currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart.get() ) / 1000d);
+						final double cyclesPerSecond = (hiddenCPU.currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart ) / 1000d);
 						// NOTE: 0.1 is a magic number determined on my i7 with JDK1.7.3 (32-bit) that accounts for the overhead of the if () condition and 
 						//       calculation of the actual delay loop iteration count
 						adjustmentFactor = ( cyclesPerSecond / 100000.0d ) - 0.1d; ; 
@@ -907,7 +914,7 @@ public final class Emulator implements IEmulator {
 	 * 
 	 * @param executedCommandDuration duration (in cycles) of last command or -1 if execution failed with an internal emulator error
 	 */
-	protected void afterCommandExecution(final int executedCommandDuration,VisibleCPU hiddenCPU) 
+	protected void afterCommandExecution(final int executedCommandDuration,CPU hiddenCPU) 
 	{
 		// invoke listeners
 		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable.get() , executedCommandDuration );
@@ -916,7 +923,7 @@ public final class Emulator implements IEmulator {
 		maybeHandleBreakpoint(hiddenCPU);
 	}
 
-	private void maybeHandleBreakpoint(VisibleCPU hiddenCPU) 
+	private void maybeHandleBreakpoint(CPU hiddenCPU) 
 	{
 		/*
 		 * We can have at most 2 breakpoints at any address,
@@ -1781,7 +1788,7 @@ public final class Emulator implements IEmulator {
 		this.ignoreAccessToUnknownDevices = yesNo;
 	}
 	
-    protected final class VisibleCPU implements ICPU {
+    protected final class CPU implements ICPU {
 
         // transient, only used inside of executeOneInstruction() code path
         public int currentInstructionPtr;
@@ -1812,13 +1819,13 @@ public final class Emulator implements IEmulator {
 
         public int currentCycle;
 
-        public VisibleCPU(MainMemory memory) 
+        public CPU(MainMemory memory) 
         {
             pc = sp = interruptAddress = WordAddress.ZERO;
             this.memory = memory;
         }
 
-        public void populateFrom(VisibleCPU other) 
+        public void populateFrom(CPU other) 
         {
             System.arraycopy( other.commonRegisters , 0 , this.commonRegisters , 0 , 8 );
             this.ex = other.ex;
