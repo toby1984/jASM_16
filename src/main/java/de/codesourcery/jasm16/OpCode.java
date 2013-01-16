@@ -334,8 +334,8 @@ public enum OpCode
 
     protected static final class OperandDesc 
     {
-        private final int operandBits;
-        private final boolean appendAsWord;
+        public final int operandBits;
+        public final boolean appendAsWord;
 
         protected OperandDesc(int operandBits) {
             this( operandBits, false);
@@ -367,7 +367,7 @@ public enum OpCode
     public boolean isValidAddressingMode(OperandPosition position, AddressingMode type) {
         return true;
     }
-
+    
     private static Map<String,OpCode> getLowerCaseMap() {
         if ( LOWER_CASE_MAP == null ) {
             LOWER_CASE_MAP = new HashMap<String,OpCode>();
@@ -440,6 +440,14 @@ public enum OpCode
 		return 6;
 	}
 
+	/**
+	 * Generates object code for a given instruction.
+	 * 
+	 * @param context
+	 * @param instruction
+	 * @return object code or <code>null</code> if no object code could be generated because
+	 * this method was unable to determine the operands sizes (probably because symbols could not be resolved)
+	 */
 	public byte[] generateObjectCode(ICompilationContext context , InstructionNode instruction) 
     {
         final byte[] buffer = new byte[6]; // max. instruction length: three words (3*2 bytes)
@@ -467,8 +475,8 @@ public enum OpCode
         return null;
     }
 
-    private int writeInstruction(ICompilationContext context,OperandNode targetOperand , OperandNode sourceOperand, byte[] buffer) {
-
+    private int writeInstruction(ICompilationContext context,OperandNode targetOperand , OperandNode sourceOperand, byte[] buffer) 
+    {
         /*
          * Instructions are 1-3 words long and are fully defined by the first word.
          * In a basic instruction, the lower FIVE bits of the first word of the instruction
@@ -498,7 +506,7 @@ public enum OpCode
         final int OPCODE_BITS = 5;
         
         final boolean inlineLiterals = ! context.hasCompilerOption(CompilerOption.DISABLE_INLINING ) &&
-                                         ! context.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_TABLE );
+                                         ! context.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION );
         
         if ( isSpecialOpCode() ) 
         {

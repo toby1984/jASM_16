@@ -43,7 +43,8 @@ public class StatementNode extends ASTNode
 			mergeWithAllTokensTextRegion( context.parseWhitespace() );
 		}
 
-		if ( ! context.eof() ) {
+		if ( ! context.eof() ) 
+		{
 			if ( context.peek().hasType( TokenType.COLON ) || 
 				 context.peek().hasType( TokenType.DOT ) || 
 				 context.peek().hasType( TokenType.CHARACTERS ) ) 

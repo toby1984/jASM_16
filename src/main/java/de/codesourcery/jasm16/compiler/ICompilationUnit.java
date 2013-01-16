@@ -39,6 +39,13 @@ public interface ICompilationUnit {
 	 * @return
 	 */
 	public IResource getResource();
+	
+	/**
+	 * Returns the relocation table for this compilation unit.
+	 * 
+	 * @return
+	 */
+	public RelocationTable getRelocationTable();
 
 	/**
 	 * Returns a unique identifier for this compilation unit.

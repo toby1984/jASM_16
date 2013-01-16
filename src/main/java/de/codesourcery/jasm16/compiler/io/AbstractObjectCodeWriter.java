@@ -101,7 +101,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
             close();
         } catch(IOException e) {
             // ok
-        }
+        } 
         deleteOutputHook();
     }
         

@@ -284,7 +284,7 @@ public class DefaultKeyboard implements IDevice {
         }
 	}
 	
-	public void setInputComponent(Component comp) 
+	public void attach(Component comp) 
 	{
 		if ( this.inputComponent != null ) {
 			this.inputComponent.removeKeyListener( keyListener );
@@ -293,6 +293,14 @@ public class DefaultKeyboard implements IDevice {
 		if ( this.inputComponent != null ) {
 			this.inputComponent.addKeyListener( keyListener );
 		}
+	}
+	
+	public void detach() 
+	{
+	    if ( this.inputComponent != null ) {
+	        this.inputComponent.removeKeyListener( keyListener );
+	    }
+	    this.inputComponent = null;
 	}
 
 	private void clearKeyboardBuffers() {

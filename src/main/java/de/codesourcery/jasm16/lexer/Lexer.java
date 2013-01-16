@@ -258,6 +258,11 @@ public final class Lexer implements ILexer {
 
     private void handleString(String s, int length , int startIndex) 
     {
+        /*
+         * Note that all comparisons here are ordered by
+         * their probabilities (more likely checks come first).
+         */
+        
         if ( s.length() == 0 || length <= 0 ) {
             return;
         }
@@ -283,7 +288,17 @@ public final class Lexer implements ILexer {
         if ( "pop".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.POP , buffer , startIndex ) );
             return ;
-        }		
+        }	
+        
+        if ( ".word".equalsIgnoreCase( buffer ) || "dat".equalsIgnoreCase( buffer ) || ".dat".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.INITIALIZED_MEMORY_WORD , buffer , startIndex ) );
+            return ;
+        }   
+        
+        if ( ".equ".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.EQUATION , buffer , startIndex ) );
+            return ;            
+        }        
         
         if ( "pick".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.PICK , buffer , startIndex ) );
@@ -305,11 +320,6 @@ public final class Lexer implements ILexer {
             return ;        	
         }
         
-        if ( ".word".equalsIgnoreCase( buffer ) || "dat".equalsIgnoreCase( buffer ) || ".dat".equalsIgnoreCase( buffer ) ) {
-            currentTokens.add( new Token(TokenType.INITIALIZED_MEMORY_WORD , buffer , startIndex ) );
-            return ;
-        }      
-        
         if ( "reserve".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.UNINITIALIZED_MEMORY_WORDS , buffer , startIndex ) );
             return ;
@@ -319,11 +329,6 @@ public final class Lexer implements ILexer {
             currentTokens.add( new Token(TokenType.UNINITIALIZED_MEMORY_BYTES , buffer , startIndex ) );
             return ;
         }		
-        
-        if ( "org".equalsIgnoreCase( buffer )  || ".org".equalsIgnoreCase( buffer )  || ".origin".equalsIgnoreCase( buffer ) ) {
-            currentTokens.add( new Token(TokenType.ORIGIN , buffer , startIndex ) );
-            return ;
-        }
         
         if ( ".include".equals( buffer ) || "include".equalsIgnoreCase( buffer) || ".incsource".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.INCLUDE_SOURCE, buffer , startIndex ) );
@@ -335,10 +340,10 @@ public final class Lexer implements ILexer {
             return ;
         }
         
-        if ( ".equ".equalsIgnoreCase( buffer ) ) {
-            currentTokens.add( new Token(TokenType.EQUATION , buffer , startIndex ) );
-            return ;        	
-        }
+        if ( "org".equalsIgnoreCase( buffer )  || ".org".equalsIgnoreCase( buffer )  || ".origin".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.ORIGIN , buffer , startIndex ) );
+            return ;
+        }    
         
         if ( buffer.contains("." ) ) {
             

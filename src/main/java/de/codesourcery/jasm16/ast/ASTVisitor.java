@@ -68,7 +68,6 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 		} else {
 			throw new RuntimeException("Unhandled node class: "+n.getClass());
 		}
-			
 	}
 	
     @Override

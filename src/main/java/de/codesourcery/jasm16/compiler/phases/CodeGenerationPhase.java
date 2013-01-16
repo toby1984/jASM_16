@@ -115,7 +115,8 @@ public class CodeGenerationPhase extends CompilerPhase {
                 {
                     if ( n instanceof ObjectCodeOutputNode ) 
                     {
-                        try {
+                        try 
+                        {
                             ((ObjectCodeOutputNode) n).writeObjectCode( writer, compContext );
                         }
                         catch (Exception e) 

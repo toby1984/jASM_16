@@ -71,7 +71,7 @@ public class WordAddress extends Address
     public Address incrementByOne(boolean wrap)
     {
         final int newValue;
-        if ( wrap) {
+        if ( wrap ) {
             newValue = (int) ( (getValue()+1) % (WordAddress.MAX_ADDRESS+1) );
         } else {
             newValue = getValue()+1;

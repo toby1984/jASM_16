@@ -91,7 +91,7 @@ public class ViewContainerManager implements IViewContainerListener
         removeViewContainer( container );
     }
     
-    public DebuggingPerspective getOrCreateDebuggingPerspective(IAssemblyProject optionsProvider) {
+    public DebuggingPerspective getOrCreateDebuggingPerspective() {
 
 		final List<? extends IViewContainer> perspectives = 
 				getPerspectives( DebuggingPerspective.ID );
@@ -106,14 +106,10 @@ public class ViewContainerManager implements IViewContainerListener
 			} 
 		}
 
-	    final List<IViewContainer> editorContainer = 
-	    		getPerspectives( EditorContainer.VIEW_ID );
+	    final List<IViewContainer> editorContainer = getPerspectives( EditorContainer.VIEW_ID );
 	      
 		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( optionsProvider , 
-				workspace , 
-				applicationConfig , 
-		        editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
+		final DebuggingPerspective p=new DebuggingPerspective( workspace , applicationConfig , editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
 		addViewContainer( p );
 		p.setVisible( true );
 	    p.toFront();	

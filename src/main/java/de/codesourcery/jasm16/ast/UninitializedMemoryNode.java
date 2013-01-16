@@ -29,11 +29,10 @@ import de.codesourcery.jasm16.parser.IParseContext;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class UninitializedMemoryNode extends ObjectCodeOutputNode
+public class UninitializedMemoryNode extends ObjectCodeOutputNode implements IPreprocessorDirective
 {
-	private Address address;
 	private int sizeInBytes;
-
+	
 	public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
 	{
 		return Address.alignTo16Bit( sizeInBytes );
@@ -73,14 +72,14 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
     {
         final UninitializedMemoryNode result = new UninitializedMemoryNode();
         result.sizeInBytes = sizeInBytes;
-        result.address = address;
+        result.setAddress( getAddress() );
         return result;
     }
     
     @Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {
-    	address = writer.getCurrentWriteOffset();
+        setAddress( writer.getCurrentWriteOffset() );
         final int bytesToWrite = Address.alignTo16Bit( sizeInBytes );
         final byte[] data = new byte[ bytesToWrite ];
         writer.writeObjectCode( data );
@@ -96,9 +95,4 @@ public class UninitializedMemoryNode extends ObjectCodeOutputNode
     public boolean supportsChildNodes() {
         return false;
     }    
-    
-    @Override
-    public Address getAddress() {
-		return address;
-	}
 }

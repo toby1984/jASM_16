@@ -16,7 +16,13 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.log4j.Logger;
 
@@ -48,9 +54,9 @@ public class DebuggingPerspective extends Perspective
     public static final String ID = "debugger";
 
     private final IResourceResolver resourceResolver;
-    private final IAssemblyProject optionsProvider;
     private final IWorkspace workspace;
-    private IEmulator emulator;
+
+    private final EmulatorProxy proxy = new EmulatorProxy();
 
     private IAssemblyProject project;
     private IResource executable;
@@ -66,7 +72,7 @@ public class DebuggingPerspective extends Perspective
                 dispose();
             }
         }
-        
+
         public void projectClosed(IAssemblyProject closedProject) {
             if ( closedProject.isSame( project ) ) 
             {
@@ -141,23 +147,19 @@ public class DebuggingPerspective extends Perspective
     };
 
 
-    public DebuggingPerspective(IAssemblyProject optionsProvider , 
-    		IWorkspace workspace ,
-    		IApplicationConfig appConfig,
-    		IResourceResolver resourceResolver)
+    public DebuggingPerspective(IWorkspace workspace ,
+            IApplicationConfig appConfig,
+            IResourceResolver resourceResolver)
     {
         super(ID, appConfig);
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }
         this.resourceResolver = resourceResolver;
-        this.optionsProvider = optionsProvider;
         this.workspace = workspace;
         this.workspace.addWorkspaceListener( workspaceListener );
-        this.emulator = optionsProvider.getEmulationOptions().createEmulator();
-        this.emulator.addEmulationListener( listener );
     }
-    
+
     public IResourceResolver getResourceResolver()
     {
         return resourceResolver;
@@ -169,20 +171,32 @@ public class DebuggingPerspective extends Perspective
         try {
             workspace.removeWorkspaceListener( workspaceListener );
             super.dispose();
-        } finally {
-        	if ( this.emulator != null ) {
-        		try {
-        			this.emulator.dispose();
-        		} finally {
-        			this.emulator = null;
-        		}
-        	}
+        } 
+        finally {
+            if ( emulator() != null ) {
+                try {
+                    this.emulator().dispose();
+                } finally {
+                    this.proxy.setTarget( null );
+                }
+            }
         }
+    }
+
+    private IEmulator emulator() {
+        return proxy.hasTarget() ? proxy.getProxyInstance() : null;
     }
 
     public void openExecutable(IAssemblyProject project,IResource executable) throws IOException 
     {
-        emulator.reset( true );
+        if ( emulator() != null ) 
+        {
+            this.emulator().dispose();
+            this.proxy.setTarget( project.getEmulationOptions().createEmulator() );
+        } else {
+            this.proxy.setTarget( project.getEmulationOptions().createEmulator() );
+            this.emulator().addEmulationListener( listener );            
+        }
 
         // set project & executable BEFORE loading object code
         // so any IEmulationListener that implements #afterMemoryLoad() 
@@ -192,7 +206,7 @@ public class DebuggingPerspective extends Perspective
         this.executable = executable;
 
         final byte[] objectCode = Misc.readBytes( executable );
-        emulator.loadMemory( Address.wordAddress( 0 ) , objectCode ); // triggers IEmulationListener#afterMemoryLoad()
+        emulator().loadMemory( Address.wordAddress( 0 ) , objectCode ); // triggers IEmulationListener#afterMemoryLoad()
     }
 
     public IAssemblyProject getCurrentProject()
@@ -200,13 +214,19 @@ public class DebuggingPerspective extends Perspective
         return project;
     }
 
+    public void reloadEmulator() 
+    {
+        if ( emulator() != null && project != null ) 
+        {
+            this.emulator().dispose();
+            this.proxy.setTarget( project.getEmulationOptions().createEmulator() );
+        } 
+    }
+
     public void resetEmulator() 
     {
-        try {
-            openExecutable( this.project , this.executable );
-        } 
-        catch(Exception e) {
-            LOG.error("resetEmulator(): ",e);
+        if ( emulator() != null ) {
+            emulator().reset( true );
         }
     }
 
@@ -214,35 +234,35 @@ public class DebuggingPerspective extends Perspective
 
         // setup CPU view
         if ( getCPUView() == null ) {
-            CPUView view = new CPUView( emulator );
+            CPUView view = new CPUView( emulator() );
             addView( view );
             view.refreshDisplay();
         }
 
         // setup disassembler view
         if ( getDisassemblerView() == null ) {
-            DisassemblerView view = new DisassemblerView( this, emulator );
+            DisassemblerView view = new DisassemblerView( this, emulator() );
             addView( view );
             view.refreshDisplay();
         }
 
         // setup stack view
         if ( getStackView() == null ) {
-            StackView view = new StackView( emulator );
+            StackView view = new StackView( emulator() );
             addView( view );
             view.refreshDisplay();
         }        
 
         // setup hex-dump view
         if ( getHexDumpView() == null ) {
-            final HexDumpView view = new HexDumpView( emulator );
+            final HexDumpView view = new HexDumpView( emulator() );
             addView( view );
             view.refreshDisplay();
         }           
 
         // setup screen view
         if ( getScreenView() == null ) {
-            final ScreenView view = new ScreenView( optionsProvider , emulator );
+            final ScreenView view = new ScreenView( project , emulator() );
             view.setDebugCustomFonts( false );
             addView( view );
             view.refreshDisplay();
@@ -250,14 +270,14 @@ public class DebuggingPerspective extends Perspective
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) {
-            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator , optionsProvider );
+            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator() , project );
             addView( view );
             view.refreshDisplay();            
         }
 
         // setup screen view
         if ( getBreakpointView() == null ) {
-            final BreakpointView view = new BreakpointView( getDisassemblerView() , getSourceLevelDebugView() , emulator );
+            final BreakpointView view = new BreakpointView( getDisassemblerView() , getSourceLevelDebugView() , emulator() );
             addView( view );
             view.refreshDisplay();
         }    
@@ -295,5 +315,172 @@ public class DebuggingPerspective extends Perspective
     public String getID()
     {
         return ID;
+    }
+
+    protected static final class EmulatorProxy implements InvocationHandler {
+
+        private final List<IEmulationListener> listeners = new ArrayList<>();
+
+        private final IEmulator proxy;
+        private volatile IEmulator emulator;
+        
+        private Address address;
+        private byte[] data;
+        
+        private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        private final Lock readLock = lock.readLock();
+        private final Lock writeLock = lock.writeLock();
+
+        public EmulatorProxy() {
+            this.proxy = (IEmulator) Proxy.newProxyInstance( EmulatorProxy.class.getClassLoader() , new Class<?>[]{IEmulator.class},this);
+        }
+
+        public  boolean hasTarget() 
+        {
+            lock( readLock );
+            try {
+                return  emulator != null; 
+            } finally {
+                readLock.unlock();
+            }
+        }
+        
+        private void lock(Lock l) {
+            try {
+                l.lockInterruptibly();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Failed to aquire lock "+l);
+            }
+            
+        }
+
+        public void setTarget(IEmulator e) 
+        {
+            lock(writeLock);
+            try
+            {            
+                if ( this.emulator == e ) {
+                    System.out.println("Same proxy target, doing nothing.");
+                    return;
+                }
+
+                System.out.println("Changing proxy target from "+this.emulator+" to "+e);
+                
+                removeEmulationListeners();
+
+                this.emulator=e;
+                
+                if ( e != null ) {
+                    restoreEmulatorState();
+                } else {
+                    System.out.println("Proxy discards cached state");
+                    address = null;
+                    data = null;
+                }
+                
+            } finally {
+                writeLock.unlock();
+            }
+        }
+
+        private void restoreEmulatorState()
+        {
+            if ( this.emulator != null ) 
+            {
+                System.out.println("Adding "+listeners.size()+" listeners to emulator "+this.emulator);
+                for ( IEmulationListener l : listeners ) {
+                    this.emulator.addEmulationListener( l );
+                }           
+                if ( address != null ) {
+                    System.out.println("Restoring memory of emulator "+this.emulator);
+                    this.emulator.loadMemory( address , data );
+                }
+            }
+        }
+
+        private void removeEmulationListeners()
+        {
+            if ( this.emulator != null ) 
+            {
+                System.out.println("Removing "+listeners.size()+" listeners from emulator "+this.emulator);
+                for ( IEmulationListener l : listeners ) {
+                    this.emulator.removeEmulationListener( l );
+                }
+            }
+        }
+        
+        public IEmulator getTarget() {
+            lock(readLock);
+            try {
+                return emulator;
+            } finally {
+                readLock.unlock();
+            }
+        }
+
+        public IEmulator getProxyInstance() {
+            return proxy;
+        }
+
+        @Override
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
+        {
+            final IEmulator emu;
+            lock(readLock);
+            try
+            {
+                if ( method.getName().equals("dispose" ) ) 
+                {
+                    System.out.println("Intercepted dispose() call.");
+                } 
+                else if ( method.getName().equals("loadMemory" ) ) 
+                {
+                    final Address adr = (Address) args[0];
+                    final byte[] data = (byte[]) args[1];
+                    this.data = data;
+                    this.address = adr;
+                } else if ( method.getName().equals("addEmulationListener" ) ) {
+                    IEmulationListener listener = (IEmulationListener) args[0];
+                    if ( listener != null && ! listener.belongsToHardwareDevice() ) {
+                        System.out.println("Intercepted addEmulationListener() call");
+                        listeners.add( listener );
+                    }
+                } else if ( method.getName().equals("removeEmulationListener" ) ) {
+                    IEmulationListener listener = (IEmulationListener) args[0];
+                    if ( listener != null ) 
+                    {
+                        System.out.println("Intercepted removeEmulationListener() call");
+                        listeners.remove( listener );
+                    }                
+                } 
+                else if ( method.getName().equals("removeAllEmulationListeners" ) ) 
+                {
+                    System.out.println("Intercepted removeAllEmulationListeners() call");
+                    listeners.clear();
+                }
+                emu = this.emulator;
+            } finally {
+                readLock.unlock();
+            }
+            // alien method,invoke outside synchronized block
+            boolean success = false;
+            try {
+                Object result = method.invoke( emu , args );
+                success = true;
+                return result;
+            }
+            finally 
+            {
+                if ( success && method.getName().equals("reset" ) ) 
+                {
+                    System.out.println("Intercepted reset() call");
+                    if ( address != null ) {
+                        System.out.println("Restoring memory");
+                        emu.loadMemory( address , data );
+                    }
+                }                 
+            }
+        }
     }
 }

@@ -59,11 +59,14 @@ public class CompilationUnit implements ICompilationUnit {
     private Address objectCodeStartAddress = Address.ZERO;
     private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
     private final ISymbolTable symbolTable = new SymbolTable();
+    private final RelocationTable relocationTable = new RelocationTable();
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
     @Override
-    public void beforeCompilationStart() {
+    public void beforeCompilationStart() 
+    {
+        this.relocationTable.clear();
         this.lines.clear();
         this.ast = null;
         this.symbolTable.clear();
@@ -85,6 +88,12 @@ public class CompilationUnit implements ICompilationUnit {
         return new CompilationUnit( identifier  , new StringResource( identifier , source , ResourceType.SOURCE_CODE) );
     }
 
+    @Override
+    public RelocationTable getRelocationTable()
+    {
+        return relocationTable;
+    }
+    
     @Override
     public void setLine(Line l) 
     {

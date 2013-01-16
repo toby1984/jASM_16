@@ -32,7 +32,7 @@ import de.codesourcery.jasm16.utils.TextRegion;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class EquationNode extends ConstantValueNode {
+public class EquationNode extends ConstantValueNode implements IPreprocessorDirective {
 
 	private Identifier identifier;
 	
@@ -41,6 +41,11 @@ public class EquationNode extends ConstantValueNode {
 		return calculate( symbolTable );
 	}
 
+	public Identifier getIdentifier()
+    {
+        return identifier;
+    }
+	
 	@Override
 	public Long calculate(ISymbolTable symbolTable) 
 	{
@@ -69,6 +74,10 @@ public class EquationNode extends ConstantValueNode {
 		result.identifier = identifier;
 		return result;
 	}
+	
+	public ASTNode getValueNode() {
+	    return child(0);
+	}
 
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
@@ -86,6 +95,7 @@ public class EquationNode extends ConstantValueNode {
 		}
 		
 		addChild( expr , context );
+		
 		mergeWithAllTokensTextRegion( region );		
 		
 		if ( context.getSymbolTable().containsSymbol( identifier ) ) {

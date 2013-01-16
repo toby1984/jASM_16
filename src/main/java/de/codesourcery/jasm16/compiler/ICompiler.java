@@ -73,15 +73,18 @@ public interface ICompiler
 		/**
 		 * Stops the compiler from inlining literal values &gt;= -1 and &lt;= 30 as part of the instruction word.
 		 * 
-		 * <p>Inlining increases execution speed and decreases code size but cannot be used when trying to generate relocatable code.</p>
+		 * <p>Inlining increases execution speed and decreases code size but cannot be used when trying to generate relocation information.</p>
+		 * 
+		 * @see #GENERATE_RELOCATION_INFORMATION
 		 */
 		DISABLE_INLINING,		
 		/**
-		 * Whether the compiler should generate relocatable code. 
+		 * Whether the compiler should generate relocation information. 
 		 * 
-		 * <p>Generating relocatable code automatically implies {@link #DISABLE_INLINING}.</p>
+		 * <p>Generating relocation information automatically implies {@link #DISABLE_INLINING}.</p>
+		 * @see ICompilationUnit#getRelocationTable()
 		 */
-		GENERATE_RELOCATION_TABLE;
+		GENERATE_RELOCATION_INFORMATION;
 	}
 	
 	/**
@@ -89,8 +92,9 @@ public interface ICompiler
 	 * 
 	 * @param option
 	 * @param onOff
+	 * @return this instance for method chaining
 	 */
-	public void setCompilerOption(CompilerOption option,boolean onOff);
+	public ICompiler setCompilerOption(CompilerOption option,boolean onOff);
 	
 	/**
 	 * Check whether a specific compiler option is enabled.

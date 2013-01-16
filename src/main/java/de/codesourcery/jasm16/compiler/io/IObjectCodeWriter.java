@@ -37,7 +37,7 @@ public interface IObjectCodeWriter extends Closeable
 	 * @throws IOException
 	 */
     public void writeObjectCode(byte[] data) throws IOException;
-    
+
     /**
      * Output object code.
      * 

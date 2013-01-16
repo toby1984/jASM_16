@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ast;
 
 import org.apache.commons.lang.ObjectUtils;
 
+import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
@@ -30,6 +31,9 @@ import de.codesourcery.jasm16.utils.TextRegion;
  * An AST node that represents a references to a symbol.
  * 
  * @author tobias.gierke@code-sourcery.de
+ * @see Label
+ * @see ISymbol
+ * @see Equation
  */
 public class SymbolReferenceNode extends ConstantValueNode
 {

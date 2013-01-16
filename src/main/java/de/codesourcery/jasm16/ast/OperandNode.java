@@ -19,16 +19,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.parser.Operator;
 
 /**
@@ -173,6 +177,57 @@ public class OperandNode extends ASTNode
 		return result;
 	}
 	
+	/**
+	 * Returns whether this operand uses at least one reference 
+	 * to a location in the object code.
+	 * 
+	 * <p>This method is used to determine whether a relocation table entry
+	 * needs to be generated for this operand.</p>
+	 * @return <code>NULL</code> if this operand has a symbol reference but the symbol
+	 * could not be found in the symbol table (and thus we were unable to tell whether
+	 * the referenced symbol is a label or something else) , <code>true</code>
+	 * if this operand references a {@link Label}, <code>false</code> otherwise 
+	 * 
+	 * @see ISymbol
+	 * @see Label 
+	 */
+	public Boolean referencesLabel(final ISymbolTable symbolTable) {
+	    
+	    final AtomicBoolean labelsFound = new AtomicBoolean(false);
+	    final AtomicBoolean unresolvedSymbolsFound = new AtomicBoolean(false);
+	    
+	    final ISimpleASTNodeVisitor<ASTNode> visitor=new ISimpleASTNodeVisitor<ASTNode>() {
+            
+            @Override
+            public boolean visit(ASTNode node)
+            {
+                if ( node instanceof SymbolReferenceNode) 
+                {
+                    final Identifier identifier = ((SymbolReferenceNode) node).getIdentifier();
+                    ISymbol symbol = symbolTable.getSymbol( identifier );
+                    if ( symbol == null ) {
+                        unresolvedSymbolsFound.set(true);
+                    } 
+                    else 
+                    {
+                        if ( symbol instanceof Label ) {
+                            labelsFound.set(true);
+                        }
+                    }
+                }
+                return true;
+            }
+        };
+        ASTUtils.visitInOrder( this , visitor );
+        if ( labelsFound.get() ) {
+            return Boolean.TRUE; // important to return Boolean.FALSE here since calling code uses == comparison with Boolean.TRUE / Boolean.FALSE
+        }
+        if ( unresolvedSymbolsFound.get() ) {
+            return null;
+        }
+        return Boolean.FALSE; // important to return Boolean.FALSE here since calling code uses == comparison with Boolean.TRUE / Boolean.FALSE
+	}
+	
 	public RegisterReferenceNode getRegisterReferenceNode() {
 	       final List<RegisterReferenceNode> result = 
 	               ASTUtils.getNodesByType( this , RegisterReferenceNode.class , true );
@@ -198,7 +253,7 @@ public class OperandNode extends ASTNode
 		final List<TermNode> terms = new ArrayList<TermNode>();
 		final List<ConstantValueNode> literalValues = new ArrayList<ConstantValueNode>();
 		for ( ASTNode child : getChildren() ) {
-			if ( child instanceof ConstantValueNode ) {
+			if ( child instanceof ConstantValueNode ) { // careful, ConstantValueNode extends TermNode so order matters !!!
 				literalValues.add( (ConstantValueNode) child );
 			} else if ( child instanceof RegisterReferenceNode ) {
 				// ignore

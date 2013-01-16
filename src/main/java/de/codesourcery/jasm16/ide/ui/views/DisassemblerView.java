@@ -244,7 +244,6 @@ public class DisassemblerView extends AbstractView
         this.emulator = emulator;
         
         this.emulatorController = new EmulatorControllerView( perspective , emulator );
-        
         emulator.addEmulationListener( listener );
     }
     

@@ -26,18 +26,18 @@ public abstract class Size implements Comparable<Size>
 {
     private final int value;
     
-    private static final SizeInWords ZERO_WORDS = new SizeInWords(0);    
-    private static final SizeInWords ONE_WORD = new SizeInWords(1);
-    private static final SizeInWords TWO_WORDS = new SizeInWords(2);
-    private static final SizeInWords THREE_WORDS = new SizeInWords(3);
+    public static final SizeInWords ZERO_WORDS = new SizeInWords(0);    
+    public static final SizeInWords ONE_WORD = new SizeInWords(1);
+    public static final SizeInWords TWO_WORDS = new SizeInWords(2);
+    public static final SizeInWords THREE_WORDS = new SizeInWords(3);
     
-    private static final SizeInBytes ZERO_BYTES = new SizeInBytes(0);    
-    private static final SizeInBytes ONE_BYTES = new SizeInBytes(1);
-    private static final SizeInBytes TWO_BYTES = new SizeInBytes(2);
-    private static final SizeInBytes THREE_BYTES = new SizeInBytes(3);  
-    private static final SizeInBytes FOUR_BYTES = new SizeInBytes(4);
-    private static final SizeInBytes FIVE_BYTES = new SizeInBytes(5);
-    private static final SizeInBytes SIX_BYTES = new SizeInBytes(6);      
+    public static final SizeInBytes ZERO_BYTES = new SizeInBytes(0);    
+    public static final SizeInBytes ONE_BYTES = new SizeInBytes(1);
+    public static final SizeInBytes TWO_BYTES = new SizeInBytes(2);
+    public static final SizeInBytes THREE_BYTES = new SizeInBytes(3);  
+    public static final SizeInBytes FOUR_BYTES = new SizeInBytes(4);
+    public static final SizeInBytes FIVE_BYTES = new SizeInBytes(5);
+    public static final SizeInBytes SIX_BYTES = new SizeInBytes(6);      
     
     public static SizeInBytes bytes(int size) 
     {

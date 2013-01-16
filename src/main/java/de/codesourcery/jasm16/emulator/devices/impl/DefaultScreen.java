@@ -721,6 +721,12 @@ public final class DefaultScreen implements IDevice {
 		this.uiComponent = uiComponent;
 		this.consoleScreen = null;
 	}
+	
+	public void detach() 
+	{
+	    this.uiComponent = null;
+	    this.consoleScreen = null;
+	}
 
 	public BufferedImage getScreenImage() 
 	{

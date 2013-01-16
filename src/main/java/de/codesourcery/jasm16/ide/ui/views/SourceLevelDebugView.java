@@ -39,6 +39,7 @@ import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
 import de.codesourcery.jasm16.ast.InstructionNode;
+import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StatementNode;
@@ -143,11 +144,17 @@ public class SourceLevelDebugView extends SourceCodeView
     	public void mouseMoved(MouseEvent e) 
     	{
             final ASTNode n = getASTNode( e.getPoint() );
-            if ( n != null && n instanceof SymbolReferenceNode) 
+            if ( n != null && ( n instanceof SymbolReferenceNode || n instanceof LabelNode) ) 
             {
-            	final Identifier identifier = ((SymbolReferenceNode) n).getIdentifier();
+            	final Identifier identifier;
+            	if ( n instanceof SymbolReferenceNode) {
+            	    identifier = ((SymbolReferenceNode) n).getIdentifier();
+            	} else {
+                    identifier = ((LabelNode) n).getIdentifier();
+            	}
             	final ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier );
-            	if ( symbol != null && symbol instanceof Label) {
+            	if ( symbol != null && symbol instanceof Label) 
+            	{
                 	final Address dumpStartAddress = ((Label) symbol).getAddress();
                 	
                 	final int WORDS_TO_SHOW = 6;
@@ -207,13 +214,18 @@ public class SourceLevelDebugView extends SourceCodeView
             }
         }
     	
-    	private ASTNode getASTNode(Point p) {
+    	private ASTNode getASTNode(Point p) 
+    	{
             final int offset = getModelOffsetForLocation( p );
             if ( offset == -1 ) {
                 return null;
             }
             
-            return getCurrentCompilationUnit().getAST().getNodeInRange( offset );
+            final ICompilationUnit unit = getCurrentCompilationUnit();
+            if ( unit == null ) {
+                return null;
+            }
+            return unit.getAST().getNodeInRange( offset );
     	}
     };
     
@@ -268,19 +280,18 @@ public class SourceLevelDebugView extends SourceCodeView
 								optionsProvider.setEmulationOptions( options );
 								try {
 									workspace.saveProjectConfiguration( optionsProvider );
-								} catch (IOException e) {
+								} 
+								catch (IOException e) {
 									LOG.error("setupMenu(): Failed to save options for project "+optionsProvider,e);
 								}
 								
 								if ( options.isNewEmulatorInstanceRequired() ) 
 								{
-									UIUtils.showErrorDialog(null, "Could not apply all changes" , 
-											"Not all of your changes could be applied, close and re-open the debugging perspective to apply them");
+								    perspective.reloadEmulator();
 								}
 							}
 							
 							protected void onCancel() {
-								// close window
 								getViewContainer().disposeView( this );
 							}
 						};

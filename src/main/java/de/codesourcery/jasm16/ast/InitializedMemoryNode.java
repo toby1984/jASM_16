@@ -36,7 +36,7 @@ import de.codesourcery.jasm16.parser.Operator;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class InitializedMemoryNode extends ObjectCodeOutputNode
+public class InitializedMemoryNode extends ObjectCodeOutputNode implements IPreprocessorDirective
 {
 	public enum AllowedSize 
 	{
@@ -64,7 +64,6 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 		}
 	}
 
-	private Address address;
 	private byte[] parsedData;
 	private AllowedSize allowedSize;
 
@@ -287,7 +286,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	{
 		final InitializedMemoryNode  result = new InitializedMemoryNode();
 		result.allowedSize = allowedSize;
-		result.address = address;
+		result.setAddress( getAddress() );
 		if ( parsedData != null ) {
 			result.parsedData = new byte[ this.parsedData.length ];
 			System.arraycopy( this.parsedData , 0 , result.parsedData , 0 , this.parsedData.length );
@@ -299,7 +298,7 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	@Override
 	public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
 	{
-		this.address = writer.getCurrentWriteOffset();
+		setAddress( writer.getCurrentWriteOffset() );
 		writer.writeObjectCode( this.parsedData );
 	}
 
@@ -344,10 +343,5 @@ public class InitializedMemoryNode extends ObjectCodeOutputNode
 	@Override
 	public boolean supportsChildNodes() {
 		return true;
-	}
-	
-	@Override
-	public Address getAddress() {
-		return address;
 	}
 }

@@ -22,8 +22,11 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.OpCode;
 import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.RelocationTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -39,7 +42,6 @@ public class InstructionNode extends ObjectCodeOutputNode
 {
     private OpCode opCode;
     private int sizeInBytes = UNKNOWN_SIZE;
-    private Address address;
     
     private TokenType[] errorRecoveryTokenTypes = DEFAULT_ERROR_RECOVERY_TOKEN;
 
@@ -234,7 +236,7 @@ public class InstructionNode extends ObjectCodeOutputNode
     {
         final InstructionNode result= new InstructionNode();
         result.opCode = opCode;
-        result.address = address;
+        result.setAddress( getAddress() );
         result.sizeInBytes = sizeInBytes;
         return result;
     }
@@ -254,13 +256,44 @@ public class InstructionNode extends ObjectCodeOutputNode
 	@Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException
     {	
-		this.address = writer.getCurrentWriteOffset();
+		setAddress( writer.getCurrentWriteOffset() );
 		
         final byte[] objectCode = getOpCode().generateObjectCode( compContext  , this );		
         if ( objectCode == null ) {
-            throw new IllegalStateException("writeObjectCode() called on "+this+" although no object code generated?");
+            throw new IllegalStateException("Could not generate instruction,operand size not known yet");
         }
         
+        if ( compContext.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) ) 
+        {
+            final RelocationTable table = compContext.getCurrentCompilationUnit().getRelocationTable();
+            
+            // the following code assumes that operand literals have not been inlined by OpCode#generateObjectCode()
+            // which is made sure because the CompilerOption#GENERATE_RELOCATION_TABLE flag is checked there as well  
+            
+            // instructions are written in the following order
+            // word 0 - instruction
+            // word 1 - source operand
+            // word 2 - target operand
+            final int operandCount = getOperandCount();
+            if ( operandCount == 1 ) 
+            {
+                final Boolean referencesLabel = getOperand(0).referencesLabel( compContext.getSymbolTable() ); 
+                if ( referencesLabel == Boolean.TRUE) {
+                    table.addRelocationEntry( getAddress().plus( Size.ONE_WORD , false ) );
+                }
+            }
+            else if ( operandCount == 2 ) 
+            {
+                Boolean referencesLabel = getOperand(0).referencesLabel( compContext.getSymbolTable() ); 
+                if ( referencesLabel == Boolean.TRUE) {
+                    table.addRelocationEntry( getAddress().plus( Size.ONE_WORD , false ) );
+                }   
+                referencesLabel = getOperand(1).referencesLabel( compContext.getSymbolTable() ); 
+                if ( referencesLabel == Boolean.TRUE) {
+                    table.addRelocationEntry( getAddress().plus( Size.TWO_WORDS , false ) );
+                }                   
+            }
+        }
         writer.writeObjectCode( objectCode ); 
     }
 	
@@ -277,9 +310,4 @@ public class InstructionNode extends ObjectCodeOutputNode
     protected TokenType[] getParseRecoveryTokenTypes() {
         return errorRecoveryTokenTypes;
     }
-
-    @Override
-    public Address getAddress() {
-		return address;
-	}
 }

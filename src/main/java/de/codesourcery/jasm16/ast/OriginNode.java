@@ -29,15 +29,13 @@ import de.codesourcery.jasm16.parser.IParseContext;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class OriginNode extends ObjectCodeOutputNode
+public class OriginNode extends ObjectCodeOutputNode implements IPreprocessorDirective
 {
-    private Address address;
-    
     @Override
 	protected ASTNode copySingleNode()
     {
         final OriginNode result = new OriginNode();
-        result.address = this.address;
+        result.setAddress( getAddress() );
         return result;
     }
 
@@ -65,7 +63,7 @@ public class OriginNode extends ObjectCodeOutputNode
         }
         
         try {
-            address = Address.wordAddress( number.getValue() );
+            setAddress( Address.wordAddress( number.getValue() ) );
         } catch(IllegalArgumentException e) {
             context.addCompilationError( "Address value is out-of-range" , number );            
         }
@@ -81,26 +79,21 @@ public class OriginNode extends ObjectCodeOutputNode
     @Override
     public int getSizeInBytes(long thisNodesObjectCodeOffsetInBytes)
     {
-    	if ( address.getValue() < thisNodesObjectCodeOffsetInBytes ) {
+    	if ( getAddress().getValue() < thisNodesObjectCodeOffsetInBytes ) {
     		return UNKNOWN_SIZE;
-    	} else  if ( address.getValue() == thisNodesObjectCodeOffsetInBytes ) {
+    	} else  if ( getAddress().getValue() == thisNodesObjectCodeOffsetInBytes ) {
     		return 0;
     	}
-        return (int) (address.getValue() - thisNodesObjectCodeOffsetInBytes);
+        return (int) (getAddress().getValue() - thisNodesObjectCodeOffsetInBytes);
     }
 
     @Override
     public void writeObjectCode(IObjectCodeWriter writer, ICompilationContext compContext) throws IOException, ParseException
     {
-        if ( this.address == null ) {
+        if ( getAddress() == null ) {
             throw new RuntimeException("Internal error, .origin node has no address ?");
         }
         
-        writer.advanceToWriteOffset( this.address );
-    }
-    
-    public Address getAddress()
-    {
-        return address;
+        writer.advanceToWriteOffset( getAddress() );
     }
 }

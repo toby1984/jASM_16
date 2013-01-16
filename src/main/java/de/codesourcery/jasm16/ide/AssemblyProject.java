@@ -15,10 +15,10 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import static de.codesourcery.jasm16.compiler.ICompiler.CompilerOption.GENERATE_RELOCATION_INFORMATION;
+
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -35,6 +34,7 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
+import de.codesourcery.jasm16.compiler.CompiledCode;
 import de.codesourcery.jasm16.compiler.Compiler;
 import de.codesourcery.jasm16.compiler.DefaultCompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
@@ -42,6 +42,7 @@ import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.Linker;
 import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
@@ -108,24 +109,29 @@ public class AssemblyProject implements IAssemblyProject
             return result;
         }
 
-        protected ICompiler createCompiler() {
+        protected ICompiler createCompiler() 
+        {
             final ICompiler compiler = new Compiler();
 
             // set compiler options
+            // TODO: make these project specific
             compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
             compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
+//            compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
             return compiler;
         }
 
-        protected void setObjectCodeOutputFactory(ICompiler compiler,final List<IResource> objectFiles) {
+        protected void setObjectCodeOutputFactory(ICompiler compiler,final List<CompiledCode> objectFiles) {
 
             compiler.setObjectCodeWriterFactory( new SimpleFileObjectCodeWriterFactory() {
 
                 protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context) 
                 {
-                    final File outputFile = getOutputFileForSource( context.getCurrentCompilationUnit().getResource() );
-                    System.out.println("createObjectCodeWriter(): Compiling "+
-                            context.getCurrentCompilationUnit()+" to object file "+outputFile.getAbsolutePath());
+                    final ICompilationUnit currentUnit = context.getCurrentCompilationUnit();
+                    
+                    final File outputFile = getOutputFileForSource( currentUnit.getResource() );
+                    
+                    System.out.println("createObjectCodeWriter(): Compiling "+currentUnit+" to object file "+outputFile.getAbsolutePath());
 
                     final IResource resource = new FileResource( outputFile , ResourceType.OBJECT_FILE );
                     return new FileObjectCodeWriter( outputFile , false ) 
@@ -142,7 +148,7 @@ public class AssemblyProject implements IAssemblyProject
                             }
                             System.out.println("closeHook(): Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
                             if ( len > 0 ) {
-                                objectFiles.add( resource );
+                                objectFiles.add( new CompiledCode( currentUnit , resource ) );
                                 workspace.resourceCreated( AssemblyProject.this , resource );
                             }
                         }
@@ -170,7 +176,7 @@ public class AssemblyProject implements IAssemblyProject
             compiler.setCompilationOrderProvider( new DefaultCompilationOrderProvider() );
 
             // set output code writer
-            final List<IResource> objectFiles = new ArrayList<IResource>();
+            final List<CompiledCode> objectFiles = new ArrayList<>();
 
             setObjectCodeOutputFactory( compiler , objectFiles );
 
@@ -188,7 +194,7 @@ public class AssemblyProject implements IAssemblyProject
                 // create executable
                 if ( isCompilationSuccessful( compilationUnits ) )
                 {
-                    final IResource executable = link( objectFiles );
+                    final IResource executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
                     workspace.resourceCreated( AssemblyProject.this , executable );
                     buildSuccessful = true; 
                 } else {
@@ -211,26 +217,11 @@ public class AssemblyProject implements IAssemblyProject
             return true;
         }
 
-        private IResource link(List<IResource> objectFiles) throws IOException 
+        private IResource link(List<CompiledCode> objectFiles,boolean generateRelocatableCode) throws IOException 
         {
             final File outputFolder = getConfiguration().getOutputFolder();
             final File outputFile = new File( outputFolder , getConfiguration().getExecutableName() );
-            final FileResource executable = new FileResource( outputFile , ResourceType.EXECUTABLE );
-
-            final OutputStream out = executable.createOutputStream( true );
-            try {
-                for ( IResource r : objectFiles ) {
-                    final InputStream in = r.createInputStream();
-                    try {
-                        IOUtils.copy( in , out );
-                    } finally {
-                        IOUtils.closeQuietly( in );
-                    }
-                }
-            } finally {
-                IOUtils.closeQuietly( out );
-            }
-            return executable;
+            return new Linker().link( objectFiles , outputFile , generateRelocatableCode , true );
         }
 
         @Override

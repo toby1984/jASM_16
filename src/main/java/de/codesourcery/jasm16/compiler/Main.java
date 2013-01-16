@@ -48,31 +48,8 @@ import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Class to invoke the compiler from the command-line.
- * 
- * <p>
- * This class currently accepts the following arguments:
- * </p>
- * <p>
- * <table>
- *   <tr>
- *     <td><i>-d</i> or <i>--debug</i><td>
- *     <td>Enable output to aid in debugging <b>the assembler</b> (does not generate debug symbols etc.).</p>
- *   </tr>
- *   <tr>
- *     <td><i>--print</i><td>
- *     <td>Prints the formatted input source code along with hex dump of generated assembly as comments to standard output.</p>
- *   </tr> 
- *   <tr>
- *     <td><i>--print-symbols</i><td>
- *     <td>Dumps the symbol table to standard out.</p>
- *   </tr>  
- *   <tr>
- *     <td><i>--verbose</i> or <i>-v</i><td>
- *     <td>Enables slightly more verbose output during compilation.</p>
- *   </tr>   
- * </table>
- * 
- * </p>
+ *
+ * <p>Run this class without options (or with '--help') to see the available command-line options.</p>
  * @author tobias.gierke@code-sourcery.de
  */
 public class Main {
@@ -93,6 +70,7 @@ public class Main {
     private boolean printSourceCode = false;
     private boolean relaxedParsing = false;
     private boolean relaxedValidation = false;
+    private boolean disableLiteralInlining = false;
     
     public static void main(String[] args) throws Exception 
     {
@@ -229,6 +207,10 @@ public class Main {
         if ( relaxedValidation ) {
             compiler.setCompilerOption( CompilerOption.RELAXED_VALIDATION , true );            
         }
+        
+        if ( disableLiteralInlining ) {
+            compiler.setCompilerOption( CompilerOption.DISABLE_INLINING , true );    
+        }
     }
 
     private void setObjectCodeWriterFactory(List<ICompilationUnit> units)
@@ -308,47 +290,37 @@ public class Main {
     private void handleCommandlineOption(String option,Stack<String> arguments) 
     {
         if ( "-d".equalsIgnoreCase( option ) || "--debug".equalsIgnoreCase( option ) ) {
-            printStackTraces = true;
-            printDebugStats = true;
-            verboseOutput = true ;
+            this.printStackTraces = true;
+            this.printDebugStats = true;
+            this.verboseOutput = true ;
             
             arguments.pop();
             
         } else if ( "--relaxed-validation".equalsIgnoreCase( option ) ) {
             this.relaxedValidation = true;
-            
             arguments.pop();
-            
+        } else if ( "--disable-literal-inlining".equalsIgnoreCase( option ) ) {
+            this.disableLiteralInlining = true;
+            arguments.pop();
         } else if ( "--relaxed-parsing".equalsIgnoreCase( option ) ) {
             this.relaxedParsing = true;
-            
             arguments.pop();
-            
         } else if ( "--print".equalsIgnoreCase( option ) ) {
-            printSourceCode = true;
-            
+            this.printSourceCode = true;
             arguments.pop();
-            
         } else if ( "--print-symbols".equalsIgnoreCase( option ) ) {
-            printSymbolTable = true;
-            
+            this.printSymbolTable = true;
             arguments.pop();
-            
         } else if ( "-v".equalsIgnoreCase( option ) || "--verbose".equalsIgnoreCase( option ) ) {
-            verboseOutput = true;
-            
+            this.verboseOutput = true;
             arguments.pop();
-            
         } else if ( "--dump".equalsIgnoreCase( option ) ) {
-            dumpObjectCode = true;
-            
+            this.dumpObjectCode = true;
             arguments.pop();
-            
         }
         else if ( "-o".equalsIgnoreCase( option ) ) 
         {
             arguments.pop();
-            
             this.outputFile = new File( arguments.pop() );
         } else if ( "-h".equalsIgnoreCase( option ) || "--help".equalsIgnoreCase( option ) ) {
             printUsage();
@@ -365,14 +337,15 @@ public class Main {
     	printVersionInfo();
     	
         final String usage="\nUsage: [options] [-o <output file>] source1 source2 ...\n\n"+
-                "-o              => output file to write generated assembly code to, otherwise code will be written to source.dcpu16\n"+
-                "-d or --debug   => print debug output\n"+
-                "--print         => print formatted source code along with hex dump of generated assembly\n"+
-                "--print-symbols => print symbol table\n"+
-                "--dump          => instead of writing generated object code to a file, write a hexdump to std out\n"+
-                "--relaxed-parsing       => relaxed parsing (instructions are parsed case-insensitive)\n"+
-                "--relaxed-validation    => out-of-range values only cause a warning)\n"+                
-                "-v or --verbose => print slightly more verbose output during compilation\n\n";
+                "-o                          => output file to write generated assembly code to, otherwise code will be written to source.dcpu16\n"+
+                "-d or --debug               => print debug output\n"+
+                "--print                     => print formatted source code along with hex dump of generated assembly\n"+
+                "--print-symbols             => print symbol table\n"+
+                "--disable-literal-inlining  => disable inlining of literals -1 ... 30\n"+
+                "--dump                      => instead of writing generated object code to a file, write a hexdump to std out\n"+
+                "--relaxed-parsing           => relaxed parsing (instructions are parsed case-insensitive)\n"+
+                "--relaxed-validation        => out-of-range values only cause a warning)\n"+                
+                "-v or --verbose             => print slightly more verbose output during compilation\n\n";
         System.out.println( usage );		
     }
 

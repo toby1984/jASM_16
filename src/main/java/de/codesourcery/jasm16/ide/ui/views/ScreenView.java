@@ -19,12 +19,11 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 
-import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
+import de.codesourcery.jasm16.emulator.EmulationListener;
+import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
@@ -36,11 +35,40 @@ public class ScreenView extends AbstractView
     
     private volatile JPanel panel;
 
-    private volatile DefaultScreen screen = null;
     private final IEmulator emulator;
-    private final DefaultKeyboard keyboard;
+    
+    private volatile DefaultScreen screen = null;    
+    private volatile DefaultKeyboard keyboard = null;
+    
     private volatile boolean debugCustomFonts = false;
+    
     private final IEmulationOptionsProvider optionsProvider;
+    
+    private final IEmulationListener listener = new EmulationListener() {
+        
+        public void beforeEmulatorIsDisposed(IEmulator emulator) {
+            System.out.println("ScreenView received beforeEmulatorIsDisposed()");
+            detach();
+        }
+        
+        public void afterMemoryLoad(IEmulator emulator, de.codesourcery.jasm16.Address startAddress, int lengthInBytes) {
+            System.out.println("ScreenView received afterMemoryLoad()");
+            detach();
+            if ( panel != null ) {
+                attach( panel );
+            }            
+        }
+        
+        @Override
+        public void afterReset(IEmulator emulator)
+        {
+            System.out.println("ScreenView received afterReset()");
+            detach();
+            if ( panel != null ) {
+                attach( panel );
+            }
+        }
+    };
     
     public ScreenView(IEmulationOptionsProvider optionsProvider, IEmulator emulator) 
     {
@@ -48,18 +76,40 @@ public class ScreenView extends AbstractView
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
         this.emulator = emulator;
+        this.emulator.addEmulationListener( listener );
         this.optionsProvider = optionsProvider;
-        this.keyboard = optionsProvider.getEmulationOptions().getKeyboard( emulator );
+    }
+    
+    private void attach(JPanel panel) 
+    {
+        detach();
+        System.out.println("---- Attaching screen & keyboard ");
+        keyboard = optionsProvider.getEmulationOptions().getKeyboard( emulator );
+        screen = optionsProvider.getEmulationOptions().getScreen( emulator );
+        keyboard.attach( panel );
+        screen.attach( panel );
+    }    
+    
+    private void detach() 
+    {
+        if ( screen != null ) {
+            System.out.println("---- DETACHING screen");
+            screen.detach();
+            this.screen = null;
+        }
+        if ( this.keyboard != null ) {
+            System.out.println("---- DETACHING keyboard");
+            keyboard.detach();
+            this.keyboard = null;
+        }        
     }
     
     @Override
     public void disposeHook()
     {
-    	if ( screen != null ) {
-    		this.emulator.removeDevice( screen );
-    		this.screen = null;
-    	}
-        this.emulator.removeDevice( keyboard );
+        this.panel = null;
+        detach();
+        this.emulator.removeEmulationListener( listener );
     }
 
     public void setDebugCustomFonts(boolean debugCustomFonts)
@@ -96,9 +146,7 @@ public class ScreenView extends AbstractView
     	if ( panel == null ) 
     	{
     		panel=createPanel();
-    		screen = optionsProvider.getEmulationOptions().getScreen(emulator);
-    		screen.attach( panel );
-    		keyboard.setInputComponent( panel );
+    		attach( panel );
     	}
     	return panel;
     }
@@ -118,7 +166,14 @@ public class ScreenView extends AbstractView
         		    height = getHeight();
         		}
         		
+        		if ( screen == null ) {
+        		    return;
+        		}
+        		
         		final BufferedImage original1 = screen.getScreenImage();
+        		if ( original1 == null ) {
+        		    return;
+        		}
         		
                 final Graphics2D g2 = (Graphics2D) g;
                 

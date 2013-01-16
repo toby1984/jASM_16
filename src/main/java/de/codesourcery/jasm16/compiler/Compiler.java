@@ -339,7 +339,7 @@ public class Compiler implements ICompiler {
 	}
 
 	@Override
-	public void setCompilerOption(CompilerOption option, boolean onOff) {
+	public ICompiler setCompilerOption(CompilerOption option, boolean onOff) {
 		if ( option == null ) {
 			throw new IllegalArgumentException("option must not be NULL");
 		}
@@ -348,6 +348,7 @@ public class Compiler implements ICompiler {
 		} else {
 			options.remove( option );
 		}
+		return this;
 	}
 
     @Override

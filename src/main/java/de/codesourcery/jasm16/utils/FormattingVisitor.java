@@ -27,6 +27,7 @@ import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTVisitor;
 import de.codesourcery.jasm16.ast.CharacterLiteralNode;
 import de.codesourcery.jasm16.ast.CommentNode;
+import de.codesourcery.jasm16.ast.EquationNode;
 import de.codesourcery.jasm16.ast.ExpressionNode;
 import de.codesourcery.jasm16.ast.IASTVisitor;
 import de.codesourcery.jasm16.ast.IIterationContext;
@@ -69,8 +70,20 @@ public class FormattingVisitor extends ASTVisitor {
     protected void output(String s) {
         System.out.print( s );
     }
-    
 
+    @Override
+    public void visit(EquationNode node, IIterationContext context)
+    {
+        final String source;
+        try {
+            source = this.context.getCurrentCompilationUnit().getSource( node.getValueNode().getTextRegion() ).replaceAll("\t" , " " ).trim();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        output( ".equ "+node.getIdentifier().getRawValue()+" "+source);
+        context.dontGoDeeper();   
+    }
+    
     @Override
     public void visit(IncludeSourceFileNode node, IIterationContext itContext) 
     {

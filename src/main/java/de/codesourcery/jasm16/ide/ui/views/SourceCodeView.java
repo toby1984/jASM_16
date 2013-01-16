@@ -83,15 +83,11 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.CommentNode;
-import de.codesourcery.jasm16.ast.EquationNode;
-import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
-import de.codesourcery.jasm16.ast.InitializedMemoryNode;
+import de.codesourcery.jasm16.ast.IPreprocessorDirective;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
-import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -933,16 +929,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			whole.subtract( children );
 			highlight( whole , instructionStyle );
 		} 
-		else if ( node instanceof EquationNode || 
-				node instanceof UninitializedMemoryNode ||
-				node instanceof InitializedMemoryNode ||
-				node instanceof OriginNode ||
-				node instanceof IncludeBinaryFileNode) 
+		else if ( node instanceof IPreprocessorDirective)
 		{
 			highlight( node , preProcessorStyle );
-		}
-
-		if ( node instanceof SymbolReferenceNode || node instanceof LabelNode ) {
+		} 
+		else if ( node instanceof SymbolReferenceNode || node instanceof LabelNode ) 
+		{
 			highlight( node , labelStyle );
 		} else if ( node instanceof CommentNode ) {
 			highlight( node , commentStyle );

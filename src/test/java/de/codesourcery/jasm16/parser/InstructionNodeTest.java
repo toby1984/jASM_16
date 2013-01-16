@@ -34,8 +34,6 @@ import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
-import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
-import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -472,14 +470,6 @@ public class InstructionNodeTest extends TestHelper
             {
                 throw new UnsupportedOperationException("Not implemented");                
             }
-		};
-		
-		final IObjectCodeWriterFactory factory = new SimpleFileObjectCodeWriterFactory() {
-		    @Override
-		    protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context)
-		    {
-		        return writer;
-		    }
 		};
 		
 		final ICompilationContext compContext = createCompilationContext( unit );

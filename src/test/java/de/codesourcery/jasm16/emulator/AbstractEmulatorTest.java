@@ -54,32 +54,6 @@ public abstract class AbstractEmulatorTest extends TestCase
         emulator.calibrate();
     }
     
-    protected final class CompiledCode 
-    {
-        public final byte[] objectCode;
-        public final ICompilationUnit compilationUnit;
-
-        protected CompiledCode(ICompilationUnit compilationUnit, byte[] objectCode)
-        {
-            this.compilationUnit = compilationUnit;
-            this.objectCode = objectCode;
-        }
-
-        public IEmulator loadEmulator() {
-            return loadEmulator(null);
-        }
-        
-        public IEmulator loadEmulator(IEmulationListener l) {
-            emulator.reset(true);
-            emulator.loadMemory(compilationUnit.getObjectCodeStartOffset() , objectCode);      
-            emulator.setEmulationSpeed( EmulationSpeed.REAL_SPEED );
-            if ( l != null ) {
-                emulator.addEmulationListener( l );
-            }
-            return emulator;
-        }
-    }      
-    
     @Override
     protected final void setUp() throws Exception
     {
@@ -174,6 +148,31 @@ public abstract class AbstractEmulatorTest extends TestCase
             }
         }
     }
+    
+    protected final class CompiledCode 
+    {
+        public final byte[] objectCode;
+        public final ICompilationUnit compilationUnit;
+
+        protected CompiledCode(ICompilationUnit compilationUnit, byte[] objectCode)
+        {
+            this.compilationUnit = compilationUnit;
+            this.objectCode = objectCode;
+        }
+
+        public IEmulator loadEmulator() { return loadEmulator(null); }
+        
+        public IEmulator loadEmulator(IEmulationListener l) 
+        {
+            emulator.reset(true);
+            emulator.loadMemory(compilationUnit.getObjectCodeStartOffset() , objectCode);      
+            emulator.setEmulationSpeed( EmulationSpeed.REAL_SPEED );
+            if ( l != null ) {
+                emulator.addEmulationListener( l );
+            }
+            return emulator;
+        }
+    }      
 
     private CompiledCode compile(String source) 
     {
