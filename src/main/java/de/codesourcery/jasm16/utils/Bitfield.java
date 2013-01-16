@@ -57,5 +57,4 @@ public final class Bitfield {
 		final int bitOffset = bit - ( elementOffset << SHIFT_PER_ELEMENT );
 		data.set( elementOffset , data.get(elementOffset) & ~( 1 << bitOffset ) );
 	}
-	
 }

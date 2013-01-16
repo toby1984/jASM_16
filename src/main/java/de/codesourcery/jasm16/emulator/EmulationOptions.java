@@ -9,6 +9,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultFloppyDrive;
@@ -23,13 +24,25 @@ import de.codesourcery.jasm16.emulator.devices.impl.FileBasedFloppyDisk;
  */
 public final class EmulationOptions {
 
-    private boolean enableDebugOutput = false;
+    private static final EmulationSpeed DEFAULT_EMULATION_SPEED = EmulationSpeed.REAL_SPEED;
+    
+    /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     * Adjust the following locations when
+     * adding/removing configuration options:
+     * 
+     * - copy constructor !!
+     * - loadEmulationOptions()
+     * - saveEmulationOptions()
+     * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     */
+	private boolean enableDebugOutput = false;
     private boolean memoryProtectionEnabled = false;
     private boolean ignoreAccessToUnknownDevices = false;
     private boolean useLegacyKeyboardBuffer = false;
     private boolean mapVideoRamUponAddDevice = true;
     private boolean mapFontRamUponAddDevice = false;
     private boolean runFloppyAtFullSpeed = false;
+    private EmulationSpeed emulationSpeed = DEFAULT_EMULATION_SPEED;
 
     private InsertedDisk insertedDisk;
 
@@ -59,6 +72,17 @@ public final class EmulationOptions {
 
     public EmulationOptions() {
     }
+    
+    public EmulationSpeed getEmulationSpeed() {
+		return emulationSpeed;
+	}
+    
+    public void setEmulationSpeed(EmulationSpeed emulationSpeed) {
+    	if (emulationSpeed == null) {
+			throw new IllegalArgumentException("emulationSpeed must not be null");
+		}
+		this.emulationSpeed = emulationSpeed;
+	}
 
     public void setEnableDebugOutput(boolean enableDebugOutput) {
         this.enableDebugOutput = enableDebugOutput;
@@ -82,6 +106,7 @@ public final class EmulationOptions {
         this.runFloppyAtFullSpeed         = other.runFloppyAtFullSpeed;
         this.newEmulatorInstanceRequired  = other.newEmulatorInstanceRequired;
         this.insertedDisk                 = other.insertedDisk;
+        this.emulationSpeed               = other.emulationSpeed;
     }
 
     public InsertedDisk getInsertedDisk()
@@ -157,6 +182,7 @@ public final class EmulationOptions {
         emulator.setOutput( outLogger );
         emulator.setMemoryProtectionEnabled( memoryProtectionEnabled );
         emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
+        emulator.setEmulationSpeed( emulationSpeed );
         
         try {
             final DefaultFloppyDrive drive = getFloppyDrive( emulator );
@@ -192,6 +218,8 @@ public final class EmulationOptions {
             element.setAttribute("runFloppyAtFullSpeed" , "true" );
         }	
 
+        element.setAttribute( "emulationSpeed" , emulationSpeedToString( this.emulationSpeed ) );
+
         if ( getInsertedDisk() != null ) 
         {
             final Element disks = document.createElement("disks" );
@@ -215,6 +243,7 @@ public final class EmulationOptions {
         result.setMemoryProtectionEnabled( isSet(element,"memoryProtectionEnabled" ) );
         result.setUseLegacyKeyboardBuffer( isSet(element,"useLegacyKeyboardBuffer" ) );
         result.setRunFloppyAtFullSpeed( isSet(element,"runFloppyAtFullSpeed" ) );	
+        result.setEmulationSpeed( emulationSpeedFromString( element.getAttribute("emulationSpeed") ) );
 
         Element disks = getChildElement( element , "disks");
         if ( disks != null )
@@ -228,6 +257,34 @@ public final class EmulationOptions {
         } 
         return result;
     }	
+    
+    private static String emulationSpeedToString(EmulationSpeed speed) {
+    	switch( speed ) {
+    		case MAX_SPEED:
+    			return "max";
+    		case REAL_SPEED:
+    			return "real";
+    		default:
+    			throw new RuntimeException("Unhandled speed: "+speed);
+    	}
+    }
+    
+    private static EmulationSpeed emulationSpeedFromString(String s) 
+    {
+    	if ( StringUtils.isBlank(s ) ) 
+    	{
+    		return DEFAULT_EMULATION_SPEED;
+    	}
+    	
+    	switch( s ) {
+    		case "max":
+    			return EmulationSpeed.MAX_SPEED;
+    		case "real":
+    			return EmulationSpeed.REAL_SPEED;
+    		default:
+    			throw new RuntimeException("Unhandled speed: '"+s+"'");
+    	}
+    }      
 
     private static Element getChildElement(Element parent,String tagName) 
     {
@@ -241,14 +298,6 @@ public final class EmulationOptions {
         }
         return null;
     }
-
-    private static File getFile(Element element,String attribute) {
-        final String value = element.getAttribute(attribute);
-        if ( StringUtils.isBlank(value)) {
-            return null;
-        }
-        return new File(value);
-    }	
 
     private static boolean isSet(Element element,String attribute) {
         final String value = element.getAttribute(attribute);
