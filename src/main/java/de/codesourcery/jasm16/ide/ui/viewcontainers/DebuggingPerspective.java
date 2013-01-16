@@ -50,7 +50,7 @@ public class DebuggingPerspective extends Perspective
     private final IResourceResolver resourceResolver;
     private final IAssemblyProject optionsProvider;
     private final IWorkspace workspace;
-    private final IEmulator emulator;
+    private IEmulator emulator;
 
     private IAssemblyProject project;
     private IResource executable;
@@ -170,7 +170,13 @@ public class DebuggingPerspective extends Perspective
             workspace.removeWorkspaceListener( workspaceListener );
             super.dispose();
         } finally {
-            this.emulator.dispose();
+        	if ( this.emulator != null ) {
+        		try {
+        			this.emulator.dispose();
+        		} finally {
+        			this.emulator = null;
+        		}
+        	}
         }
     }
 

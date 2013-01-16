@@ -114,6 +114,13 @@ public interface IEmulator
      */
     public boolean isMemoryProtectionEnabled();
     
+    /**
+     * Disposes this emulator.
+     * 
+     * <p>This method terminates the emulator and releases all associated allocated resources. After this method returns,
+     * the emulator is no longer in a usable state.</p>
+     * <p>Calling this method more than once does no harm.</p>
+     */
     public void dispose();
     
     public void deleteBreakpoint(Breakpoint bp);
