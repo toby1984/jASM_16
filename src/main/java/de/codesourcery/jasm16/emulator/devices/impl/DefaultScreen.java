@@ -32,7 +32,6 @@ import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.LockSupport;
 
@@ -49,11 +48,14 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IEmulatorInvoker;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -64,6 +66,8 @@ public final class DefaultScreen implements IDevice {
 	public static final int STANDARD_SCREEN_ROWS = 12;
 	public static final int STANDARD_SCREEN_COLUMNS = 32;
 
+	public static final Color DEFAULT_BORDER_COLOR = Color.black;
+	
 	private final int SCREEN_ROWS;
 	private final int SCREEN_COLUMNS;    
 
@@ -89,14 +93,33 @@ public final class DefaultScreen implements IDevice {
 			0x7349f615,
 			0x1802, 
 			0x1c6c8b36 );
+	
+	private static final BufferedImage DEFAULT_GLYPH_IMAGE; 
+	
+	static {
+		final ClassPathResource resource = new ClassPathResource("default_font.png",ResourceType.UNKNOWN);
+		try {
+			final InputStream in = resource.createInputStream();
+			try {
+				DEFAULT_GLYPH_IMAGE = ImageIO.read( in );
+			} finally {
+				IOUtils.closeQuietly( in );
+			}
+		} catch(IOException e) {
+			LOG.error("getDefaultFontImage(): Internal error, failed to load default font image 'default_font.png'",e);
+			throw new RuntimeException(e);
+		}
+	}		
 
 	private final boolean mapVideoRamUponAddDevice;  
 	private final boolean mapFontRAMUponAddDevice;
 
-	private BufferedImage defaultFontImage; 
+	private final Object PEER_LOCK = new Object();
 
-	private volatile Component uiComponent; 
-	private volatile ConsoleScreen consoleScreen;
+	// @GuardedBy( PEER_LOCK )
+	private Component peer;
+
+	private final ConsoleScreen consoleScreen;
 
 	private volatile IEmulator emulator = null;
 
@@ -104,11 +127,9 @@ public final class DefaultScreen implements IDevice {
 	private volatile int borderPaletteIndex = 0;
 
 	// palette
-	private volatile boolean useCustomPaletteRAM = false;
 	private volatile PaletteRAM paletteRAM = new PaletteRAM( WordAddress.ZERO );
 
 	// glyph/font RAM
-	private volatile boolean useCustomFontRAM = false;
 	private volatile FontRAM fontRAM = new FontRAM( WordAddress.ZERO );    
 
 	// Video RAM
@@ -138,6 +159,7 @@ public final class DefaultScreen implements IDevice {
 					LockSupport.parkNanos( (1000 / 30) * 1000000 );
 
 					renderScreen();
+					
 					int counter = fpsCounter++;
 					if ( (counter % 30) == 0 ) {
 						blinkState = ! blinkState;
@@ -206,60 +228,60 @@ public final class DefaultScreen implements IDevice {
 		this.SCREEN_WIDTH = (SCREEN_COLUMNS * GLYPH_WIDTH)+2*(BORDER_WIDTH);
 		this.SCREEN_HEIGHT = (SCREEN_ROWS * GLYPH_HEIGHT)+2*(BORDER_HEIGHT);
 
+		this.consoleScreen = new ConsoleScreen( DEFAULT_GLYPH_IMAGE , SCREEN_WIDTH , SCREEN_HEIGHT , DEFAULT_BORDER_COLOR );
+		setupDefaultFontRAM( this.consoleScreen );
+		renderScreenDisconnectedMessage( );
+		
 		this.mapVideoRamUponAddDevice = mapVideoRamUponAddDevice;
 		this.mapFontRAMUponAddDevice = mapFontRAMUponAddDevice;
 		setupDefaultPaletteRAM();
 	}
 
-	private synchronized BufferedImage getDefaultFontImage(Graphics2D target) 
-	{
-		if ( defaultFontImage == null ) {
-			final ClassPathResource resource = new ClassPathResource("default_font.png",ResourceType.UNKNOWN);
-			try {
-				final InputStream in = resource.createInputStream();
-				try {
-					return ImageIO.read( in );
-				} finally {
-					IOUtils.closeQuietly( in );
-				}
-			} catch(IOException e) {
-				LOG.error("getDefaultFontImage(): Internal error, failed to load default font image 'default_font.png'",e);
-				throw new RuntimeException(e);
-			}
-		}
-		return defaultFontImage;
-	}
-
 	@Override
 	public void reset()
 	{
-		if ( useCustomPaletteRAM ) {
-			emulator.unmapRegion( paletteRAM );
-			useCustomPaletteRAM = false;
-		}
-
-		if ( useCustomFontRAM ) {
-			emulator.unmapRegion( fontRAM );
-			useCustomFontRAM = false;
-			fontRAM = null;
-		}
-
+		paletteRAM.unmap();
+		fontRAM.unmap();
 		paletteRAM.setDefaultPalette();
 
 		if ( videoRAM != null && ! mapVideoRamUponAddDevice ) {
-			emulator.unmapRegion( videoRAM );
+			videoRAM.unmap();
 			videoRAM = null;
 		}
-		consoleScreen = null;
-		renderScreenDisconnectedMessage();
+		renderScreenDisconnectedMessage( );
+	}
+	
+	protected class StatefulMemoryRegion extends MemoryRegion {
+
+		private boolean isMapped = false;
+		
+		public StatefulMemoryRegion(String regionName, long typeId, AddressRange range, Flag... flags) {
+			super(regionName, typeId, range, flags);
+		}
+		
+		public synchronized boolean isMappedTo(Address startingAddress) {
+			return isMapped && getAddressRange().getStartAddress().equals( startingAddress );
+		}
+		
+		public synchronized void map() 
+		{
+			if (! isMapped) {
+				emulator.mapRegion( this );
+				isMapped = true;
+			}
+		}
+		
+		public synchronized void unmap() 
+		{
+			if ( isMapped ) {
+				emulator.mapRegion( this );
+				isMapped = false;
+			}
+		}
 	}
 
-	private static final AtomicLong DEBUG_ID = new AtomicLong(0);
-	
-	protected final class FontRAM extends MemoryRegion 
+	protected final class FontRAM extends StatefulMemoryRegion 
 	{
-	    private final long id = DEBUG_ID.incrementAndGet();
-	    
 		private boolean hasChanged = true;
 
 		public FontRAM(Address start) {
@@ -270,9 +292,7 @@ public final class DefaultScreen implements IDevice {
 
 			int adr = 0;
 			for ( int glyph = 0 ; glyph < 128 ; glyph++ ) {
-
 				final int words = scr.readGylph( glyph );
-
 				final int word0 = ( words & 0xffff0000 ) >>> 16;
 				final int word1 = ( words & 0x0000ffff );
 				super.write( adr++ , word0 );
@@ -300,7 +320,7 @@ public final class DefaultScreen implements IDevice {
 			super.clear();
 			hasChanged = true;
 		}
-		
+
 		public void clearChanged() {
 			hasChanged = false;
 		}
@@ -310,11 +330,6 @@ public final class DefaultScreen implements IDevice {
 			return hasChanged;
 		}        
 
-//		private void dump() {
-//	          final byte[] data = MemUtils.getBytes( this , WordAddress.ZERO , getSize() , false );
-//	          System.out.println( Misc.toHexDump( 0 ,data , data.length , 16 , false , true , false ) );
-//		}
-		
 		public void defineAllGlyphs() {
 
 			final int end = getSize().getSizeInWords();
@@ -331,55 +346,42 @@ public final class DefaultScreen implements IDevice {
 			}
 			return;
 		}
-		
-		@Override
-		public String toString()
-		{
-		    return "Font ram #"+id+" , "+super.toString();
-		}
 	}
 
-	protected final void repaintPeer(boolean force) 
+	protected final void repaintPeer() 
 	{
-		if ( uiComponent != null ) 
-		{
-			uiComponent.repaint();
-		}        
+		synchronized (PEER_LOCK) {
+			if ( peer != null ) 
+			{
+				peer.repaint();
+			}
+		}
 	}
 
 	protected void setupDefaultFontRAM(ConsoleScreen screen) {
 
-		FontRAM tmpRAM = new FontRAM( Address.wordAddress( 0 ) );        
-		if ( useCustomFontRAM ) 
-		{
-			emulator.unmapRegion( fontRAM );
-			useCustomFontRAM = false;
-		}
-		fontRAM = tmpRAM;
+		fontRAM.unmap();
+		fontRAM = new FontRAM( Address.wordAddress( 0 ) );
+		
 		if ( screen != null ) {
-		    fontRAM.setup( screen );
+			fontRAM.setup( screen );
 		}
 	}
 
 	protected void mapFontRAM(Address address) {
-
-		final FontRAM newRam = new FontRAM(address);
-
-		if ( useCustomFontRAM ) {
-			emulator.unmapRegion( fontRAM );
-			this.useCustomFontRAM = false;            
-		}
-		emulator.mapRegion( newRam );
-		this.useCustomFontRAM = true;
-		this.fontRAM = newRam;      
+		this.fontRAM.unmap();
+		this.fontRAM = new FontRAM(address);
+		this.fontRAM.map();
 	}    
 
-	protected final class PaletteRAM extends MemoryRegion 
+	protected final class PaletteRAM extends StatefulMemoryRegion 
 	{
 		private final AtomicReferenceArray<Color> cache = new AtomicReferenceArray<Color>( PALETTE_COLORS );
 
 		private volatile boolean hasChanged = true;
-
+		
+		public static final int a = 1;
+		
 		public PaletteRAM(Address start) {
 			super("Palette RAM", TYPE_PALETTE_RAM , new AddressRange( start , Size.words( PALETTE_COLORS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  );
 		}
@@ -388,7 +390,7 @@ public final class DefaultScreen implements IDevice {
 		{
 			return hasChanged;
 		}
-		
+
 		public void clearChanged() {
 			hasChanged = false;
 		}		
@@ -454,7 +456,7 @@ public final class DefaultScreen implements IDevice {
 		}       
 	}    
 
-	protected final class VideoRAM extends MemoryRegion {
+	protected final class VideoRAM extends StatefulMemoryRegion {
 
 		private volatile boolean hasChanged = true;
 
@@ -471,7 +473,7 @@ public final class DefaultScreen implements IDevice {
 		public void clearChanged() {
 			hasChanged = false;
 		}
-		
+
 		public boolean hasChanged() 
 		{
 			return hasChanged;
@@ -490,131 +492,111 @@ public final class DefaultScreen implements IDevice {
 		}       
 	}
 
-	protected boolean isUseCustomPaletteRAM() {
-		return useCustomPaletteRAM;
-	}
-
 	protected void setupDefaultPaletteRAM() 
 	{
-		if ( isUseCustomPaletteRAM() ) 
-		{
-			emulator.unmapRegion( paletteRAM );
-			useCustomPaletteRAM = false;
-			paletteRAM = new PaletteRAM(Address.wordAddress( 0) );
-		} 
-
+		paletteRAM.unmap();
+		paletteRAM = new PaletteRAM(Address.wordAddress( 0) );
 		paletteRAM.setDefaultPalette();
 	}
 
 	protected void mapPaletteRAM(Address address) 
 	{
-		final PaletteRAM newRAM;
-		if ( isUseCustomPaletteRAM() ) 
-		{
-			if ( paletteRAM.getAddressRange().getStartAddress().equals( address ) ) {
-				return; // nothing to be done
-			}
-			newRAM = new PaletteRAM( address );
-			emulator.unmapRegion( paletteRAM );
-		} else {
-			newRAM = new PaletteRAM( address );
+		if ( paletteRAM.isMappedTo( address ) ) {
+			return;
 		}
-		paletteRAM = newRAM;
-		emulator.mapRegion( paletteRAM );
+		paletteRAM.unmap();
+		paletteRAM = new PaletteRAM( address );
+		paletteRAM.map();
 	}
 
-	private boolean isConnected() {
-		return videoRAM != null;
+	private boolean isActive() {
+		return videoRAM != null && isAttached();
+	}
+	
+	private boolean isAttached() {
+		synchronized (PEER_LOCK) {
+			return peer != null;
+		}
 	}
 
 	protected void mapVideoRAM(Address videoRAMAddress) 
 	{
-		final VideoRAM newRAM;
-		if ( isConnected() ) 
+		if ( videoRAM != null ) 
 		{
-			if ( videoRAM.getAddressRange().getStartAddress().equals( videoRAMAddress ) ) {
-				return; // nothing to be done
+			if ( videoRAM.isMappedTo( videoRAMAddress ) ) 
+			{
+				return;
 			}
-			newRAM = new VideoRAM( videoRAMAddress );
-			emulator.unmapRegion( videoRAM );
-		} else {
-			newRAM = new VideoRAM( videoRAMAddress );
+			videoRAM.unmap();
 		}
-		videoRAM = newRAM;
-		emulator.mapRegion( newRAM );
+		videoRAM = new VideoRAM( videoRAMAddress );
+		videoRAM.map();
 	}
 
 	private void renderScreen()
 	{
-		ConsoleScreen screen = screen();
-		if ( screen == null ) {
-			return;
-		}
-
-		if ( ! isConnected() ) 
+		synchronized( PEER_LOCK ) 
 		{
-			renderScreenDisconnectedMessage();
-			return;
-		}
-		
-		final boolean fontRAMChanged = fontRAM.hasChanged();
-		final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
-
-		if ( updateRequired || (blinkingCharactersOnScreen && lastBlinkState != blinkState) ) 
-		{ 
-			if ( fontRAMChanged ) 
+			if ( ! isActive() ) 
 			{
-				fontRAM.defineAllGlyphs();
+				renderScreenDisconnectedMessage();
+				return;
 			}
 			
-			final boolean blink = blinkState;
-			lastBlinkState = blink;
-			
-			boolean blinkingChars = false;
-			for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
-			    blinkingChars |= renderMemoryValue( i , videoRAM.read( i ) , blink );
-			}        
-			
-			blinkingCharactersOnScreen = blinkingChars;
-			
-			repaintPeer(true);
-			
-			fontRAM.clearChanged();
-			paletteRAM.clearChanged();
-			videoRAM.clearChanged();
+			final boolean fontRAMChanged = fontRAM.hasChanged();
+			final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
+
+			if ( updateRequired || (blinkingCharactersOnScreen && lastBlinkState != blinkState) ) 
+			{ 
+				if ( fontRAMChanged ) 
+				{
+					fontRAM.defineAllGlyphs();
+				}
+
+				final boolean blink = blinkState;
+				lastBlinkState = blink;
+
+				boolean blinkingChars = false;
+				for ( int i = 0 ; i < VIDEO_RAM_SIZE_IN_WORDS ; i++ ) {
+					blinkingChars |= renderMemoryValue( i , videoRAM.read( i ) , blink );
+				}        
+				blinkingCharactersOnScreen = blinkingChars;
+				
+				fontRAM.clearChanged();
+				paletteRAM.clearChanged();
+				videoRAM.clearChanged();				
+
+				repaintPeer();
+			}
 		}
 	}
 
 	protected void disconnect() 
 	{
-		if ( isConnected() ) {
-			
-			if ( useCustomFontRAM ) {
-				emulator.unmapRegion( fontRAM );
-				useCustomFontRAM = false;
+		if ( videoRAM != null ) 
+		{
+			if ( fontRAM != null ) {
+				fontRAM.unmap();
 				fontRAM = null;
 			}
-			
-			if ( useCustomPaletteRAM ) {
-				emulator.unmapRegion( paletteRAM );
-				useCustomPaletteRAM = false;
+
+			if ( paletteRAM != null ) {
+				paletteRAM.unmap();
 				paletteRAM = null;
-			}     
-			
-			emulator.unmapRegion( videoRAM );
-			videoRAM = null;
+			}
+
+			if ( videoRAM != null ) {
+				videoRAM.unmap();
+				videoRAM = null;
+			}
 			renderScreenDisconnectedMessage();
 		}
 	}
 
 	private void renderScreenDisconnectedMessage() 
 	{
-		Graphics2D graphics = getGraphics();
-		if ( graphics != null ) 
-		{
-			screen().renderMessage("Screen offline" , Color.BLACK,Color.WHITE);
-			repaintPeer(true);
-		}
+		consoleScreen.renderScreenDisconnectedMessage();
+		repaintPeer();
 	}
 
 	protected boolean renderMemoryValue(int wordAddress , int memoryValue,boolean blinkState) 
@@ -645,7 +627,7 @@ public final class DefaultScreen implements IDevice {
 			final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
 			final Color fg = paletteRAM.getColor( foregroundPalette );
 			final Color bg = paletteRAM.getColor( backgroundPalette );
-			
+
 			if ( blink && ! blinkState ) 
 			{
 				consoleScreen.putChar( column , row , asciiCode , bg , fg );					
@@ -658,12 +640,6 @@ public final class DefaultScreen implements IDevice {
 		return blink;
 	}
 
-	private Graphics2D getGraphics() 
-	{
-		ConsoleScreen screen = screen();
-		return screen != null ? screen().getGraphics() : null;
-	}
-
 	protected boolean hasPeer() {
 		return screen() != null;
 	}
@@ -674,13 +650,17 @@ public final class DefaultScreen implements IDevice {
 		if ( this.emulator != null ) {
 			throw new IllegalStateException("Device "+this+" is already associated with an emulator?");
 		}
+		
 		this.emulator = emulator;
+		
 		if ( mapVideoRamUponAddDevice ) {
 			mapVideoRAM( Address.wordAddress( 0x8000 ) );
 		}
+		
 		if ( mapFontRAMUponAddDevice ) {
 			mapFontRAM( Address.wordAddress( 0x8180 ) );
 		}
+		
 		this.out = emulator.getOutput();
 
 		if ( refreshThread == null || ! refreshThread.isAlive() ) {
@@ -697,15 +677,17 @@ public final class DefaultScreen implements IDevice {
 	@Override
 	public void beforeRemoveDevice(IEmulator emulator) 
 	{
-		if ( isConnected() ) {
-			disconnect();
-		}
+		disconnect();
 
 		if ( refreshThread != null && refreshThread.isAlive() ) {
 			refreshThread.terminate();
 		}
 		refreshThread = null;
 		this.emulator = null;
+		synchronized( PEER_LOCK ) 
+		{
+			this.peer = null;
+		}
 	}
 
 	@Override
@@ -718,14 +700,16 @@ public final class DefaultScreen implements IDevice {
 		if (uiComponent == null) {
 			throw new IllegalArgumentException("uiComponent must not be null");
 		}
-		this.uiComponent = uiComponent;
-		this.consoleScreen = null;
+		synchronized( PEER_LOCK ) {
+			this.peer = uiComponent;
+		}
 	}
-	
+
 	public void detach() 
 	{
-	    this.uiComponent = null;
-	    this.consoleScreen = null;
+		synchronized( PEER_LOCK ) {
+			this.peer = null;
+		}
 	}
 
 	public BufferedImage getScreenImage() 
@@ -742,153 +726,162 @@ public final class DefaultScreen implements IDevice {
 
 	protected ConsoleScreen screen() 
 	{
-		if ( uiComponent == null ) {
-			return null;
-		}
-
-		if ( this.consoleScreen == null ) 
+		synchronized( PEER_LOCK ) 
 		{
-			final Graphics2D gg = (Graphics2D) uiComponent.getGraphics();
-			if ( gg == null ) {
+			if ( peer == null ) {
 				return null;
 			}
 
-			final BufferedImage image = getDefaultFontImage( gg );
-			final Color borderColor = paletteRAM.getColor( borderPaletteIndex );
-			this.consoleScreen =  new ConsoleScreen( image , SCREEN_WIDTH , SCREEN_HEIGHT , borderColor );
-			setupDefaultFontRAM( this.consoleScreen );
-			renderScreenDisconnectedMessage();
+			if ( this.consoleScreen == null ) 
+			{
+				this.consoleScreen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
+				setupDefaultFontRAM( this.consoleScreen );
+				renderScreenDisconnectedMessage( );
+			}
+			return this.consoleScreen;
 		}
-		return this.consoleScreen;
 	}
+	
+    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
+
+		@Override
+		public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
+				IMemory memory) 
+		{
+
+			/*
+			 * Interrupt behavior:
+			 * When a HWI is received by the LEM1802, it reads the A register and does one
+			 * of the following actions:
+			 */
+			final int a = emulator.getCPU().getRegisterValue( Register.A );
+
+			if ( a == 0 ) 
+			{
+				/*
+				 * 0: MEM_MAP_SCREEN
+				 *    Reads the B register, and maps the video ram to DCPU-16 ram starting
+				 *    at address B. See below for a description of video ram.
+				 *    If B is 0, the screen is disconnected.
+				 *    When the screen goes from 0 to any other value, the the LEM1802 takes
+				 *    about one second to start up. Other interrupts sent during this time
+				 *    are still processed.
+				 */
+				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				if ( b == 0 ) {
+					disconnect();
+				} else {
+					final Address ramStart = Address.wordAddress( b );
+					final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
+
+					// TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+					if ( videoRamEnd > 0xffff ) 
+					{
+						final String msg = "Cannot map video ram to "+ramStart+" because it would "
+								+" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
+						out.error( msg );
+						throw new DeviceErrorException(msg , DefaultScreen.this);
+					}
+
+					out.debug("Mapping video RAM to "+ramStart);
+					mapVideoRAM( ramStart );
+				}
+			}
+			else if ( a== 1 ) 
+			{
+				/*
+				 * 1: MEM_MAP_FONT
+				 *    Reads the B register, and maps the font ram to DCPU-16 ram starting
+				 *    at address B. See below for a description of font ram.
+				 *    If B is 0, the default font is used instead.
+				 */
+
+				int value = emulator.getCPU().getRegisterValue(Register.B );
+				if ( value == 0 ) 
+				{
+					synchronized(PEER_LOCK) 
+					{
+						ConsoleScreen screen = screen();
+						if ( screen != null && peer != null ) {
+							screen.setFontImage( DEFAULT_GLYPH_IMAGE );
+						}
+						setupDefaultFontRAM( screen );
+					}
+				} 
+				else 
+				{
+					out.debug("Mapping font RAM to 0x"+Misc.toHexString( value ) );
+					mapFontRAM( Address.wordAddress( value ) );
+				}
+			} 
+			else if ( a == 2 ) 
+			{
+				/*
+				 * 2: MEM_MAP_PALETTE
+				 *    Reads the B register, and maps the palette ram to DCPU-16 ram starting
+				 *    at address B. See below for a description of palette ram.
+				 *    If B is 0, the default palette is used instead.
+				 */
+				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				if ( b == 0 ) {
+					setupDefaultPaletteRAM();
+				} else {
+					final Address ramStart = Address.wordAddress( b );
+					// TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+					mapPaletteRAM( ramStart );
+				}           
+			} else if ( a == 3 ) {
+				/*
+				 * 3: SET_BORDER_COLOR
+				 *    Reads the B register, and sets the border color to palette index B&0xF
+				 */
+				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				borderPaletteIndex = b & 0x0f;
+				final ConsoleScreen screen = screen();
+				if ( screen != null ) {
+					screen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
+				}
+			} else if ( a == 4 ) {
+				/*
+				 * 4: MEM_DUMP_FONT
+				 *    Reads the B register, and writes the default font data to DCPU-16 ram
+				 *    starting at address B.
+				 *    Halts the DCPU-16 for 256 cycles
+				 */
+				int target = emulator.getCPU().getRegisterValue(Register.B );
+				out.debug("Dumping font RAM to 0x"+Misc.toHexString( target) );
+				final int len = fontRAM.getSize().getSizeInWords();
+				for ( int src = 0 ; src < len ; src++ ) {
+					emulator.getMemory().write( target+src , fontRAM.read( src ) );
+				}
+				return 256;
+			} else if ( a == 5 ) {
+				/*
+				 * 5: MEM_DUMP_PALETTE
+				 *    Reads the B register, and writes the default palette data to DCPU-16
+				 *    ram starting at address B.       
+				 *    Halts the DCPU-16 for 16 cycles
+				 */
+				Address start = Address.wordAddress( emulator.getCPU().getRegisterValue( Register.B ) );
+				for ( int words = 0 ; words < 16 ; words++) 
+				{
+					final int value = paletteRAM.read( words );
+					emulator.getMemory().write( start , value );
+					start = start.incrementByOne(true);
+				}
+				return 16;
+			} else {
+				out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
+			}
+			return 0;
+		}
+    };
 
 	@SuppressWarnings("deprecation")
 	@Override
 	public int handleInterrupt(IEmulator emulator) 
 	{
-		/*
-		 * Interrupt behavior:
-		 * When a HWI is received by the LEM1802, it reads the A register and does one
-		 * of the following actions:
-		 */
-		final int a = emulator.getCPU().getRegisterValue( Register.A );
-
-		if ( a == 0 ) 
-		{
-			/*
-			 * 0: MEM_MAP_SCREEN
-			 *    Reads the B register, and maps the video ram to DCPU-16 ram starting
-			 *    at address B. See below for a description of video ram.
-			 *    If B is 0, the screen is disconnected.
-			 *    When the screen goes from 0 to any other value, the the LEM1802 takes
-			 *    about one second to start up. Other interrupts sent during this time
-			 *    are still processed.
-			 */
-			final int b = emulator.getCPU().getRegisterValue( Register.B );
-			if ( b == 0 ) {
-				disconnect();
-			} else {
-				final Address ramStart = Address.wordAddress( b );
-				final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
-
-				// TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-				if ( videoRamEnd > 0xffff ) 
-				{
-					final String msg = "Cannot map video ram to "+ramStart+" because it would "
-							+" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
-					out.error( msg );
-					throw new DeviceErrorException(msg , this);
-				}
-
-				out.debug("Mapping video RAM to "+ramStart);
-				mapVideoRAM( ramStart );
-			}
-		}
-		else if ( a== 1 ) 
-		{
-			/*
-			 * 1: MEM_MAP_FONT
-			 *    Reads the B register, and maps the font ram to DCPU-16 ram starting
-			 *    at address B. See below for a description of font ram.
-			 *    If B is 0, the default font is used instead.
-			 */
-
-			int value = emulator.getCPU().getRegisterValue(Register.B );
-			if ( value == 0 ) 
-			{
-				ConsoleScreen screen = screen();
-
-				if ( screen != null && uiComponent != null ) {
-					screen.setFontImage( getDefaultFontImage( (Graphics2D) uiComponent.getGraphics() ) );
-				}
-				setupDefaultFontRAM( screen );
-			} 
-			else 
-			{
-				out.debug("Mapping font RAM to 0x"+Misc.toHexString( value ) );
-				mapFontRAM( Address.wordAddress( value ) );
-			}
-		} 
-		else if ( a == 2 ) 
-		{
-			/*
-			 * 2: MEM_MAP_PALETTE
-			 *    Reads the B register, and maps the palette ram to DCPU-16 ram starting
-			 *    at address B. See below for a description of palette ram.
-			 *    If B is 0, the default palette is used instead.
-			 */
-			final int b = emulator.getCPU().getRegisterValue( Register.B );
-			if ( b == 0 ) {
-				setupDefaultPaletteRAM();
-			} else {
-				final Address ramStart = Address.wordAddress( b );
-				// TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-				mapPaletteRAM( ramStart );
-			}           
-		} else if ( a == 3 ) {
-			/*
-			 * 3: SET_BORDER_COLOR
-			 *    Reads the B register, and sets the border color to palette index B&0xF
-			 */
-			final int b = emulator.getCPU().getRegisterValue( Register.B );
-			this.borderPaletteIndex = b & 0x0f;
-			final ConsoleScreen screen = screen();
-			if ( screen != null ) {
-				screen.setBorderColor( paletteRAM.getColor( this.borderPaletteIndex ) );
-			}
-		} else if ( a == 4 ) {
-			/*
-			 * 4: MEM_DUMP_FONT
-			 *    Reads the B register, and writes the default font data to DCPU-16 ram
-			 *    starting at address B.
-			 *    Halts the DCPU-16 for 256 cycles
-			 */
-			int target = emulator.getCPU().getRegisterValue(Register.B );
-			out.debug("Dumping font RAM to 0x"+Misc.toHexString( target) );
-			final int len = fontRAM.getSize().getSizeInWords();
-			for ( int src = 0 ; src < len ; src++ ) {
-				emulator.getMemory().write( target+src , fontRAM.read( src ) );
-			}
-			return 256;
-		} else if ( a == 5 ) {
-			/*
-			 * 5: MEM_DUMP_PALETTE
-			 *    Reads the B register, and writes the default palette data to DCPU-16
-			 *    ram starting at address B.       
-			 *    Halts the DCPU-16 for 16 cycles
-			 */
-			Address start = Address.wordAddress( emulator.getCPU().getRegisterValue( Register.B ) );
-			for ( int words = 0 ; words < 16 ; words++) 
-			{
-				final int value = paletteRAM.read( words );
-				emulator.getMemory().write( start , value );
-				start = start.incrementByOne(true);
-			}
-			return 16;
-		} else {
-			out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
-		}
-		return 0;
+		return emulator.doWithEmulator( invoker );
 	}
 
 	protected static final class ConsoleScreen {
@@ -909,9 +902,7 @@ public final class DefaultScreen implements IDevice {
 		private final int screenWidth;
 		private final int screenHeight;
 
-		public ConsoleScreen(BufferedImage glyphBitmap,
-				int screenWidth,
-				int screenHeight,Color borderColor) 
+		public ConsoleScreen(BufferedImage glyphBitmap, int screenWidth, int screenHeight,Color borderColor) 
 		{
 			this.screenWidth = screenWidth;
 			this.screenHeight=screenHeight;
@@ -923,10 +914,10 @@ public final class DefaultScreen implements IDevice {
 
 		public synchronized void setFontImage(final BufferedImage image) 
 		{
-			// choose darkest color as background color
 			this.glyphBitmap = new RawImage( image, "glyphs" , image.getWidth() , image.getHeight() );
 			this.glyphBitmap.getGraphics().drawImage( image , 0 , 0, null );  
-			
+
+			// choose darkest color as background color , lighest as foreground
 			final int[] colors = this.glyphBitmap.getUniqueColors();
 			int background = 0x00ffffff; // aaRRGGBB
 			int foreground = 0x00000000;
@@ -1111,6 +1102,11 @@ public final class DefaultScreen implements IDevice {
 		public BufferedImage getFontImage() {
 			return glyphBitmap.getImage();
 		}
+		
+		public void renderScreenDisconnectedMessage() 
+		{
+			renderMessage("Screen offline" , Color.BLACK,Color.WHITE);
+		}
 
 		public void renderMessage(String s,Color foreground,Color background) {
 
@@ -1141,16 +1137,16 @@ public final class DefaultScreen implements IDevice {
 
 			final int glyphBitmapWidth = glyphBitmap.getWidth();
 			final int screenBitmapWidth = screen.getWidth();		
-			
+
 			final int fgColor = fg.getRGB();
 			final int bgColor = bg.getRGB();			
 
 			final int[] glyphPixels = glyphBitmap.getBackingArray();
 			final int[] targetPixels = screen.getBackingArray();
-			
+
 			int srcRow = glyphY0 * glyphBitmapWidth + glyphX0;
 			int dstRow = screenY0 * screenBitmapWidth + screenX0;
-			
+
 			for ( int y = 0 ; y < GLYPH_HEIGHT ; y++ ) 
 			{
 				int src = srcRow;
@@ -1158,7 +1154,7 @@ public final class DefaultScreen implements IDevice {
 				for ( int x = 0 ; x < GLYPH_WIDTH ; x++ ) 
 				{
 					final int valueFromArray = glyphPixels[src++] & 0xffffff;
-					
+
 					if ( valueFromArray != glyphBackgroundColor ) {
 						targetPixels[dst++] = fgColor;
 					} else {
@@ -1169,7 +1165,7 @@ public final class DefaultScreen implements IDevice {
 				dstRow += screenBitmapWidth;
 			}
 		}
-		
+
 	}
 
 	protected static final class RawImage 
@@ -1182,11 +1178,11 @@ public final class DefaultScreen implements IDevice {
 			data = new int[ width*height ];
 
 			final DataBufferInt dataBuffer = new DataBufferInt(data, width * height);
-			
-            final ColorModel cm = new DirectColorModel(24, 0xff0000, 0xff00, 0xff ); 
+
+			final ColorModel cm = new DirectColorModel(24, 0xff0000, 0xff00, 0xff ); 
 			final SampleModel sm = cm.createCompatibleSampleModel( width , height );
 			final WritableRaster wr = Raster.createWritableRaster(sm, dataBuffer, null);
-			
+
 			image = new BufferedImage(cm, wr, false, null);
 		}       
 

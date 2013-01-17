@@ -54,26 +54,9 @@ public abstract class EmulationOptionsView extends AbstractView {
 	private final JButton fileChooserButton = new JButton("Choose image...");
 	private final JCheckBox writeProtected = new JCheckBox("write-protected");
 	
-	public EmulationOptionsView(EmulationOptions options) 
+	public EmulationOptionsView() 
 	{
-		if (options == null) {
-			throw new IllegalArgumentException("options must not be null");
-		}
-		box1.setSelected( options.isMemoryProtectionEnabled() );
-		box2.setSelected( options.isEnableDebugOutput() );
-		box3.setSelected( options.isIgnoreAccessToUnknownDevices() );
-		box4.setSelected( options.isUseLegacyKeyboardBuffer() );
-		
-		// video emulation
-		box5.setSelected( options.isMapVideoRamUponAddDevice() );
-		box6.setSelected( options.isMapFontRamUponAddDevice() );
-		
-		// emulation speed panel
-		speedModel.setSelectedItem( options.getEmulationSpeed() );
-		
 		emulatorPanel.setLayout( new GridBagLayout() );
-		
-		box7.setSelected( options.isRunFloppyAtFullSpeed() ); // floppy emulation speed
 		
 		GridBagConstraints cnstrs = constraints( 0, 0 , false, false , GridBagConstraints.NONE );
 		emulatorPanel.add( new JLabel("Emulation speed"), cnstrs );
@@ -108,16 +91,6 @@ public abstract class EmulationOptionsView extends AbstractView {
 		emulatorPanel.add( speedBox , cnstrs );
 		
 		// disk drive panel
-		final InsertedDisk disk = options.getInsertedDisk();
-		if ( disk == null ) 
-		{
-		    selectedFileField.setText( null );
-		    writeProtected.setSelected( false );
-		} else {
-	          selectedFileField.setText( disk.getFile().getAbsolutePath() );
-	          writeProtected.setSelected( disk.isWriteProtected() );
-		}
-		
 		selectedFileField.setColumns( 25 );
 		
 		diskDrivePanel.setLayout( new GridBagLayout() );
@@ -154,6 +127,35 @@ public abstract class EmulationOptionsView extends AbstractView {
         cnstrs = constraints( 2, 0 , false , true , GridBagConstraints.NONE );
         cnstrs.anchor = GridBagConstraints.CENTER;
         diskDrivePanel.add( writeProtected , cnstrs );        
+	}
+	
+	public void setData(EmulationOptions options) 
+	{
+		if (options == null) {
+			throw new IllegalArgumentException("options must not be null");
+		}
+		box1.setSelected( options.isMemoryProtectionEnabled() );
+		box2.setSelected( options.isEnableDebugOutput() );
+		box3.setSelected( options.isIgnoreAccessToUnknownDevices() );
+		box4.setSelected( options.isUseLegacyKeyboardBuffer() );
+		
+		// video emulation
+		box5.setSelected( options.isMapVideoRamUponAddDevice() );
+		box6.setSelected( options.isMapFontRamUponAddDevice() );
+		
+		// emulation speed panel
+		speedModel.setSelectedItem( options.getEmulationSpeed() );
+		box7.setSelected( options.isRunFloppyAtFullSpeed() ); // floppy emulation speed		
+		
+		final InsertedDisk disk = options.getInsertedDisk();
+		if ( disk == null ) 
+		{
+		    selectedFileField.setText( null );
+		    writeProtected.setSelected( false );
+		} else {
+	        selectedFileField.setText( disk.getFile().getAbsolutePath() );
+	        writeProtected.setSelected( disk.isWriteProtected() );
+		}		
 	}
 	
 	@Override

@@ -29,8 +29,10 @@ import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.EmulationListener;
+import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IEmulatorInvoker;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
@@ -74,11 +76,16 @@ public class DefaultKeyboard implements IDevice {
 	        return true;
 	    }
 	    
+	    public void afterReset(IEmulator emulator) {
+	    	clearKeyboardBuffers();
+	    };
+	    
 	    protected void beforeContinuousExecutionHook() {
 	        emulationRunning.set( true );
 	    }
 	    
 	    public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
+	    	clearKeyboardBuffers();
 	        emulationRunning.set( false);
 	    }
 	};
@@ -129,6 +136,8 @@ public class DefaultKeyboard implements IDevice {
 			if ( useLegacyMemoryBuffer && legacyKeyboardBuffer != null ) {
 				legacyKeyboardBuffer.writeKeyEvent( mappedKeyCode );
 			}
+			
+			System.out.println("key typed: "+Misc.toHexString( mappedKeyCode )+" [ irq received: "+receivedAtLeastOneInterrupt+" , send_irq= "+sendInterrupt+" ]" );
 			
 			if ( ! receivedAtLeastOneInterrupt ) {
 				return;
@@ -260,7 +269,7 @@ public class DefaultKeyboard implements IDevice {
 		
 		private void sendInterrupt() 
 		{
-			if ( interruptMessage != null ) 
+			if ( interruptMessage != null && emulationRunning.get() ) 
 			{
 				emulator.triggerInterrupt( new HardwareInterrupt( DefaultKeyboard.this , interruptMessage ) );
 			}			
@@ -293,6 +302,7 @@ public class DefaultKeyboard implements IDevice {
 		if ( this.inputComponent != null ) {
 			this.inputComponent.addKeyListener( keyListener );
 		}
+		System.out.println("Keyboard attached to peer.");
 	}
 	
 	public void detach() 
@@ -301,6 +311,7 @@ public class DefaultKeyboard implements IDevice {
 	        this.inputComponent.removeKeyListener( keyListener );
 	    }
 	    this.inputComponent = null;
+	    System.out.println("Keyboard removed from peer.");
 	}
 
 	private void clearKeyboardBuffers() {
@@ -370,7 +381,8 @@ public class DefaultKeyboard implements IDevice {
     }	
 
 	@Override
-	public void beforeRemoveDevice(IEmulator emulator) {
+	public void beforeRemoveDevice(IEmulator emulator) 
+	{
 		if ( inputComponent != null ) {
 			inputComponent.removeKeyListener( keyListener );
 			this.inputComponent = null;
@@ -387,48 +399,58 @@ public class DefaultKeyboard implements IDevice {
 		return DESC;
 	}
 
+    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
+
+		@Override
+		public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
+				IMemory memory) 
+		{
+			receivedAtLeastOneInterrupt = true;
+			
+			final int value = emulator.getCPU().getRegisterValue( Register.A );
+
+			/*
+			 * Interrupts do different things depending on contents of the A register:
+			 * 
+			 *  A | BEHAVIOR
+			 * ---+----------------------------------------------------------------------------
+			 *  0 | Clear keyboard buffer
+			 *  1 | Store next key typed in C register, or 0 if the buffer is empty
+			 *  2 | Set C register to 1 if the key specified by the B register is pressed, or
+			 *    | 0 if it's not pressed
+			 *  3 | If register B is non-zero, turn on interrupts with message B. If B is zero,
+			 *    | disable interrupts
+			 * ---+----------------------------------------------------------------------------		 
+			 */
+
+			switch( value ) {
+			case 0:
+				clearKeyboardBuffers();
+				return 0;
+			case 1:
+				Integer keyCode = readTypedKey();
+				final int msg = keyCode != null ? keyCode.intValue() : 0;
+				emulator.getCPU().setRegisterValue( Register.C , msg );
+				return 0;
+			case 2:
+				final int key = emulator.getCPU().getRegisterValue( Register.B );
+				emulator.getCPU().setRegisterValue( Register.C , isKeyPressed( key ) ? 1 : 0 );
+				return 0;
+			case 3:
+				final int irqMsg = emulator.getCPU().getRegisterValue( Register.B );
+				interruptMessage = irqMsg != 0 ? irqMsg : null;
+				return 0;
+			default:
+				LOG.warn("handleInterrupt(): Received unknown interrupt msg "+Misc.toHexString( value ) );
+				return 0;
+			}
+		}
+    };
+    
 	@Override
 	public int handleInterrupt(IEmulator emulator) 
 	{
-		receivedAtLeastOneInterrupt = true;
-		
-		final int value = emulator.getCPU().getRegisterValue( Register.A );
-
-		/*
-		 * Interrupts do different things depending on contents of the A register:
-		 * 
-		 *  A | BEHAVIOR
-		 * ---+----------------------------------------------------------------------------
-		 *  0 | Clear keyboard buffer
-		 *  1 | Store next key typed in C register, or 0 if the buffer is empty
-		 *  2 | Set C register to 1 if the key specified by the B register is pressed, or
-		 *    | 0 if it's not pressed
-		 *  3 | If register B is non-zero, turn on interrupts with message B. If B is zero,
-		 *    | disable interrupts
-		 * ---+----------------------------------------------------------------------------		 
-		 */
-
-		switch( value ) {
-		case 0:
-			clearKeyboardBuffers();
-			return 0;
-		case 1:
-			Integer keyCode = readTypedKey();
-			final int msg = keyCode != null ? keyCode.intValue() : 0;
-			emulator.getCPU().setRegisterValue( Register.C , msg );
-			return 0;
-		case 2:
-			final int key = emulator.getCPU().getRegisterValue( Register.B );
-			emulator.getCPU().setRegisterValue( Register.C , isKeyPressed( key ) ? 1 : 0 );
-			return 0;
-		case 3:
-			final int irqMsg = emulator.getCPU().getRegisterValue( Register.B );
-			interruptMessage = irqMsg != 0 ? irqMsg : null;
-			return 0;
-		default:
-			LOG.warn("handleInterrupt(): Received unknown interrupt msg "+Misc.toHexString( value ) );
-			return 0;
-		}
+		return emulator.doWithEmulator( invoker );
 	}
 
     @Override

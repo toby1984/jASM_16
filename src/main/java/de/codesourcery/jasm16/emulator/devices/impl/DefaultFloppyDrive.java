@@ -11,10 +11,12 @@ import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IEmulatorInvoker;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -707,98 +709,106 @@ public class DefaultFloppyDrive implements IDevice {
 	        emulator.getOutput().debug( msg );
 	    }
 	}
+	
+    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
+
+		@Override
+		public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
+				IMemory memory) 
+		{
+			final int msg= cpu.getRegisterValue( Register.A ); 
+			switch( msg) {
+			case 0:
+				/*  0  Poll device. 
+				 * Sets B to the current state (see below) and C to the last error
+				 * since the last device poll. 
+				 */
+			    logDebug("Device status polled");
+				cpu.setRegisterValue(Register.B , status.getCode() );
+				cpu.setRegisterValue(Register.C , error.getCode() );
+				synchronized(DISK_LOCK) {
+					error = ErrorCode.NONE;
+				}
+				break;
+			case 1:
+				/*    
+				 * 1  Set interrupt. Enables interrupts and sets the message to X if X is anything
+				 *    other than 0, disables interrupts if X is 0. When interrupts are enabled,
+				 *    the M35FD will trigger an interrupt on the DCPU-16 whenever the state or
+				 *    error message changes.
+				 */
+				int irqMsg = cpu.getRegisterValue(Register.X);
+				if ( irqMsg == 0 ) {
+					logDebug("Interrupts disabled.");
+					interruptMessage = 0;
+					interruptsEnabled = false;					
+				} else {
+					logDebug("Interrupts enabled with message "+irqMsg);
+					interruptMessage = irqMsg ;
+					interruptsEnabled = true;
+				}
+				break;
+
+			case 2:
+				/* 2  Read sector. Reads sector X to DCPU ram starting at Y.
+				 *    Sets B to 1 if reading is possible and has been started, anything else if it
+				 *    fails. Reading is only possible if the state is STATE_READY or
+				 *    STATE_READY_WP.
+				 *    Protects against partial reads.
+				 */		
+		        final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+				final int readSector = cpu.getRegisterValue(Register.X);
+				logDebug("Read request for sector #"+readSector+" , store at "+targetAddress);
+				if ( ! isValidSector( readSector ) ) 
+				{
+					logError("Invalid sector number "+readSector);
+					throw new DeviceErrorException("Invalid sector number "+readSector,DefaultFloppyDrive.this);
+				}
+
+				if (  getWorkerThread().readSector( readSector , targetAddress ) )
+				{
+					cpu.setRegisterValue(Register.B , 1 );
+				} else {
+					cpu.setRegisterValue(Register.B , 0 );
+				}
+				break;
+
+			case 3:
+				/* 3  Write sector. Writes sector X from DCPU ram starting at Y.
+				 *    Sets B to 1 if writing is possible and has been started, anything else if it
+				 *    fails. Writing is only possible if the state is STATE_READY.
+				 *    Protects against partial writes.
+				 */		
+	            final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+				final int writeSector = cpu.getRegisterValue(Register.X);
+				
+				logDebug("Write request for sector #"+writeSector+" , read from "+sourceAddress);
+				
+				if ( ! isValidSector( writeSector ) ) 
+				{
+					logError("Invalid sector number "+writeSector);
+					throw new DeviceErrorException("Invalid sector number "+writeSector,DefaultFloppyDrive.this);
+				}
+
+				if ( getWorkerThread().writeSector( writeSector , sourceAddress ) )
+				{
+					cpu.setRegisterValue(Register.B , 1 );
+				} else {
+					cpu.setRegisterValue(Register.B , 0 );
+				}				
+				break;
+			default:
+				logError("Received unknown interrupt message: "+msg);
+				throw new DeviceErrorException("Received unknown interrupt message: "+msg,DefaultFloppyDrive.this);
+			}
+
+			return 0;
+		}
+    };
 
 	@Override
 	public int handleInterrupt(IEmulator emulator) {
-
-		final ICPU cpu = emulator.getCPU();
-		final int msg= cpu.getRegisterValue( Register.A ); 
-		switch( msg) {
-		case 0:
-			/*  0  Poll device. 
-			 * Sets B to the current state (see below) and C to the last error
-			 * since the last device poll. 
-			 */
-		    logDebug("Device status polled");
-			cpu.setRegisterValue(Register.B , status.getCode() );
-			cpu.setRegisterValue(Register.C , error.getCode() );
-			synchronized(DISK_LOCK) {
-				error = ErrorCode.NONE;
-			}
-			break;
-		case 1:
-			/*    
-			 * 1  Set interrupt. Enables interrupts and sets the message to X if X is anything
-			 *    other than 0, disables interrupts if X is 0. When interrupts are enabled,
-			 *    the M35FD will trigger an interrupt on the DCPU-16 whenever the state or
-			 *    error message changes.
-			 */
-			int irqMsg = cpu.getRegisterValue(Register.X);
-			if ( irqMsg == 0 ) {
-				logDebug("Interrupts disabled.");
-				interruptMessage = 0;
-				interruptsEnabled = false;					
-			} else {
-				logDebug("Interrupts enabled with message "+irqMsg);
-				interruptMessage = irqMsg ;
-				interruptsEnabled = true;
-			}
-			break;
-
-		case 2:
-			/* 2  Read sector. Reads sector X to DCPU ram starting at Y.
-			 *    Sets B to 1 if reading is possible and has been started, anything else if it
-			 *    fails. Reading is only possible if the state is STATE_READY or
-			 *    STATE_READY_WP.
-			 *    Protects against partial reads.
-			 */		
-	        final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
-			final int readSector = cpu.getRegisterValue(Register.X);
-			logDebug("Read request for sector #"+readSector+" , store at "+targetAddress);
-			if ( ! isValidSector( readSector ) ) 
-			{
-				logError("Invalid sector number "+readSector);
-				throw new DeviceErrorException("Invalid sector number "+readSector,this);
-			}
-
-			if (  getWorkerThread().readSector( readSector , targetAddress ) )
-			{
-				cpu.setRegisterValue(Register.B , 1 );
-			} else {
-				cpu.setRegisterValue(Register.B , 0 );
-			}
-			break;
-
-		case 3:
-			/* 3  Write sector. Writes sector X from DCPU ram starting at Y.
-			 *    Sets B to 1 if writing is possible and has been started, anything else if it
-			 *    fails. Writing is only possible if the state is STATE_READY.
-			 *    Protects against partial writes.
-			 */		
-            final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
-			final int writeSector = cpu.getRegisterValue(Register.X);
-			
-			logDebug("Write request for sector #"+writeSector+" , read from "+sourceAddress);
-			
-			if ( ! isValidSector( writeSector ) ) 
-			{
-				logError("Invalid sector number "+writeSector);
-				throw new DeviceErrorException("Invalid sector number "+writeSector,this);
-			}
-
-			if ( getWorkerThread().writeSector( writeSector , sourceAddress ) )
-			{
-				cpu.setRegisterValue(Register.B , 1 );
-			} else {
-				cpu.setRegisterValue(Register.B , 0 );
-			}				
-			break;
-		default:
-			logError("Received unknown interrupt message: "+msg);
-			throw new DeviceErrorException("Received unknown interrupt message: "+msg,this);
-		}
-
-		return 0;
+		return emulator.doWithEmulator( invoker );
 	}
 
 	private boolean isValidSector(int sector) 

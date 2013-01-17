@@ -58,7 +58,6 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
-import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
@@ -77,7 +76,6 @@ public class SourceLevelDebugView extends SourceCodeView
     private IAssemblyProject currentProject;
     private volatile ICompilationUnit currentUnit;
     private final DebuggingPerspective perspective;
-    private final IAssemblyProject optionsProvider;
     
     // @GuardedBy( breakpointHighlights )
     private final Map<Address,Object> breakpointHighlights = new HashMap<Address,Object>();    
@@ -122,8 +120,7 @@ public class SourceLevelDebugView extends SourceCodeView
     public SourceLevelDebugView(IResourceResolver resourceResolver,
     		IWorkspace workspace,
     		DebuggingPerspective perspective, 
-    		IEmulator emulator,
-    		IAssemblyProject optionsProvider)
+    		IEmulator emulator)
     {
         super(resourceResolver,workspace, false);
         if ( perspective == null ) {
@@ -132,7 +129,6 @@ public class SourceLevelDebugView extends SourceCodeView
         if (emulator == null) {
             throw new IllegalArgumentException("emulator must not be NULL.");
         }
-        this.optionsProvider = optionsProvider;
         this.perspective = perspective;
         this.emulator = emulator;
         this.emulator.addEmulationListener( listener );
@@ -266,9 +262,14 @@ public class SourceLevelDebugView extends SourceCodeView
 			@Override
 			public void onClick() 
 			{
-				EmulationOptionsView view = (EmulationOptionsView) getViewContainer().getViewByID( EmulationOptionsView.ID );
-				if ( view == null ) {
-						view = new EmulationOptionsView(optionsProvider.getEmulationOptions()) 
+				if ( currentProject == null ) {
+					return;
+				}
+				
+				EmulationOptionsView view = (EmulationOptionsView) getViewContainer().getViewByID( EmulationOptionsView.ID );				
+				if ( view == null ) 
+				{
+						view = new EmulationOptionsView() 
 						{
 							protected void onSave(de.codesourcery.jasm16.emulator.EmulationOptions options) 
 							{
@@ -277,12 +278,13 @@ public class SourceLevelDebugView extends SourceCodeView
 								
 								// apply changes
 								options.apply( emulator );
-								optionsProvider.setEmulationOptions( options );
+								currentProject.setEmulationOptions( options );
+								
 								try {
-									workspace.saveProjectConfiguration( optionsProvider );
+									workspace.saveProjectConfiguration( currentProject );
 								} 
 								catch (IOException e) {
-									LOG.error("setupMenu(): Failed to save options for project "+optionsProvider,e);
+									LOG.error("setupMenu(): Failed to save options for project "+currentProject,e);
 								}
 								
 								if ( options.isNewEmulatorInstanceRequired() ) 
@@ -298,6 +300,7 @@ public class SourceLevelDebugView extends SourceCodeView
 						getViewContainer().addView( view );
 				} 
 				getViewContainer().toFront( view );
+				view.setData( currentProject.getEmulationOptions() );
 			}
 		};
 		menuManager.addEntry( entry );

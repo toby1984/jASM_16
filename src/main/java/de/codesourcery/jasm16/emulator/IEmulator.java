@@ -60,7 +60,9 @@ public interface IEmulator
      * @return the hardware slot number where the device has been added
      * @throws DeviceErrorException if the {@link IDevice#afterAddDevice(IEmulator)} call failed
      */
-    public int addDevice(IDevice device) throws DeviceErrorException;   
+    public int addDevice(IDevice device) throws DeviceErrorException;
+    
+    public <T> T doWithEmulator(IEmulatorInvoker<T> invoker);
     
     /**
      * Returns a list of devices with matching hardware IDs , versions and manufacturer IDs.

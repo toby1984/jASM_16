@@ -56,6 +56,6 @@ public final class HardwareInterrupt implements IInterrupt {
 
 	@Override
 	public String toString() {
-		return "HW{"+Misc.toHexString( message )+"}";
+		return "HW{"+Misc.toHexString( message )+"} , device "+device.getDeviceDescriptor().getName() ;
 	}
 }

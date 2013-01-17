@@ -102,7 +102,7 @@ public final class EmulationOptions {
         this.ignoreAccessToUnknownDevices = other.ignoreAccessToUnknownDevices;
         this.useLegacyKeyboardBuffer      = other.useLegacyKeyboardBuffer;
         this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
-        this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
+        this.mapVideoRamUponAddDevice      = other.mapVideoRamUponAddDevice;
         this.runFloppyAtFullSpeed         = other.runFloppyAtFullSpeed;
         this.newEmulatorInstanceRequired  = other.newEmulatorInstanceRequired;
         this.insertedDisk                 = other.insertedDisk;

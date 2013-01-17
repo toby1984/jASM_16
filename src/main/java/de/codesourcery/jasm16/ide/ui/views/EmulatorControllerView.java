@@ -96,6 +96,7 @@ public class EmulatorControllerView extends AbstractView
 
             @Override
             public void run() {
+                skipButton.setEnabled( ! emulatorRunningContinously );
                 singleStepButton.setEnabled( ! emulatorRunningContinously );
                 runButton.setEnabled( ! emulatorRunningContinously );
                 stopButton.setEnabled( emulatorRunningContinously );

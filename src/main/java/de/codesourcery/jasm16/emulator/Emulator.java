@@ -61,7 +61,11 @@ import de.codesourcery.jasm16.utils.Misc;
 public final class Emulator implements IEmulator 
 {
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
-
+	
+	private static final boolean DEBUG = false;
+	
+	private static final AtomicLong DEBUG_EMULATOR_ID = new AtomicLong(0);
+	
 	/**
 	 * Maximum number of interrupts the emulator's interrupt queue may hold.
 	 */
@@ -73,6 +77,8 @@ public final class Emulator implements IEmulator
 
 	private final ClockThread clockThread;
 
+	private final long emulatorId = DEBUG_EMULATOR_ID.incrementAndGet();
+	
 	private final ListenerHelper listenerHelper = new ListenerHelper();
 
 	private static final AtomicLong cmdId = new AtomicLong(0);
@@ -113,7 +119,7 @@ public final class Emulator implements IEmulator
 		}
 
 		public static Command stopCommandWithoutACK() {
-			return new Command(CommandType.TERMINATE,false);
+			return new Command(CommandType.STOP,false);
 		}
 
 		public static Command stopCommand() {
@@ -165,7 +171,7 @@ public final class Emulator implements IEmulator
 		@Override
 		public String toString()
 		{
-			return type+" ( "+id+" )";
+			return type+" ( "+id+" , requires_ack="+requiresACK+" )";
 		} 
 	}
 
@@ -232,15 +238,15 @@ public final class Emulator implements IEmulator
 		{
 			synchronized (emuListeners) 
 			{
-				removeAllListenersThatSupportRemoval( emuListeners );
-				removeAllListenersThatSupportRemoval( beforeCommandExecListeners );
-				removeAllListenersThatSupportRemoval( continuousModeBeforeCommandExecListeners );
-				removeAllListenersThatSupportRemoval( continuousModeAfterCommandExecListeners );
-				removeAllListenersThatSupportRemoval( afterCommandExecListeners );
+				removeAllNonHardwareListeners( emuListeners );
+				removeAllNonHardwareListeners( beforeCommandExecListeners );
+				removeAllNonHardwareListeners( continuousModeBeforeCommandExecListeners );
+				removeAllNonHardwareListeners( continuousModeAfterCommandExecListeners );
+				removeAllNonHardwareListeners( afterCommandExecListeners );
 			} 		    
 		}
 
-		private void removeAllListenersThatSupportRemoval(List<IEmulationListener> list) {
+		private void removeAllNonHardwareListeners(List<IEmulationListener> list) {
 
 			for ( Iterator<IEmulationListener> it = list.iterator() ; it.hasNext() ; ) {
 				if ( ! it.next().belongsToHardwareDevice() ) {
@@ -716,15 +722,34 @@ public final class Emulator implements IEmulator
 		public void changeSpeed(EmulationSpeed newSpeed) {
 			sendToClockThread( Command.changeSpeedCommand( newSpeed ) );
 		}
+		
+		private final AtomicBoolean terminateCommandReceived = new AtomicBoolean(false);
 
 		private void sendToClockThread(Command cmd) 
 		{
+			if ( DEBUG ) {
+				System.out.println("[emulator "+emulatorId+"] Sending command to clock thread: "+cmd);
+			}
+			
+			if ( cmd.hasType(CommandType.TERMINATE ) ) 
+			{
+				if ( DEBUG ) {
+					new Exception("[emulator "+emulatorId+"] Received TERMINATE command").printStackTrace();
+				}
+				terminateCommandReceived.set( true );
+			} else if ( terminateCommandReceived.get() ) {
+				throw new IllegalStateException("Can't process any more commands , worker thread already terminated");
+			}
+			
 			safePut( cmdQueue , cmd );
 
 			if ( ! cmd.requiresACK() ) { // don't wait , we'll never receive this one anyway
 				return;
 			}
 
+			if ( DEBUG ) {
+				System.out.println("[emulator "+emulatorId+"] Waiting for ack to: "+cmd);
+			}
 			do 
 			{
 				final Long cmdId = ackQueue.peek();
@@ -852,6 +877,10 @@ public final class Emulator implements IEmulator
 
 		private Command waitForCommand(boolean expectingStartCommand) 
 		{
+			if ( DEBUG ) {
+				System.out.println("[emulator "+emulatorId+"] Waiting for "+(expectingStartCommand? " START command " : "STOP command"));
+			}
+			
 			while ( true ) 
 			{
 				final Command result = safeTake( cmdQueue );
@@ -869,7 +898,13 @@ public final class Emulator implements IEmulator
 				if ( ( expectingStartCommand && result.isStartWorkerMainLoopCommand() ) ||
 					 ( ! expectingStartCommand && result.isStopCommand() ) ) 
 				{
+					if ( DEBUG ) {
+						System.out.println("[emulator "+emulatorId+"] Got "+(expectingStartCommand? " START command " : "STOP command"));
+					}
 					return result;
+				}
+				if ( DEBUG ) {
+					System.out.println("[emulator "+emulatorId+"] Ignoring unexpected command: "+result);
 				}
 				acknowledgeCommand( result );
 			}
@@ -878,11 +913,23 @@ public final class Emulator implements IEmulator
 		private void acknowledgeCommand(Command cmd) 
 		{
 			if ( cmd.requiresACK() ) {
+				if ( DEBUG ) {
+					System.out.println("[emulator "+emulatorId+"] Acknowledging "+cmd);
+				}
 				safePut( ackQueue , cmd.getId() );
 			}
 		}
 	}
 
+	
+	public <T> T doWithEmulator(IEmulatorInvoker<T> invoker) 
+	{
+		synchronized( CPU_LOCK ) 
+		{
+			return invoker.doWithEmulator( this , cpu , memory );
+		}
+	}
+	
 	/**
 	 * 
 	 * @return number of DCPU-16 cycles the command execution took 
@@ -921,6 +968,7 @@ public final class Emulator implements IEmulator
 				finally 
 				{
 					if ( success ) {
+						// TODO: Any asynchronous register changes done by hardware in the meantime get lost here ...
 						visibleCPU.populateFrom( cpu );
 					} else {
 					    // restore CPU register state on error
@@ -1911,7 +1959,7 @@ public final class Emulator implements IEmulator
                 { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
                     if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
                     {
-                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already)");
+                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already) , can't store "+interrupt);
                     }
                     setQueueInterrupts( true );
                     interruptQueue.add( interrupt );

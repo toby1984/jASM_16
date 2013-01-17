@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -270,7 +271,7 @@ public class DebuggingPerspective extends Perspective
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) {
-            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator() , project );
+            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator() );
             addView( view );
             view.refreshDisplay();            
         }
@@ -469,6 +470,12 @@ public class DebuggingPerspective extends Perspective
                 Object result = method.invoke( emu , args );
                 success = true;
                 return result;
+            }
+            catch(InvocationTargetException e) {
+            	if ( e.getTargetException() != null ) {
+            		throw e.getTargetException();
+            	}
+            	throw e;
             }
             finally 
             {
