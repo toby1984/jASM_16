@@ -337,7 +337,7 @@ public class ParseContext implements IParseContext
 		}
 		
 		final StringBuilder contents = new StringBuilder();
-		final boolean isSingleQuoteDelimiter = "'".equals( delimiter.getContents() );
+		final String delimiterString = delimiter.getContents();
 		boolean characterQuoted = false;
 		do 
 		{
@@ -362,12 +362,9 @@ public class ParseContext implements IParseContext
                 continue;
 			}
 			
-			if ( ! characterQuoted && tok.hasType( TokenType.STRING_DELIMITER ) ) 
+			if ( ! characterQuoted && tok.hasType( TokenType.STRING_DELIMITER ) && tok.getContents().equals( delimiterString ) ) 
 			{
-			    if ( ! isSingleQuoteDelimiter || ( isSingleQuoteDelimiter && tok.getContents().equals( "'" )  ) ) 
-			    {
-			        break;
-			    }
+		        break;
 			} 
 			
 			read();

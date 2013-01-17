@@ -175,6 +175,60 @@ public class ParserTest extends TestHelper {
 		assertEquals( 97 , data[1] );
 	}	
 	
+	public void testParseInitializedMemoryWithMixedQuotingCharacterLiteral() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+        final String source = ".dat \"I'm great\"";
+		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
+		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER);
+
+	    Misc.printCompilationErrors( unit , source , true );
+	      
+		assertFalse( ast.hasErrors() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( InitializedMemoryNode.class , root.child(0).getClass() );
+		
+		final InitializedMemoryNode node = (InitializedMemoryNode) root.child(0);
+        resolveSymbols( unit , node );		
+		final byte[] data = node.getBytes();
+		// a = 97
+		// b = 98
+		// c = 99
+		// d = 100
+		// e = 101
+		// f = 102
+	    assertEquals( 0 , data[0] );
+		assertEquals( 73 , data[1] );
+		
+        assertEquals( 0 , data[2] );		
+		assertEquals( 39 , data[3] );
+		
+        assertEquals( 0 , data[4] );
+        assertEquals( 109 , data[5] );		
+        
+        assertEquals( 0 , data[6] );
+        assertEquals( 32 , data[7] );
+        
+        assertEquals( 0 , data[8] );
+        assertEquals( 103 , data[9] );  
+        
+        assertEquals( 0 , data[10] );
+        assertEquals( 114 , data[11] );         
+        
+        assertEquals( 0 , data[12] );
+        assertEquals( 101 , data[13] );  
+        
+        assertEquals( 0 , data[14] );
+        assertEquals( 97 , data[15] );           
+        
+		assertEquals( source , toSourceCode( root , source ) );
+	}	
+	
 	public void testParseInitializedMemoryWithCharacterLiteral() throws ParseException 
 	{
 		final Parser p = new Parser(this);
