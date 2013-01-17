@@ -397,6 +397,12 @@ public class AssemblyProject implements IAssemblyProject
                 return true;
             }
         };
+        
+        for ( File f : projectConfiguration.getBaseDirectory().listFiles() ) {
+        	if ( ! visitor.visit( f ) ) {
+        		break;
+        	}
+        }
 
         for ( File srcFolder : projectConfiguration.getSourceFolders() ) 
         {
