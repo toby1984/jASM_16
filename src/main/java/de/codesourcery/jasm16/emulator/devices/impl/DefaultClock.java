@@ -233,11 +233,11 @@ public class DefaultClock implements IDevice
 	         * When interrupts are enabled, the clock will trigger an interrupt whenever it
 	         * ticks.     
 	         */      
-	        final int a = emulator.getCPU().getRegisterValue(Register.A);
+	        final int a = cpu.getRegisterValue(Register.A);
 	        switch( a ) 
 	        {
 	            case 0: // The B register is read, and the clock will tick 60/B times per second. If B is 0, the clock is turned off.
-	                int b = emulator.getCPU().getRegisterValue(Register.B) & 0xffff;
+	                int b = cpu.getRegisterValue(Register.B) & 0xffff;
 	                if ( b == 0 ) {
 	                    stopClock();
 	                    return 0;
@@ -253,11 +253,11 @@ public class DefaultClock implements IDevice
 	                break;
 	            case 1:
 	                // Store number of ticks elapsed since last call to 0 in C register
-	                emulator.getCPU().setRegisterValue( Register.C , clockThread.tickCounter & 0xffff );
+	                cpu.setRegisterValue( Register.C , clockThread.tickCounter & 0xffff );
 	                break;
 	            case 2: 
 	                // If register B is non-zero, turn on interrupts with message B. If B is zero, disable interrupts.
-	                b = emulator.getCPU().getRegisterValue(Register.B) & 0xffff;
+	                b = cpu.getRegisterValue(Register.B) & 0xffff;
 	                if ( b == 0 ) {
 	                    clockThread.irqEnabled=false;
 	                } else {

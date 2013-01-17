@@ -41,7 +41,10 @@ import javax.swing.text.Position;
 
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
+import de.codesourcery.jasm16.ide.ui.views.EmulatorControllerView.Invoker;
 
 public abstract class AbstractView implements IView
 {
@@ -53,11 +56,14 @@ public abstract class AbstractView implements IView
     
 	private static final AtomicLong ACTION_ID = new AtomicLong(0);    
     
-    private IViewContainer container;
+    private volatile IViewContainer container;
     
     private final List<IView> children = new ArrayList<IView>(); 
 
     public final JPanel getPanel(IViewContainer container) {
+        if (container == null) {
+            throw new IllegalArgumentException("container must not be NULL.");
+        }
     	this.container = container;
     	return getPanel();
     }
@@ -187,5 +193,9 @@ public abstract class AbstractView implements IView
 			}
 		}
 		return null;
-    }	
+    }
+    
+    protected final void executeAsynchronously(Runnable r) {
+        UIUtils.executeAsynchronously( r );
+    }
 }

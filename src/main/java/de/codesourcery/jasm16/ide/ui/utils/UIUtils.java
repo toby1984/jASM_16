@@ -26,10 +26,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -71,6 +76,18 @@ public class UIUtils {
 		}
 	}	
  
+	public static void setBlockAllUserInput(final JFrame frame , final boolean yesNo) 
+	{
+        invokeAndWait( new Runnable() {
+
+            @Override
+            public void run()
+            {
+                frame.getGlassPane().setVisible( yesNo );                
+            }
+        } );
+	}
+	
 	public static DialogResult showConfirmationDialog(Component parent, String title,String message) {
 
 		final Object[] options = {"Yes","No","Cancel"};
@@ -187,6 +204,52 @@ public class UIUtils {
 		}
 		return checkbox.isSelected();
 	}	
+	
+	private static final ExecutorService pool = new ThreadPoolExecutor( 4 , 4 , 60 , TimeUnit.SECONDS , new ArrayBlockingQueue<Runnable>(100) );
+	
+	public static void executeAsynchronously(Runnable r) {
+	    pool.submit( r );
+	}
+	
+    public static JFrame createMessageFrame(String title,String msg) {
+
+        final JFrame frame = new JFrame( title );
+        
+        final JTextArea message = createMultiLineLabel( msg );
+
+        final JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout( new FlowLayout() );
+        
+        final JPanel messagePanel = new JPanel();
+        messagePanel.setLayout( new GridBagLayout() );
+        
+        GridBagConstraints cnstrs = constraints(0,0,true,false, GridBagConstraints.NONE );
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.weighty=0;
+        cnstrs.gridheight = 1;
+        messagePanel.add( message , cnstrs );
+        
+        final JPanel panel = new JPanel();
+        panel.setLayout( new GridBagLayout() );
+        
+        cnstrs = constraints(0,0,true,false , GridBagConstraints.NONE );    
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.gridheight = 1;
+        cnstrs.weighty=0;
+        cnstrs.insets = new Insets(5,2,5,2); // top,left,bottom,right           
+        panel.add( messagePanel , cnstrs );
+        
+        cnstrs = constraints(0,1,true,true, GridBagConstraints.HORIZONTAL );    
+        cnstrs.gridwidth = GridBagConstraints.REMAINDER;
+        cnstrs.gridheight = 1;
+        cnstrs.weighty=0;
+        cnstrs.insets = new Insets(0,2,10,2); // top,left,bottom,right      
+        panel.add( buttonPanel , cnstrs );
+        
+        frame.getContentPane().add( panel );
+        frame.pack();
+        return frame;
+    }	
 	
 	public static JDialog createMessageDialog(Window parent,String title,String msg) {
 

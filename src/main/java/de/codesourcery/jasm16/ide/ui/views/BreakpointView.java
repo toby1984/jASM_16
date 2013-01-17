@@ -36,6 +36,7 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class BreakpointView extends AbstractView {
@@ -60,20 +61,38 @@ public class BreakpointView extends AbstractView {
 	
 	private final IEmulationListener listener = new EmulationListener() 
 	{
-		public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
-			tableModel.addBreakpoint( breakpoint );
+		public void breakpointAdded(IEmulator emulator, final Breakpoint breakpoint) 
+		{
+            UIUtils.invokeLater( new Runnable() {
+                public void run() {		    
+                    tableModel.addBreakpoint( breakpoint );
+                }
+            });
 		}
-		public void onBreakpoint(IEmulator emulator, Breakpoint breakpoint) {
-			int row = tableModel.getRow( breakpoint );
-			int viewRow = table.convertRowIndexToView( row );
-			table.getSelectionModel().setSelectionInterval( viewRow , viewRow );
+		public void onBreakpoint(IEmulator emulator, final Breakpoint breakpoint) 
+		{
+            UIUtils.invokeLater( new Runnable() {
+                public void run() { 		    
+                    int row = tableModel.getRow( breakpoint );
+                    int viewRow = table.convertRowIndexToView( row );
+                    table.getSelectionModel().setSelectionInterval( viewRow , viewRow );
+                }
+            });
 		};
 		
-		public void breakpointChanged(IEmulator emulator, Breakpoint breakpoint) {
-			tableModel.breakpointChanged( breakpoint );
+		public void breakpointChanged(IEmulator emulator, final Breakpoint breakpoint) {
+            UIUtils.invokeLater( new Runnable() {
+                public void run() { 
+                    tableModel.breakpointChanged( breakpoint );
+                }
+            });
 		}
-		public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
-			tableModel.deleteBreakpoint( breakpoint );
+		public void breakpointDeleted(IEmulator emulator, final Breakpoint breakpoint) {
+            UIUtils.invokeLater( new Runnable() {
+                public void run() { 
+                    tableModel.deleteBreakpoint( breakpoint );
+                }
+            });
 		}
 	};
 	

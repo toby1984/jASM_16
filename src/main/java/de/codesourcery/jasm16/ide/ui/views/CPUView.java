@@ -37,7 +37,9 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.IReadOnlyCPU;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 import de.codesourcery.jasm16.utils.TextRegion;
@@ -52,7 +54,7 @@ public class CPUView extends AbstractView
     private final SimpleAttributeSet errorStyle;  
     private final JTextPane textArea = new JTextPane();
     
-    private IEmulator emulator;
+    private volatile IEmulator emulator;
     
     private final IEmulationListener listener = new EmulationListener() {
 
@@ -108,10 +110,22 @@ public class CPUView extends AbstractView
     @Override
     public void refreshDisplay() 
     {
+        UIUtils.invokeLater( new Runnable() {
+
+            @Override
+            public void run()
+            {
+                internalRefreshDisplay();                
+            }
+        });
+    }
+    
+    private void internalRefreshDisplay() 
+    {
         if ( emulator == null ) {
             return;
         }
-        final ICPU cpu = emulator.getCPU();
+        final IReadOnlyCPU cpu = emulator.getCPU();
 
         final StringBuilder builder = new StringBuilder();
         final List<ITextRegion> redRegions = new ArrayList<ITextRegion>();

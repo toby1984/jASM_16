@@ -46,7 +46,6 @@ import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
 import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
 import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
 import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
-import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
 import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
@@ -1339,6 +1338,15 @@ public final class Emulator implements IEmulator
 	@Override
 	public synchronized void calibrate() 
 	{
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.beforeCalibration( emulator );
+            }
+        }); 
+        
 		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
 		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
 
@@ -1372,10 +1380,19 @@ public final class Emulator implements IEmulator
 		clockThread.oneCycleDelay = (int) Math.round( loopIterationsPerCycle );
 
 		out.info("one CPU cycle = "+clockThread.oneCycleDelay+" delay-loop iterations.");
+		
+        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+            @Override
+            public void invoke(IEmulator emulator, IEmulationListener listener)
+            {
+                listener.afterCalibration( emulator );
+            }
+        }); 		
 	}
 
 	@Override
-	public ICPU getCPU()
+	public IReadOnlyCPU getCPU()
 	{
 		synchronized( CPU_LOCK ) {
 			return visibleCPU;
@@ -1383,7 +1400,7 @@ public final class Emulator implements IEmulator
 	}
 
 	@Override
-	public IMemory getMemory()
+	public IReadOnlyMemory getMemory()
 	{
 		return memory;
 	}
@@ -1560,28 +1577,37 @@ public final class Emulator implements IEmulator
 	}
 
 	@Override
-	public void unmapRegion(IMemoryRegion region) {
-		this.memory.unmapRegion( region );
-		if ( out.isDebugEnabled() ) {
-			out.debug("Unmapped memory region "+region);
-			this.memory.dumpMemoryLayout(out);
-		}
+	public void unmapRegion(IMemoryRegion region) 
+	{
+	    synchronized( CPU_LOCK ) 
+	    {
+    		this.memory.unmapRegion( region );
+    		if ( out.isDebugEnabled() ) {
+    			out.debug("Unmapped memory region "+region);
+    			this.memory.dumpMemoryLayout(out);
+    		}
+	    }
 	}
 
 	@Override
 	public void mapRegion(IMemoryRegion region) 
 	{
-		this.memory.mapRegion( region );
-		if ( out.isDebugEnabled() ) {
-			out.debug("Mapped memory region "+region);
-			this.memory.dumpMemoryLayout( out );
-		}
+	    synchronized( CPU_LOCK ) 
+	    {
+	        this.memory.mapRegion( region );
+	        if ( out.isDebugEnabled() ) {
+	            out.debug("Mapped memory region "+region);
+	            this.memory.dumpMemoryLayout( out );
+	        }
+	    }
 	}
 
 	@Override
 	public boolean triggerInterrupt(IInterrupt interrupt) 
 	{
-		return cpu.triggerInterrupt( interrupt );
+	    synchronized( CPU_LOCK ) {
+	        return cpu.triggerInterrupt( interrupt );
+	    }
 	}
 
 	public int addOrReplaceDevice(IDevice device) throws DeviceErrorException 

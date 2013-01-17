@@ -456,8 +456,23 @@ public class DefaultFloppyDrive implements IDevice {
 					if ( disk != null ) 
 					{
 						enforceSpeed();
-						// TODO: Make sure memory write is ATOMIC !!
-						disk.readSector( readCmd.getSector() , emulator.getMemory() , readCmd.getTargetMemoryAddress() );
+						
+						final IOException outcome = emulator.doWithEmulator( new IEmulatorInvoker<IOException>() {
+
+                            @Override
+                            public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
+                            {
+                                try {
+                                    disk.readSector( readCmd.getSector() , memory , readCmd.getTargetMemoryAddress() );
+                                } catch (IOException e) {
+                                    return e;
+                                }                                
+                                return null;
+                            }
+                        });
+						if ( outcome != null ) {
+						    throw outcome;
+						}
 						return ErrorCode.NONE;
 					}
 				}
@@ -474,8 +489,23 @@ public class DefaultFloppyDrive implements IDevice {
 						if ( ! disk.isWriteProtected() ) 
 						{
 							enforceSpeed();
-							// TODO: Make sure memory write is ATOMIC !!
-							disk.writeSector( writeCmd.getSector() , emulator.getMemory() , writeCmd.getSourceMemoryAddress() );
+							
+							final IOException outcome = emulator.doWithEmulator( new IEmulatorInvoker<IOException>() {
+
+	                            @Override
+	                            public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
+	                            {
+	                                try {
+                                        disk.writeSector( writeCmd.getSector() , memory , writeCmd.getSourceMemoryAddress() );
+                                    } catch (IOException e) {
+                                        return e;
+                                    }	                                
+	                                return null;
+	                            }
+	                        });
+							if ( outcome != null ) {
+							    throw outcome;
+							}
 							return ErrorCode.NONE;
 						} 
 						writeProtected = true;

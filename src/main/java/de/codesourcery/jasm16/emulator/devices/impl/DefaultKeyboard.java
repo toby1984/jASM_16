@@ -97,22 +97,38 @@ public class DefaultKeyboard implements IDevice {
             super("keyboard buffer (legacy)", TYPE_KEYBOARD_BUFFER , new AddressRange( range , Size.words( 1 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW);
         }
 	
-        public void writeKeyEvent(int keyCode) 
+        public void writeKeyEvent(final int keyCode) 
         {
-        	final IMemory mem = emulator.getMemory();
-        	final Address address = getStartAddress();
-        	
-        	if ( mem.read( address ) == 0 ) {
-        		mem.write(  address , keyCode );
-        	}
+            emulator.doWithEmulator( new IEmulatorInvoker<Void>() {
+
+                @Override
+                public Void doWithEmulator(IEmulator emulator, ICPU cpu, IMemory mem)
+                {
+                    final Address address = getStartAddress();
+                    
+                    if ( mem.read( address ) == 0 ) {
+                        mem.write(  address , keyCode );
+                    }
+                    return null;
+                }
+            });
         }
         
         private Address getStartAddress() {
         	return getAddressRange().getStartAddress();        	
         }
         
-        public void reset() {
-        	emulator.getMemory().write( getStartAddress() , 0 );
+        public void reset() 
+        {
+            emulator.doWithEmulator( new IEmulatorInvoker<Void>() {
+
+                @Override
+                public Void doWithEmulator(IEmulator emulator, ICPU cpu, IMemory mem)
+                {
+                    mem.write( getStartAddress() , 0 );
+                    return null;
+                }
+            });            
         }
 	}
 	
@@ -407,7 +423,7 @@ public class DefaultKeyboard implements IDevice {
 		{
 			receivedAtLeastOneInterrupt = true;
 			
-			final int value = emulator.getCPU().getRegisterValue( Register.A );
+			final int value = cpu.getRegisterValue( Register.A );
 
 			/*
 			 * Interrupts do different things depending on contents of the A register:
@@ -430,14 +446,14 @@ public class DefaultKeyboard implements IDevice {
 			case 1:
 				Integer keyCode = readTypedKey();
 				final int msg = keyCode != null ? keyCode.intValue() : 0;
-				emulator.getCPU().setRegisterValue( Register.C , msg );
+				cpu.setRegisterValue( Register.C , msg );
 				return 0;
 			case 2:
-				final int key = emulator.getCPU().getRegisterValue( Register.B );
-				emulator.getCPU().setRegisterValue( Register.C , isKeyPressed( key ) ? 1 : 0 );
+				final int key = cpu.getRegisterValue( Register.B );
+				cpu.setRegisterValue( Register.C , isKeyPressed( key ) ? 1 : 0 );
 				return 0;
 			case 3:
-				final int irqMsg = emulator.getCPU().getRegisterValue( Register.B );
+				final int irqMsg = cpu.getRegisterValue( Register.B );
 				interruptMessage = irqMsg != 0 ? irqMsg : null;
 				return 0;
 			default:

@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.KeyAdapter;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 
@@ -40,6 +42,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
@@ -68,7 +71,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 			return ! mayBeDisposed();
 		};
 	};	
-
+	
 	protected final class ViewWithPanel 
 	{
 	    public int tabIndex;
@@ -99,6 +102,21 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 		return panel;
 	}
+	
+    @Override
+    public void setBlockAllUserInput(boolean yesNo) 
+    {
+        if ( panel != null ) 
+        {
+            Container parent = panel.getParent();
+            while( parent != null && !(parent instanceof JFrame ) ) {
+                parent = parent.getParent();
+            }
+            if ( parent != null && parent instanceof JFrame ) {
+                UIUtils.setBlockAllUserInput( (JFrame) parent , yesNo );                
+            }
+        }
+    }	
 	
 	@Override
 	public void toFront(IView view) {

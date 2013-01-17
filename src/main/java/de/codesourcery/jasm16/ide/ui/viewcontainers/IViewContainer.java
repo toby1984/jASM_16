@@ -50,6 +50,8 @@ public interface IViewContainer {
 	 */
 	public void toFront(IView view);
 	
+	public void setBlockAllUserInput(boolean yesNo);
+	
 	/**
 	 * Adds a view to this container.
 	 * 

@@ -41,6 +41,7 @@ import de.codesourcery.jasm16.emulator.Emulator;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.ui.utils.PagingKeyAdapter;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -131,20 +132,26 @@ public class DisassemblerView extends AbstractView
         setViewStartingAddress(startingAddress,true);
     }
     
-    private void setViewStartingAddress(Address startingAddress,boolean adjustAddress) 
+    private void setViewStartingAddress(final Address startingAddress,final boolean adjustAddress) 
     {
-    	// show some context before the actual address so the 
-    	// use is not completely lost where in the program he is
-        final Address offset = Address.wordAddress( 3 ); 
-        final Address realStart = adjustAddress ? startingAddress.minus( offset ) : startingAddress;
-        
-        int rows = calculateVisibleTextRowCount( textArea );
-        if ( rows < 5 ) {
-        	rows = 5;
-        }
-        final List<DisassembledLine> lines = disassembler.disassemble(emulator.getMemory() , realStart , rows , showHexDump );
-        
-        renderDisassembly(lines);    	
+        UIUtils.invokeLater( new Runnable() {
+
+            @Override
+            public void run()
+            {
+                // show some context before the actual address so the 
+                // use is not completely lost where in the program he is
+                final Address offset = Address.wordAddress( 3 ); 
+                final Address realStart = adjustAddress ? startingAddress.minus( offset ) : startingAddress;
+                
+                int rows = calculateVisibleTextRowCount( textArea );
+                if ( rows < 5 ) {
+                    rows = 5;
+                }
+                final List<DisassembledLine> lines = disassembler.disassemble(emulator.getMemory() , realStart , rows , showHexDump );
+                
+                renderDisassembly(lines);                  
+            }} );
     }
 
 	private void renderDisassembly(final List<DisassembledLine> lines) 
@@ -322,7 +329,7 @@ public class DisassemblerView extends AbstractView
 		});        
         
         // setup top panel
-        final JPanel controlPanel = emulatorController.getPanel();
+        final JPanel controlPanel = emulatorController.getPanel( getViewContainer() );
 
         // setup bottom panel        
         final JPanel bottomPanel = new JPanel();

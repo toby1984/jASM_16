@@ -23,8 +23,8 @@ import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
 import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
-import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
 import de.codesourcery.jasm16.emulator.memory.MainMemory;
 
 /**
@@ -62,6 +62,16 @@ public interface IEmulator
      */
     public int addDevice(IDevice device) throws DeviceErrorException;
     
+    /**
+     * Invokes a callback , passing mutable instances of this emulator's CPU and memory.
+     * 
+     * <p>The executing callback has exclusive access to the emulator's CPU and memory , 
+     * meaning all updates are atomic and the CPU and memory state cannot be changed concurrently
+     * by other threads.</p>
+     * 
+     * @param invoker
+     * @return
+     */
     public <T> T doWithEmulator(IEmulatorInvoker<T> invoker);
     
     /**
@@ -152,7 +162,14 @@ public interface IEmulator
 
     public List<Breakpoint> getBreakPoints();
     
-    public ICPU getCPU();
+    /**
+     * Returns a read-only instance of this emulator's CPU.
+     * 
+     * <p>If you want to change the CPU's state, you need to use {@link #doWithEmulator(IEmulatorInvoker)}</p>.
+     * 
+     * @return
+     */
+    public IReadOnlyCPU getCPU();
     
     /**
      * Returns a textual description of the last
@@ -172,7 +189,14 @@ public interface IEmulator
     
     public List<IDevice> getDevices();
     
-    public IMemory getMemory();
+    /**
+     * Returns a read-only instance of this emulator's memory.
+     * 
+     * <p>If you want to write to memory, you need to use {@link #doWithEmulator(IEmulatorInvoker)}</p>.
+     * 
+     * @return
+     */    
+    public IReadOnlyMemory getMemory();
     
     /**
      * Clears the memory and populates it with data from a byte array.

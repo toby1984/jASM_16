@@ -15,52 +15,16 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.util.List;
-
-import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.emulator.devices.IInterrupt;
 
 /**
  * DCPU-16 CPU.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface ICPU
+public interface ICPU extends IReadOnlyCPU
 {
-    public static final int COMMON_REGISTER_COUNT=8;
-    
-	public static final Register[] COMMON_REGISTERS = { Register.A, Register.B, Register.C, Register.X, Register.Y, Register.Z, Register.I, Register.J	};
-    public static final String[] COMMON_REGISTER_NAMES = {"A","B","C","X","Y","Z","I","J"};
-    
-    public static final int REG_A=0;
-    public static final int REG_B=1;
-    public static final int REG_C=2;
-    public static final int REG_X=3;
-    public static final int REG_Y=4;
-    public static final int REG_Z=5;
-    public static final int REG_I=6;
-    public static final int REG_J=7;
-    
-    public Address getPC();
-    
-    public Address getSP();
-    
-    public int getEX();
-    
-    public Address getInterruptAddress();
-    
-    public int getCurrentCycleCount();
-
     public void setRegisterValue(Register reg, int value );
-    
-	public int getRegisterValue(Register reg);
 	
-	public void setQueueInterrupts(boolean yesNo);
-	
-	public boolean isQueueInterrupts();
-	
-	public boolean interruptsEnabled();
-	
-	public List<IInterrupt> getInterruptQueue();
+	public void setQueueInterrupts(boolean yesNo);	
 }

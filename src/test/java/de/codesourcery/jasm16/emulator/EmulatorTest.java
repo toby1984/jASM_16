@@ -1514,7 +1514,7 @@ public class EmulatorTest extends AbstractEmulatorTest
 			 * X+(Y<<16) is a 32 bit word identifying the manufacturer
 			 */
 			// sets a to number of connected devices
-			final ICPU cpu = emulator.getCPU();
+			final IReadOnlyCPU cpu = emulator.getCPU();
 
 			final long hardwareId = cpu.getRegisterValue( Register.A) + ( cpu.getRegisterValue( Register.B) << 16 );
 			final int hardwareVersion = cpu.getRegisterValue( Register.C );

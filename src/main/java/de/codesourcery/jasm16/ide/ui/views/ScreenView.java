@@ -28,6 +28,7 @@ import de.codesourcery.jasm16.emulator.IEmulationOptionsProvider;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 
 public class ScreenView extends AbstractView
 {
@@ -80,30 +81,41 @@ public class ScreenView extends AbstractView
         this.optionsProvider = optionsProvider;
     }
     
-    private void attach(JPanel panel) 
+    private void attach(final JPanel panel) 
     {
         detach();
-        System.out.println("---- Attaching screen & keyboard ");
-        keyboard = optionsProvider.getEmulationOptions().getKeyboard( emulator );
-        screen = optionsProvider.getEmulationOptions().getScreen( emulator );
-        keyboard.attach( panel );
-        screen.attach( panel );
+        
+        UIUtils.invokeAndWait( new Runnable() {
+
+            @Override
+            public void run()
+            {
+                keyboard = optionsProvider.getEmulationOptions().getKeyboard( emulator );
+                screen = optionsProvider.getEmulationOptions().getScreen( emulator );
+                keyboard.attach( panel );
+                screen.attach( panel );                
+            }} );
     }    
     
     private void detach() 
     {
-        if ( screen != null ) {
-            System.out.println("---- DETACHING screen");
-            screen.detach();
-            this.screen = null;
-        }
-        if ( this.keyboard != null ) {
-            System.out.println("---- DETACHING keyboard");
-            keyboard.detach();
-            this.keyboard = null;
-        }        
+        UIUtils.invokeAndWait( new Runnable() {
+
+            @Override
+            public void run()
+            {        
+                if ( screen != null ) {
+                    screen.detach();
+                    screen = null;
+                }
+                if ( keyboard != null ) {
+                    keyboard.detach();
+                    keyboard = null;
+                }    
+            }
+        });
     }
-    
+
     @Override
     public void disposeHook()
     {

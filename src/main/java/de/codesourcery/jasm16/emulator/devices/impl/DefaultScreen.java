@@ -754,7 +754,7 @@ public final class DefaultScreen implements IDevice {
 			 * When a HWI is received by the LEM1802, it reads the A register and does one
 			 * of the following actions:
 			 */
-			final int a = emulator.getCPU().getRegisterValue( Register.A );
+			final int a = cpu.getRegisterValue( Register.A );
 
 			if ( a == 0 ) 
 			{
@@ -767,7 +767,7 @@ public final class DefaultScreen implements IDevice {
 				 *    about one second to start up. Other interrupts sent during this time
 				 *    are still processed.
 				 */
-				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				final int b = cpu.getRegisterValue( Register.B );
 				if ( b == 0 ) {
 					disconnect();
 				} else {
@@ -796,7 +796,7 @@ public final class DefaultScreen implements IDevice {
 				 *    If B is 0, the default font is used instead.
 				 */
 
-				int value = emulator.getCPU().getRegisterValue(Register.B );
+				int value = cpu.getRegisterValue(Register.B );
 				if ( value == 0 ) 
 				{
 					synchronized(PEER_LOCK) 
@@ -822,7 +822,7 @@ public final class DefaultScreen implements IDevice {
 				 *    at address B. See below for a description of palette ram.
 				 *    If B is 0, the default palette is used instead.
 				 */
-				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				final int b = cpu.getRegisterValue( Register.B );
 				if ( b == 0 ) {
 					setupDefaultPaletteRAM();
 				} else {
@@ -835,7 +835,7 @@ public final class DefaultScreen implements IDevice {
 				 * 3: SET_BORDER_COLOR
 				 *    Reads the B register, and sets the border color to palette index B&0xF
 				 */
-				final int b = emulator.getCPU().getRegisterValue( Register.B );
+				final int b = cpu.getRegisterValue( Register.B );
 				borderPaletteIndex = b & 0x0f;
 				final ConsoleScreen screen = screen();
 				if ( screen != null ) {
@@ -848,11 +848,11 @@ public final class DefaultScreen implements IDevice {
 				 *    starting at address B.
 				 *    Halts the DCPU-16 for 256 cycles
 				 */
-				int target = emulator.getCPU().getRegisterValue(Register.B );
+				int target = cpu.getRegisterValue(Register.B );
 				out.debug("Dumping font RAM to 0x"+Misc.toHexString( target) );
 				final int len = fontRAM.getSize().getSizeInWords();
 				for ( int src = 0 ; src < len ; src++ ) {
-					emulator.getMemory().write( target+src , fontRAM.read( src ) );
+					memory.write( target+src , fontRAM.read( src ) );
 				}
 				return 256;
 			} else if ( a == 5 ) {
@@ -862,11 +862,11 @@ public final class DefaultScreen implements IDevice {
 				 *    ram starting at address B.       
 				 *    Halts the DCPU-16 for 16 cycles
 				 */
-				Address start = Address.wordAddress( emulator.getCPU().getRegisterValue( Register.B ) );
+				Address start = Address.wordAddress( cpu.getRegisterValue( Register.B ) );
 				for ( int words = 0 ; words < 16 ; words++) 
 				{
 					final int value = paletteRAM.read( words );
-					emulator.getMemory().write( start , value );
+					memory.write( start , value );
 					start = start.incrementByOne(true);
 				}
 				return 16;
@@ -877,7 +877,6 @@ public final class DefaultScreen implements IDevice {
 		}
     };
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public int handleInterrupt(IEmulator emulator) 
 	{

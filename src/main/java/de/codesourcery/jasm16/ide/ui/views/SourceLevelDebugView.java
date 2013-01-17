@@ -58,6 +58,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
@@ -82,29 +83,49 @@ public class SourceLevelDebugView extends SourceCodeView
     
     private final IEmulationListener listener = new EmulationListener() {
         @Override
-        public void breakpointAdded(IEmulator emulator, Breakpoint breakpoint) {
-            highlightBreakpoint( breakpoint , true );
+        public void breakpointAdded(IEmulator emulator, final Breakpoint breakpoint) {
+            UIUtils.invokeLater( new Runnable() {
+                @Override
+                public void run() 
+                {            
+                    highlightBreakpoint( breakpoint , true );
+                }
+            });
         }
         @Override
-        public void breakpointDeleted(IEmulator emulator, Breakpoint breakpoint) {
-            highlightBreakpoint( breakpoint , false );   
+        public void breakpointDeleted(IEmulator emulator, final Breakpoint breakpoint) {
+            
+            UIUtils.invokeLater( new Runnable() {
+                @Override
+                public void run() 
+                {            
+                    highlightBreakpoint( breakpoint , false );
+                }
+            });
         }
+        
         @Override
         public void afterCommandExecution(IEmulator emulator, int commandDuration) {
             refreshDisplayHook();
         }
         
         @Override
-        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) 
+        public void onStopHook(final IEmulator emulator, final Address previousPC, final Throwable emulationError) 
         {
-            if ( emulationError != null ) 
-            {
-              if ( ! scrollToVisible( emulator.getCPU().getPC() , true , false ) ) {
-                  scrollToVisible( previousPC , true , false );
-              }                
-            } else {
-                refreshDisplayHook();
-            }
+            UIUtils.invokeLater( new Runnable() {
+                @Override
+                public void run() 
+                {
+                    if ( emulationError != null ) 
+                    {
+                        if ( ! scrollToVisible( emulator.getCPU().getPC() , true , false ) ) {
+                            scrollToVisible( previousPC , true , false );
+                        }                
+                    } else {
+                        refreshDisplayHook();
+                    }
+                } 
+            });
         }
         
         @Override
@@ -112,8 +133,13 @@ public class SourceLevelDebugView extends SourceCodeView
             refreshDisplayHook();
         }
         @Override
-        public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes) {
-            scrollToVisible( emulator.getCPU().getPC() , true ,true);
+        public void afterMemoryLoad(final IEmulator emulator, Address startAddress, int lengthInBytes) {
+            UIUtils.invokeLater( new Runnable() {
+                public void run() {
+                    scrollToVisible( emulator.getCPU().getPC() , true ,true);  
+                }
+            } );
+                   
         }
     };
     
@@ -317,7 +343,7 @@ public class SourceLevelDebugView extends SourceCodeView
         
         GridBagConstraints cnstrs = constraints( 0 , 0, true , false , GridBagConstraints.HORIZONTAL );
         cnstrs.weighty=0.0;
-        result.add( controller.getPanel() , cnstrs );
+        result.add( controller.getPanel( getViewContainer() ) , cnstrs );
         
         final JPanel sourceView = super.getPanel();
         cnstrs = constraints( 0 , 1, true , true, GridBagConstraints.BOTH );
@@ -392,7 +418,13 @@ public class SourceLevelDebugView extends SourceCodeView
     @Override
     protected void refreshDisplayHook()
     {
-        scrollToVisible( emulator.getCPU().getPC() , true ,false);
+        UIUtils.invokeLater( new Runnable() {
+            @Override
+            public void run() 
+            {        
+                scrollToVisible( emulator.getCPU().getPC() , true ,false);
+            }
+        });
     }
     
     private void highlightBreakpoints() 

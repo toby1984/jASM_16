@@ -39,6 +39,7 @@ import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
+import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
 import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
@@ -139,11 +140,13 @@ public class DebuggingPerspective extends Perspective
         @Override
         public void afterMemoryLoad(IEmulator emulator, Address startAddress, int lengthInBytes)
         {
-            setupPerspective();
-        }
+            UIUtils.invokeLater( new Runnable() {
 
-        @Override
-        public void onStopHook(IEmulator emulator, Address previousPC, Throwable emulationError) {
+                @Override
+                public void run()
+                {
+                    setupPerspective();                    
+                }} );
         }
     };
 
