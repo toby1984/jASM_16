@@ -25,13 +25,17 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
@@ -76,10 +80,30 @@ public class WorkspaceExplorer extends AbstractView {
 
 	private JPanel panel = null;
 	private final JTree tree = new JTree();
+	
+	private final FileFilter fileFilter = new FileFilter() {
 
-	public WorkspaceExplorer(IWorkspace workspace,
-			ViewContainerManager perspectivesManager,
-			EditorFactory editorFactory) 
+		private final Set<String> ignore_suffix = new HashSet<String>( 
+				Arrays.asList( new String[]{".bat" , ".exe" , ".sh" , ".xml" , ".10csln" , ".10csuo" ,  ".10cproj"} ) );
+		
+		@Override
+		public boolean accept(File file) 
+		{
+			if ( file.isHidden() || file.getName().startsWith(".") ) {
+				return false;
+			}
+			
+			final String name = file.getName().toLowerCase();
+			for ( String toIgnore : ignore_suffix ) {
+				if ( name.endsWith( toIgnore ) ) {
+					return false;
+				}
+			}
+			return true;
+		}
+	};
+
+	public WorkspaceExplorer(IWorkspace workspace, ViewContainerManager perspectivesManager, EditorFactory editorFactory) 
 	{
 		if (workspace == null) {
 			throw new IllegalArgumentException("workspace must not be NULL");
@@ -859,7 +883,7 @@ public class WorkspaceExplorer extends AbstractView {
 			final List<File> files = new ArrayList<File>();
 			final List<File> dirs = new ArrayList<File>();
 
-			for ( File f : dir.listFiles() ) 
+			for ( File f : dir.listFiles( fileFilter ) ) 
 			{
 				if ( f.isFile() ) {
 					files.add( f);
