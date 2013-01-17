@@ -20,7 +20,9 @@ import java.io.PrintStream;
 public class PrintStreamLogger implements ILogger {
 
 	private final PrintStream stream;
-	private volatile boolean isDebugEnabled = true;
+	
+	private volatile LogLevel logLevel=LogLevel.INFO;
+	private volatile boolean isDebugEnabled = false;
 
 	public PrintStreamLogger(PrintStream stream) {
 		if (stream == null) {
@@ -29,12 +31,18 @@ public class PrintStreamLogger implements ILogger {
 		this.stream = stream;
 	}
 	
-	public void setDebugEnabled(boolean yesNo) {
-		this.isDebugEnabled = yesNo;
+	@Override
+	public void setLogLevel(LogLevel logLevel)
+	{
+	    if (logLevel == null) {
+            throw new IllegalArgumentException("logLevel must not be NULL.");
+        }
+	    this.logLevel=logLevel;
 	}
-	
+
+	@Override
 	public boolean isDebugEnabled() {
-		return isDebugEnabled;
+		return logLevel.isEnabled( LogLevel.DEBUG );
 	}
 
 	@Override

@@ -57,7 +57,11 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class ProjectConfiguration implements IEmulationOptionsProvider
 {
-	private static final Logger LOG = Logger.getLogger(ProjectConfiguration.class);
+	public static final String DEFAULT_OUTPUT_FOLDER = "bin";
+
+    public static final String DEFAULT_SOURCE_FOLDER = "src";
+
+    private static final Logger LOG = Logger.getLogger(ProjectConfiguration.class);
 
 	public static final String PROJECT_CONFIG_FILE = "jasm_project.xml";
 
@@ -70,6 +74,10 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	private String outputFolder;
 	private String projectName;
 	private String executableName;
+	
+	private boolean generateSelfRelocatingCode;
+	
+	private BuildOptions buildOptions = new BuildOptions();
 	private EmulationOptions emulationOptions=new EmulationOptions();
 
 	/**
@@ -173,6 +181,13 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		root.appendChild( createElement("outputFolder" , outputFolder , document ) );
 		root.appendChild( createElement("executableName" , executableName , document ) );		
 		
+		// build options
+	    final Element buildOptions = document.createElement("buildOptions");
+	    root.appendChild( buildOptions );
+	    
+	    this.buildOptions.saveBuildOptions( buildOptions , document );
+		
+		// emulation options
 		final Element options = document.createElement("emulationOptions");
 		this.emulationOptions.saveEmulationOptions( options , document );
 		root.appendChild( options );
@@ -230,7 +245,8 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		final XPathExpression outputFolderExpr = xpath.compile("/project/outputFolder");
 		final XPathExpression executableNameExpr = xpath.compile("/project/executableName");
 		final XPathExpression srcFoldersExpr = xpath.compile("/project/sourceFolders/sourceFolder");
-		final XPathExpression emulationOptionsExpr = xpath.compile("/project/emulationOptions");		
+		final XPathExpression emulationOptionsExpr = xpath.compile("/project/emulationOptions");
+        final XPathExpression buildOptionsExpr = xpath.compile("/project/buildOptions");    		
 
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
@@ -238,12 +254,21 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		this.sourceFolders.clear();
 		this.sourceFolders.addAll( getValues( srcFoldersExpr , doc ) );
 		
-		final Element element = getElement(emulationOptionsExpr,doc);
+		// parse emulation options
+		Element element = getElement(emulationOptionsExpr,doc);
 		if ( element == null ) {
 			this.emulationOptions = new EmulationOptions();
 		} else {
 			this.emulationOptions = EmulationOptions.loadEmulationOptions( element );
 		}
+		
+		// parse build options
+        element = getElement(buildOptionsExpr,doc);
+        if ( element == null ) {
+            this.buildOptions = new BuildOptions();
+        } else {
+            this.buildOptions = BuildOptions.loadBuildOptions( element );
+        }		
 	}
 
 	private String getValue(XPathExpression expr, Document doc) throws XPathExpressionException 
@@ -312,11 +337,11 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 
 		if ( sourceFolders.isEmpty() ) 
 		{
-			sourceFolders.add( "src" );
+			sourceFolders.add( DEFAULT_SOURCE_FOLDER );
 		}
 
 		if ( outputFolder == null ) {
-			outputFolder = "bin";
+			outputFolder = DEFAULT_OUTPUT_FOLDER;
 		}
 
 		if ( executableName == null ) {
@@ -351,7 +376,8 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 
 			save();
 		} 
-		catch(IOException e) {
+		catch(IOException e) 
+		{
 			for ( File folder : createdFolders ) 
 			{
 				Misc.deleteRecursively( folder );
@@ -438,5 +464,25 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 
 	public File getBaseDirectory() {
 		return baseDir;
-	}	
+	}
+
+    public boolean isGenerateSelfRelocatingCode()
+    {
+        return generateSelfRelocatingCode;
+    }
+
+    public void setGenerateSelfRelocatingCode(boolean generateSelfRelocatingCode)
+    {
+        this.generateSelfRelocatingCode = generateSelfRelocatingCode;
+    }
+    
+    public BuildOptions getBuildOptions()
+    {
+        return new BuildOptions( buildOptions );
+    }
+    
+    public void setBuildOptions(BuildOptions buildOptions)
+    {
+        this.buildOptions = new BuildOptions( buildOptions );
+    }
 }

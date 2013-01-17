@@ -288,7 +288,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		throw new RuntimeException("Internal error,unhandled node type "+selection);
 	}
-
+	
 	private IResource getResourceForFile(FileNode resourceNode) 
 	{
 		final IAssemblyProject project = getProject( resourceNode );
@@ -438,7 +438,8 @@ public class WorkspaceExplorer extends AbstractView {
 			{
 				try {
 					createNewProject();
-				} catch (Exception e1) {
+				} 
+				catch (Exception e1) {
 					LOG.error("actionPerformed(): ",e1);
 					UIUtils.showErrorDialog( panel ,
 							"Failed to create project",
@@ -467,7 +468,6 @@ public class WorkspaceExplorer extends AbstractView {
 			{
 				refreshWorkspace( project );
 			}
-
 		}); 	
 
 		addMenuEntry( popup , "Import existing project...", new ActionListener() {
@@ -490,6 +490,48 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 
 		});         
+		
+		if ( project != null ) 
+		{
+            addMenuEntry( popup , "Project properties...", new ActionListener() {
+    
+                @Override
+                public void actionPerformed(ActionEvent e) 
+                {
+                    ProjectPropertiesView view = (ProjectPropertiesView) getViewContainer().getViewByID( ProjectPropertiesView.ID );
+                    if ( view == null ) {
+                        view = new ProjectPropertiesView() {
+                            
+                            @Override
+                            protected void onSave()
+                            {
+                                apply( project.getConfiguration() );
+                                
+                                try {
+                                    project.getConfiguration().save();
+                                } 
+                                catch (IOException e) {
+                                    UIUtils.showErrorDialog( null , "Error" , "Failed to save project options" , e);
+                                } finally {
+                                    getViewContainer().disposeView( this );                                    
+                                }
+                            }
+                            
+                            @Override
+                            protected void onCancel()
+                            {
+                                getViewContainer().disposeView( this );
+                            }
+                        };
+                        getViewContainer().addView( view );
+                    }
+                    
+                    view.setProject( project );
+                    view.getViewContainer().toFront( view );
+                }
+    
+            });     		
+		}
 		return popup;
 	}	
 
@@ -922,6 +964,14 @@ public class WorkspaceExplorer extends AbstractView {
 			children.clear();
 			return copy;
 		}
+		
+		public boolean isProjectNode() {
+		    return false;
+		}
+		
+        public boolean isFileNode() {
+            return false;
+        }		
 
 		public Object[] getPathToRoot() 
 		{
@@ -1031,6 +1081,10 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
+	    public boolean isProjectNode() {
+	        return true;
+	    }
+	        
 		@Override
 		public String toString() {
 			return "Project "+getValue().getName();
@@ -1050,6 +1104,10 @@ public class WorkspaceExplorer extends AbstractView {
 				throw new IllegalArgumentException("file must not be NULL");
 			}
 		}
+		
+        public boolean isFileNode() {
+            return true;
+        }		
 
 		@Override
 		public File getValue() {
@@ -1068,10 +1126,7 @@ public class WorkspaceExplorer extends AbstractView {
 		public boolean isDirectory() {
 			return getValue().isDirectory();
 		}
-
 	}
-
-
 
 	@Override
 	public String getTitle() {

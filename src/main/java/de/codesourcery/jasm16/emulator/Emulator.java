@@ -409,42 +409,52 @@ public final class Emulator implements IEmulator
 
 	private final ILogger out = new ILogger() {
 
-		public void setDebugEnabled(boolean yesNo) {
-			loggerDelegate.setDebugEnabled(yesNo);
-		}
+	    @Override
+	    public void setLogLevel(de.codesourcery.jasm16.emulator.ILogger.LogLevel logLevel) {
+	        loggerDelegate.setLogLevel( logLevel );
+	    }
 
+	    @Override
 		public boolean isDebugEnabled() {
 			return loggerDelegate.isDebugEnabled();
 		}
 
+	    @Override
 		public void info(String message) {
 			loggerDelegate.info(message);
 		}
 
+	    @Override
 		public void info(String message, Throwable cause) {
 			loggerDelegate.info(message, cause);
 		}
 
+	    @Override
 		public void warn(String message) {
 			loggerDelegate.warn(message);
 		}
 
+	    @Override
 		public void warn(String message, Throwable cause) {
 			loggerDelegate.warn(message, cause);
 		}
 
+	    @Override
 		public void error(String message) {
 			loggerDelegate.error(message);
 		}
 
+	    @Override
 		public void error(String message, Throwable cause) {
 			loggerDelegate.error(message, cause);
 		}
 
+	    @Override
 		public void debug(String message) {
 			loggerDelegate.debug(message);
 		}
 
+	    @Override
 		public void debug(String message, Throwable cause) {
 			loggerDelegate.debug(message, cause);
 		}

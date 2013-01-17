@@ -153,8 +153,6 @@ public class DefaultKeyboard implements IDevice {
 				legacyKeyboardBuffer.writeKeyEvent( mappedKeyCode );
 			}
 			
-			System.out.println("key typed: "+Misc.toHexString( mappedKeyCode )+" [ irq received: "+receivedAtLeastOneInterrupt+" , send_irq= "+sendInterrupt+" ]" );
-			
 			if ( ! receivedAtLeastOneInterrupt ) {
 				return;
 			}
@@ -318,7 +316,6 @@ public class DefaultKeyboard implements IDevice {
 		if ( this.inputComponent != null ) {
 			this.inputComponent.addKeyListener( keyListener );
 		}
-		System.out.println("Keyboard attached to peer.");
 	}
 	
 	public void detach() 
@@ -327,7 +324,6 @@ public class DefaultKeyboard implements IDevice {
 	        this.inputComponent.removeKeyListener( keyListener );
 	    }
 	    this.inputComponent = null;
-	    System.out.println("Keyboard removed from peer.");
 	}
 
 	private void clearKeyboardBuffers() {

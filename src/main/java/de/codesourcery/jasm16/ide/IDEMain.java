@@ -65,6 +65,7 @@ public class IDEMain
 		EditorFactory editorFactory = new EditorFactory( workspace , viewContainerManager );
 		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , editorFactory ) );
     	desktop.setVisible( true );
+    	
     	viewContainerManager.addViewContainer( desktop );
     }
     

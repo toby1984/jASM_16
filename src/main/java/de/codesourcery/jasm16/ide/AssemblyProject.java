@@ -114,10 +114,12 @@ public class AssemblyProject implements IAssemblyProject
             final ICompiler compiler = new Compiler();
 
             // set compiler options
-            // TODO: make these project specific
             compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
             compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
-//            compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
+            
+            if ( getConfiguration().getBuildOptions().isGenerateSelfRelocatingCode() ) {
+                compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
+            }
             return compiler;
         }
 

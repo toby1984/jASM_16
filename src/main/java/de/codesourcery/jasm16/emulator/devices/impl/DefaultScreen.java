@@ -16,6 +16,8 @@ package de.codesourcery.jasm16.emulator.devices.impl;
  * limitations under the License.
  */
 
+import static java.lang.System.out;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
@@ -172,7 +174,7 @@ public final class DefaultScreen implements IDevice {
 						if ( delta > 0 ) 
 						{
 							float fps = ( counter - lastFps ) / delta;
-							System.out.println("FPS: "+fps);
+							logDebug("FPS: "+fps);
 						}
 						lastFps = counter;
 						lastTimestamp = now;
@@ -237,6 +239,24 @@ public final class DefaultScreen implements IDevice {
 		setupDefaultPaletteRAM();
 	}
 
+    protected void logError(String msg) {
+        if ( emulator != null ) {
+            emulator.getOutput().error( msg );
+        }
+    }
+
+    protected void logError(String msg,Throwable t) {
+        if ( emulator != null ) {
+            emulator.getOutput().error( msg , t );
+        }
+    }   
+
+    protected void logDebug(String msg) {
+        if ( emulator != null ) {
+            emulator.getOutput().debug( msg );
+        }
+    }
+    
 	@Override
 	public void reset()
 	{

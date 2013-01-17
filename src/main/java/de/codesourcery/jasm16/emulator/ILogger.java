@@ -17,10 +17,27 @@ package de.codesourcery.jasm16.emulator;
 
 public interface ILogger {
 	
+    public static enum LogLevel {
+        DEBUG(4),
+        INFO(3),
+        WARN(2),
+        ERROR(1);
+        
+        private final int level;
+        
+        private LogLevel(int level) {
+            this.level = level;
+        }
+        
+        public final boolean isEnabled(LogLevel lvl) {
+            return this.level >= lvl.level;
+        }
+    }
+    
     public static final ILogger NOP_LOGGER = new ILogger() {
 
         @Override
-        public void setDebugEnabled(boolean yesNo) {}
+        public void setLogLevel(LogLevel lovLevel) {}
 
         @Override
         public boolean isDebugEnabled() {return false;}
@@ -50,7 +67,7 @@ public interface ILogger {
         public void debug(String message, Throwable cause) {}
     };
     
-	public void setDebugEnabled(boolean yesNo);
+	public void setLogLevel(LogLevel logLevel);
 	
 	public boolean isDebugEnabled();
 

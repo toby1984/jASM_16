@@ -10,6 +10,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
+import de.codesourcery.jasm16.emulator.ILogger.LogLevel;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultFloppyDrive;
@@ -178,7 +179,9 @@ public final class EmulationOptions {
     {
         final ILogger outLogger = new PrintStreamLogger( System.out );
 
-        outLogger.setDebugEnabled( enableDebugOutput );
+        if ( enableDebugOutput ) {
+            outLogger.setLogLevel( LogLevel.DEBUG );
+        }
         emulator.setOutput( outLogger );
         emulator.setMemoryProtectionEnabled( memoryProtectionEnabled );
         emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
