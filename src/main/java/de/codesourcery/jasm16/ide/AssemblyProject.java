@@ -263,10 +263,6 @@ public class AssemblyProject implements IAssemblyProject
                 throw new IllegalArgumentException("source must not be NULL");
             }
 
-            if ( ! source.hasType( ResourceType.SOURCE_CODE ) ) {
-                throw new IllegalArgumentException("Not a source file: "+source);
-            }
-
             for ( ICompilationUnit unit : getCompilationUnits() ) {
                 if ( unit.getResource().getIdentifier().equals( source.getIdentifier() ) ) {
                     return unit;
@@ -285,9 +281,6 @@ public class AssemblyProject implements IAssemblyProject
 
     protected File getOutputFileForSource(IResource resource) 
     {
-        if ( ! resource.hasType(ResourceType.SOURCE_CODE ) ) {
-            throw new IllegalArgumentException("Not a source file: "+resource);
-        }
         final String objectCodeFile = getNameWithoutSuffix( resource )+".dcpu16";
         final File outputDir = getConfiguration().getOutputFolder();
         return new File( outputDir , objectCodeFile );
@@ -453,14 +446,14 @@ public class AssemblyProject implements IAssemblyProject
     }
 
     @Override
-    public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
+    public IResource resolve(String identifier) throws ResourceNotFoundException 
     {
-        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier, resourceType );
+        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier );
     }
 
     @Override
-    public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException {
-        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent, resourceType );
+    public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
+        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent );
     }
 
     @Override
@@ -508,9 +501,7 @@ public class AssemblyProject implements IAssemblyProject
             if ( existing.getIdentifier().equals( resource.getIdentifier() ) ) 
             {
                 it.remove();
-                if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-                    removeCompilationUnitFor( resource );
-                }				
+                removeCompilationUnitFor( resource );
                 break;
             }
         }

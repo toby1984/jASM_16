@@ -34,7 +34,6 @@ import javax.swing.JTabbedPane;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
@@ -405,7 +404,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
     }
     
 	@Override
-	public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
+	public IResource resolve(String identifier) throws ResourceNotFoundException 
 	{
 		for ( SourceCodeView v : getSourceCodeViews() ) {
 			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
@@ -416,7 +415,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	}
 
 	@Override
-	public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
+	public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 	{
 		for ( SourceCodeView v : getSourceCodeViews() ) {
 			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {

@@ -50,18 +50,18 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier,ResourceType type) throws ResourceNotFoundException 
+			public IResource resolve(String identifier) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent,ResourceType resourceType) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "../source2".equals( identifier ) ) 
 				{
 					assertSame( unit1.getResource() , parent );
-					return new StringResource( identifier , source2 , resourceType );
+					return new StringResource( identifier , source2 , ResourceType.UNKNOWN );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
 			}
@@ -100,13 +100,13 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
+			public IResource resolve(String identifier) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
 					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
@@ -150,18 +150,18 @@ public class IncludeSourceTest extends TestHelper {
 		c.setResourceResolver( new IResourceResolver() {
 
 			@Override
-			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException 
+			public IResource resolve(String identifier) throws ResourceNotFoundException 
 			{
 				throw new UnsupportedOperationException("Unexpected call");
 			}
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException 
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
+					return new StringResource( identifier , source2 , ResourceType.UNKNOWN );
 				} else if ( "source1".equals( identifier ) ) {
-					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE);
+					return new StringResource( identifier , source2 , ResourceType.UNKNOWN);
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");				
 			}

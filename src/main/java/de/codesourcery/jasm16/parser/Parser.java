@@ -27,7 +27,6 @@ import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
@@ -70,13 +69,13 @@ public class Parser implements IParser
         final IResourceResolver resolver = new IResourceResolver() {
 
             @Override
-            public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
+            public IResource resolve(String identifier) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
             }
 
             @Override
-            public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
+            public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
             {
                 throw new UnsupportedOperationException("Not implemented"); 
             }

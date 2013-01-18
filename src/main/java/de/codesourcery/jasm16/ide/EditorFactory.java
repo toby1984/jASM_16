@@ -34,9 +34,6 @@ public class EditorFactory {
 	
 	public IEditorView createEditor( IAssemblyProject project, IResource resource, IResourceResolver resolver) 
 	{
-		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView(resolver,workspace,viewContainerManager);
-		}
-		throw new IllegalArgumentException("Unsupported resource: "+resource);
+		return new SourceEditorView(resolver,workspace,viewContainerManager);
 	}
 }

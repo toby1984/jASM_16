@@ -31,7 +31,6 @@ import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.exceptions.EOFException;
@@ -233,15 +232,15 @@ public class ParseContext implements IParseContext
     }
 
     @Override
-    public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
+    public IResource resolve(String identifier) throws ResourceNotFoundException
     {
-        return this.resourceResolver.resolve( identifier, resourceType );
+        return this.resourceResolver.resolve( identifier );
     }
 
     @Override
-    public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
+    public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
-        return this.resourceResolver.resolveRelative( identifier , parent, resourceType );        
+        return this.resourceResolver.resolveRelative( identifier , parent );        
     }
 
     @Override

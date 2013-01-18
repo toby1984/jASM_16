@@ -301,7 +301,7 @@ public class Breakpoint
 	private TermNode parseCondition(String condition) throws ParseException 
 	{
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , 
-				new StringResource( "dummy", condition , ResourceType.SOURCE_CODE ) );
+				new StringResource( "dummy", condition , ResourceType.UNKNOWN ) );
 		final ISymbolTable symbolTable = new SymbolTable();
 		final ILexer lexer = new Lexer( new Scanner( condition ) );
 		final IResourceResolver resourceResolver=new FileResourceResolver();

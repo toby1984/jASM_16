@@ -963,10 +963,7 @@ public class SourceEditorView extends SourceCodeView {
 			IResource resource,
 			IResourceResolver resourceResolver) 
 	{
-		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceEditorView(resourceResolver,this.workspace,viewContainerManager);
-		}
-		throw new IllegalArgumentException("Unsupported resource type: "+resource);
+	    return new SourceEditorView(resourceResolver,this.workspace,viewContainerManager);
 	}
 
 	@Override

@@ -23,7 +23,6 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -71,7 +70,7 @@ public class IncludeBinaryFileNode extends ObjectCodeOutputNode implements IPrep
         mergeWithAllTokensTextRegion( tok );
         resourceIdentifier = tok.getContents();
         try {
-            this.resource = context.resolveRelative( resourceIdentifier , context.getCompilationUnit().getResource(), ResourceType.UNKNOWN );
+            this.resource = context.resolveRelative( resourceIdentifier , context.getCompilationUnit().getResource() );
             final long size = resource.getAvailableBytes();
             if ( size < 0 || size > Integer.MAX_VALUE ) {
                 throw new RuntimeException("Internal error, resource "+resource+" returned size that does not fit into an Integer");

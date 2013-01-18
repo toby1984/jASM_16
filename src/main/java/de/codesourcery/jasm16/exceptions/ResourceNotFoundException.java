@@ -15,14 +15,13 @@
  */
 package de.codesourcery.jasm16.exceptions;
 
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
 /**
  * Thrown when a resource could not be found.
  * 
  * @author tobias.gierke@code-sourcery.de
- * @see IResourceResolver#resolve(String, ResourceType)
+ * @see IResourceResolver#resolve(String)
  */
 public class ResourceNotFoundException extends Exception
 {

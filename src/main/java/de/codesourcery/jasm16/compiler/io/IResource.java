@@ -34,8 +34,9 @@ import de.codesourcery.jasm16.utils.ITextRegion;
  */
 public interface IResource
 {
-	public static enum ResourceType {
-		SOURCE_CODE,
+	public static enum ResourceType 
+	{
+	    SOURCE_CODE,
 		OBJECT_FILE,
 		EXECUTABLE,
 		UNKNOWN, DIRECTORY;

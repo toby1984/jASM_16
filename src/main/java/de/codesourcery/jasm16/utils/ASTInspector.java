@@ -15,8 +15,6 @@
  */
 package de.codesourcery.jasm16.utils;
 
-import static de.codesourcery.jasm16.compiler.io.IResource.ResourceType.SOURCE_CODE;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -915,7 +913,7 @@ public class ASTInspector {
 
 		editorPane.setText( source );
 
-		final IResource resource = new AbstractResource(SOURCE_CODE) {
+		final IResource resource = new AbstractResource(ResourceType.UNKNOWN) {
 
 			@Override
 			public String readText(ITextRegion range) throws IOException
@@ -1216,16 +1214,16 @@ public class ASTInspector {
 		compiler.setResourceResolver( new FileResourceResolver() {
 
 			@Override
-			public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
+			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
 			{
 				if ( parent instanceof FileResource) {
-					return super.resolveRelative(identifier, parent, resourceType);
+					return super.resolveRelative(identifier, parent);
 				}
 				return new FileResource( new File( file.getParentFile() , identifier ) , ResourceType.UNKNOWN);
 			}
 
 			@Override
-			public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
+			public IResource resolve(String identifier) throws ResourceNotFoundException
 			{
 				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );
 			}

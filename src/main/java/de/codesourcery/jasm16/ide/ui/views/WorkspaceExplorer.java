@@ -338,9 +338,6 @@ public class WorkspaceExplorer extends AbstractView {
 	private void openSourceFileEditor(IAssemblyProject project,File sourceFile) throws IOException {
 
 		final IResource resource = project.lookupResource( sourceFile.getAbsolutePath() );
-		if ( ! resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return;
-		}
 
 		EditorContainer editorContainer = (EditorContainer ) getViewContainer().getViewByID( EditorContainer.VIEW_ID );
 

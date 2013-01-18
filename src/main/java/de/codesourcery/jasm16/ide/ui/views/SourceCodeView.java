@@ -726,9 +726,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		if (sourceFile == null) {
 			throw new IllegalArgumentException("sourceFile must not be NULL");
 		}
-		if ( ! sourceFile.hasType( ResourceType.SOURCE_CODE ) ) {
-			throw new IllegalArgumentException("Not a source file: "+sourceFile);
-		}
 
 		// read source first so we don't discard internal state
 		// and end up with an IOException later on...
@@ -793,26 +790,26 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 				}
 
 				@Override
-				public IResource resolve(String identifier,ResourceType resourceType) throws ResourceNotFoundException 
+				public IResource resolve(String identifier) throws ResourceNotFoundException 
 				{
 					try {
 						if ( resourceResolver != null ) {
-							return resourceResolver.resolve( identifier , resourceType );
+							return resourceResolver.resolve( identifier );
 						}
 					} 
 					catch(ResourceNotFoundException e) 
 					{
 					}
-					return getChildResourceResolver(null).resolve( identifier , resourceType );
+					return getChildResourceResolver(null).resolve( identifier );
 				}
 
 				@Override
-				public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType)
+				public IResource resolveRelative(String identifier, IResource parent)
 						throws ResourceNotFoundException 
 						{
 					try {
 						if ( resourceResolver != null ) {
-							return resourceResolver.resolveRelative( identifier , parent , resourceType );
+							return resourceResolver.resolveRelative( identifier , parent );
 						}
 					} 
 					catch(ResourceNotFoundException e) 
@@ -826,7 +823,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					} else {
 						realParent = parent;
 					}
-					return getChildResourceResolver( parent ).resolveRelative( identifier , realParent , resourceType );					
+					return getChildResourceResolver( parent ).resolveRelative( identifier , realParent );					
 						}
 			};
 
@@ -1458,9 +1455,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	@Override
 	public IEditorView getOrCreateEditor(IAssemblyProject project, IResource resource,IResourceResolver resourceResolver) 
 	{
-		if ( resource.hasType( ResourceType.SOURCE_CODE ) ) {
-			return new SourceCodeView(resourceResolver,this.workspace, true );
-		}
 		throw new IllegalArgumentException("Unsupported resource type: "+resource);
 	}
 

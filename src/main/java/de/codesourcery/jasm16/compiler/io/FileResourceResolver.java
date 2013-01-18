@@ -43,7 +43,7 @@ public class FileResourceResolver implements IResourceResolver
     }    
     
     @Override
-    public IResource resolve(String identifier, ResourceType resourceType) throws ResourceNotFoundException
+    public IResource resolve(String identifier) throws ResourceNotFoundException
     {
         if (StringUtils.isBlank(identifier)) {
             throw new IllegalArgumentException("identifier must not be NULL/blank.");
@@ -58,17 +58,17 @@ public class FileResourceResolver implements IResourceResolver
             throw new ResourceNotFoundException( file.getAbsolutePath()+" is not a regular file." , identifier );
         }        
         
-        return new FileResource( file , resourceType);
+        return new FileResource( file , ResourceType.UNKNOWN );
     }
 
     @Override
-    public IResource resolveRelative(String identifier, IResource parent, ResourceType resourceType) throws ResourceNotFoundException
+    public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
         if ( ! (parent instanceof FileResource) ) {
             throw new IllegalArgumentException("Called with non-file resource "+parent);
         }
         if ( identifier.startsWith( File.pathSeparator ) ) {
-            return resolve( identifier, resourceType );
+            return resolve( identifier );
         }
         final File parentFile;
         if ( baseDir == null ) 
@@ -79,8 +79,8 @@ public class FileResourceResolver implements IResourceResolver
             parentFile = baseDir;
         }
         if ( parentFile == null ) {
-            return resolve( identifier, resourceType );
+            return resolve( identifier );
         }
-        return new FileResource( new File( parentFile , identifier ) , resourceType );
+        return new FileResource( new File( parentFile , identifier ) , ResourceType.UNKNOWN );
     }
 }

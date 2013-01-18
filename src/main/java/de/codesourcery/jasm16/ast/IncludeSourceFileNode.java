@@ -21,7 +21,6 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -76,7 +75,7 @@ public class IncludeSourceFileNode extends ASTNode {
 		mergeWithAllTokensTextRegion( region );
 		
 		try {
-			resource = context.resolveRelative( path , context.getCompilationUnit().getResource(), ResourceType.SOURCE_CODE );
+			resource = context.resolveRelative( path , context.getCompilationUnit().getResource() );
 		} 
 		catch (ResourceNotFoundException e) 
 		{
