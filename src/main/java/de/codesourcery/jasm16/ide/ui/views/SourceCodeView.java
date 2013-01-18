@@ -84,6 +84,7 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.CommentNode;
 import de.codesourcery.jasm16.ast.IPreprocessorDirective;
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
@@ -94,11 +95,13 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
+import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -274,7 +277,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 		public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
 		{
-			if ( deletedResource.isSame( sourceFileOnDisk ) ) 
+			if ( DefaultResourceMatcher.INSTANCE.isSame( sourceFileOnDisk , deletedResource ) ) 
 			{
 				dispose();
 			}
@@ -288,8 +291,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	private ICompilationUnit compilationUnit;
 
 	private CompilationThread compilationThread = null;
-
-
 
 	/*
 	 * 
@@ -659,6 +660,9 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		if (workspace == null) {
 			throw new IllegalArgumentException("workspace must not be null");
 		}
+		if ( resourceResolver == null ) {
+            throw new IllegalArgumentException("resourceResolver must not be NULL.");
+        }
 		this.resourceResolver = resourceResolver;
 		this.editable = isEditable;
 		this.workspace = workspace;
@@ -717,8 +721,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			throw new RuntimeException("bad location: ",e);
 		}
 	}
-
-	protected final void openFile(IAssemblyProject project, final IResource sourceFile) throws IOException 
+	
+	protected final void openFile(final IAssemblyProject project, final IResource sourceFile) throws IOException 
 	{
 		if ( project == null ) {
 			throw new IllegalArgumentException("project must not be NULL");
@@ -734,7 +738,20 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		this.project = project;
 		this.sourceFileOnDisk = sourceFile;        
 		this.initialHashCode = Misc.calcHash( source );
-		this.sourceInMemory = new InMemorySourceResource( sourceFileOnDisk , editorPane );
+		this.sourceInMemory = new InMemorySourceResource( sourceFileOnDisk , editorPane ) {
+		    @Override
+		    public void setType(ResourceType type)
+		    {
+		        super.setType(type);
+		        project.changeResourceType( sourceFileOnDisk , type );
+		    }
+		    
+		    @Override
+		    public String toString()
+		    {
+		        return "SourceCodeView[ "+sourceFileOnDisk+" ]";
+		    }
+		};
 
 		clearNavigationHistory();
 		clearHighlight();
@@ -771,7 +788,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 			onSourceCodeValidation();
 
-			final IResourceResolver delegatingResolver = new IResourceResolver() {
+			final IResourceResolver delegatingResolver = new AbstractResourceResolver() {
 
 				private IResourceResolver getChildResourceResolver(IResource parent) 
 				{
@@ -787,6 +804,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					}            		
 					final FileResource fr = (FileResource) r;
 					return new FileResourceResolver( fr.getAbsoluteFile().getParentFile() );
+				}
+				
+				@Override
+				public void changeResourceType(IResource resource, ResourceType newType)
+				{
+				    resourceResolver.changeResourceType( resource , newType);
 				}
 
 				@Override
@@ -828,7 +851,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			};
 
 			try {
-				compilationUnit = project.getBuilder().parse( 
+				compilationUnit = project.getProjectBuilder().parse( 
 						sourceInMemory ,
 						delegatingResolver,                		
 						new CompilationListener() 
@@ -856,6 +879,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 	protected final void doHighlighting(ICompilationUnit unit,boolean called) 
 	{
+	    if ( unit == null ) {
+            throw new IllegalArgumentException("Internal error,compilation unit must not be NULL.");
+        }
+	    
 		if ( panel == null ) {
 			return;
 		}
@@ -864,7 +891,16 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		{
 			onHighlightingStart();
 
-			doSemanticHighlighting( unit );
+			long time = -System.currentTimeMillis();
+			try 
+			{
+			    final int markerCount = unit.getMarkers( (String[]) null ).size();
+			    System.out.println("DEBUG: Starting to highlight "+unit.getResource()+" with "+markerCount+" markers.");
+			    doSemanticHighlighting( unit );
+			} finally {
+			    time += System.currentTimeMillis();
+			    System.out.println("DEBUG: Highlighting "+unit.getResource()+" took "+time+" ms.");
+			}
 		}
 
 		if ( unit.hasErrors() ) 
@@ -904,8 +940,10 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	protected final void doSemanticHighlighting(ICompilationUnit unit, ASTNode node)
 	{
 		highlight( node );
-		for ( ASTNode child : node.getChildren() ) {
-			doSemanticHighlighting( unit , child );
+		if ( ! (node instanceof IncludeSourceFileNode ) ) {
+		    for ( ASTNode child : node.getChildren() ) {
+		        doSemanticHighlighting( unit , child );
+		    }
 		}
 	}
 
@@ -1385,7 +1423,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		}
 
 		try {
-			getCurrentProject().getBuilder().build();
+			getCurrentProject().getProjectBuilder().build();
 		} 
 		catch (IOException e) {
 			LOG.error("save(): Compilation failed",e);

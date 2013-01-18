@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.TokenType;
@@ -86,7 +87,14 @@ public class IncludeSourceFileNode extends ASTNode {
 		
 		if ( ! context.hasParserOption( ParserOption.NO_SOURCE_INCLUDE_PROCESSING ) ) 
 		{
-			try {
+			try 
+			{
+			    if ( resource.getType() != ResourceType.SOURCE_CODE ) {
+			        context.changeResourceType( resource , ResourceType.SOURCE_CODE );
+			    }
+			    
+			    LOG.debug("parseInternal(): File "+context.getCompilationUnit()+" includes "+resource);
+			    
 				final IParseContext subContext = context.createParseContextForInclude( resource );
 				
 				final AST ast = (AST) new AST().parse( subContext );

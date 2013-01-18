@@ -16,15 +16,18 @@
 package de.codesourcery.jasm16.compiler.io;
 
 import java.io.File;
+import java.io.IOException;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
-public class FileResourceResolver implements IResourceResolver 
+public class FileResourceResolver extends AbstractResourceResolver
 {
-
+    private static final Logger LOG = Logger.getLogger(FileResourceResolver.class);
+    
     private File baseDir;
     public FileResourceResolver() {
     }
@@ -58,14 +61,20 @@ public class FileResourceResolver implements IResourceResolver
             throw new ResourceNotFoundException( file.getAbsolutePath()+" is not a regular file." , identifier );
         }        
         
-        return new FileResource( file , ResourceType.UNKNOWN );
+        try {
+            return new FileResource( file.getCanonicalFile() , ResourceType.UNKNOWN );
+        } catch (IOException e) {
+            throw new RuntimeException("While resolving '"+identifier+"'",e);
+        }
     }
 
     @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
-        if ( ! (parent instanceof FileResource) ) {
-            throw new IllegalArgumentException("Called with non-file resource "+parent);
+        if ( ! (parent instanceof FileResource) ) 
+        {
+            LOG.error("resolveRelative(): resolveRelative() in "+this+" must not be called with non-file resource "+parent);
+            throw new IllegalArgumentException("resolveRelative() in "+this+" must not be called with non-file resource "+parent);
         }
         if ( identifier.startsWith( File.pathSeparator ) ) {
             return resolve( identifier );
@@ -81,6 +90,13 @@ public class FileResourceResolver implements IResourceResolver
         if ( parentFile == null ) {
             return resolve( identifier );
         }
-        return new FileResource( new File( parentFile , identifier ) , ResourceType.UNKNOWN );
+        
+        File canonical= new File( parentFile , identifier );
+        try {
+            canonical = canonical.getCanonicalFile();
+        } catch (IOException e) {
+            throw new RuntimeException("While resolving '"+canonical.getAbsolutePath()+"'",e);
+        }
+        return new FileResource( canonical , ResourceType.UNKNOWN );
     }
 }

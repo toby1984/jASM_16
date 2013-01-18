@@ -28,12 +28,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -44,6 +46,7 @@ import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
 import de.codesourcery.jasm16.ide.ui.views.CPUView;
 import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
 import de.codesourcery.jasm16.ide.ui.views.HexDumpView;
+import de.codesourcery.jasm16.ide.ui.views.InMemorySourceResource;
 import de.codesourcery.jasm16.ide.ui.views.ScreenView;
 import de.codesourcery.jasm16.ide.ui.views.SourceLevelDebugView;
 import de.codesourcery.jasm16.ide.ui.views.StackView;
@@ -55,12 +58,12 @@ public class DebuggingPerspective extends Perspective
 
     public static final String ID = "debugger";
 
-    private final IResourceResolver resourceResolver;
+    private final ProjectWrapper resourceResolver=new ProjectWrapper();
     private final IWorkspace workspace;
 
     private final EmulatorProxy proxy = new EmulatorProxy();
 
-    private IAssemblyProject project;
+    private volatile IAssemblyProject project;
     private IResource executable;
 
     private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
@@ -86,7 +89,7 @@ public class DebuggingPerspective extends Perspective
 
             if ( ! buildRunning && // do not dispose the perspective if executable is deleted as part of the build process 
                     affectedProject.isSame( project ) && 
-                    deletedResource.isSame( executable ) ) 
+                    DefaultResourceMatcher.INSTANCE.isSame( deletedResource , executable ) ) 
             {
                 dispose();
             }
@@ -150,16 +153,57 @@ public class DebuggingPerspective extends Perspective
         }
     };
 
+    private ViewContainerManager viewContainerManager;
+    
+    private final class ProjectWrapper implements IResourceResolver {
+        
+        private ProjectWrapper()
+        {
+        }
+        
+        private EditorContainer getEditorPerspective() {
+            List<IViewContainer> result = viewContainerManager.getPerspectives( EditorContainer.VIEW_ID );
+            return result.isEmpty() ? null : (EditorContainer) result.get(0);
+        }
+        
+        @Override
+        public IResource resolve(String identifier) throws ResourceNotFoundException
+        {
+            final EditorContainer perspective = getEditorPerspective();
+            if ( perspective != null ) {
+                return perspective.resolve( identifier );
+            }
+            return project.resolve( identifier );
+        }
 
-    public DebuggingPerspective(IWorkspace workspace ,
-            IApplicationConfig appConfig,
-            IResourceResolver resourceResolver)
+        @Override
+        public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
+        {
+            final EditorContainer perspective = getEditorPerspective();
+            if ( perspective != null ) {
+                return perspective.resolveRelative( identifier , parent );
+            }            
+            if ( parent instanceof InMemorySourceResource) {
+                return project.resolveRelative( identifier , ((InMemorySourceResource) parent).getResourceOnDisk() );
+            }
+            return project.resolveRelative( identifier , parent );
+        }
+
+        @Override
+        public void changeResourceType(IResource resource, ResourceType newType)
+        {
+            project.changeResourceType(resource, newType);
+        }
+    }     
+
+    public DebuggingPerspective(IWorkspace workspace , ViewContainerManager viewContainerManager,
+            IApplicationConfig appConfig)
     {
         super(ID, appConfig);
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }
-        this.resourceResolver = resourceResolver;
+        this.viewContainerManager = viewContainerManager;
         this.workspace = workspace;
         this.workspace.addWorkspaceListener( workspaceListener );
     }

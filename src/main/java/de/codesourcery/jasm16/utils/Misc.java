@@ -655,20 +655,6 @@ public class Misc {
         return false;
     }
 
-    public static boolean isSourceFile(File file) 
-    {
-        if ( file.isFile() ) {
-            final String name = file.getName();
-            if ( name.toLowerCase().endsWith(".dasm") || 
-                    name.toLowerCase().endsWith(".dasm16" ) ||
-                    name.toLowerCase().endsWith(".asm") ) 
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public static File getUserHomeDirectory() 
     {
         final String homeDirectory = System.getProperty("user.home");

@@ -79,6 +79,10 @@ public abstract class CompilerPhase implements ICompilerPhase {
     {
         return name.toString();
     }
+    
+    protected boolean isProcessCompilationUnit(ICompilationUnit unit) {
+        return true;
+    }
 
     @Override
     public boolean execute(List<ICompilationUnit> units, 
@@ -98,11 +102,15 @@ public abstract class CompilerPhase implements ICompilerPhase {
     	
         for ( ICompilationUnit unit : internalCopy ) 
         {
+            if ( ! isProcessCompilationUnit( unit ) ) {
+                listener.skipped( this , unit );
+                continue;
+            }
+            
         	listener.start( this , unit );
+        	
             try {
-                final ICompilationContext context = createCompilationContext(units,
-                		symbolTable, writerFactory, resourceResolver, options,
-						unit);                    
+                final ICompilationContext context = createCompilationContext(units, symbolTable, writerFactory, resourceResolver, options, unit);                    
                 run( unit , context );
                 if ( hasErrors( units ) ) 
                 { 
@@ -127,11 +135,11 @@ public abstract class CompilerPhase implements ICompilerPhase {
 
 	protected ICompilationContext createCompilationContext(final List<ICompilationUnit> units,
 			ISymbolTable symbolTable, IObjectCodeWriterFactory writerFactory,
-			IResourceResolver resourceResolver, Set<CompilerOption> options,
+			IResourceResolver resourceResolver, final Set<CompilerOption> options,
 			ICompilationUnit unit) 
 	{
-		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() {
-			
+		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() 
+		{
 			@Override
 			public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
 					throws IOException 
@@ -141,15 +149,16 @@ public abstract class CompilerPhase implements ICompilerPhase {
 						return unit;
 					}
 				}
+				
 				final ICompilationUnit result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
+				System.out.println("Creating new ICompilationUnit - did not find "+resource+" in "+units);
 				
 				// !!!! the next call actually modifies the method's input argument....
 				units.add( result );
 				return result;
 			}
 		};
-		final ICompilationContext context = new CompilationContext( unit , units , 
-				symbolTable, writerFactory , resourceResolver ,unitResolver ,options );
+		final ICompilationContext context = new CompilationContext( unit , units ,  symbolTable, writerFactory , resourceResolver ,unitResolver ,options );
 		return context;
 	}
     

@@ -58,4 +58,9 @@ public class CompilationListener implements ICompilationListener
     public void afterCompile(ICompilerPhase lastPhase)
     {
     }
-};
+
+    @Override
+    public void skipped(ICompilerPhase phase, ICompilationUnit unit)
+    {
+    }
+}

@@ -18,7 +18,11 @@ package de.codesourcery.jasm16.ide;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -57,6 +61,11 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class ProjectConfiguration implements IEmulationOptionsProvider
 {
+    
+    public static final Set<String> DEFAULT_SOURCEFILENAME_PATTERNS = new HashSet<>(
+            Arrays.asList(".*?\\.dasm",".*?\\.dasm16",".*?\\.asm")
+    );
+    
 	public static final String DEFAULT_OUTPUT_FOLDER = "bin";
 
     public static final String DEFAULT_SOURCE_FOLDER = "src";
@@ -75,7 +84,13 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	private String projectName;
 	private String executableName;
 	
+	private String compilationRoot; // path relative to project basedir, points to source file that should be compiled first (and that will
+	// include all other files that need to be compiled) 
+	
 	private boolean generateSelfRelocatingCode;
+	
+	private final Set<String> sourceFilenamePatterns = new HashSet<>();
+	private final List<Pattern> sourceFilenameRegexPatterns = new ArrayList<>();
 	
 	private BuildOptions buildOptions = new BuildOptions();
 	private EmulationOptions emulationOptions=new EmulationOptions();
@@ -89,8 +104,9 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	public ProjectConfiguration(File baseDir) throws IOException 
 	{
 		this.baseDir = baseDir;
+		setSourceFilenamePatterns( DEFAULT_SOURCEFILENAME_PATTERNS );
 	}
-
+	
     public EmulationOptions getEmulationOptions() {
     	return new EmulationOptions(emulationOptions);
     }
@@ -181,6 +197,19 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		root.appendChild( createElement("outputFolder" , outputFolder , document ) );
 		root.appendChild( createElement("executableName" , executableName , document ) );		
 		
+		// compilation root
+		if ( compilationRoot != null ) {
+		    root.appendChild( createElement("compilationRoot" , compilationRoot , document ) );
+		}
+		
+		// source filename patterns
+		final Element srcFilePatterns = createElement("sourceFilenamePatterns",document);
+		root.appendChild( srcFilePatterns );
+		
+		for ( String pat : sourceFilenamePatterns ) {
+		    srcFilePatterns.appendChild( createElement("sourceFilenamePattern" , pat , document ) );
+		}
+		
 		// build options
 	    final Element buildOptions = document.createElement("buildOptions");
 	    root.appendChild( buildOptions );
@@ -246,13 +275,31 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		final XPathExpression executableNameExpr = xpath.compile("/project/executableName");
 		final XPathExpression srcFoldersExpr = xpath.compile("/project/sourceFolders/sourceFolder");
 		final XPathExpression emulationOptionsExpr = xpath.compile("/project/emulationOptions");
-        final XPathExpression buildOptionsExpr = xpath.compile("/project/buildOptions");    		
-
+        final XPathExpression buildOptionsExpr = xpath.compile("/project/buildOptions");   
+        final XPathExpression srcFilePatternsExpr = xpath.compile("/project/sourceFilenamePatterns/sourceFilenamePattern");           
+        final XPathExpression compilationRootExpr = xpath.compile("/project/compilationRoot");
+        
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
 		this.executableName = getValue( executableNameExpr , doc );
 		this.sourceFolders.clear();
 		this.sourceFolders.addAll( getValues( srcFoldersExpr , doc ) );
+		
+		// compilation root
+        final List<String> roots = getValues( compilationRootExpr , doc );
+        if ( ! roots.isEmpty() ) 
+        {
+            if ( roots.size() > 1 ) {
+                throw new RuntimeException("Parse error, more than one compilation root in project config XML ?");
+            }
+            setCompilationRoot( new File( roots.get(0) ) );
+        }		
+        
+		// parse srcfile name patterns
+		final List<String> patterns = getValues( srcFilePatternsExpr , doc );
+		if ( ! patterns.isEmpty() ) {
+		    setSourceFilenamePatterns( new HashSet<>(patterns) );
+		}
 		
 		// parse emulation options
 		Element element = getElement(emulationOptionsExpr,doc);
@@ -484,5 +531,78 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
     public void setBuildOptions(BuildOptions buildOptions)
     {
         this.buildOptions = new BuildOptions( buildOptions );
+    }
+    
+    public static boolean isProjectConfigurationFile(File file) {
+        return file.isFile() && ProjectConfiguration.PROJECT_CONFIG_FILE.equals( file.getName() );
+    }
+    
+    public Set<String> getSourceFilenamePatterns()
+    {
+        return sourceFilenamePatterns;
+    }
+    
+    public void setSourceFilenamePatterns(Set<String> patterns)
+    {
+        final List<Pattern> newPatterns = new ArrayList<>();
+        for ( String pat : patterns ) {
+            newPatterns.add( Pattern.compile( pat ) );
+        }
+        this.sourceFilenamePatterns.clear();
+        this.sourceFilenameRegexPatterns.clear();
+        
+        this.sourceFilenamePatterns.addAll( patterns );
+        this.sourceFilenameRegexPatterns.addAll( newPatterns );
+    }
+    
+    public boolean isSourceFile(File file) 
+    {
+        if ( ! file.isFile() ) {
+            return false;
+        }
+        final String fileName = file.getName() ;
+        for ( Pattern p : sourceFilenameRegexPatterns ) {
+            if ( p.matcher( fileName ).matches() ) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Returns this project's compilation root.
+     * @return
+     */
+    public File getCompilationRoot()
+    {
+        return ( compilationRoot == null ) ? null : new File(getBaseDirectory() , compilationRoot );
+    }
+    
+    private static boolean isRelativePath(File f) {
+        return ! f.getPath().startsWith( File.separator );
+    }
+    
+    public void setCompilationRoot(File compilationRoot)
+    {
+        if ( compilationRoot == null ) 
+        {
+            this.compilationRoot = null;
+            return;
+        }
+        
+        if ( ! isRelativePath( compilationRoot ) && ! compilationRoot.getAbsolutePath().startsWith( getBaseDirectory().getAbsolutePath() ) ) 
+        {
+            throw new IllegalArgumentException("File "+compilationRoot.getAbsolutePath()+" is not inside this project's folder "+getBaseDirectory().getAbsolutePath());
+        }
+        
+        // convert to path relative to base dir
+        String stripped = compilationRoot.getPath(); 
+        if ( ! isRelativePath( compilationRoot ) ) {
+            stripped =compilationRoot.getAbsolutePath().substring( getBaseDirectory().getAbsolutePath().length() );
+            while  ( stripped.startsWith(File.separator ) ) {
+                stripped = stripped.substring(1);
+            }
+        }
+        this.compilationRoot = stripped;
     }
 }

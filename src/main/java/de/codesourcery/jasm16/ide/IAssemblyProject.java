@@ -32,6 +32,12 @@ public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,
     
     public List<IResource> getResources(ResourceType type);
     
+    public boolean containsResource(IResource resource);
+    
+    public void addedToWorkspace(IWorkspace workspace);
+    
+    public void removedFromWorkspace(IWorkspace workspace);
+    
     /**
      * 
      * @param file
@@ -56,7 +62,7 @@ public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,
     
     public List<IResource> getAllResources();
     
-    public IProjectBuilder getBuilder();
+    public IProjectBuilder getProjectBuilder();
     
     public IResource lookupResource(String identifier);
 }

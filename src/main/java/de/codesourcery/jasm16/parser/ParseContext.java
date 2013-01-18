@@ -32,6 +32,7 @@ import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -235,6 +236,12 @@ public class ParseContext implements IParseContext
     public IResource resolve(String identifier) throws ResourceNotFoundException
     {
         return this.resourceResolver.resolve( identifier );
+    }
+    
+    @Override
+    public void changeResourceType(IResource resource, ResourceType newType)
+    {
+        resourceResolver.changeResourceType( resource , newType);
     }
 
     @Override

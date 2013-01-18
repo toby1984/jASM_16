@@ -20,7 +20,10 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
+import de.codesourcery.jasm16.ide.exceptions.ProjectNotFoundException;
+import de.codesourcery.jasm16.utils.IOrdered;
 
 /**
  * A workspace.
@@ -42,6 +45,8 @@ public interface IWorkspace extends IResourceListener
     
     public IAssemblyProject createNewProject(String name) throws IOException,ProjectAlreadyExistsException;
 
+    public IAssemblyProject getProjectForResource(IResource resource) throws ProjectNotFoundException;
+    
     public List<IAssemblyProject> getAllProjects(); // ok
     
     public void openProject(IAssemblyProject project);
@@ -68,10 +73,24 @@ public interface IWorkspace extends IResourceListener
     public void saveProjectConfiguration(IAssemblyProject project) throws IOException;
     
     // workspace listeners
+    /**
+     * Adds a workspace listener.
+     * 
+     * <p>Listeners may implement {@link IOrdered} to control invocation order.</p>
+     * 
+     * @param listener
+     */
     public void addWorkspaceListener(IWorkspaceListener listener);
     
     public void removeWorkspaceListener(IWorkspaceListener listener);
     
+    /**
+     * Adds a resource listener.
+     * 
+     * <p>Listeners may implement {@link IOrdered} to control invocation order.</p>
+     * 
+     * @param listener
+     */    
     public void addResourceListener(IResourceListener listener);
     
     public void removeResourceListener(IResourceListener listener);

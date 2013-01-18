@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.compiler.io;
 
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 /**
@@ -55,4 +56,6 @@ public interface IResourceResolver
      * @throws ResourceNotFoundException
      */
     public IResource resolveRelative(String identifier,IResource parent) throws ResourceNotFoundException;    
+    
+    public void changeResourceType(IResource resource,ResourceType newType);
 }

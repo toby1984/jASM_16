@@ -26,6 +26,7 @@ import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
+import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -66,7 +67,7 @@ public class Parser implements IParser
     // unit-testing only
     protected AST parse(final String source) {
         final ICompilationUnit unit = CompilationUnit.createInstance( "string input" , source );
-        final IResourceResolver resolver = new IResourceResolver() {
+        final IResourceResolver resolver = new AbstractResourceResolver() {
 
             @Override
             public IResource resolve(String identifier) throws ResourceNotFoundException

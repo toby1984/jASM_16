@@ -19,6 +19,7 @@ import java.util.Collections;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -47,7 +48,7 @@ public class IncludeSourceTest extends TestHelper {
 		
 		final ICompilationUnit unit1 = CompilationUnit.createInstance( "source1" , source1 );
 		
-		c.setResourceResolver( new IResourceResolver() {
+		c.setResourceResolver( new AbstractResourceResolver() {
 
 			@Override
 			public IResource resolve(String identifier) throws ResourceNotFoundException 
@@ -97,7 +98,7 @@ public class IncludeSourceTest extends TestHelper {
 			}
 		};
 		
-		c.setResourceResolver( new IResourceResolver() {
+		c.setResourceResolver( new AbstractResourceResolver() {
 
 			@Override
 			public IResource resolve(String identifier) throws ResourceNotFoundException 
@@ -147,7 +148,7 @@ public class IncludeSourceTest extends TestHelper {
 		
 		c.setCompilerOption( CompilerOption.DEBUG_MODE , true );
 		
-		c.setResourceResolver( new IResourceResolver() {
+		c.setResourceResolver( new AbstractResourceResolver() {
 
 			@Override
 			public IResource resolve(String identifier) throws ResourceNotFoundException 

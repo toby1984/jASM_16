@@ -952,15 +952,6 @@ public class ASTInspector {
 			public String getIdentifier() {
 				return file.getAbsolutePath();
 			}
-
-            @Override
-            public boolean isSame(IResource other)
-            {
-                if ( other == this ) {
-                    return true;
-                }
-                return false;
-            }
 		};
 
 		this.file = file;

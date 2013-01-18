@@ -34,6 +34,7 @@ public class DebugCompilationListener extends CompilationListener {
     private long startTime;
 
     private final boolean printDetails;
+    
     public DebugCompilationListener(boolean printDetails) {
         this.printDetails=printDetails;
     }
@@ -57,7 +58,7 @@ public class DebugCompilationListener extends CompilationListener {
     {
         startTime = -System.currentTimeMillis();
         if ( printDetails ) {
-            System.out.println("start  : "+phase.getName());
+            System.out.println("START: "+phase.getName());
         }
     }
 
@@ -66,9 +67,15 @@ public class DebugCompilationListener extends CompilationListener {
     {
         startTime += System.currentTimeMillis();
         if ( printDetails ) {
-            System.out.println("success: "+phase.getName()+" [ "+startTime+" ms ]");
+            System.out.println("SUCCESS: "+phase.getName()+" [ "+startTime+" ms ]");
         }
     }
+    
+    @Override
+    public void skipped(ICompilerPhase phase,ICompilationUnit unit)
+    {
+        System.out.println("SKIPPED: "+phase.getName()+" skipped processing "+unit);
+    }    
 
     @Override
     public void failure(ICompilerPhase phase)
@@ -81,6 +88,7 @@ public class DebugCompilationListener extends CompilationListener {
 
     @Override
     public void failure(ICompilerPhase phase, ICompilationUnit unit) {
+        System.out.println("FAILURE: Failed to compile "+unit.getResource()+" with phase "+phase);          
         if ( phase.getName().equals( ICompilerPhase.PHASE_PARSE ) ) {
             parsedLineCount = unit.getParsedLineCount();
         }   	    
@@ -88,10 +96,12 @@ public class DebugCompilationListener extends CompilationListener {
 
     @Override
     public void start(ICompilerPhase phase, ICompilationUnit unit) {
+        System.out.println("START: Starting to compile "+unit.getResource()+" with phase "+phase);
     }
 
     @Override
     public void success(ICompilerPhase phase, ICompilationUnit unit) {
+        System.out.println("SUCCESS: Successfully compiled "+unit.getResource()+" with phase "+phase);        
         if ( phase.getName().equals( ICompilerPhase.PHASE_PARSE ) ) {
             parsedLineCount = unit.getParsedLineCount();
         }	    

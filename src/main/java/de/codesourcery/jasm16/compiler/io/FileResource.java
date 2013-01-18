@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import de.codesourcery.jasm16.ide.ui.views.InMemorySourceResource;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -117,15 +118,4 @@ public class FileResource extends AbstractResource
 		return file.getAbsolutePath();
 	}
 
-    @Override
-    public boolean isSame(IResource other)
-    {
-        if ( other == this ) {
-            return true;
-        }
-        if ( other instanceof FileResource) {
-            return this.file.getAbsolutePath().equals( ((FileResource) other).file.getAbsolutePath() );
-        }
-        return false;
-    }	
 }

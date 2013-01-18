@@ -43,11 +43,13 @@ import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.SymbolTable;
+import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -77,6 +79,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
         {
             throw new UnsupportedOperationException("Not implemented"); 
+        }
+
+        @Override
+        public void changeResourceType(IResource resource, ResourceType newType)
+        {
+            throw new UnsupportedOperationException("Not implemented");             
         }
     };
     
@@ -214,7 +222,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected final ICompilationContext createCompilationContext(ICompilationUnit unit) throws IOException 
     {
         return new CompilationContext( unit , symbolTable , new NullObjectCodeWriterFactory() , 
-        		new IResourceResolver() {
+        		new AbstractResourceResolver() {
             
             @Override
             public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
@@ -313,6 +321,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			@Override
 			public IResource resolve(String identifier) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");
+			}
+			
+			@Override
+			public void changeResourceType(IResource resource, ResourceType newType)
+			{
+                throw new UnsupportedOperationException("Not implemented");			    
 			}
 
 			@Override

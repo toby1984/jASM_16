@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.compiler;
 
 import java.util.List;
 
+import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
@@ -37,5 +38,6 @@ public interface ICompilationOrderProvider
      * @throws UnknownCompilationOrderException
      * @throws ResourceNotFoundException 
      */
-    public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver) throws UnknownCompilationOrderException, ResourceNotFoundException;
+    public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,
+            IResourceResolver resolver,IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException, ResourceNotFoundException;
 }

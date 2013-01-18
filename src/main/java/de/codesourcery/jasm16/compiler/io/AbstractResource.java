@@ -24,13 +24,22 @@ import java.io.IOException;
  */
 public abstract class AbstractResource implements IResource {
 
-	private final ResourceType type;
+	private volatile ResourceType type;
 
 	protected AbstractResource(ResourceType type) {
 		if (type == null) {
 			throw new IllegalArgumentException("type must not be NULL");
 		}
 		this.type = type;
+	}
+	
+	@Override
+	public void setType(ResourceType type)
+	{
+	    if (type == null) {
+            throw new IllegalArgumentException("type must not be NULL.");
+        }
+	    this.type=type;
 	}
 	
 	@Override

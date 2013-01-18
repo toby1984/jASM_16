@@ -73,6 +73,7 @@ import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -139,7 +140,7 @@ public class SourceEditorView extends SourceCodeView {
 
 		public void resourceDeleted(IAssemblyProject project, IResource deletedResource) 
 		{
-			if ( deletedResource.isSame( getCurrentResource() ) ) 
+			if ( DefaultResourceMatcher.INSTANCE.isSame( deletedResource , getCurrentResource() ) ) 
 			{
 				dispose();
 			}
@@ -683,7 +684,7 @@ public class SourceEditorView extends SourceCodeView {
 						final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
 
 						IEditorView editor = null;
-						if ( symbol.getCompilationUnit().getResource().isSame( getSourceFromMemory() ) ) {
+						if ( DefaultResourceMatcher.INSTANCE.isSame( symbol.getCompilationUnit().getResource() , getSourceFromMemory() ) ) {
 							editor = SourceEditorView.this;
 						} 
 						else if ( getViewContainer() instanceof EditorContainer) 
@@ -748,13 +749,22 @@ public class SourceEditorView extends SourceCodeView {
 			setText( txt );
 			return result;
 		}
+		
+		private String getSourceFor(ASTNode node) throws IOException {
+	          final ITextRegion range = node.getTextRegion();
+	          try {
+	              return range == null ? "<no source location>" : getCurrentCompilationUnit().getSource( range );
+	          } catch(StringIndexOutOfBoundsException e) {
+	              return "<node has invalid text range "+range+">";
+	          }
+		}
 
 		private String getLabelFor(ASTNode n) throws IOException 
 		{
 			String name = n.getClass().getSimpleName();
 			ITextRegion range = n.getTextRegion();
-			String source = range == null ? "<no source location>" : getCurrentCompilationUnit().getSource( range );
-			String txt = name+" "+source+" ( "+n.getTextRegion()+" )";  
+			String source = getSourceFor( n );
+			String txt = name+" "+source+" ( "+range+" )";  
 
 			final Address address  = ASTUtils.getEarliestMemoryLocation( n );		
 			final String sAddress = address == null ? "" : "0x"+Misc.toHexString( address.toWordAddress() );
@@ -987,7 +997,7 @@ public class SourceEditorView extends SourceCodeView {
 			{
 				if ( WorkspaceExplorer.canOpenInDebugPerspective( getCurrentProject() ) ) 
 				{
-					final IResource executable = getCurrentProject().getBuilder().getExecutable();
+					final IResource executable = getCurrentProject().getProjectBuilder().getExecutable();
 					addMenuEntry( popup , "Open in debugger", new ActionListener() {
 
 						@Override

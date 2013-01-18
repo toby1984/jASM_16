@@ -53,6 +53,10 @@ public class WorkspaceListener implements IWorkspaceListener {
 	
 	@Override
 	public void projectOpened(IAssemblyProject project) {
-	}	
+	}
 
+    @Override
+    public void projectDisposed(IAssemblyProject project)
+    {
+    }	
 }

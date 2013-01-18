@@ -20,6 +20,7 @@ import java.util.NoSuchElementException;
 
 import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
 
@@ -117,6 +118,21 @@ public interface ICompiler
 	 */
 	public void compile(List<ICompilationUnit> units) throws UnknownCompilationOrderException;	
 	
+    /**
+     * Compiles a set of compilation units , notifying a {@link ICompilationListener}
+     * instance while doing so.
+     * 
+     * <p>The compilation units will be compiled/linked in the order determined
+     * by the current {@link ICompilationOrderProvider}.</p>
+     *   
+     * @param units
+     * @param listener
+     * @return processed compilation units
+     * @see #setCompilationOrderProvider(ICompilationOrderProvider)
+     * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
+     */	
+    public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) ;
+    
 	/**
 	 * Compiles a set of compilation units , notifying a {@link ICompilationListener}
 	 * instance while doing so.
@@ -126,11 +142,12 @@ public interface ICompiler
      * 	 
 	 * @param units
 	 * @param listener
+	 * @param resourceMatcher used to pick the matching <code>ICompilationUnit</code> out of the input list for a given source file (<code>IResource</code>)
 	 * @return processed compilation units
 	 * @see #setCompilationOrderProvider(ICompilationOrderProvider)
 	 * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
 	 */
-	public void compile(List<ICompilationUnit> units,ICompilationListener listener) throws UnknownCompilationOrderException;
+	public void compile(List<ICompilationUnit> units,ICompilationListener listener,IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException;
 	
 	/**
 	 * Returns all compiler phases currently that are currently configured.

@@ -45,7 +45,7 @@ public class AmbigousCompilationOrderException extends UnknownCompilationOrderEx
         this.rootSet = rootSet;
     }    
     
-    public List<DependencyNode> getDependencyGraph()
+    public List<DependencyNode> getRootSet()
     {
         return rootSet;
     }    

@@ -35,6 +35,7 @@ public class InMemorySourceResource extends AbstractResource {
 	public InMemorySourceResource(IResource resourceOnDisk , JTextComponent editor) 
 	{
 		super(ResourceType.SOURCE_CODE);
+		
 		if ( resourceOnDisk == null ) {
 			throw new IllegalArgumentException("resourceOnDisk must not be null");
 		}
@@ -91,13 +92,4 @@ public class InMemorySourceResource extends AbstractResource {
     {
         return new ByteArrayInputStream( getTextFromEditor().getBytes() );
     }
-
-    @Override
-    public boolean isSame(IResource other)
-    {
-        if ( other == this ) {
-            return true;
-        }
-        return false;
-    }
-};
+}

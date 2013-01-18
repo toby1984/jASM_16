@@ -33,8 +33,10 @@ import javax.swing.JTabbedPane;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -56,6 +58,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	private final ViewContainerHelper helper = new ViewContainerHelper();
 	private final EditorFactory editorFactory;
 	   
+	private final IWorkspace workspace;
 	private final List<ViewWithPanel> views = new ArrayList<ViewWithPanel>();
 	private final JTabbedPane tabbedPane = new JTabbedPane();
 	
@@ -89,8 +92,9 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		}
 	}
 	
-	public EditorContainer(String title, IViewContainer parent,EditorFactory editorFactory) {
+	public EditorContainer(String title, IWorkspace workspace,IViewContainer parent,EditorFactory editorFactory) {
 		this.title = title;
+		this.workspace = workspace;
 		this.editorFactory = editorFactory;
 	}
 	
@@ -315,8 +319,9 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		
 		for ( ViewWithPanel p : this.views ) 
 		{
-			if ( p.view instanceof IEditorView) {
-				if ( ((IEditorView) p.view).getCurrentResource().isSame( resource ) ) {
+			if ( p.view instanceof IEditorView) 
+			{
+				if ( DefaultResourceMatcher.INSTANCE.isSame( ((IEditorView) p.view).getCurrentResource() , resource ) ) {
 					return (IEditorView) p.view;
 				}
 			}
@@ -406,22 +411,49 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	@Override
 	public IResource resolve(String identifier) throws ResourceNotFoundException 
 	{
-		for ( SourceCodeView v : getSourceCodeViews() ) {
-			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
-				return v.getSourceFromMemory();
-			}
-		}
-		throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);
+        IResource result = tryResolve(identifier);
+        if ( result == null ) {
+            throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);
+        }	    
+        return result;
+	}
+	
+	@Override
+	public void changeResourceType(IResource resource, ResourceType newType)
+	{
+	    final IEditorView openEditor = getEditor( resource );
+	    if ( openEditor != null ) {
+	        SourceCodeView sourceView = (SourceCodeView) openEditor;
+	        final IResource edited = sourceView.getSourceFromMemory();
+	        if ( edited == resource ) {
+	            edited.setType( newType); // automatically propagates change to associated IAssemblyProject
+	        } else {
+	            sourceView.getCurrentProject().changeResourceType( resource , newType );
+	        }
+	        return;
+	    } 
+
+	    final IAssemblyProject project = workspace.getProjectForResource( resource );
+	    project.changeResourceType( resource , newType);
 	}
 
+	private IResource tryResolve(String identifier) 
+	{
+       for ( SourceCodeView v : getSourceCodeViews() ) {
+            if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
+                return v.getSourceFromMemory();
+            }
+        }   
+       return null;
+	}
+	
 	@Override
 	public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 	{
-		for ( SourceCodeView v : getSourceCodeViews() ) {
-			if ( v.getSourceFromMemory().getIdentifier().equals( identifier ) ) {
-				return v.getSourceFromMemory();
-			}
-		}		
-		throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);		
+	    IResource result = tryResolve(identifier);
+	    if ( result == null ) {
+	        throw new ResourceNotFoundException("Failed to find resource '"+identifier+"'",identifier);
+	    }
+	    return result;
 	}
 }

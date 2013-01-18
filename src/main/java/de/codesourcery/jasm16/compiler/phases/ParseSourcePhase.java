@@ -17,6 +17,8 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -33,13 +35,28 @@ import de.codesourcery.jasm16.parser.Parser;
  */
 public class ParseSourcePhase extends CompilerPhase {
 
+    private static final Logger LOG = Logger.getLogger(ParseSourcePhase.class);
+    
     public ParseSourcePhase() {
 		super(ICompilerPhase.PHASE_PARSE);
 	}
+    
+    @Override
+    protected boolean isProcessCompilationUnit(ICompilationUnit unit)
+    {
+        /*
+         * IncludeSourceFileNode may have already parsed a compilation unit
+         * from the input set, make sure we don't try again (because this
+         * would yield lots of duplicate symbols) 
+         */
+        return unit.getAST() == null;
+    }
 
 	@Override
     protected void run(ICompilationUnit unit , ICompilationContext context) throws IOException
     {
+	    LOG.debug("run():PARSING: "+unit);
+	    
 	    final IParser parser = new Parser(context);
 	    
 	    if ( context.hasCompilerOption( CompilerOption.DEBUG_MODE ) ) {

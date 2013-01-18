@@ -35,6 +35,7 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -53,9 +54,12 @@ import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -65,6 +69,7 @@ import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils.DialogResult;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -233,6 +238,8 @@ public class WorkspaceExplorer extends AbstractView {
 
 				java.awt.Component result = super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
 
+				String label = value.toString();
+				Color color = getTextColor();
 				if ( value instanceof WorkspaceTreeNode) 
 				{
 					if ( value instanceof ProjectNode ) 
@@ -240,25 +247,47 @@ public class WorkspaceExplorer extends AbstractView {
 						final ProjectNode projectNode = (ProjectNode) value;
 						final IAssemblyProject project = projectNode.getValue();
 
-						setText( project.getName() );
+						label = project.getName();
 					} 
 					else if ( value instanceof FileNode) 
 					{
 						final FileNode resourceNode = (FileNode) value;
-						final IResource projectResource = getResourceForFile( resourceNode );	                       
-						if ( projectResource != null && projectResource.hasType( ResourceType.EXECUTABLE ) ) 
+                        final File file = resourceNode.getValue();
+                        label = file.getName();
+                        
+                        final IAssemblyProject project = getProject( resourceNode );
+						final IResource projectResource = project.getResourceForFile(  file );
+						if ( projectResource != null ) 
 						{
-							final File resource = resourceNode.getValue();
-							setText( resource.getName()+" [EXECUTABLE]");
-						} else {
-							setText( resourceNode.getValue().getName() );
+                            if ( projectResource.hasType( ResourceType.OBJECT_FILE ) )  
+                            {
+                                label = "[O] "+label;
+                            } else if ( projectResource.hasType( ResourceType.EXECUTABLE ) )  
+						    {
+						        label = "[E] "+label;
+						    } 
+                            else if ( projectResource.hasType( ResourceType.SOURCE_CODE) ) 
+						    {
+                                label = "[S] "+label;
+                                
+						        final ICompilationUnit unit = project.getProjectBuilder().getCompilationUnit( projectResource );
+						        if ( unit.hasErrors() ) 
+						        {
+						            try 
+						            {
+						                System.out.println( project+" failed to compile.");
+                                        Misc.printCompilationErrors( unit , projectResource , true );
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+						            color = Color.RED;
+						        } 
+						    }
 						}
-					} else {
-						setText("");	
 					}
-				} else {
-					setText("");
-				}
+				} 
+				setForeground( color );
+				setText( label );
 				return result;
 			};
 
@@ -313,12 +342,6 @@ public class WorkspaceExplorer extends AbstractView {
 		throw new RuntimeException("Internal error,unhandled node type "+selection);
 	}
 	
-	private IResource getResourceForFile(FileNode resourceNode) 
-	{
-		final IAssemblyProject project = getProject( resourceNode );
-		return project != null ?  project.getResourceForFile( resourceNode.getValue() ) : null;
-	}
-
 	protected void onTreeNodeLeftClick(IAssemblyProject project, WorkspaceTreeNode selected) throws IOException 
 	{
 		if ( project == null ) {
@@ -328,7 +351,7 @@ public class WorkspaceExplorer extends AbstractView {
 		if ( selected instanceof FileNode) 
 		{
 			final File file = ((FileNode) selected).getValue();
-			if ( file.isFile() && Misc.isSourceFile( file ) ) 
+			if ( file.isFile() && project.getConfiguration().isSourceFile( file ) ) 
 			{
 				openSourceFileEditor( project , file );
 			}
@@ -342,7 +365,7 @@ public class WorkspaceExplorer extends AbstractView {
 		EditorContainer editorContainer = (EditorContainer ) getViewContainer().getViewByID( EditorContainer.VIEW_ID );
 
 		if ( editorContainer == null ) {
-			editorContainer = new EditorContainer("Editors",getViewContainer(),editorFactory);
+			editorContainer = new EditorContainer("Editors",workspace,getViewContainer(),editorFactory);
 			getViewContainer().addView( editorContainer );
 		}
 		editorContainer.openResource( workspace , project , resource );
@@ -409,7 +432,7 @@ public class WorkspaceExplorer extends AbstractView {
 				@Override
 				public void actionPerformed(ActionEvent e) {
 					try {
-						project.getBuilder().build();
+						project.getProjectBuilder().build();
 					} catch (Exception ex) {
 						LOG.error("Failed to build "+project,ex);
 						UIUtils.showErrorDialog(null,"Building project '"+project.getName()+"' failed" , "Building the project failed: "+ex.getMessage(),ex);
@@ -417,7 +440,7 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 			});		
 
-			final IResource executable = project.getBuilder().getExecutable();
+			final IResource executable = project.getProjectBuilder().getExecutable();
 			if ( executable != null ) 
 			{
 				addMenuEntry( popup , "Open in debugger", new ActionListener() {
@@ -519,9 +542,9 @@ public class WorkspaceExplorer extends AbstractView {
                 @Override
                 public void actionPerformed(ActionEvent e) 
                 {
-                    ProjectPropertiesView view = (ProjectPropertiesView) getViewContainer().getViewByID( ProjectPropertiesView.ID );
+                    ProjectConfigurationView view = (ProjectConfigurationView) getViewContainer().getViewByID( ProjectConfigurationView.ID );
                     if ( view == null ) {
-                        view = new ProjectPropertiesView() {
+                        view = new ProjectConfigurationView() {
                             
                             @Override
                             protected void onSave()
@@ -626,10 +649,10 @@ public class WorkspaceExplorer extends AbstractView {
 		// source level view depends on AST being available for  
 		// compilation units and we want the debugger to run
 		// the latest changes anyway... rebuild if necessary
-		if ( project.getBuilder().isBuildRequired() ) 
+		if ( project.getProjectBuilder().isBuildRequired() ) 
 		{
 			System.out.println("Building "+project.getName()+" before opening debug perspective");		    
-			if ( ! project.getBuilder().build() ) 
+			if ( ! project.getProjectBuilder().build() ) 
 			{
 				System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
 				return false;
@@ -638,8 +661,7 @@ public class WorkspaceExplorer extends AbstractView {
 		return true;
 	}
 
-	public static void openDebugPerspective(IAssemblyProject project, 
-			IResource executable,ViewContainerManager perspectivesManager) throws IOException
+	public static void openDebugPerspective(IAssemblyProject project, IResource executable,ViewContainerManager perspectivesManager) throws IOException
 	{
 		if ( project == null ) {
 			throw new IllegalArgumentException("project must not be NULL.");
@@ -709,6 +731,11 @@ public class WorkspaceExplorer extends AbstractView {
 			treeStructureChanged();			
 		}
 
+		@Override
+		public void projectDisposed(IAssemblyProject project)
+		{
+		}
+		
 		@Override
 		public void projectDeleted(IAssemblyProject project) {
 			treeStructureChanged();
@@ -954,6 +981,8 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 				final Object[] children = node.getChildren().toArray();
 				fireTreeNodesInserted( this , node.getPathToRoot() , indices , children );
+			} else {
+			    projectCreated( project );
 			}
 		}
 	}
@@ -1095,6 +1124,18 @@ public class WorkspaceExplorer extends AbstractView {
 
 	protected static class ProjectNode extends WorkspaceTreeNode
 	{
+        private boolean hasCompilationErrors = false; 
+        
+        public boolean hasCompilationErrors()
+        {
+            return hasCompilationErrors;
+        }
+        
+        public void setHasCompilationErrors(boolean hasCompilationErrors)
+        {
+            this.hasCompilationErrors = hasCompilationErrors;
+        }
+        
 		public ProjectNode(IAssemblyProject project) {
 			super( project );
 			if (project== null) {
@@ -1119,17 +1160,29 @@ public class WorkspaceExplorer extends AbstractView {
 
 	protected static final class FileNode extends WorkspaceTreeNode {
 
-		public FileNode(File file) {
-			super( file );
-			if (file == null) {
-				throw new IllegalArgumentException("file must not be NULL");
-			}
-		}
+        private boolean hasCompilationErrors = false;        
+
+        public FileNode(File file) {
+            super( file );
+            if (file == null) {
+                throw new IllegalArgumentException("file must not be NULL");
+            }
+        }
+        
+        public boolean hasCompilationErrors()
+        {
+            return hasCompilationErrors;
+        }
+        
+        public void setHasCompilationErrors(boolean hasCompilationErrors)
+        {
+            this.hasCompilationErrors = hasCompilationErrors;
+        }
 		
         public boolean isFileNode() {
             return true;
         }		
-
+        
 		@Override
 		public File getValue() {
 			return (File) super.getValue();

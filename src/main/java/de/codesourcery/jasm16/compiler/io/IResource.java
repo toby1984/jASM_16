@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
@@ -38,6 +39,7 @@ public interface IResource
 	{
 	    SOURCE_CODE,
 		OBJECT_FILE,
+		PROJECT_CONFIGURATION_FILE,
 		EXECUTABLE,
 		UNKNOWN, DIRECTORY;
 	}
@@ -56,19 +58,18 @@ public interface IResource
 	public ResourceType getType();
 	
 	/**
+	 * 
+	 * @param type
+	 * @deprecated DO NOT CALL EXCEPT FROM {@link IAssemblyProject#changeResourceType(IResource,ResourceType)}
+	 */
+	public void setType(ResourceType type);
+	
+	/**
 	 * Check whether this resource has a specific resource type.
 	 * @param t
 	 * @return
 	 */
 	public boolean hasType(ResourceType t);
-	
-	/**
-	 * Check whether this resource is equivalent so some other resource.
-	 * 
-	 * @param other other resource , may be <code>null</code>
-	 * @return
-	 */
-	public boolean isSame(IResource other);
 	
     /**
      * Returns an input stream to read from.

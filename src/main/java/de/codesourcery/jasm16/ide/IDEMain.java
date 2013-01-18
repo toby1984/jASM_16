@@ -54,6 +54,10 @@ public class IDEMain
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
 		
 		workspace = new DefaultWorkspace( appConfig );
+		
+		final BuildManager buildManager = new BuildManager(workspace);
+		workspace.addResourceListener( buildManager );
+		
 		workspace.open();
 		
 		createSampleProject( "sample-project" );

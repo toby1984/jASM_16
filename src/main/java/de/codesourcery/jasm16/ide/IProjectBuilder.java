@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ide;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -100,6 +101,7 @@ public interface IProjectBuilder {
      * 
      * @param source a resource of type {@link ResourceType#SOURCE_CODE}.
      * @return
+     * @throws NoSuchElementException If no compilation unit for the given resource could be found
      */
-    public ICompilationUnit getCompilationUnit(IResource source);	
+    public ICompilationUnit getCompilationUnit(IResource source) throws NoSuchElementException;	
 }

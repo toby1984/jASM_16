@@ -34,12 +34,34 @@ public interface IWorkspaceListener extends IResourceListener
 	 */
 	public void projectCreated(IAssemblyProject project);
 	
+	/**
+	 * 
+	 * @param project
+	 * @see IWorkspace#close()
+	 * @see IWorkspace#closeProject(IAssemblyProject)
+	 */
 	public void projectClosed(IAssemblyProject project);
 	
+	/**
+	 * Invoked when a closed project has been opened or 
+	 * a project has been loaded from disk.
+	 * 
+	 * @param project
+	 * @see IWorkspace#open()
+	 * @see IWorkspace#openProject()
+	 */
 	public void projectOpened(IAssemblyProject project);	
 	
+    /**
+     * Invoked after a project has been unloaded from memory.
+     * 
+     * <p>If a project is deleted, the invocation order is {@link #projectDeleted(IAssemblyProject) } -&gt; {@link #projectDisposed(IAssemblyProject)}.</p>
+     * @param project
+     */
+    public void projectDisposed(IAssemblyProject project);	
+	
 	/**
-	 * Invoked after a project has been removed from a workspace.
+	 * Invoked after a project has been deleted from a workspace by the user.
 	 * 
 	 * @param project
 	 */

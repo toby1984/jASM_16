@@ -747,7 +747,8 @@ public abstract class ASTNode
         final List<IToken> tokens = context.advanceTo( recoveryTokens , false );
         final UnparsedContentNode result = new UnparsedContentNode( error.getMessage() , error.getErrorOffset() , tokens );
 
-        if ( context.hasParserOption( ParserOption.DEBUG_MODE ) ) {
+        if ( context.hasParserOption( ParserOption.DEBUG_MODE ) ) 
+        {
             LOG.error("addCompilationErrorAndAdvanceParser(): [in_parse_error_recovery: "+context.isRecoveringFromParseError() +"] error="+error,error.getCause() );
         }
 

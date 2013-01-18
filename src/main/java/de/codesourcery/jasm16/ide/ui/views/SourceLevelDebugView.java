@@ -22,6 +22,7 @@ import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
 import de.codesourcery.jasm16.emulator.EmulationListener;
@@ -377,7 +379,7 @@ public class SourceLevelDebugView extends SourceCodeView
         final StatementNode node = getStatementNodeForAddress( unit , address );
         if ( node != null ) 
         {
-            if ( updateParentView || this.currentUnit == null || ! this.currentUnit.getResource().isSame( unit.getResource() ) ) 
+            if ( updateParentView || this.currentUnit == null || ! DefaultResourceMatcher.INSTANCE.isSame( this.currentUnit.getResource() , unit.getResource() ) ) 
             {
                 switchToCompilationUnit( perspective.getCurrentProject() , unit );
                 highlightBreakpoints();
@@ -535,21 +537,31 @@ public class SourceLevelDebugView extends SourceCodeView
     
     private ICompilationUnit getCompilationUnitForAddress(Address address) 
     {
-        for ( ICompilationUnit unit : this.currentProject.getBuilder().getCompilationUnits() ) 
+        LOG.debug("getCompilationUnitForAddress(): Looking for compilation unit at "+address);
+        
+        final List<ICompilationUnit> candidates = new ArrayList<>(); 
+        for ( ICompilationUnit unit : this.currentProject.getProjectBuilder().getCompilationUnits() ) 
         {
-            if ( unit.getAST() != null ) {
+            if ( unit.getAST() != null ) 
+            {
                 final Address start = ASTUtils.getEarliestMemoryLocation( unit.getAST() );
                 Address end = ASTUtils.getLatestMemoryLocation( unit.getAST() );
+                LOG.debug("getCompilationUnitForAddress(): "+unit+" -> "+start+" - "+end);                
                 if ( start != null && end != null ) {
                     end = end.incrementByOne( false ); // AddressRange is (startInclusive, endExclusive[                	
                     if ( new AddressRange( start , end ).contains( address ) ) {
-                        return unit;
+                        LOG.debug("getCompilationUnitForAddress(): Candidate "+unit);
+                        candidates.add( unit );
                     }
                 }
+            } else {
+                LOG.debug("getCompilationUnitForAddress(): Skipping compilation unit without AST - "+unit);
             }
         }
-        
-        return null;
+        if ( candidates.isEmpty() ) {
+            return null;
+        }
+        return candidates.get(0);
     }
     
     @Override

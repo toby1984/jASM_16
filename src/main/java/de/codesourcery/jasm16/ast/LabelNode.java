@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.ast;
 
+import org.apache.log4j.Logger;
+
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
@@ -32,6 +34,8 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class LabelNode extends ASTNode
 {
+    private static final Logger LOG = Logger.getLogger(LabelNode.class);
+    
     private Identifier identifier;
     private Label label;
     
@@ -88,7 +92,10 @@ public class LabelNode extends ASTNode
             mergeWithAllTokensTextRegion( range );              
         }
         
-        try {
+        try 
+        {
+            LOG.debug("parseInternal(): Defining label '"+this.label.getIdentifier().getRawValue()+"' in "+
+                    context.getCompilationUnit()+" at "+symbolRange);
             context.getSymbolTable().defineSymbol( this.label );
         } 
         catch(DuplicateSymbolException e) 

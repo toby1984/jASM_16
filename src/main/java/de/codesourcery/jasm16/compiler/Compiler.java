@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.compiler;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,8 +30,11 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase1;
 import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase2;
@@ -97,7 +101,7 @@ public class Compiler implements ICompiler {
     }
     
     @Override
-    public void compile(List<ICompilationUnit> units) 
+    public void compile(final List<ICompilationUnit> units) 
     {
     	compile( units , new CompilationListener() );
     }
@@ -105,12 +109,20 @@ public class Compiler implements ICompiler {
     @Override
     public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
     {
+        compile( unitsToCompile , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
+    }
+    
+    @Override
+    public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener,IResourceMatcher resourceMatcher) 
+    {
+        System.out.println("Compiling "+StringUtils.join( unitsToCompile , "\n" ) );
+            
         final ICompilationOrderProvider orderProvider;
         if ( linkOrderProvider == null ) {
             orderProvider = new ICompilationOrderProvider() {
                 
                 @Override
-                public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver)
+                public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver,IResourceMatcher resourceMatcher)
                 {
                     return units;
                 }
@@ -121,8 +133,9 @@ public class Compiler implements ICompiler {
         
         final List<ICompilationUnit> units;
         try {
-            units = orderProvider.determineCompilationOrder( unitsToCompile , resourceResolver );
-        } catch (ResourceNotFoundException e1) {
+            units = orderProvider.determineCompilationOrder( unitsToCompile , resourceResolver , resourceMatcher );
+        } 
+        catch (ResourceNotFoundException e1) {
             throw new UnknownCompilationOrderException( e1.getMessage(), e1);
         }
         

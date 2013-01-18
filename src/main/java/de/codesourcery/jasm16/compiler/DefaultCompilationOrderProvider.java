@@ -20,8 +20,12 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
@@ -29,6 +33,7 @@ import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.AmbigousCompilationOrderException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -44,8 +49,21 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public class DefaultCompilationOrderProvider implements ICompilationOrderProvider
 {
+    // debugging only
+    private static final AtomicLong DOT_IDS = new AtomicLong(0);    
+    
+    private ICompilationUnit findCompilationUnit(IResource resource , IResourceMatcher matcher , List<ICompilationUnit> units) 
+    {
+        for ( ICompilationUnit unit : units ) {
+            if ( matcher.isSame( unit.getResource() , resource ) ) {
+                return unit;
+            }
+        }
+        throw new RuntimeException("Unable to find resource "+resource+" in "+units);
+    }
+    
     @Override
-    public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver) throws UnknownCompilationOrderException, ResourceNotFoundException
+    public List<ICompilationUnit> determineCompilationOrder(List<ICompilationUnit> units,IResourceResolver resolver,IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException, ResourceNotFoundException
     {
         if ( units.isEmpty() ) {
             return new ArrayList<ICompilationUnit>();
@@ -65,8 +83,9 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
             final DependencyNode node = getOrCreateGraphNode( unit , graph);
             node.objectCodeStartingAddress=parseResult.objectCodeStartingAddress;
             
-            for ( IResource r : sourceFile ) {
-                final DependencyNode dependency = getOrCreateGraphNode( getUnitForResource( r , units ) , graph );
+            for ( IResource r : sourceFile ) 
+            {
+                final DependencyNode dependency = getOrCreateGraphNode( findCompilationUnit( r , resourceMatcher , units ) , graph );
                 node.dependencies.add( dependency ); // A -> B
                 dependency.dependentNodes.add( node ); // B <- A
             }
@@ -86,7 +105,7 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         public Address objectCodeStartingAddress=Address.wordAddress( 0 );
     }
     
-    protected List<ICompilationUnit> resolveAmbigousRootSet(final List<DependencyNode> rootSet) throws UnknownCompilationOrderException
+    protected List<ICompilationUnit> resolveAmbigousRootSet(final List<DependencyNode> rootSet) throws AmbigousCompilationOrderException
     {
         // try to order root set ascending by starting address
         Collections.sort( rootSet , new Comparator<DependencyNode>() {
@@ -99,6 +118,11 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
                 } else if ( o1.objectCodeStartingAddress.isGreaterThan( o2.objectCodeStartingAddress ) ) {
                     return 1;
                 }
+//                for ( DependencyNode n : rootSet ) {
+//                    System.out.println("------------ Ambigous: "+n);
+//                    System.out.println( toDOT( n.getCompilationUnit().getResource().getIdentifier() , n ) );
+//                }
+//                System.out.println("------------");
                 throw new AmbigousCompilationOrderException("Unable to determine compilation order,ambigous root set:"+rootSet, rootSet);
             }
         } );
@@ -149,19 +173,20 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         final NodeVisitor visitor= new NodeVisitor() {
             
             @Override
-            public void visit(DependencyNode node)
+            public boolean visit(DependencyNode node)
             {
                 if ( node.dependentNodes.isEmpty() ) {
                     result.add( node );
                 }
+                return true;
             }
         };
-        n.visit( visitor );
+        n.visitNodeAndDirectDependenciesOnly( visitor );
         return result;
     }
     
     protected interface NodeVisitor {
-        public void visit(DependencyNode node);
+        public boolean visit(DependencyNode node);
     }
 
     protected DependencyNode getOrCreateGraphNode(ICompilationUnit unit,List<DependencyNode> graph) 
@@ -192,13 +217,53 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         return null;
     }
     
-    protected ICompilationUnit getUnitForResource(IResource resource,List<ICompilationUnit> units) throws ResourceNotFoundException {
-        for ( ICompilationUnit unit : units ) {
-            if ( unit.getResource().isSame( resource ) ) {
-                return unit;
-            }
+//    protected ICompilationUnit getUnitForResource(IResource resource,List<ICompilationUnit> units) throws ResourceNotFoundException {
+//        for ( ICompilationUnit unit : units ) {
+//            if ( unit.getResource().isSame( resource ) ) {
+//                return unit;
+//            }
+//        }
+//        throw new ResourceNotFoundException("Unable to find compilation unit for resource "+resource+" in "+units, resource.getIdentifier() );        
+//    }
+    
+    protected static String toDOT(String graphName, DependencyNode graph) 
+    {
+        final IdentityHashMap<DependencyNode, String> dotIds = new IdentityHashMap<>();
+        
+        final StringBuilder edgeBuilder = new StringBuilder();
+        
+        visitGraph( graph , edgeBuilder , dotIds );
+        
+        final StringBuilder graphBuilder = new StringBuilder("digraph \""+graphName+"\" {");
+        for (Map.Entry<DependencyNode, String> entry : dotIds.entrySet() )
+        {
+            graphBuilder.append( entry.getValue()+" [label=\""+entry.getKey().getCompilationUnit().getResource().getIdentifier()+"\"]\n");
         }
-        throw new ResourceNotFoundException("Unable to find compilation unit for resource "+resource+" in "+units, resource.getIdentifier() );        
+        graphBuilder.append( edgeBuilder.toString() );
+        graphBuilder.append("\n}");
+        return graphBuilder.toString();
+    }
+    
+    private static void visitGraph(DependencyNode graph, StringBuilder edgeBuilder, IdentityHashMap<DependencyNode, String> dotIds)
+    {
+        if ( dotIds.containsKey( graph ) ) {
+            return;
+        }
+        
+        final String nodeId = getDOTIdentifier( graph , dotIds );
+        for ( DependencyNode child : graph.getDependencies() ) {
+            visitGraph( child , edgeBuilder , dotIds );
+            edgeBuilder.append( nodeId+" -> "+getDOTIdentifier( child , dotIds )+"\n");            
+        }
+    }
+
+    private static String getDOTIdentifier(DependencyNode node,IdentityHashMap<DependencyNode, String> map) {
+        String result = map.get(node);
+        if ( result == null ) {
+            result = Long.toString( DOT_IDS.incrementAndGet() );
+            map.put( node , result );
+        }
+        return result;
     }
     
     public static final class DependencyNode 
@@ -241,13 +306,34 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
             return dependentNodes;
         }
 
-        public void visit(NodeVisitor visitor) {
+        public void visitNodeAndDirectDependenciesOnly(NodeVisitor visitor) {
         
             visitor.visit( this );
             for ( DependencyNode child : dependencies ) {
                 visitor.visit( child );
             }
         }
+        
+        public boolean visitRecursively(NodeVisitor visitor) {
+            return visitRecursively(visitor,new HashSet<DependencyNode>());
+        }
+        
+        private boolean visitRecursively(NodeVisitor visitor,Set<DependencyNode> visited) {
+            
+            if ( visited.contains( this ) ) {
+                return true;
+            }
+            
+            if ( ! visitor.visit( this ) ) {
+                return false;
+            }
+            for ( DependencyNode child : dependencies ) {
+                if ( ! child.visitRecursively( visitor , visited ) ) {
+                    return false;
+                }
+            }
+            return true;
+        }        
         
         @Override
         public String toString()
@@ -332,14 +418,16 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
         if ( lexer.peek().hasType( TokenType.INCLUDE_SOURCE ) ) 
         {
             final ASTNode node = new IncludeSourceFileNode().parse( context );
-            if ( node instanceof IncludeSourceFileNode && ! unit.hasErrors()  ) {
+            if ( node instanceof IncludeSourceFileNode && ! unit.hasErrors()  ) 
+            {
                 final IResource resource = ((IncludeSourceFileNode) node).getResource();
                 if ( resource != null ) {
                     parseResult.includedSources.add( resource );
                 }
                 return; /* RETURN */
             }
-            throw new ParseException("Failed to parse .includesource directive in "+unit,-1);            
+            String errorMsg = "Failed to parse .includesource directive in "+unit+", got node: "+node+" , unit.hasErrors = "+unit.hasErrors();
+            throw new ParseException(errorMsg,-1);            
         }
         
         if ( lexer.peek().hasType( TokenType.ORIGIN ) ) 

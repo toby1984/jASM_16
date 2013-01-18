@@ -71,6 +71,8 @@ public interface ICompilationListener {
      * @param unit
      */
     public void start(ICompilerPhase phase,ICompilationUnit unit);
+    
+    public void skipped(ICompilerPhase phase,ICompilationUnit unit);
 
     /**
      * Invoked after a compilation phase successfully finished processing 

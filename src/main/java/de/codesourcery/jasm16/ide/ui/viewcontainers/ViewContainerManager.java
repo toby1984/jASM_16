@@ -20,6 +20,10 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -93,10 +97,10 @@ public class ViewContainerManager implements IViewContainerListener
     
     public DebuggingPerspective getOrCreateDebuggingPerspective() {
 
-		final List<? extends IViewContainer> perspectives = 
-				getPerspectives( DebuggingPerspective.ID );
+		final List<? extends IViewContainer> perspectives = getPerspectives( DebuggingPerspective.ID );
 
-		for ( IViewContainer existing : perspectives ) {
+		for ( IViewContainer existing : perspectives )
+		{
 			if ( existing instanceof DebuggingPerspective) 
 			{
 				final DebuggingPerspective p = (DebuggingPerspective) existing;
@@ -105,11 +109,9 @@ public class ViewContainerManager implements IViewContainerListener
 				return p;
 			} 
 		}
-
-	    final List<IViewContainer> editorContainer = getPerspectives( EditorContainer.VIEW_ID );
-	      
+		
 		// perspective not visible yet, create it
-		final DebuggingPerspective p=new DebuggingPerspective( workspace , applicationConfig , editorContainer.isEmpty() ? null : (EditorContainer) editorContainer.get(0) );
+		final DebuggingPerspective p=new DebuggingPerspective( workspace , this , applicationConfig );
 		addViewContainer( p );
 		p.setVisible( true );
 	    p.toFront();	
