@@ -330,7 +330,7 @@ public final class Lexer implements ILexer {
             return ;
         }		
         
-        if ( ".include".equals( buffer ) || "include".equalsIgnoreCase( buffer) || ".incsource".equalsIgnoreCase( buffer ) ) {
+        if ( "#include".equals( buffer ) || ".include".equals( buffer ) || "include".equalsIgnoreCase( buffer) || ".incsource".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.INCLUDE_SOURCE, buffer , startIndex ) );
             return ;        	
         }
