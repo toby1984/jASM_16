@@ -557,15 +557,31 @@ public class DefaultWorkspace implements IWorkspace
         if (projects == null) {
             throw new IllegalArgumentException("project must not be NULL.");
         }
-        for ( IAssemblyProject p : projects ) 
+        for ( final IAssemblyProject p : projects ) 
         {
         	if ( p.isOpen() ) 
         	{
         		LOG.info("refreshProjects(): Refreshing "+p);
+        		
         		ProjectConfiguration reloaded = new ProjectConfiguration( p.getConfiguration().getBaseDirectory() );
         		reloaded.load();
         		p.getConfiguration().populateFrom( reloaded );
         		p.rescanResources();
+        		
+        		notifyListeners( new IInvoker() {
+        			@Override
+        			public void invoke(IResourceListener listener) 
+        			{
+        				if ( listener instanceof IWorkspaceListener ) {
+        					((IWorkspaceListener) listener).projectConfigurationChanged( p );
+        				}
+        			}
+        			
+        			@Override
+        			public String toString() {
+        				return "PROJECT-CONFIGURATION-CHANGED: "+p;
+        			}			
+        		});	        		
         	}
         }
     }

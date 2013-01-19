@@ -40,10 +40,11 @@ import de.codesourcery.jasm16.compiler.DefaultCompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.Linker;
+import de.codesourcery.jasm16.compiler.SourceFileDependencyAnalyzer.DependencyNode;
+import de.codesourcery.jasm16.compiler.SourceFileDependencyAnalyzer.NodeVisitor;
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.FileResource;
@@ -139,6 +140,7 @@ public class AssemblyProject implements IAssemblyProject
     {
         final List<IResource> deletedResources=new ArrayList<IResource>();   
         final List<IResource> newResources= scanForResources();
+        
         synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
 
             // find deleted resources
@@ -488,6 +490,11 @@ public class AssemblyProject implements IAssemblyProject
             this.isOpen = true;
         }
     }
+    
+
+	@Override
+	public void projectConfigurationChanged(IAssemblyProject project) {
+	}    
 
     @Override
     public void projectDeleted(IAssemblyProject project) { /* sooo not interested */ }
@@ -979,4 +986,5 @@ public class AssemblyProject implements IAssemblyProject
         builder.deleteAllCompilationUnits();
         workspace.removeResourceListener( this );
     }
+
 }

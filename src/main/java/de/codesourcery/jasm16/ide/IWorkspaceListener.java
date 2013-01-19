@@ -51,6 +51,8 @@ public interface IWorkspaceListener extends IResourceListener
 	 * @see IWorkspace#openProject()
 	 */
 	public void projectOpened(IAssemblyProject project);	
+
+	public void projectConfigurationChanged(IAssemblyProject project);
 	
     /**
      * Invoked after a project has been unloaded from memory.

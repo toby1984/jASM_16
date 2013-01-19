@@ -17,9 +17,9 @@ package de.codesourcery.jasm16.exceptions;
 
 import java.util.List;
 
-import de.codesourcery.jasm16.compiler.DefaultCompilationOrderProvider.DependencyNode;
 import de.codesourcery.jasm16.compiler.ICompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.SourceFileDependencyAnalyzer.DependencyNode;
 
 /**
  * Thrown by {@link ICompilationOrderProvider}s that were unable to determine the compilation order

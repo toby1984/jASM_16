@@ -31,6 +31,12 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
     }
 
     @Override
+    public void projectConfigurationChanged(IAssemblyProject project) {
+    	// TODO Auto-generated method stub
+    	
+    }
+    
+    @Override
     public void projectOpened(IAssemblyProject project)
     {
         System.out.println("BUILD-MANAGER: Project opened: "+project);

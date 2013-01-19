@@ -58,5 +58,11 @@ public class WorkspaceListener implements IWorkspaceListener {
     @Override
     public void projectDisposed(IAssemblyProject project)
     {
-    }	
+    }
+
+	@Override
+	public void projectConfigurationChanged(IAssemblyProject project) {
+		// TODO Auto-generated method stub
+		
+	}	
 }

@@ -730,6 +730,11 @@ public class WorkspaceExplorer extends AbstractView {
 		public void projectCreated(IAssemblyProject project) {
 			treeStructureChanged();			
 		}
+		
+		@Override
+		public void projectConfigurationChanged(IAssemblyProject project) {
+			treeStructureChanged();				
+		}
 
 		@Override
 		public void projectDisposed(IAssemblyProject project)
