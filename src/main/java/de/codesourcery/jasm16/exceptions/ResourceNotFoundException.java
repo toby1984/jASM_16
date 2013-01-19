@@ -23,7 +23,7 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
  * @author tobias.gierke@code-sourcery.de
  * @see IResourceResolver#resolve(String)
  */
-public class ResourceNotFoundException extends Exception
+public class ResourceNotFoundException extends RuntimeException
 {
     private final String identifier;
     

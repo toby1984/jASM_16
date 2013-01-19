@@ -304,6 +304,11 @@ public class ParseContext implements IParseContext
     {
         return lexer.hasLexerOption( option );
     }
+    
+    @Override
+    public ICompilationUnit getCompilationUnitFor(IResource resource) throws IOException {
+    	return compilationUnitResolver.getCompilationUnit( resource );
+    }
 
 	@Override
 	public IParseContext createParseContextForInclude(IResource resource) throws IOException 
@@ -327,7 +332,6 @@ public class ParseContext implements IParseContext
 			throw new CircularSourceIncludeException( errorMsg , getCompilationUnit() );
 		}
 		includedSourceFiles.add( resource.getIdentifier() );
-		
 		getCompilationUnit().addDependency( unit );
 		
 		final ILexer lexer = new Lexer( new Scanner( source ) );

@@ -340,11 +340,24 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			{
 		    	return CompilationUnit.createInstance( resource.getIdentifier() , resource );				
 			}
+
+			@Override
+			public ICompilationUnit getCompilationUnit(IResource resource)
+					throws IOException 
+			{
+				return null;
+			}
 		};
         if ( node instanceof ObjectCodeOutputNode ) 
         {
             ((ObjectCodeOutputNode) node).symbolsResolved( context );
         }
+    }
+    
+    @Override
+    public ICompilationUnit getCompilationUnit(IResource resource)
+    		throws IOException {
+    	return null;
     }
     
     @Override

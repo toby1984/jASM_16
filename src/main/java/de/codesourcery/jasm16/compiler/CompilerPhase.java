@@ -133,31 +133,45 @@ public abstract class CompilerPhase implements ICompilerPhase {
         return true;
     }
 
-	protected ICompilationContext createCompilationContext(final List<ICompilationUnit> units,
-			ISymbolTable symbolTable, IObjectCodeWriterFactory writerFactory,
-			IResourceResolver resourceResolver, final Set<CompilerOption> options,
+	protected ICompilationContext createCompilationContext(
+			final List<ICompilationUnit> units,
+			ISymbolTable symbolTable, 
+			IObjectCodeWriterFactory writerFactory,
+			IResourceResolver resourceResolver, 
+			final Set<CompilerOption> options,
 			ICompilationUnit unit) 
 	{
 		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() 
 		{
 			@Override
-			public ICompilationUnit getOrCreateCompilationUnit(IResource resource)
-					throws IOException 
+			public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException 
 			{
-				for ( ICompilationUnit unit : units ) {
-					if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
-						return unit;
-					}
+				ICompilationUnit result = getCompilationUnit( resource );
+				if ( result != null ) {
+					return result;
 				}
-				
-				final ICompilationUnit result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
+				result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
 				System.out.println("Creating new ICompilationUnit - did not find "+resource+" in "+units);
 				
 				// !!!! the next call actually modifies the method's input argument....
 				units.add( result );
 				return result;
 			}
+
+			@Override
+			public ICompilationUnit getCompilationUnit(IResource resource)
+					throws IOException 
+			{
+				for ( ICompilationUnit unit : units ) 
+				{
+					if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
+						return unit;
+					}
+				}
+				return null;
+			}
 		};
+		
 		final ICompilationContext context = new CompilationContext( unit , units ,  symbolTable, writerFactory , resourceResolver ,unitResolver ,options );
 		return context;
 	}

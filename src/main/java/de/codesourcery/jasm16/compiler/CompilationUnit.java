@@ -192,7 +192,7 @@ public class CompilationUnit implements ICompilationUnit {
             throw new IllegalArgumentException("marker must not be NULL");
         }
         
-        LOG.info("addMarker(): "+marker);        
+        LOG.debug("addMarker(): "+marker);        
         
         List<IMarker> markersByType = this.markers.get( marker.getType() );
         if ( markersByType == null ) {
@@ -324,7 +324,7 @@ public class CompilationUnit implements ICompilationUnit {
     @Override
     public String toString()
     {
-        return getResource().toString();
+        return getResource().toString()+" (has_errors="+hasErrors()+"]";
     }
 
     @Override

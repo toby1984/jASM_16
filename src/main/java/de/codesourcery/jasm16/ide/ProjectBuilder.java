@@ -13,12 +13,12 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.CompiledCode;
 import de.codesourcery.jasm16.compiler.Compiler;
-import de.codesourcery.jasm16.compiler.DefaultCompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -26,7 +26,7 @@ import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.Linker;
 import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode;
-import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode.NodeVisitor;
+import de.codesourcery.jasm16.compiler.dependencyanalysis.SourceFileDependencyAnalyzer;
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.FileResource;
@@ -40,7 +40,9 @@ import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.AmbigousCompilationOrderException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
+import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;
+import de.codesourcery.jasm16.utils.IOrdered;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -48,8 +50,10 @@ import de.codesourcery.jasm16.utils.Misc;
  *
  * @author tobias.gierke@code-sourcery.de
  */
-public class ProjectBuilder implements IProjectBuilder , IResourceListener {
+public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrdered {
 
+	private static final Logger LOG = Logger.getLogger(ProjectBuilder.class);
+	
     // @GuardedBy( compUnits )
     private final List<ICompilationUnit> compUnits = new ArrayList<ICompilationUnit>();
     
@@ -58,6 +62,8 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
     private final IAssemblyProject project;
     
     private final AtomicBoolean disposed = new AtomicBoolean(false);
+    
+    private final SourceFileDependencyAnalyzer analyzer = new SourceFileDependencyAnalyzer();
     
     public ProjectBuilder(IWorkspace workspace,IAssemblyProject project) {
     	if (project == null) {
@@ -111,6 +117,10 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
             compUnits.add(  result );
         }
         compiler.compile( compUnits , listener );
+        
+        for ( ICompilationUnit unit : compUnits ) {
+        	workspace.compilationFinished( project , unit );
+        }
         return result;
     }
     
@@ -123,81 +133,9 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
         final ICompiler compiler = new Compiler();
 
         // set compiler options
-        compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
+//        compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
         compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
        
-        compiler.setCompilationOrderProvider( new DefaultCompilationOrderProvider() 
-        {
-            @Override
-            protected List<ICompilationUnit> resolveAmbigousRootSet(final List<DependencyNode> rootSet) throws AmbigousCompilationOrderException                
-            {
-                try {
-                    return super.resolveAmbigousRootSet(rootSet);
-                } 
-                catch(AmbigousCompilationOrderException e) 
-                {
-                    final File compRoot = getConfiguration().getCompilationRoot();
-                    if ( compRoot  == null) {
-                        throw new AmbigousCompilationOrderException("Unable to determine compilation order - please configure this project's compilation root",rootSet,e);
-                    }
-                    if ( ! compRoot.exists() ) {
-                        throw new AmbigousCompilationOrderException( "Unable to determine compilation order - configuration of project "+project.getName()+" has non-existant compilation root '"+compRoot.getAbsolutePath()+"'",e.getRootSet());
-                    }
-                    DependencyNode match = null;
-                    for ( DependencyNode n : rootSet ) 
-                    {
-                        if ( checkGraphContainsResource( n , compRoot ) ) 
-                        {
-                            if ( match != null ) {
-                                throw new IllegalStateException("Internal error, file "+compRoot.getAbsolutePath()+" is in more than one compilation root set?");
-                            }
-                            match = n;
-                        }
-                    }
-                    if ( match == null ) {
-                        throw new RuntimeException("Internal error, failed to find file "+compRoot.getAbsolutePath()+" in any compilation root set?");
-                    }
-                    return gatherCompilationUnits( match );
-                }
-            }
-            
-            private List<ICompilationUnit> gatherCompilationUnits(DependencyNode graph) 
-            {
-                final List<ICompilationUnit> result = new ArrayList<>();
-                final NodeVisitor v = new NodeVisitor() {
-
-                    @Override
-                    public boolean visit(DependencyNode node)
-                    {
-                        result.add( node.getCompilationUnit() );
-                        return true;
-                    }
-                };
-                graph.visitRecursively( v );
-                return result;
-            }
-            
-            private boolean checkGraphContainsResource(DependencyNode graph,final File file) 
-            {
-                final boolean[] result = new boolean[] { false };
-                final String absPath = file.getAbsolutePath();
-                final NodeVisitor v = new NodeVisitor() {
-
-                    @Override
-                    public boolean visit(DependencyNode node)
-                    {
-                        if ( node.getCompilationUnit().getResource().getIdentifier().equals( absPath ) ) {
-                            result[0] = true;
-                            return false;
-                        }
-                        return true;
-                    }
-                };
-                graph.visitRecursively( v );                    
-                return result[0];
-            }
-        });
-        
         if ( getConfiguration().getBuildOptions().isGenerateSelfRelocatingCode() ) {
             compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
         }
@@ -306,16 +244,17 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
     }
 
     @Override
-    public boolean build() throws IOException 
+    public synchronized boolean build() throws IOException 
     {
     	assertNotDisposed();
         return build( new DebugCompilationListener(true) );
     }
 
     @Override
-    public boolean build(ICompilationListener listener) throws IOException 
+    public synchronized boolean build(ICompilationListener listener) throws IOException, UnknownCompilationOrderException 
     {
     	assertNotDisposed();
+    	
         final ICompiler compiler = createCompiler();
 
         /* Set output code writer.
@@ -329,7 +268,8 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
         workspace.buildStarted( project );
         
         boolean buildSuccessful = false;
-        try {
+        try 
+        {
             // clean output directory
             clean();
 
@@ -345,19 +285,98 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
                 }
             };
             
-            compiler.compile( compilationUnits , listener , relaxedResolver );
-
-            // create executable
-            if ( isCompilationSuccessful( compilationUnits ) )
+            
+            final List<DependencyNode> rootSet = analyzer.calculateRootSet( compilationUnits , project ,  relaxedResolver );
+            
+            DependencyNode nodeToCompile = null;
+            if ( rootSet.size() > 1 ) 
             {
-                final IResource executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
-                workspace.resourceCreated( project , executable );
-                buildSuccessful = true; 
+            	for ( DependencyNode n : rootSet ) 
+            	{
+                    final List<ICompilationUnit> units  = analyzer.linearize( n );
+                    if ( containsCompilationRoot( units ) ) {
+                    	nodeToCompile = n;
+                    	break;
+                    }
+            	}
+            	if ( nodeToCompile == null ) {
+            		throw new AmbigousCompilationOrderException( "Project configuration requires a compilation root", rootSet );
+            	}
+            } 
+            else if ( rootSet.size() == 1 ) 
+            {
+            	nodeToCompile = rootSet.get(0);
             } else {
-                buildSuccessful = false;
+            	return true;
             }
-        } finally {
+            
+            final List<ICompilationUnit> units  = analyzer.linearize( nodeToCompile );
+            final boolean link = containsCompilationRoot( units );
+            buildSuccessful = build( units , listener , link );
+        } 
+        catch (ResourceNotFoundException e) {
+        	LOG.error("build(): Caught ",e);
+		} finally {
             workspace.buildFinished( project , buildSuccessful );
+        }
+        return buildSuccessful;        
+    }
+    
+    private boolean containsCompilationRoot(List<ICompilationUnit> units ) 
+    {
+    	final File compilationRoot = project.getConfiguration().getCompilationRoot();    	
+    	if ( compilationRoot == null ) {
+    		return false;
+    	}
+    	for ( ICompilationUnit unit : units ) 
+    	{
+    		if ( unit.getResource().getIdentifier().equals( compilationRoot.getAbsolutePath() ) ) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+
+    private boolean build(List<ICompilationUnit> compilationUnits,ICompilationListener listener,boolean link) throws IOException 
+    {
+        final ICompiler compiler = createCompiler();
+
+        /* Set output code writer.
+         * 
+         * The following array list will be populated by the ObjectCodeOutputFactory
+         * with all generated object files.
+         */
+        final List<CompiledCode> objectFiles = new ArrayList<>();
+        setObjectCodeOutputFactory( compiler , objectFiles );
+
+        boolean buildSuccessful = false;
+
+        // compile stuff
+        LOG.info("build(): Starting to build: \n"+StringUtils.join( compilationUnits, "\n" ) );
+        
+        final IResourceMatcher relaxedResolver = new IResourceMatcher() {
+            
+            @Override
+            public boolean isSame(IResource resource1,IResource resource2) 
+            {
+                return resource1.getIdentifier().equals( resource2.getIdentifier() );
+            }
+        };
+        
+        compiler.compile( compilationUnits , listener , relaxedResolver );
+
+        // create executable
+        if ( isCompilationSuccessful( compilationUnits ) )
+        {
+        	if ( link ) 
+        	{
+        		LOG.debug("[ "+this+"] Linking "+compilationUnits);
+        		final IResource executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
+        		workspace.resourceCreated( project , executable );
+        	}
+            buildSuccessful = true; 
+        } else {
+            buildSuccessful = false;
         }
         return buildSuccessful;
     }
@@ -433,7 +452,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
     }
 
     @Override
-    public ICompilationUnit getCompilationUnit(IResource resource) throws NoSuchElementException
+    public synchronized ICompilationUnit getCompilationUnit(IResource resource) throws NoSuchElementException
     {
         final ICompilationUnit result = findCompilationUnit( resource );
         if ( result == null ) {
@@ -457,7 +476,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
     }        
 
     @Override
-    public List<ICompilationUnit> getCompilationUnits()
+    public synchronized List<ICompilationUnit> getCompilationUnits()
     {
         // TODO: Project building is currently NOT thread-safe , compilation units
         // passed to callers may be mutated at any time
@@ -538,4 +557,9 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener {
     public String toString() {
     	return "ProjectBuilder[ project="+project+" , disposed="+disposed+"]";
     }
+
+	@Override
+	public Priority getPriority() {
+		return Priority.HIGHEST;
+	}
 }

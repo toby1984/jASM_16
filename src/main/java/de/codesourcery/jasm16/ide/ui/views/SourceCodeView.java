@@ -1682,6 +1682,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	protected final class SearchDialog extends JFrame {
 
 		private final JTextField searchPattern = new JTextField();
+		
 		private final JCheckBox wrapSearch = new JCheckBox("Wrap",false);
 		private final JCheckBox caseSensitive = new JCheckBox("Match case",false);    	
 

@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -95,10 +96,13 @@ public class IncludeSourceFileNode extends ASTNode {
 			    
 			    LOG.debug("parseInternal(): File "+context.getCompilationUnit()+" includes "+resource);
 			    
-				final IParseContext subContext = context.createParseContextForInclude( resource );
-				
-				final AST ast = (AST) new AST().parse( subContext );
-				subContext.getCompilationUnit().setAST( ast );
+			    final ICompilationUnit existing = context.getCompilationUnitFor( resource );
+			    AST ast = existing != null ? existing.getAST() : null;
+			    if ( ast == null ) {
+			    	final IParseContext subContext = context.createParseContextForInclude( resource );
+					ast = (AST) new AST().parse( subContext );
+					subContext.getCompilationUnit().setAST( ast );
+			    }
 				addChild( ast , context );
 			} 
 			catch (IOException e) 

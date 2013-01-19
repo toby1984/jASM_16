@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
@@ -479,6 +480,25 @@ public class DefaultWorkspace implements IWorkspace
 		reloadWorkspace();
 	}
 
+	@Override
+	public void compilationFinished(final IAssemblyProject project, final ICompilationUnit unit) {
+		notifyListeners( new IInvoker() {
+
+			@Override
+			public void invoke(IResourceListener listener) 
+			{
+				if ( listener instanceof IWorkspaceListener) {
+					((IWorkspaceListener) listener).compilationFinished( project , unit );
+				}
+			}
+			
+			@Override
+			public String toString() {
+				return "COMPILATION-FINISHED: "+project+" - "+unit;
+			}
+		});		
+	}
+	
 	@Override
 	public void resourceCreated(final IAssemblyProject project, final IResource resource) {
 

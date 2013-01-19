@@ -58,13 +58,13 @@ public class CompilationContext implements ICompilationContext {
         		options );
     }
     
-	public CompilationContext(ICompilationUnit unit,List<ICompilationUnit> allCompilationUnits,
+	public CompilationContext(ICompilationUnit currentUnit,List<ICompilationUnit> allCompilationUnits,
 			ISymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,
 			IResourceResolver resourceResolver,
 			ICompilationUnitResolver compilationUnitResolver,
 			Set<CompilerOption> options)
 	{
-		if (unit == null) {
+		if (currentUnit == null) {
 			throw new IllegalArgumentException("unit must not be NULL");
 		}
 		if ( compilationUnitResolver == null ) {
@@ -89,7 +89,7 @@ public class CompilationContext implements ICompilationContext {
 		this.allCompilationUnits = new ArrayList<ICompilationUnit>( allCompilationUnits );
 		this.symbolTable = symbolTable;
 		this.writerFactory = writerFactory;
-		this.currentUnit = unit;
+		this.currentUnit = currentUnit;
 		this.compilationUnitResolver = compilationUnitResolver;
 		this.options.addAll( options );
 	}
@@ -152,4 +152,10 @@ public class CompilationContext implements ICompilationContext {
 	public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException {
 		return compilationUnitResolver.getOrCreateCompilationUnit( resource );
 	}
+	
+	@Override
+	public ICompilationUnit getCompilationUnit(IResource resource)
+			throws IOException {
+		return compilationUnitResolver.getCompilationUnit( resource );
+	} 
 }

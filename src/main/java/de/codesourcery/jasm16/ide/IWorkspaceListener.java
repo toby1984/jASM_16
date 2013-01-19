@@ -15,6 +15,8 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+
 /**
  * A listener that gets notified whenever important
  * changes happen to the {@link IWorkspace} instance the
@@ -70,6 +72,8 @@ public interface IWorkspaceListener extends IResourceListener
 	public void projectDeleted(IAssemblyProject project);
 	
 	public void buildStarted(IAssemblyProject project);
+	
+	public void compilationFinished(IAssemblyProject project,ICompilationUnit unit);
 	
 	public void buildFinished(IAssemblyProject project,boolean success);
 }

@@ -312,6 +312,13 @@ public class Breakpoint
 					IResource resource) throws IOException {
 				throw new UnsupportedOperationException();
 			}
+
+			@Override
+			public ICompilationUnit getCompilationUnit(IResource resource)
+					throws IOException 
+			{
+				throw new UnsupportedOperationException();
+			}
 		};
 		
 		final Set<ParserOption> parserOptions = new HashSet<ParserOption>();

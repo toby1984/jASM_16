@@ -17,6 +17,8 @@ package de.codesourcery.jasm16.parser;
 
 import java.io.IOException;
 
+import com.sun.corba.se.impl.logging.ORBUtilSystemException;
+
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -139,12 +141,14 @@ public interface IParseContext extends ILexer , IResourceResolver {
      */
     public void addCompilationError(String message, ASTNode node); 
     
+    public ICompilationUnit getCompilationUnitFor(IResource resource) throws IOException;
+    
     /**
      * Invoked to create a new <code>ParseContext</code> whenever a
      * source include needs to be processed.
      * 
      * @param resource
-     * @return
+     * @return new parse context 
      * @throws IOException 
      */
     public IParseContext createParseContextForInclude(IResource resource) throws IOException,CircularSourceIncludeException;

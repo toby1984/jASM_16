@@ -55,7 +55,7 @@ public class ParseSourcePhase extends CompilerPhase {
 	@Override
     protected void run(ICompilationUnit unit , ICompilationContext context) throws IOException
     {
-	    LOG.debug("run():PARSING: "+unit);
+	    LOG.info("run():PARSING: "+unit);
 	    
 	    final IParser parser = new Parser(context);
 	    

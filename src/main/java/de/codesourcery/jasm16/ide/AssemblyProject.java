@@ -46,7 +46,7 @@ import de.codesourcery.jasm16.utils.Misc.IFileVisitor;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class AssemblyProject implements IAssemblyProject 
+public class AssemblyProject extends WorkspaceListener implements IAssemblyProject 
 {
     private static final Logger LOG = Logger.getLogger(AssemblyProject.class);
     
@@ -545,6 +545,9 @@ public class AssemblyProject implements IAssemblyProject
             throw new IllegalStateException("addedToWorkspace() called on already registered project "+this);
         }
         workspace.addResourceListener( this );
+        for ( IResource r : getAllResources() ) {
+        	workspace.resourceCreated( this , r );
+        }
     }
 
     @Override

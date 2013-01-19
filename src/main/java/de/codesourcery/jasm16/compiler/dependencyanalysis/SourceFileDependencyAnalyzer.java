@@ -279,6 +279,12 @@ public class SourceFileDependencyAnalyzer
             {
                 throw new UnsupportedOperationException("Should not be called");
             }
+
+			@Override
+			public ICompilationUnit getCompilationUnit(IResource resource)
+					throws IOException {
+                throw new UnsupportedOperationException("Should not be called");
+			}
         };
         
         final String input = Misc.readSource(copy);

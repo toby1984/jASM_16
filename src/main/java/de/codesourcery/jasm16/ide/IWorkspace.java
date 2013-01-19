@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
 import de.codesourcery.jasm16.ide.exceptions.ProjectNotFoundException;
@@ -105,6 +106,8 @@ public interface IWorkspace extends IResourceListener
     public void reloadWorkspace() throws IOException; // ok
     
 	public void buildStarted(IAssemblyProject assemblyProject);
+	
+	public void compilationFinished(IAssemblyProject project, ICompilationUnit unit);	
 
 	public void buildFinished(IAssemblyProject assemblyProject, boolean buildSuccessful);
 }

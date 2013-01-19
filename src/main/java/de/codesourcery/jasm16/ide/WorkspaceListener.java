@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.ide;
 
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IResource;
 
 public class WorkspaceListener implements IWorkspaceListener {
@@ -25,6 +26,10 @@ public class WorkspaceListener implements IWorkspaceListener {
 
 	@Override
 	public void resourceDeleted(IAssemblyProject project, IResource resource) {
+	}
+	
+	@Override
+	public void compilationFinished(IAssemblyProject project, ICompilationUnit unit) {
 	}
 
 	@Override

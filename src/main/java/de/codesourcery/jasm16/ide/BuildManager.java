@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.IdentityHashMap;
 
 import de.codesourcery.jasm16.compiler.ICompilationListener;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.io.IResource;
 
 public class BuildManager implements IBuildManager , IWorkspaceListener
@@ -26,6 +27,12 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
     {
         // TODO Auto-generated method stub
 
+    }
+    
+    @Override
+    public void compilationFinished(IAssemblyProject project,
+    		ICompilationUnit unit) {
+    	// TODO Auto-generated method stub
     }
 
     @Override

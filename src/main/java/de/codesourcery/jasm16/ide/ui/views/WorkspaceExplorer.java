@@ -76,24 +76,24 @@ public class WorkspaceExplorer extends AbstractView {
 	private final ViewContainerManager perspectivesManager;
 	private final IWorkspace workspace;
 	private final EditorFactory editorFactory;
-	
+
 	private WorkspaceTreeModel treeModel;
 
 	private JPanel panel = null;
 	private final JTree tree = new JTree();
-	
+
 	private final FileFilter fileFilter = new FileFilter() {
 
 		private final Set<String> ignore_suffix = new HashSet<String>( 
 				Arrays.asList( new String[]{".bat" , ".exe" , ".sh" , ".xml" , ".10csln" , ".10csuo" ,  ".10cproj"} ) );
-		
+
 		@Override
 		public boolean accept(File file) 
 		{
 			if ( file.isHidden() || file.getName().startsWith(".") ) {
 				return false;
 			}
-			
+
 			final String name = file.getName().toLowerCase();
 			for ( String toIgnore : ignore_suffix ) {
 				if ( name.endsWith( toIgnore ) ) {
@@ -156,9 +156,9 @@ public class WorkspaceExplorer extends AbstractView {
 		setColors( tree );
 		tree.setRootVisible( false );
 
-		for (int i = 0; i < tree.getRowCount(); i++) {
-			tree.expandRow(i);
-		}
+		//		for (int i = 0; i < tree.getRowCount(); i++) {
+		//			tree.expandRow(i);
+		//		}
 
 		tree.addKeyListener( new KeyAdapter() 
 		{
@@ -244,41 +244,36 @@ public class WorkspaceExplorer extends AbstractView {
 						final IAssemblyProject project = projectNode.getValue();
 
 						label = project.getName();
+						if ( projectNode.hasCompilationErrors() ) {
+							color = Color.RED;
+						}
 					} 
 					else if ( value instanceof FileNode) 
 					{
-						final FileNode resourceNode = (FileNode) value;
-                        final File file = resourceNode.getValue();
-                        label = file.getName();
-                        
-                        final IAssemblyProject project = getProject( resourceNode );
-						final IResource projectResource = project.getResourceForFile(  file );
-						if ( projectResource != null ) 
+						FileNode fn = (FileNode) value;
+						label = fn.getValue().getName();
+						switch( fn.type ) 
 						{
-                            if ( projectResource.hasType( ResourceType.OBJECT_FILE ) )  
-                            {
-                                label = "[O] "+label;
-                            } else if ( projectResource.hasType( ResourceType.EXECUTABLE ) )  
-						    {
-						        label = "[E] "+label;
-						    } 
-                            else if ( projectResource.hasType( ResourceType.SOURCE_CODE) ) 
-						    {
-                                label = "[S] "+label;
-                                
-						        final ICompilationUnit unit = project.getProjectBuilder().getCompilationUnit( projectResource );
-						        if ( unit.hasErrors() ) 
-						        {
-						            try 
-						            {
-						                System.out.println( project+" failed to compile.");
-                                        Misc.printCompilationErrors( unit , projectResource , true );
-                                    } catch (IOException e) {
-                                        e.printStackTrace();
-                                    }
-						            color = Color.RED;
-						        } 
-						    }
+							case DIRECTORY:
+								if ( fn.hasCompilationErrors() )
+								{
+									color = Color.RED;
+								} 
+								break;
+							case OBJECT_FILE:  
+								label = "[O] "+label;
+								break;
+							case EXECUTABLE:
+								label = "[E] "+label;
+								break;
+							case SOURCE_CODE: 
+								label = "[S] "+label;
+								if ( fn.hasCompilationErrors() )
+								{
+									color = Color.RED;
+								} 
+							default:
+								// ok
 						}
 					}
 				} 
@@ -337,7 +332,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 		throw new RuntimeException("Internal error,unhandled node type "+selection);
 	}
-	
+
 	protected void onTreeNodeLeftClick(IAssemblyProject project, WorkspaceTreeNode selected) throws IOException 
 	{
 		if ( project == null ) {
@@ -530,47 +525,47 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 
 		});         
-		
+
 		if ( project != null ) 
 		{
-            addMenuEntry( popup , "Project properties...", new ActionListener() {
-    
-                @Override
-                public void actionPerformed(ActionEvent e) 
-                {
-                    ProjectConfigurationView view = (ProjectConfigurationView) getViewContainer().getViewByID( ProjectConfigurationView.ID );
-                    if ( view == null ) {
-                        view = new ProjectConfigurationView() {
-                            
-                            @Override
-                            protected void onSave()
-                            {
-                                apply( project.getConfiguration() );
-                                
-                                try {
-                                    project.getConfiguration().save();
-                                } 
-                                catch (IOException e) {
-                                    UIUtils.showErrorDialog( null , "Error" , "Failed to save project options" , e);
-                                } finally {
-                                    getViewContainer().disposeView( this );                                    
-                                }
-                            }
-                            
-                            @Override
-                            protected void onCancel()
-                            {
-                                getViewContainer().disposeView( this );
-                            }
-                        };
-                        getViewContainer().addView( view );
-                    }
-                    
-                    view.setProject( project );
-                    view.getViewContainer().toFront( view );
-                }
-    
-            });     		
+			addMenuEntry( popup , "Project properties...", new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) 
+				{
+					ProjectConfigurationView view = (ProjectConfigurationView) getViewContainer().getViewByID( ProjectConfigurationView.ID );
+					if ( view == null ) {
+						view = new ProjectConfigurationView() {
+
+							@Override
+							protected void onSave()
+							{
+								apply( project.getConfiguration() );
+
+								try {
+									project.getConfiguration().save();
+								} 
+								catch (IOException e) {
+									UIUtils.showErrorDialog( null , "Error" , "Failed to save project options" , e);
+								} finally {
+									getViewContainer().disposeView( this );                                    
+								}
+							}
+
+							@Override
+							protected void onCancel()
+							{
+								getViewContainer().disposeView( this );
+							}
+						};
+						getViewContainer().addView( view );
+					}
+
+					view.setProject( project );
+					view.getViewContainer().toFront( view );
+				}
+
+			});     		
 		}
 		return popup;
 	}	
@@ -639,7 +634,7 @@ public class WorkspaceExplorer extends AbstractView {
 		}
 		return false;
 	}
-	
+
 	public static boolean canOpenInDebugPerspective(IAssemblyProject project) throws IOException 
 	{
 		// source level view depends on AST being available for  
@@ -726,7 +721,7 @@ public class WorkspaceExplorer extends AbstractView {
 		public void projectCreated(IAssemblyProject project) {
 			treeStructureChanged();			
 		}
-		
+
 		@Override
 		public void projectConfigurationChanged(IAssemblyProject project) {
 			treeStructureChanged();				
@@ -736,15 +731,98 @@ public class WorkspaceExplorer extends AbstractView {
 		public void projectDisposed(IAssemblyProject project)
 		{
 		}
-		
+
 		@Override
 		public void projectDeleted(IAssemblyProject project) {
 			treeStructureChanged();
 		}
 
+		private Object[] getPathForResource(final IAssemblyProject project, final IResource resource) {
+
+			final WorkspaceTreeNode[] match ={null};
+			root.visit( new TreeNodeVisitor() {
+
+				@Override
+				public Outcome visit(WorkspaceTreeNode node) 
+				{
+					if ( node instanceof ProjectNode) 
+					{
+						ProjectNode projectNode = (ProjectNode) node;
+						if ( projectNode.getValue() != project &&
+								! projectNode.getValue().getName().equals( project.getName() ) ) 
+						{
+							return Outcome.DONT_GO_DEEPER;
+						}
+					} else if ( node instanceof FileNode ) {
+						FileNode  fn = (FileNode ) node;
+						if ( fn.getValue().getAbsolutePath().equals( resource.getIdentifier() ) ) {
+							match[0] = node;
+							return Outcome.STOP;
+						}
+					}
+					return Outcome.CONTINUE;
+				}
+			} );
+			return match[0] == null ? null : match[0].getPathToRoot();
+		}
+
 		@Override
-		public void resourceChanged(IAssemblyProject project, IResource resource) {
-			treeStructureChanged();			
+		public void resourceChanged(IAssemblyProject project, IResource resource) 
+		{
+			Object[] path = getPathForResource( project , resource);
+			if ( path == null ) 
+			{
+				return;
+			}
+			
+			WorkspaceTreeNode child = (WorkspaceTreeNode) path[ path.length - 1 ];
+			if ( child instanceof FileNode ) 
+			{
+				for ( int i = path.length-1 ; i >= 0 ; i--) 
+				{
+					WorkspaceTreeNode node = (WorkspaceTreeNode) path[i];
+					if ( node instanceof FileNode) 
+					{
+						FileNode fn = (FileNode) path[i];
+						final boolean oldFlag = fn.hasCompilationErrors();
+	
+						fn.refresh();
+						System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors());
+	
+						if ( oldFlag != fn.hasCompilationErrors() || fn == child ) 
+						{
+							notifyNodeChanged( path );
+						}
+					} 
+					else if ( node instanceof ProjectNode) 
+					{
+						ProjectNode pn = (ProjectNode) node;
+						if ( pn.recalculateHasCompilationErrorsFlag() ) {
+							notifyNodeChanged( node.getPathToRoot() );
+						}
+						System.out.println("Project "+pn.getValue()+" has compilation errors = "+pn.hasCompilationErrors());
+					}
+				}
+			} else {
+				notifyNodeChanged( path );					
+			}
+		}
+
+		private void notifyNodeChanged(Object[] childPath) 
+		{
+			if ( childPath == null || childPath.length == 0 ) {
+				treeStructureChanged();
+			} 
+			else 
+			{
+				final Object[] parentPath = new Object[ childPath.length - 1 ];
+				System.arraycopy( childPath , 0 , parentPath , 0 , childPath.length - 1 );
+				final WorkspaceTreeNode child = (WorkspaceTreeNode) childPath[ childPath.length - 1 ];
+				final WorkspaceTreeNode parent = (WorkspaceTreeNode) parentPath[ parentPath.length - 1 ];
+				final int childIndex = parent.getIndex( child );
+
+				fireTreeNodesChanged( this , parentPath, new int[] { childIndex } , new Object[] { child });  
+			}
 		}
 
 		@Override
@@ -861,7 +939,7 @@ public class WorkspaceExplorer extends AbstractView {
 
 			return null;
 		}
-
+		
 		private ProjectNode findProjectNode(IAssemblyProject project) {
 
 			for ( WorkspaceTreeNode child : getRoot().children ) {
@@ -947,7 +1025,25 @@ public class WorkspaceExplorer extends AbstractView {
 		public void buildStarted(IAssemblyProject project) { /* no-op */ }
 
 		@Override
-		public void buildFinished(IAssemblyProject project, boolean success) { /* no-op */ }
+		public void compilationFinished(IAssemblyProject project, ICompilationUnit unit) 
+		{
+		 	ProjectNode pn = findProjectNode( project );
+		 	if ( pn != null ) {
+		 		FileNode fn = findNearestFileNode( pn , new File( unit.getResource().getIdentifier() ) );
+		 		if ( fn != null ) {
+		 			resourceChanged( project , unit.getResource() );
+		 		}
+		 	}
+		}
+		
+		@Override
+		public void buildFinished(IAssemblyProject project, boolean success) 
+		{
+			List<IResource> resources = project.getResources(ResourceType.SOURCE_CODE);
+			for ( IResource r : resources ) {
+				resourceChanged( project , r );
+			}
+		}
 
 		@Override
 		public void projectClosed(IAssemblyProject project) {
@@ -983,13 +1079,24 @@ public class WorkspaceExplorer extends AbstractView {
 				final Object[] children = node.getChildren().toArray();
 				fireTreeNodesInserted( this , node.getPathToRoot() , indices , children );
 			} else {
-			    projectCreated( project );
+				projectCreated( project );
 			}
 		}
 	}
 
 	private WorkspaceTreeModel createTreeModel() {
 		return new WorkspaceTreeModel();
+	}
+
+	private static enum Outcome {
+		STOP,
+		CONTINUE,
+		DONT_GO_DEEPER;
+	}
+
+	protected interface TreeNodeVisitor {
+
+		public Outcome visit(WorkspaceTreeNode node);
 	}
 
 	protected static class WorkspaceTreeNode implements javax.swing.tree.TreeNode 
@@ -1002,29 +1109,58 @@ public class WorkspaceExplorer extends AbstractView {
 			this.value = value;
 		}
 
-		public void removeChild(FileNode fn) {
+		public final void removeChild(FileNode fn) {
 			children.remove( fn );
 		}
 
-		public List<WorkspaceTreeNode> getChildren() {
+		public final List<WorkspaceTreeNode> getChildren() {
 			return children;
 		}
 
-		public List<WorkspaceTreeNode> removeChildren() {
+		public final ProjectNode getProjectNode() {
+
+			WorkspaceTreeNode current = this;
+			while ( current != null && !( current instanceof ProjectNode ) ) 
+			{ 
+				current = current.getParent();
+			}
+			return current == null ? null : (ProjectNode) current;
+		}
+
+		public final Outcome visit(TreeNodeVisitor v) 
+		{
+			Outcome result = v.visit( this );
+			if ( result == Outcome.STOP) {
+				return result;
+			}
+			if ( result == Outcome.DONT_GO_DEEPER ) {
+				return Outcome.CONTINUE;
+			}
+			for ( WorkspaceTreeNode child : children ) 
+			{
+				result = child.visit( v );
+				if ( result == Outcome.STOP ) {
+					return result;
+				}
+			}
+			return Outcome.CONTINUE;
+		}
+
+		public final List<WorkspaceTreeNode> removeChildren() {
 			List<WorkspaceTreeNode> copy = new ArrayList<WorkspaceTreeNode>( children );
 			children.clear();
 			return copy;
 		}
-		
-		public boolean isProjectNode() {
-		    return false;
-		}
-		
-        public boolean isFileNode() {
-            return false;
-        }		
 
-		public Object[] getPathToRoot() 
+		public boolean isProjectNode() {
+			return false;
+		}
+
+		public boolean isFileNode() {
+			return false;
+		}		
+
+		public final Object[] getPathToRoot() 
 		{
 			final List<WorkspaceTreeNode> result = new ArrayList<WorkspaceTreeNode>();
 
@@ -1042,7 +1178,7 @@ public class WorkspaceExplorer extends AbstractView {
 			return value;
 		}
 
-		public void addChild(WorkspaceTreeNode child) {
+		public final void addChild(WorkspaceTreeNode child) {
 			children.add( child );
 			child.setParent( this );
 		}
@@ -1125,18 +1261,38 @@ public class WorkspaceExplorer extends AbstractView {
 
 	protected static class ProjectNode extends WorkspaceTreeNode
 	{
-        private boolean hasCompilationErrors = false; 
-        
-        public boolean hasCompilationErrors()
-        {
-            return hasCompilationErrors;
-        }
-        
-        public void setHasCompilationErrors(boolean hasCompilationErrors)
-        {
-            this.hasCompilationErrors = hasCompilationErrors;
-        }
-        
+		private boolean hasCompilationErrors = false; 
+
+		public boolean hasCompilationErrors()
+		{
+			return hasCompilationErrors;
+		}
+
+		public boolean recalculateHasCompilationErrorsFlag() 
+		{
+			final boolean[] newFlag = { false };
+			final TreeNodeVisitor visitor = new TreeNodeVisitor() {
+
+				@Override
+				public Outcome visit(WorkspaceTreeNode node) 
+				{
+					if ( node instanceof FileNode) {
+						if ( ((FileNode) node).hasCompilationErrors() ) {
+							newFlag[0] = true;
+							return Outcome.STOP;
+						}
+					}
+					return Outcome.CONTINUE;
+				}
+			};
+
+			visit( visitor );
+
+			boolean flagChanged = this.hasCompilationErrors != newFlag[0];
+			this.hasCompilationErrors = newFlag[0];
+			return flagChanged;
+		}
+
 		public ProjectNode(IAssemblyProject project) {
 			super( project );
 			if (project== null) {
@@ -1144,10 +1300,10 @@ public class WorkspaceExplorer extends AbstractView {
 			}
 		}
 
-	    public boolean isProjectNode() {
-	        return true;
-	    }
-	        
+		public boolean isProjectNode() {
+			return true;
+		}
+
 		@Override
 		public String toString() {
 			return "Project "+getValue().getName();
@@ -1161,29 +1317,66 @@ public class WorkspaceExplorer extends AbstractView {
 
 	protected static final class FileNode extends WorkspaceTreeNode {
 
-        private boolean hasCompilationErrors = false;        
+		private boolean hasCompilationErrors = false;        
 
-        public FileNode(File file) {
-            super( file );
-            if (file == null) {
-                throw new IllegalArgumentException("file must not be NULL");
-            }
-        }
-        
-        public boolean hasCompilationErrors()
-        {
-            return hasCompilationErrors;
-        }
-        
-        public void setHasCompilationErrors(boolean hasCompilationErrors)
-        {
-            this.hasCompilationErrors = hasCompilationErrors;
-        }
-		
-        public boolean isFileNode() {
-            return true;
-        }		
-        
+		private ResourceType type = ResourceType.UNKNOWN;
+
+		public FileNode(File file) {
+			super( file );
+			if (file == null) {
+				throw new IllegalArgumentException("file must not be NULL");
+			}
+			if ( file.isDirectory() ) {
+				this.type = ResourceType.DIRECTORY;
+			}
+		}
+
+		public boolean hasType(ResourceType t) {
+			return t.equals( type );
+		}
+
+		public boolean hasCompilationErrors()
+		{
+			return hasCompilationErrors;
+		}
+
+		public void refresh() 
+		{
+			this.type = ResourceType.UNKNOWN;
+			this.hasCompilationErrors = false;
+			
+			if ( getValue().isDirectory() ) 
+			{
+				this.type = ResourceType.DIRECTORY;
+				for ( WorkspaceTreeNode child : getChildren() ) 
+				{
+					if ( child instanceof FileNode && ((FileNode) child).hasCompilationErrors() ) {
+						this.hasCompilationErrors = true;
+						return;
+					}
+				}
+				return;
+			}
+			
+			final File file = this.getValue();
+
+			final IAssemblyProject project = getProjectNode().getValue();
+			final IResource projectResource = project.getResourceForFile(  file );
+
+			if ( projectResource != null ) 
+			{
+				this.type = projectResource.getType();
+				if ( projectResource.hasType( ResourceType.SOURCE_CODE) ) 
+				{
+					this.hasCompilationErrors = project.getProjectBuilder().getCompilationUnit( projectResource ).hasErrors();
+				}
+			}        	
+		}
+
+		public boolean isFileNode() {
+			return true;
+		}		
+
 		@Override
 		public File getValue() {
 			return (File) super.getValue();

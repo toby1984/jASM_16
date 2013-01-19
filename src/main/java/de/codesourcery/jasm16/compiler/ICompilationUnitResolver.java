@@ -41,4 +41,12 @@ public interface ICompilationUnitResolver {
 	 * @throws IOException
 	 */
 	public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException;
+	
+	/**
+	 * 
+	 * @param resource
+	 * @return compilation unit or <code>null</code>
+	 * @throws IOException
+	 */
+	public ICompilationUnit getCompilationUnit(IResource resource) throws IOException;	
 }

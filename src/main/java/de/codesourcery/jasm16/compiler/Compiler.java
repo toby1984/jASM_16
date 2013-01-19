@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.compiler;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +42,7 @@ import de.codesourcery.jasm16.compiler.phases.CodeGenerationPhase;
 import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
+import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Default compiler (assembler) implementation.
@@ -143,8 +145,8 @@ public class Compiler implements ICompiler {
         // make sure to pass-in a COPY of the input list into
         // ICompilerPhase#execute() ... this method argument is actually MODIFIED by 
         // the compilation phases.
-        // Whenever an - previously unseen - include is being processed
-        // , a new ICompilationUnit will be added to this copy
+        // Whenever a - previously unseen - include is being processed
+        // , a new ICompilationUnit may be added to this copy
         
         final List<ICompilationUnit> copy = new ArrayList<ICompilationUnit>(units);
         
@@ -192,6 +194,17 @@ public class Compiler implements ICompiler {
         } 
         finally {
             listener.afterCompile( lastPhase );
+            
+            for ( ICompilationUnit unit : unitsToCompile ) {
+            	System.out.println( " ------------------ "+unit+ "--------------" );
+            	if ( unit.hasErrors() ) 
+            	{
+            		try {
+						Misc.printCompilationErrors( unit , unit.getResource(), true );
+					} catch (Exception e) {
+					}
+            	}
+            }
         }
     }
 

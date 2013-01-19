@@ -35,7 +35,7 @@ public interface ICompilationContext extends IResourceResolver , ICompilationUni
      * @return
      */
     public ICompilationUnit getCurrentCompilationUnit();
-
+    
     /**
      * Returns all compilation units that are part of
      * the current compilation process.
