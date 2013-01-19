@@ -35,8 +35,8 @@ import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
@@ -418,6 +418,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
         return result;
 	}
 	
+	@SuppressWarnings("deprecation")
 	@Override
 	public void changeResourceType(IResource resource, ResourceType newType)
 	{

@@ -38,6 +38,8 @@ public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,
     
     public void removedFromWorkspace(IWorkspace workspace);
     
+    public IProjectBuilder getProjectBuilder();
+    
     /**
      * 
      * @param file
@@ -58,11 +60,9 @@ public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,
     
     public boolean isClosed();
     
-    public void rescanResources() throws IOException;
+    public void reload() throws IOException;
     
     public List<IResource> getAllResources();
-    
-    public IProjectBuilder getProjectBuilder();
     
     public IResource lookupResource(String identifier);
 }

@@ -83,10 +83,6 @@ public class CompilerTest extends TestHelper
 		assertNotNull( unit.getAST() );
 		assertFalse( unit.getAST().hasErrors() );
 		assertNotNull( out[0] );
-		
-		final byte[] actual = out[0].toByteArray();
-		final byte[] expected = Misc.readBytes( new ClassPathResource("specsample.dcpu16" , ResourceType.OBJECT_FILE ) );
-//		assertTrue("Generated object code does not match expectation" , ArrayUtils.isEquals( expected , actual ) );
 	}
 	
 }

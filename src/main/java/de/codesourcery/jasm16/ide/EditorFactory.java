@@ -16,7 +16,6 @@
 package de.codesourcery.jasm16.ide;
 
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;

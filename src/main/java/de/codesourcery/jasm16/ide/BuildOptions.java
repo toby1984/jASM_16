@@ -53,7 +53,8 @@ public final class BuildOptions {
         return result;
     }   
     
-    private static Element getChildElement(Element parent,String tagName) 
+    @SuppressWarnings("unused")
+	private static Element getChildElement(Element parent,String tagName) 
     {
         final NodeList nodeList = parent.getElementsByTagName( tagName );
         if ( nodeList.getLength() == 1 ) 

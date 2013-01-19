@@ -16,8 +16,6 @@ package de.codesourcery.jasm16.emulator.devices.impl;
  * limitations under the License.
  */
 
-import static java.lang.System.out;
-
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
@@ -764,6 +762,7 @@ public final class DefaultScreen implements IDevice {
 	
     private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
 
+		@SuppressWarnings("deprecation")
 		@Override
 		public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
 				IMemory memory) 

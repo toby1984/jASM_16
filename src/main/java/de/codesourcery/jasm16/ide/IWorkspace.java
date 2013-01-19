@@ -57,6 +57,8 @@ public interface IWorkspace extends IResourceListener
     
     public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException;
     
+    public IBuildManager getBuildManager();
+    
     /**
      * Delete a file.
      * 
@@ -102,7 +104,7 @@ public interface IWorkspace extends IResourceListener
     
     public void reloadWorkspace() throws IOException; // ok
     
-	public void buildStarted(AssemblyProject assemblyProject);
+	public void buildStarted(IAssemblyProject assemblyProject);
 
-	public void buildFinished(AssemblyProject assemblyProject, boolean buildSuccessful);
+	public void buildFinished(IAssemblyProject assemblyProject, boolean buildSuccessful);
 }

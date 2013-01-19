@@ -55,6 +55,8 @@ public class DefaultWorkspace implements IWorkspace
 	private final AtomicBoolean opened = new AtomicBoolean(false);
 	private final IApplicationConfig appConfig;
 	private WorkspaceConfig workspaceConfig;
+	
+	private final IBuildManager buildManager;
 
 	public DefaultWorkspace(IApplicationConfig appConfig) throws IOException 
 	{
@@ -62,6 +64,14 @@ public class DefaultWorkspace implements IWorkspace
 			throw new IllegalArgumentException("appConfig must not be NULL");
 		}
 		this.appConfig = appConfig;
+		final BuildManager tmp = new BuildManager(this);
+		this.buildManager = tmp;
+		addResourceListener( tmp );
+	}
+	
+	@Override
+	public IBuildManager getBuildManager() {
+		return buildManager;
 	}
 	
 	private synchronized WorkspaceConfig getWorkspaceConfig() throws IOException 
@@ -109,12 +119,50 @@ public class DefaultWorkspace implements IWorkspace
 			}
 		}
 
-		this.projects.clear();
-		this.projects.addAll( tmp );
-		
-		for ( IAssemblyProject project : tmp ) {
-		    project.addedToWorkspace( this );
+		// dispose any projects that are already loaded
+		for ( Iterator<IAssemblyProject> it = projects.iterator() ; it.hasNext() ; ) 
+		{
+			final IAssemblyProject project = it.next();
+			it.remove();
+			
+			project.removedFromWorkspace( this );
+			
+			notifyListeners( new IInvoker() {
+				@Override
+				public void invoke(IResourceListener listener) 
+				{
+				    if ( listener instanceof IWorkspaceListener) {
+				        ((IWorkspaceListener) listener).projectDisposed( project );
+				    }
+				}
+				@Override
+				public String toString() {
+					return "PROJECT-DISPOSED: "+project;
+				}			
+			});				
 		}
+		
+		// add new projects
+		for ( final IAssemblyProject p : tmp ) 
+		{
+			this.projects.add( p );
+			p.addedToWorkspace( this );
+			
+			notifyListeners( new IInvoker() {
+				@Override
+				public void invoke(IResourceListener listener) 
+				{
+				    if ( listener instanceof IWorkspaceListener) {
+				        ((IWorkspaceListener) listener).projectOpened( p );
+				    }
+				}
+				@Override
+				public String toString() {
+					return "PROJECT-LOADED: "+p;
+				}			
+			});				
+		}
+		
 		opened.set( true );
 	}
 
@@ -124,7 +172,11 @@ public class DefaultWorkspace implements IWorkspace
 		config.load();
 		
 		final boolean isProjectOpen = getWorkspaceConfig().isProjectOpen( config.getProjectName() );
-		return new AssemblyProject( this , config , isProjectOpen );
+		
+		final AssemblyProject tmp = new AssemblyProject( this , config , isProjectOpen );
+		final IProjectBuilder builder = buildManager.getProjectBuilder( tmp );			
+		tmp.setProjectBuilder( builder );
+		return tmp;
 	}
 
 	@Override
@@ -514,7 +566,7 @@ public class DefaultWorkspace implements IWorkspace
     }
 
 	@Override
-	public void buildStarted(final AssemblyProject assemblyProject) 
+	public void buildStarted(final IAssemblyProject assemblyProject) 
 	{
 		notifyListeners( new IInvoker() {
 			@Override
@@ -533,7 +585,7 @@ public class DefaultWorkspace implements IWorkspace
 	}
 
 	@Override
-	public void buildFinished(final AssemblyProject assemblyProject, final boolean buildSuccessful) 
+	public void buildFinished(final IAssemblyProject assemblyProject, final boolean buildSuccessful) 
 	{
 		notifyListeners( new IInvoker() {
 			@Override
@@ -566,7 +618,7 @@ public class DefaultWorkspace implements IWorkspace
         		ProjectConfiguration reloaded = new ProjectConfiguration( p.getConfiguration().getBaseDirectory() );
         		reloaded.load();
         		p.getConfiguration().populateFrom( reloaded );
-        		p.rescanResources();
+        		p.reload();
         		
         		notifyListeners( new IInvoker() {
         			@Override

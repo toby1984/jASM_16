@@ -20,12 +20,7 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
-import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
-import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IApplicationConfig;
-import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 
 /**

@@ -264,24 +264,6 @@ public class DefaultFloppyDrive implements IDevice {
 		}
 	}
 
-	private void updateStatus(StatusCode status) 
-	{
-		boolean statusChanged;
-		synchronized(DISK_LOCK ) 
-		{
-			statusChanged = this.status != status;
-			this.status = status;
-		}
-
-		if ( statusChanged ) 
-		{
-			logDebug("New status: "+status);
-			if ( interruptsEnabled ) {
-				emulator.triggerInterrupt( new HardwareInterrupt( this , interruptMessage ) );
-			}
-		}
-	}
-	
 	private void updateStatus(StatusCode status,ErrorCode errorCode) 
 	{
 		boolean statusChanged;

@@ -1,14 +1,26 @@
 package de.codesourcery.jasm16.ide;
 
 import java.io.IOException;
+import java.util.IdentityHashMap;
 
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.io.IResource;
 
 public class BuildManager implements IBuildManager , IWorkspaceListener
 {
-    private final IWorkspace workspace;
+    @SuppressWarnings("unused")
+	private final IWorkspace workspace;
+    
+    private final IdentityHashMap<IAssemblyProject,IProjectBuilder> builders = new IdentityHashMap<>();
 
+    public BuildManager(IWorkspace workspace)
+    {
+        if (workspace == null) {
+            throw new IllegalArgumentException("workspace must not be NULL.");
+        }
+        this.workspace = workspace;
+    }
+    
     @Override
     public void resourceDeleted(IAssemblyProject project, IResource resource)
     {
@@ -42,15 +54,23 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
         System.out.println("BUILD-MANAGER: Project opened: "+project);
     }
 
-    public void projectDisposed(IAssemblyProject project) {
-
+    public void projectDisposed(IAssemblyProject project) 
+    {
+    	synchronized( builders ) 
+    	{
+    		final IProjectBuilder builder = builders.remove( project );
+    		if ( builder != null ) 
+    		{
+    			workspace.removeResourceListener( builder );
+    			builder.dispose();
+    		}
+    	}
     }
 
     @Override
     public void projectDeleted(IAssemblyProject project)
     {
-        // TODO Auto-generated method stub
-
+    	
     }
 
     @Override
@@ -77,14 +97,6 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
     {
     }
 
-    public BuildManager(IWorkspace workspace)
-    {
-        if (workspace == null) {
-            throw new IllegalArgumentException("workspace must not be NULL.");
-        }
-        this.workspace = workspace;
-    }
-
     @Override
     public void buildAll() throws IOException
     {
@@ -97,17 +109,19 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
         // TODO Auto-generated method stub
     }
 
-    @Override
-    public boolean build(IAssemblyProject project) throws IOException
-    {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public boolean build(IAssemblyProject project, ICompilationListener listener) throws IOException
-    {
-        // TODO Auto-generated method stub
-        return false;
-    }
+	@Override
+	public IProjectBuilder getProjectBuilder(IAssemblyProject project) 
+	{
+		IProjectBuilder result;
+    	synchronized( builders ) 
+    	{
+    		result = builders.get(project);
+    		if ( result == null ) {
+    			result = new ProjectBuilder( workspace , project );
+    			builders.put( project , result);
+    			workspace.addResourceListener( result );
+    		}
+    	}
+		return result;
+	}
 }

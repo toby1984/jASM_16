@@ -30,7 +30,7 @@ import de.codesourcery.jasm16.compiler.io.IResourceResolver;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public interface IProjectBuilder {
+public interface IProjectBuilder extends IResourceListener {
 
     /**
      *
@@ -38,6 +38,8 @@ public interface IProjectBuilder {
      * @throws IOException
      */
 	public boolean build() throws IOException;
+	
+	public void dispose();
 	
 	/**
 	 * 

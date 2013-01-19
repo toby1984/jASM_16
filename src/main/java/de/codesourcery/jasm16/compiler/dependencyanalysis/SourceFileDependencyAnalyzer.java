@@ -1,4 +1,4 @@
-package de.codesourcery.jasm16.compiler;
+package de.codesourcery.jasm16.compiler.dependencyanalysis;
 
 /**
  * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +31,11 @@ import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.OriginNode;
+import de.codesourcery.jasm16.compiler.CompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
+import de.codesourcery.jasm16.compiler.SymbolTable;
+import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode.NodeVisitor;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -41,6 +45,7 @@ import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.Lexer;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.IParser;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.parser.ParseContext;
 import de.codesourcery.jasm16.scanner.Scanner;
@@ -53,7 +58,7 @@ import de.codesourcery.jasm16.utils.Misc;
  * <p>This class does not do full parsing using a {@link IParser} but instead just uses an {@link ILexer}
  * and looks for {@link TokenType#INCLUDE_SOURCE} tokens,parsing only those.</p>
  * 
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public class SourceFileDependencyAnalyzer 
 {
@@ -100,7 +105,7 @@ public class SourceFileDependencyAnalyzer
             }
             final List<IResource> sourceFile = parseResult.includedSources;
             final DependencyNode node = getOrCreateGraphNode( unit , graph);
-            node.objectCodeStartingAddress=parseResult.objectCodeStartingAddress;
+            node.setObjectCodeStartingAddress( parseResult.objectCodeStartingAddress );
             
             for ( IResource r : sourceFile ) 
             {
@@ -182,10 +187,6 @@ public class SourceFileDependencyAnalyzer
         return result;
     }
     
-    public interface NodeVisitor {
-        public boolean visit(DependencyNode node);
-    }
-
     protected DependencyNode getOrCreateGraphNode(ICompilationUnit unit,List<DependencyNode> graph) 
     {
         for ( DependencyNode n : graph ) 
@@ -261,95 +262,6 @@ public class SourceFileDependencyAnalyzer
             map.put( node , result );
         }
         return result;
-    }
-    
-    /**
-     * A node in the dependency graph.
-     *
-     * @author tobias.gierke@code-sourcery.de
-     */
-    public static final class DependencyNode 
-    {
-        private final ICompilationUnit unit;
-        
-        // compilation units included BY this compilation unit 
-        private List<DependencyNode> dependencies = new ArrayList<DependencyNode>();
-        
-        // compilation units that include this compilation unit
-        private List<DependencyNode> dependentNodes = new ArrayList<DependencyNode>();      
-        
-        private Address objectCodeStartingAddress = Address.wordAddress( 0 );
-        
-        public DependencyNode(ICompilationUnit unit)
-        {
-            if (unit == null) {
-                throw new IllegalArgumentException("unit must not be NULL.");
-            }
-            this.unit = unit;
-        }
-
-        public ICompilationUnit getCompilationUnit()
-        {
-            return unit;
-        }
-        
-        public Address getObjectCodeStartingAddress()
-        {
-            return objectCodeStartingAddress;
-        }
-        
-        public List<DependencyNode> getDependencies()
-        {
-            return dependencies;
-        }
-        
-        public List<DependencyNode> getDependentNodes()
-        {
-            return dependentNodes;
-        }
-
-        public void visitNodeAndDirectDependenciesOnly(NodeVisitor visitor) {
-        
-            visitor.visit( this );
-            for ( DependencyNode child : dependencies ) {
-                visitor.visit( child );
-            }
-        }
-        
-        public boolean visitRecursively(NodeVisitor visitor) {
-            return visitRecursively(visitor,new HashSet<DependencyNode>());
-        }
-        
-        private boolean visitRecursively(NodeVisitor visitor,Set<DependencyNode> visited) {
-            
-            if ( visited.contains( this ) ) {
-                return true;
-            }
-            
-            if ( ! visitor.visit( this ) ) {
-                return false;
-            }
-            for ( DependencyNode child : dependencies ) {
-                if ( ! child.visitRecursively( visitor , visited ) ) {
-                    return false;
-                }
-            }
-            return true;
-        }        
-        
-        @Override
-        public String toString()
-        {
-            return "(0x"+Misc.toHexString( objectCodeStartingAddress )+")"+unit.toString();
-        }
-        
-        public void addDependency(DependencyNode other) {
-            if (other == null) {
-                throw new IllegalArgumentException("other must not be NULL.");
-            }
-            dependencies.add( other );
-        }
-        
     }
     
     protected ParsingResult getIncludedSources(ICompilationUnit original,IResourceResolver resolver) throws IOException, ParseException 

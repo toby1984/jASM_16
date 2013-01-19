@@ -20,7 +20,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import de.codesourcery.jasm16.compiler.SourceFileDependencyAnalyzer.DependencyNode;
+import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode;
+import de.codesourcery.jasm16.compiler.dependencyanalysis.SourceFileDependencyAnalyzer;
 import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.AmbigousCompilationOrderException;

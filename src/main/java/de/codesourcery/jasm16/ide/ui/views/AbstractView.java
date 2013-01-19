@@ -41,10 +41,8 @@ import javax.swing.text.Position;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
-import de.codesourcery.jasm16.ide.ui.views.EmulatorControllerView.Invoker;
 
 public abstract class AbstractView implements IView
 {

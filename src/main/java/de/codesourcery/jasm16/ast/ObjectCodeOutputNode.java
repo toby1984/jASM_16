@@ -19,7 +19,6 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.ISymbolAware;
-import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.exceptions.ParseException;

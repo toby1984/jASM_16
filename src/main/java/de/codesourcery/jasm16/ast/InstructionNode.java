@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.ast;
 import java.io.IOException;
 import java.util.List;
 
-import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.OpCode;
 import de.codesourcery.jasm16.Register;

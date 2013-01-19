@@ -86,7 +86,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 		final IAssemblyProject project = projects.get(0);
 		assertEquals( "project1" , project.getName() );
 		
-		final List<ICompilationUnit> units = project.getProjectBuilder().getCompilationUnits();
+		final List<ICompilationUnit> units = workspace.getBuildManager().getProjectBuilder( project ).getCompilationUnits();
 		assertEquals( 0 , units.size() );
 		
 		assertSame( project , workspace.getProjectByName("project1" ) );
@@ -147,12 +147,12 @@ public class DefaultWorkspaceTest extends TestHelper {
 		}
 		
 		assertEquals( "project1" , project1.getName() );
-		final List<ICompilationUnit> units = project1.getProjectBuilder().getCompilationUnits();
+		final List<ICompilationUnit> units = workspace.getBuildManager().getProjectBuilder( project1 ).getCompilationUnits();
 		assertEquals( 0 , units.size() );
 		assertSame( project1 , workspace.getProjectByName("project1" ) );
 		
 		assertEquals( "project2" , project2.getName() );
-		final List<ICompilationUnit> units2 = project1.getProjectBuilder().getCompilationUnits();
+		final List<ICompilationUnit> units2 = workspace.getBuildManager().getProjectBuilder( project1 ).getCompilationUnits();
 		assertEquals( 0 , units2.size() );
 		assertSame( project2 , workspace.getProjectByName("project2" ) );		
 	}
@@ -196,7 +196,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 
 		final IAssemblyProject project = projects.get(0);
 		assertEquals( "project1" , project.getName() );
-		final List<ICompilationUnit> units = project.getProjectBuilder().getCompilationUnits();
+		final List<ICompilationUnit> units = workspace.getBuildManager().getProjectBuilder( project ).getCompilationUnits();
 		assertEquals( 0 , units.size() );
 		assertSame( project , workspace.getProjectByName("project1" ) );
 		
@@ -250,7 +250,7 @@ public class DefaultWorkspaceTest extends TestHelper {
 
 		final IAssemblyProject project = projects.get(0);
 		assertEquals( "project1" , project.getName() );
-		final List<ICompilationUnit> units = project.getProjectBuilder().getCompilationUnits();
+		final List<ICompilationUnit> units = workspace.getBuildManager().getProjectBuilder( project ).getCompilationUnits();
 		assertEquals( 0 , units.size() );
 		assertSame( project , workspace.getProjectByName("project1" ) );
 		

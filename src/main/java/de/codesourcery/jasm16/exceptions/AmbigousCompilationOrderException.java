@@ -19,7 +19,7 @@ import java.util.List;
 
 import de.codesourcery.jasm16.compiler.ICompilationOrderProvider;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.SourceFileDependencyAnalyzer.DependencyNode;
+import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode;
 
 /**
  * Thrown by {@link ICompilationOrderProvider}s that were unable to determine the compilation order

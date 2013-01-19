@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
-import java.awt.Container;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.event.WindowAdapter;
@@ -26,7 +25,6 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JMenuBar;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 
 import org.apache.commons.lang.StringUtils;
 

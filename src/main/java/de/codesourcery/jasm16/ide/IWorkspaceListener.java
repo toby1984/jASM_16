@@ -43,7 +43,7 @@ public interface IWorkspaceListener extends IResourceListener
 	public void projectClosed(IAssemblyProject project);
 	
 	/**
-	 * Invoked when a closed project has been opened or 
+	 * Invoked when a closed project has been opened <b>or</b> 
 	 * a project has been loaded from disk.
 	 * 
 	 * @param project

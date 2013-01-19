@@ -7,7 +7,7 @@ package de.codesourcery.jasm16.emulator.memory;
  * not extensible and thus new device implementations could
  * not define their own memory types.</p>
  *
- * @author tobias.gierke@voipfuture.com
+ * @author tobias.gierke@code-sourcery.de
  */
 public interface IMemoryTypes {
 

@@ -34,7 +34,8 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class LabelNode extends ASTNode
 {
-    private static final Logger LOG = Logger.getLogger(LabelNode.class);
+    @SuppressWarnings("unused")
+	private static final Logger LOG = Logger.getLogger(LabelNode.class);
     
     private Identifier identifier;
     private Label label;

@@ -16,7 +16,9 @@
 package de.codesourcery.jasm16.emulator;
 
 import static org.easymock.EasyMock.expect;
-import static org.easymock.classextension.EasyMock.*;
+import static org.easymock.classextension.EasyMock.createMock;
+import static org.easymock.classextension.EasyMock.replay;
+import static org.easymock.classextension.EasyMock.verify;
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.Register;
@@ -67,6 +69,7 @@ public class BreakpointTest extends TestCase {
 		verify( emulator );
 	}	
 	
+	@SuppressWarnings("deprecation")
 	public void testConditionalBreakpointWithRegisterIndirect() throws ParseException {
 		
 		final Breakpoint bp = new Breakpoint( Address.wordAddress( 1 ) , "1+[a]" );
@@ -93,6 +96,7 @@ public class BreakpointTest extends TestCase {
 		verify( memory );
 	}	
 	
+	@SuppressWarnings("deprecation")
 	public void testConditionalBreakpointWithMemoryDirect() throws ParseException {
 		
 		final Breakpoint bp = new Breakpoint( Address.wordAddress( 1 ) , "1+[0x4000]" );
@@ -112,6 +116,7 @@ public class BreakpointTest extends TestCase {
 		verify( memory );
 	}	
 	
+	@SuppressWarnings("deprecation")
 	public void testComplexConditional() throws ParseException {
 		
 		final Breakpoint bp = new Breakpoint( Address.wordAddress( 1 ) , "1+0x42+[a]+x+[0x4000]" );

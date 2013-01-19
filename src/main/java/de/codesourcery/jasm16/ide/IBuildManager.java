@@ -41,20 +41,5 @@ public interface IBuildManager
      */
     public void buildAll(ICompilationListener listener) throws IOException;
     
-    /**
-     * Rebuilds a specific project.
-     * 
-     * @return <code>true</code> if build was successful, otherwise <code>false</code>     
-     * @throws IOException
-     */
-    public boolean build(IAssemblyProject project) throws IOException;
-    
-    /**
-     * Rebuilds a specific project.
-     * 
-     * @param listener
-     * @return <code>true</code> if build was successful, otherwise <code>false</code>
-     * @throws IOException
-     */
-    public boolean build(IAssemblyProject project,ICompilationListener listener) throws IOException;       
+    public IProjectBuilder getProjectBuilder(IAssemblyProject project);
 }
