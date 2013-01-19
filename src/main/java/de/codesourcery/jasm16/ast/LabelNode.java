@@ -94,8 +94,8 @@ public class LabelNode extends ASTNode
         
         try 
         {
-            LOG.debug("parseInternal(): Defining label '"+this.label.getIdentifier().getRawValue()+"' in "+
-                    context.getCompilationUnit()+" at "+symbolRange);
+//            LOG.debug("parseInternal(): Defining label '"+this.label.getIdentifier().getRawValue()+"' in "+
+//                    context.getCompilationUnit()+" at "+symbolRange);
             context.getSymbolTable().defineSymbol( this.label );
         } 
         catch(DuplicateSymbolException e) 

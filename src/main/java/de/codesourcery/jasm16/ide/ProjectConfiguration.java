@@ -61,7 +61,6 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class ProjectConfiguration implements IEmulationOptionsProvider
 {
-    
     public static final Set<String> DEFAULT_SOURCEFILENAME_PATTERNS = new HashSet<>(
             Arrays.asList(".*?\\.dasm",".*?\\.dasm16",".*?\\.asm")
     );
@@ -95,6 +94,22 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	private BuildOptions buildOptions = new BuildOptions();
 	private EmulationOptions emulationOptions=new EmulationOptions();
 
+	public void populateFrom(ProjectConfiguration other) {
+		if ( ! this.baseDir.getAbsolutePath().equals( other.baseDir.getAbsolutePath() ) ) {
+			throw new IllegalArgumentException("Project base directories do not match.");
+		}
+		this.sourceFolders.clear();
+		this.sourceFolders.addAll(other.sourceFolders);
+		this.outputFolder = other.outputFolder;
+		this.projectName = other.projectName;
+		this.executableName = other.executableName;
+		this.compilationRoot = other.compilationRoot;
+		this.generateSelfRelocatingCode = other.generateSelfRelocatingCode;
+		this.setSourceFilenamePatterns( other.sourceFilenamePatterns );
+		setBuildOptions( other.getBuildOptions() );
+		setEmulationOptions( other.getEmulationOptions() );
+	}
+	
 	/**
 	 * Create instance.
 	 * 

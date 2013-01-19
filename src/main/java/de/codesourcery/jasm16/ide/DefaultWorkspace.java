@@ -559,8 +559,12 @@ public class DefaultWorkspace implements IWorkspace
         }
         for ( IAssemblyProject p : projects ) 
         {
-        	if ( p.isOpen() ) {
+        	if ( p.isOpen() ) 
+        	{
         		LOG.info("refreshProjects(): Refreshing "+p);
+        		ProjectConfiguration reloaded = new ProjectConfiguration( p.getConfiguration().getBaseDirectory() );
+        		reloaded.load();
+        		p.getConfiguration().populateFrom( reloaded );
         		p.rescanResources();
         	}
         }
