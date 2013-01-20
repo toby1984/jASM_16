@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.compiler;
 
 import java.util.List;
 
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
 import de.codesourcery.jasm16.parser.Identifier;
 

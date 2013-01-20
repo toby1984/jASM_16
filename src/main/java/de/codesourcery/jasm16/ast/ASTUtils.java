@@ -26,6 +26,7 @@ import java.util.Stack;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 
 /**
@@ -344,23 +345,32 @@ public class ASTUtils {
         return findMemoryLocation( node , false );
     }  
     
-    private static Address findMemoryLocation(ASTNode node,final boolean findEarliest) {
+    private static Address findMemoryLocation(ASTNode node,final boolean findEarliest) 
+    {
         final Address[] result = {null};
         final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
             
             @Override
             public boolean visit(ASTNode node) 
             {
-                if ( node instanceof ObjectCodeOutputNode) {
+                if ( node instanceof ObjectCodeOutputNode) 
+                {
                     final Address adr = ((ObjectCodeOutputNode) node).getAddress();
                     if ( adr != null ) 
                     {
-                        if ( result[0] == null ) { 
+                        if ( result[0] == null ) 
+                        {
                           result[0] = adr;
+                          if ( result[0].equals( WordAddress.ZERO ) ) {
+                        	  System.out.println("Node with ZERO address: "+node);
+                          }
                         } 
                         else if ( (findEarliest && adr.isLessThan( result[0] ) ) || (!findEarliest && adr.isGreaterThan( result[0] ) ) ) 
                         {
                             result[0] = adr;
+                            if ( result[0].equals( WordAddress.ZERO ) ) {
+                          	  System.out.println("Node with ZERO address: "+node);
+                            }                            
                         }
                     }
                 }

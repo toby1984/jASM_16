@@ -188,12 +188,6 @@ public class DebuggingPerspective extends Perspective
             }
             return project.resolveRelative( identifier , parent );
         }
-
-        @Override
-        public void changeResourceType(IResource resource, ResourceType newType)
-        {
-            project.changeResourceType(resource, newType);
-        }
     }     
 
     public DebuggingPerspective(IWorkspace workspace , ViewContainerManager viewContainerManager,

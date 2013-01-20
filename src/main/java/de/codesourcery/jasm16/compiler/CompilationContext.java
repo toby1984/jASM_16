@@ -119,12 +119,6 @@ public class CompilationContext implements ICompilationContext {
     }
     
     @Override
-    public void changeResourceType(IResource resource, ResourceType newType)
-    {
-        resourceResolver.changeResourceType( resource , newType );
-    }
-
-    @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
         return resourceResolver.resolveRelative( identifier , parent );

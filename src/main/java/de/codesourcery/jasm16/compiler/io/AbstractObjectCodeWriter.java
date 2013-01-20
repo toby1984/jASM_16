@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.WordAddress;
 
 /**
  * Abstract base-class for implementing {@link IObjectCodeWriter}s.
@@ -34,7 +35,15 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     private int currentWriteOffset = 0;
     private int firstWriteOffset=0;
     
+    private int initialOffset;
+    
     protected AbstractObjectCodeWriter() {
+    	this( WordAddress.ZERO );
+    }
+    
+    protected AbstractObjectCodeWriter(WordAddress initialOffset) 
+    {
+    	this.initialOffset = initialOffset.getByteAddressValue();
     }
     
     @Override
@@ -60,8 +69,11 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         if ( writer == null ) 
         {
             writer = createOutputStream();
-            if ( currentWriteOffset != 0 ) {
-                writeZeros( currentWriteOffset );
+            if ( currentWriteOffset != 0 ) 
+            {
+            	if ( currentWriteOffset > initialOffset ) {
+            		writeZeros( currentWriteOffset - initialOffset );
+            	}
             }
         }
         return writer;
@@ -70,7 +82,11 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     @Override
     public Address getFirstWriteOffset()
     {
-        return Address.byteAddress( firstWriteOffset );
+        return Address.byteAddress( firstWriteOffset+initialOffset );
+    }
+    
+    private int getActualOffset() {
+    	return currentWriteOffset+initialOffset;
     }
     
    protected abstract OutputStream createOutputStream() throws IOException;
@@ -110,7 +126,7 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
     @Override
     public final Address getCurrentWriteOffset()
     {
-        return Address.byteAddress( currentWriteOffset );
+        return Address.byteAddress( getActualOffset() );
     }
 
     @Override
@@ -120,11 +136,11 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
             throw new IllegalArgumentException("offset must not be NULL.");
         }
         
-        if ( offset.getValue() < this.currentWriteOffset ) {
+        if ( offset.getValue() < getActualOffset() ) {
             throw new IllegalStateException("Writer "+this+" is already at "+this.currentWriteOffset+" , cannot output object code at "+offset);
         }
         
-        if ( offset.getValue() == currentWriteOffset ) {
+        if ( offset.getValue() == getActualOffset() ) {
             return;
         }
         
@@ -133,11 +149,12 @@ public abstract class AbstractObjectCodeWriter implements IObjectCodeWriter
         }
         
         if ( this.writer == null ) {
+        	// delay writing zeros until the writer is actually opened, see getOutputStream()
             this.currentWriteOffset = offset.getValue();
             return;
         }
         
-        final int delta = offset.getValue() - currentWriteOffset;
+        final int delta = offset.getValue() - getActualOffset();
         writeZeros( delta );
         this.currentWriteOffset = offset.getValue();
     }

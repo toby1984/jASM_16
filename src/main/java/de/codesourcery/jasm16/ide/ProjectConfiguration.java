@@ -572,16 +572,16 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
     
     public boolean isSourceFile(File file) 
     {
-        if ( ! file.isFile() ) {
-            return false;
-        }
-        final String fileName = file.getName() ;
-        for ( Pattern p : sourceFilenameRegexPatterns ) {
-            if ( p.matcher( fileName ).matches() ) {
-                return true;
-            }
-        }
-        return false;
+    	if ( ! file.isFile() ) {
+    		return false;
+    	} 
+    	final String fileName = file.getName() ;
+    	for ( Pattern p : sourceFilenameRegexPatterns ) {
+    		if ( p.matcher( fileName ).matches() ) {
+    			return true;
+    		}
+    	}
+    	return false;
     }
     
     /**

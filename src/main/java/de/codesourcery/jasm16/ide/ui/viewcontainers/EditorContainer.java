@@ -164,6 +164,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
             {
                 if ( e.getKeyCode() == KeyEvent.VK_W && ( e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK ) != 0 ) 
                 {
+                	System.out.println("*** Closing editor "+view+" ***");
                     if ( view.hasViewContainer() ) {
                         view.getViewContainer().disposeView( view );
                     } else {
@@ -418,26 +419,6 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
         return result;
 	}
 	
-	@SuppressWarnings("deprecation")
-	@Override
-	public void changeResourceType(IResource resource, ResourceType newType)
-	{
-	    final IEditorView openEditor = getEditor( resource );
-	    if ( openEditor != null ) {
-	        SourceCodeView sourceView = (SourceCodeView) openEditor;
-	        final IResource edited = sourceView.getSourceFromMemory();
-	        if ( edited == resource ) {
-	            edited.setType( newType); // automatically propagates change to associated IAssemblyProject
-	        } else {
-	            sourceView.getCurrentProject().changeResourceType( resource , newType );
-	        }
-	        return;
-	    } 
-
-	    final IAssemblyProject project = workspace.getProjectForResource( resource );
-	    project.changeResourceType( resource , newType);
-	}
-
 	private IResource tryResolve(String identifier) 
 	{
        for ( SourceCodeView v : getSourceCodeViews() ) {

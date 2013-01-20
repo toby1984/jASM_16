@@ -80,12 +80,6 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
         {
             throw new UnsupportedOperationException("Not implemented"); 
         }
-
-        @Override
-        public void changeResourceType(IResource resource, ResourceType newType)
-        {
-            throw new UnsupportedOperationException("Not implemented");             
-        }
     };
     
     protected File getTempDir() throws IOException {
@@ -318,12 +312,6 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 				throw new UnsupportedOperationException("Not implemented");
 			}
 			
-			@Override
-			public void changeResourceType(IResource resource, ResourceType newType)
-			{
-                throw new UnsupportedOperationException("Not implemented");			    
-			}
-
 			@Override
 			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
 				throw new UnsupportedOperationException("Not implemented");

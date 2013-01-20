@@ -43,9 +43,12 @@ public class FileResource extends AbstractResource
         if (file == null) {
             throw new IllegalArgumentException("file must not be NULL.");
         }
+        if ( file.getName().endsWith("dasm16") && type != ResourceType.SOURCE_CODE ) {
+        	throw new IllegalArgumentException("Bad type created here, "+file+" , "+type);
+        }
         this.file = file;
     }
-
+    
     @Override
     public InputStream createInputStream() throws IOException
     {

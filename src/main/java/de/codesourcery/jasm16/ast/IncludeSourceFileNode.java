@@ -90,20 +90,23 @@ public class IncludeSourceFileNode extends ASTNode {
 		{
 			try 
 			{
-			    if ( resource.getType() != ResourceType.SOURCE_CODE ) {
-			        context.changeResourceType( resource , ResourceType.SOURCE_CODE );
+			    if ( resource.getType() == ResourceType.SOURCE_CODE ) 
+			    {
+				    final ICompilationUnit existing = context.getCompilationUnitFor( resource );
+				    AST ast = existing != null ? existing.getAST() : null;
+				    if ( ast == null ) {
+				    	final IParseContext subContext = context.createParseContextForInclude( resource );
+						ast = (AST) new AST().parse( subContext );
+						subContext.getCompilationUnit().setAST( ast );
+				    }
+				    
+					addChild( ast , context  , false );
+			    } else {
+					context.getCompilationUnit().addMarker(
+							new CompilationError("Including file "+resource.getIdentifier()+" that is not recognized as a source file is not supported - please configure your project appropriately",
+									context.getCompilationUnit() , region )
+					);				    	
 			    }
-			    
-			    LOG.debug("parseInternal(): File "+context.getCompilationUnit()+" includes "+resource);
-			    
-			    final ICompilationUnit existing = context.getCompilationUnitFor( resource );
-			    AST ast = existing != null ? existing.getAST() : null;
-			    if ( ast == null ) {
-			    	final IParseContext subContext = context.createParseContextForInclude( resource );
-					ast = (AST) new AST().parse( subContext );
-					subContext.getCompilationUnit().setAST( ast );
-			    }
-				addChild( ast , context );
 			} 
 			catch (IOException e) 
 			{

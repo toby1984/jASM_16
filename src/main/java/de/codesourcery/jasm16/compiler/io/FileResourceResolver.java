@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
-public class FileResourceResolver extends AbstractResourceResolver
+public abstract class FileResourceResolver extends AbstractResourceResolver
 {
     private static final Logger LOG = Logger.getLogger(FileResourceResolver.class);
     
@@ -45,6 +45,10 @@ public class FileResourceResolver extends AbstractResourceResolver
         this.baseDir = baseDir;
     }    
     
+    protected File getBaseDirectory() {
+    	return baseDir;
+    }
+    
     @Override
     public IResource resolve(String identifier) throws ResourceNotFoundException
     {
@@ -62,11 +66,14 @@ public class FileResourceResolver extends AbstractResourceResolver
         }        
         
         try {
-            return new FileResource( file.getCanonicalFile() , ResourceType.UNKNOWN );
+        	final File canonicalFile = file.getCanonicalFile();
+            return new FileResource(  canonicalFile , determineResourceType(canonicalFile) );
         } catch (IOException e) {
             throw new RuntimeException("While resolving '"+identifier+"'",e);
         }
     }
+    
+    protected abstract ResourceType determineResourceType(File file);
 
     @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
@@ -80,12 +87,12 @@ public class FileResourceResolver extends AbstractResourceResolver
             return resolve( identifier );
         }
         final File parentFile;
-        if ( baseDir == null ) 
+        if ( getBaseDirectory() == null ) 
         {
         	final FileResource fr = (FileResource) parent;
             parentFile= fr.getAbsoluteFile().getParentFile();
         } else {
-            parentFile = baseDir;
+            parentFile = getBaseDirectory();
         }
         if ( parentFile == null ) {
             return resolve( identifier );
@@ -97,6 +104,6 @@ public class FileResourceResolver extends AbstractResourceResolver
         } catch (IOException e) {
             throw new RuntimeException("While resolving '"+canonical.getAbsolutePath()+"'",e);
         }
-        return new FileResource( canonical , ResourceType.UNKNOWN );
+        return new FileResource( canonical , determineResourceType( canonical ) );
     }
 }

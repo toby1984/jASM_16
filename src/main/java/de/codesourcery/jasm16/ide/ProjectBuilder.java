@@ -3,11 +3,18 @@ package de.codesourcery.jasm16.ide;
 import static de.codesourcery.jasm16.compiler.ICompiler.CompilerOption.GENERATE_RELOCATION_INFORMATION;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -17,9 +24,12 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.CompiledCode;
 import de.codesourcery.jasm16.compiler.Compiler;
+import de.codesourcery.jasm16.compiler.Executable;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -69,6 +79,8 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     
     private final SourceFileDependencyAnalyzer analyzer = new SourceFileDependencyAnalyzer();
     
+    private volatile Executable executable;
+    
     public ProjectBuilder(IWorkspace workspace,IAssemblyProject project) {
     	if (project == null) {
 			throw new IllegalArgumentException("project must not be null");
@@ -105,20 +117,33 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         compiler.setResourceResolver( resolver );
         compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
 
-        final List<ICompilationUnit> compUnits = getCompilationUnits();
+        final List<ICompilationUnit> toCompile = new ArrayList<>();
         final ICompilationUnit result = CompilationUnit.createInstance( source.getIdentifier() , source );
+        
+        toCompile.add( result );
+        
+        final List<ICompilationUnit> dependencies = new ArrayList<>( getCompilationUnits() );
 
-        for ( int i =0 ; i < compUnits.size() ; i++ ) {
-            final ICompilationUnit unit  = compUnits.get(i);
+        for ( int i =0 ; i < dependencies.size() ; i++ ) {
+            final ICompilationUnit unit  = dependencies.get(i);
             if ( unit.getResource().getIdentifier().equals( source.getIdentifier() ) ) 
             {
-                compUnits.remove( i );
+            	dependencies.remove( i );
                 break;
             }
         }
+        
+        for ( Iterator<ICompilationUnit> it = dependencies.iterator() ; it.hasNext() ; ) 
+        {
+        	final ICompilationUnit dependency = it.next();
+        	if ( dependency.getAST() == null ) {
+        		it.remove();
+        		toCompile.add( dependency );
+        	}
+        }
 
-        compiler.compile( Collections.singletonList( result )  , 
-        		compUnits , 
+        compiler.compile( toCompile  , 
+        		dependencies , 
         		globalSymbolTable , 
         		listener ,
         		DefaultResourceMatcher.INSTANCE );
@@ -143,7 +168,13 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
         }
         
-        final FileResourceResolver delegate  = new FileResourceResolver(); // getConfiguration().getBaseDirectory() ); 
+        final FileResourceResolver delegate  = new FileResourceResolver() {
+        	@Override
+        	protected ResourceType determineResourceType(File file) 
+        	{
+        		return project.getConfiguration().isSourceFile( file ) ? ResourceType.SOURCE_CODE : ResourceType.UNKNOWN;
+        	}
+        }; 
         
         compiler.setResourceResolver( new IResourceResolver() {
             
@@ -157,18 +188,6 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             public IResource resolve(String identifier) throws ResourceNotFoundException
             {
                 return delegate.resolve( identifier );
-            }
-            
-            @SuppressWarnings("deprecation")
-			@Override
-            public void changeResourceType(IResource resource, ResourceType newType)
-            {
-                if ( project.containsResource( resource ) ) {
-                    resource.setType( newType );
-                    workspace.resourceChanged( project , resource );
-                } else {
-                    delegate.changeResourceType(resource,newType);                        
-                }
             }
         });
         return compiler;
@@ -209,16 +228,21 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
 
         compiler.setObjectCodeWriterFactory( new SimpleFileObjectCodeWriterFactory() {
 
+        	private FileObjectCodeWriter lastWriter;
+        	
             protected IObjectCodeWriter createObjectCodeWriter(ICompilationContext context) 
             {
                 final ICompilationUnit currentUnit = context.getCurrentCompilationUnit();
                 
                 final File outputFile = getOutputFileForSource( currentUnit.getResource() );
                 
-                System.out.println("createObjectCodeWriter(): Compiling "+currentUnit+" to object file "+outputFile.getAbsolutePath());
-
                 final IResource resource = new FileResource( outputFile , ResourceType.OBJECT_FILE );
-                return new FileObjectCodeWriter( outputFile , false ) 
+                
+                WordAddress currentOffset = lastWriter == null ? WordAddress.ZERO : lastWriter.getCurrentWriteOffset().toWordAddress();
+                
+                System.out.println(">>>>>>>>> createObjectCodeWriter(): Compiling "+currentUnit+" to object file "+outputFile.getAbsolutePath()+" , offset = "+currentOffset);
+                
+                lastWriter = new FileObjectCodeWriter( outputFile , currentOffset , false ) 
                 {
                     protected void closeHook() throws IOException 
                     {
@@ -230,7 +254,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
                         } else {
                             len = 0;
                         }
-                        System.out.println("closeHook(): Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
+                        System.out.println("closeHook(): [ "+start+" - "+end+" ] Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
                         if ( len > 0 ) {
                             objectFiles.add( new CompiledCode( currentUnit , resource ) );
                             workspace.resourceCreated( project , resource );
@@ -242,6 +266,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
                         workspace.resourceCreated( project , resource );
                     };
                 };
+                return lastWriter;
             }
         } );            
     }
@@ -252,6 +277,69 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     	assertNotDisposed();
         return build( new DebugCompilationListener(true) );
     }
+    
+	/**
+	 * Check whether a given compilation unit is part of the generated executable (compilation root).
+	 * 
+	 * @param unit
+	 * @return
+	 * @see ProjectConfiguration#getCompilationRoot()
+	 */
+	public boolean isPartOfExecutable(ICompilationUnit unit) {
+		
+		final List<ICompilationUnit> units = getCompilationUnitsForExecutable();
+		for ( ICompilationUnit that : units ) {
+			if ( that == unit || that.getResource().getIdentifier().equals( unit.getResource().getIdentifier() ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private List<DependencyNode> calculateRootSet() 
+	{
+        // compile stuff
+        final List<ICompilationUnit> compilationUnits = getCompilationUnits();
+        
+        final IResourceMatcher relaxedResolver = new IResourceMatcher() {
+            
+            @Override
+            public boolean isSame(IResource resource1,IResource resource2) 
+            {
+                return resource1.getIdentifier().equals( resource2.getIdentifier() );
+            }
+        };
+        return analyzer.calculateRootSet( compilationUnits , project ,  relaxedResolver );
+	}
+	
+	private List<ICompilationUnit> getCompilationUnitsForExecutable() 
+	{
+        final List<DependencyNode> rootSet = calculateRootSet();
+        
+        DependencyNode nodeToCompile = null;
+        if ( rootSet.size() > 1 ) 
+        {
+        	for ( DependencyNode n : rootSet ) 
+        	{
+                final List<ICompilationUnit> units  = analyzer.linearize( n );
+                if ( containsCompilationRoot( units ) ) {
+                	nodeToCompile = n;
+                	break;
+                }
+        	}
+        	if ( nodeToCompile == null ) {
+        		throw new AmbigousCompilationOrderException( "Project configuration requires a compilation root", rootSet );
+        	}
+        } 
+        else if ( rootSet.size() == 1 ) 
+        {
+        	nodeToCompile = rootSet.get(0);
+        } else {
+        	return Collections.emptyList();
+        }
+        
+        return analyzer.linearize( nodeToCompile );
+	}
 
     @Override
     public synchronized boolean build(ICompilationListener listener) throws IOException, UnknownCompilationOrderException 
@@ -277,43 +365,10 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             clean();
 
             // compile stuff
-            final List<ICompilationUnit> compilationUnits = getCompilationUnits();
-            
-            final IResourceMatcher relaxedResolver = new IResourceMatcher() {
-                
-                @Override
-                public boolean isSame(IResource resource1,IResource resource2) 
-                {
-                    return resource1.getIdentifier().equals( resource2.getIdentifier() );
-                }
-            };
-            
-            
-            final List<DependencyNode> rootSet = analyzer.calculateRootSet( compilationUnits , project ,  relaxedResolver );
-            
-            DependencyNode nodeToCompile = null;
-            if ( rootSet.size() > 1 ) 
-            {
-            	for ( DependencyNode n : rootSet ) 
-            	{
-                    final List<ICompilationUnit> units  = analyzer.linearize( n );
-                    if ( containsCompilationRoot( units ) ) {
-                    	nodeToCompile = n;
-                    	break;
-                    }
-            	}
-            	if ( nodeToCompile == null ) {
-            		throw new AmbigousCompilationOrderException( "Project configuration requires a compilation root", rootSet );
-            	}
-            } 
-            else if ( rootSet.size() == 1 ) 
-            {
-            	nodeToCompile = rootSet.get(0);
-            } else {
-            	return true;
+            final List<ICompilationUnit> units  = getCompilationUnitsForExecutable();
+            if ( units.isEmpty() ) {
+            	return true; // => return 'success' immediately
             }
-            
-            final List<ICompilationUnit> units  = analyzer.linearize( nodeToCompile );
             final boolean link = units.size() == 1 || containsCompilationRoot( units );
             buildSuccessful = build( units , listener , link );
         } 
@@ -374,7 +429,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         	if ( link ) 
         	{
         		LOG.debug("[ "+this+"] Linking "+compilationUnits);
-        		final IResource executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
+        		executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
         		workspace.resourceCreated( project , executable );
         	}
             buildSuccessful = true; 
@@ -395,7 +450,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         return true;
     }
 
-    private IResource link(List<CompiledCode> objectFiles,boolean generateRelocatableCode) throws IOException 
+    private Executable link(List<CompiledCode> objectFiles,boolean generateRelocatableCode) throws IOException 
     {
         final File outputFolder = getConfiguration().getOutputFolder();
         final File outputFile = new File( outputFolder , getConfiguration().getExecutableName() );
@@ -421,30 +476,36 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         for ( File f : folder.listFiles() ) 
         {
             Misc.deleteRecursively( f );
-            workspace.resourceDeleted( project , new FileResource( f , ResourceType.UNKNOWN) );
+            if ( executable != null && executable.getIdentifier().equals( f.getAbsolutePath() ) ) 
+            {
+            	executable = null;
+            	workspace.resourceDeleted( project , new FileResource( f , ResourceType.EXECUTABLE ) );            	
+            } else {
+            	workspace.resourceDeleted( project , new FileResource( f , ResourceType.UNKNOWN) );
+            }
+        }
+        
+        if ( executable != null ) {
+        	Executable tmp = executable;
+        	executable = null;
+        	workspace.resourceDeleted( project , new FileResource( new File(tmp.getIdentifier()) , ResourceType.EXECUTABLE ) );    
         }
     }
     
     @Override
-    public IResource getExecutable() 
+    public Executable getExecutable() 
     {
     	assertNotDisposed();
-    	
-        List<IResource> results = project.getResources( ResourceType.EXECUTABLE );
-        if ( results.size() == 1 ) {
-            return results.get(0);
-        } else if ( results.isEmpty() ) {
-            return null;
-        }
-        throw new RuntimeException("Internal error, more than one executable in project "+project+": "+results);
+    	return executable;
     }
     
     public boolean isBuildRequired() 
     {
     	assertNotDisposed();
-    	
-        for ( ICompilationUnit unit : getCompilationUnits() ) {
-            if ( unit.getAST() == null ) {
+
+        for ( ICompilationUnit unit : getCompilationUnitsForExecutable()) 
+        {
+            if ( unit.getAST() == null || unit.hasErrors() ) {
                 return true;
             }
         }
@@ -503,7 +564,6 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
 
     private void addCompilationUnit(IResource resource) 
     {
-        System.out.println("New source-code resource added.");
         synchronized (compUnits) 
         {
             if ( findCompilationUnit( resource ) != null ) {
@@ -520,7 +580,8 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             for (Iterator<ICompilationUnit> it = compUnits.iterator(); it.hasNext();) 
             {
                 final ICompilationUnit existing = it.next();
-                if ( resourceMatcher.isSame( existing.getResource() , resource ) ) {
+                if ( resourceMatcher.isSame( existing.getResource() , resource ) ) 
+                {
                     it.remove();
                     return true;
                 }
@@ -536,6 +597,19 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             return;
         }
         removeCompilationUnit( resource );
+        maybeRemoveExecutable( resource );
+    }
+    
+    private void maybeRemoveExecutable(IResource resource) {
+    	if ( executable == null ) {
+    		return;
+    	}
+    	if ( executable.refersTo( resource ) ) 
+    	{
+    		IResource tmp = executable;
+    		executable = null;
+    		workspace.resourceDeleted( project , tmp );
+    	}
     }
 
     @Override
@@ -549,6 +623,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         if ( found != null ) 
         {
             removeCompilationUnit( resource );
+            maybeRemoveExecutable( resource );            
         } 
         
         if ( resource.hasType( ResourceType.SOURCE_CODE  ) ) {

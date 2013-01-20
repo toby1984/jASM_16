@@ -57,6 +57,7 @@ import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
+import de.codesourcery.jasm16.ide.IProjectBuilder;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
@@ -480,7 +481,7 @@ public class SourceLevelDebugView extends SourceCodeView
     {
         try {
             clearHighlights();
-            openFile( this.currentProject , unit.getResource() );
+            openFile( this.currentProject , unit.getResource() , false );
         } catch (IOException e) {
             LOG.error("refreshDisplayHook(): Caught ",e);
             return;
@@ -538,30 +539,7 @@ public class SourceLevelDebugView extends SourceCodeView
     private ICompilationUnit getCompilationUnitForAddress(Address address) 
     {
         LOG.debug("getCompilationUnitForAddress(): Looking for compilation unit at "+address);
-        
-        final List<ICompilationUnit> candidates = new ArrayList<>(); 
-        for ( ICompilationUnit unit : this.currentProject.getProjectBuilder().getCompilationUnits() ) 
-        {
-            if ( unit.getAST() != null ) 
-            {
-                final Address start = ASTUtils.getEarliestMemoryLocation( unit.getAST() );
-                Address end = ASTUtils.getLatestMemoryLocation( unit.getAST() );
-                LOG.debug("getCompilationUnitForAddress(): "+unit+" -> "+start+" - "+end);                
-                if ( start != null && end != null ) {
-                    end = end.incrementByOne( false ); // AddressRange is (startInclusive, endExclusive[                	
-                    if ( new AddressRange( start , end ).contains( address ) ) {
-                        LOG.debug("getCompilationUnitForAddress(): Candidate "+unit);
-                        candidates.add( unit );
-                    }
-                }
-            } else {
-                LOG.debug("getCompilationUnitForAddress(): Skipping compilation unit without AST - "+unit);
-            }
-        }
-        if ( candidates.isEmpty() ) {
-            return null;
-        }
-        return candidates.get(0);
+        return this.currentProject.getProjectBuilder().getExecutable().getCompilationUnitFor( address );
     }
     
     @Override

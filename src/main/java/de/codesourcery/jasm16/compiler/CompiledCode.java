@@ -8,6 +8,11 @@ public final class CompiledCode
     private final IResource objectCode;
     private final ICompilationUnit compilationUnit;
 
+    @Override
+    public String toString() {
+    	return "CompiledCode[ "+compilationUnit.getResource()+" => "+objectCode+" ]";
+    }
+    
     public CompiledCode(ICompilationUnit compilationUnit, IResource objectCode)
     {
         if ( compilationUnit == null ) {

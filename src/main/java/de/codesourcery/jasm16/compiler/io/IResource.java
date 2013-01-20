@@ -58,13 +58,6 @@ public interface IResource
 	public ResourceType getType();
 	
 	/**
-	 * 
-	 * @param type
-	 * @deprecated DO NOT CALL EXCEPT FROM {@link IAssemblyProject#changeResourceType(IResource,ResourceType)}
-	 */
-	public void setType(ResourceType type);
-	
-	/**
 	 * Check whether this resource has a specific resource type.
 	 * @param t
 	 * @return

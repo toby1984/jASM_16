@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
@@ -304,7 +305,14 @@ public class Breakpoint
 				new StringResource( "dummy", condition , ResourceType.UNKNOWN ) );
 		final ISymbolTable symbolTable = new SymbolTable();
 		final ILexer lexer = new Lexer( new Scanner( condition ) );
-		final IResourceResolver resourceResolver=new FileResourceResolver();
+		final IResourceResolver resourceResolver=new FileResourceResolver() {
+
+			@Override
+			protected ResourceType determineResourceType(File file) {
+				return ResourceType.UNKNOWN;
+			}
+		};
+		
 		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() {
 
 			@Override

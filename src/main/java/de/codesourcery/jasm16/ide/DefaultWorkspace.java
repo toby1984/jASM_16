@@ -48,6 +48,8 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class DefaultWorkspace implements IWorkspace
 {
+	private static final boolean DEBUG_EVENTS = false;
+	
 	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
 
 	private final List<IAssemblyProject> projects = new ArrayList<IAssemblyProject>();
@@ -419,7 +421,9 @@ public class DefaultWorkspace implements IWorkspace
 	
 	private void notifyListeners(IInvoker invoker) 
 	{
-		System.out.println( invoker.toString() );
+		if ( DEBUG_EVENTS ) {
+			System.out.println( invoker.toString() );
+		}
 		
 		final List<IResourceListener> copy;
 		synchronized (listeners) {

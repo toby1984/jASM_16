@@ -37,7 +37,7 @@ public abstract class ObjectCodeOutputNode extends ASTNode implements ISymbolAwa
     public ObjectCodeOutputNode() {
     }
     
-    protected void setAddress(Address address) {
+    protected final void setAddress(Address address) {
         this.address = address;
     }
     

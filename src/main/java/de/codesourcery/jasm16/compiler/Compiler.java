@@ -34,6 +34,7 @@ import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase1;
@@ -64,7 +65,13 @@ public class Compiler implements ICompiler {
 
 	private final List<ICompilerPhase> compilerPhases = new ArrayList<ICompilerPhase>();
 	private IObjectCodeWriterFactory writerFactory;
-	private IResourceResolver resourceResolver = new FileResourceResolver();
+	private IResourceResolver resourceResolver = new FileResourceResolver() 
+	{
+		protected de.codesourcery.jasm16.compiler.io.IResource.ResourceType determineResourceType(java.io.File file) {
+			return ResourceType.SOURCE_CODE;
+		}
+	};
+	
 	private final Set<CompilerOption> options = new HashSet<CompilerOption>(); 
 	private ICompilationOrderProvider linkOrderProvider;
 
@@ -129,7 +136,19 @@ public class Compiler implements ICompiler {
 			ICompilationListener listener,
 			IResourceMatcher resourceMatcher) 
 	{
+		new Exception("------------- compiling ---------------").printStackTrace();
+		
+		System.out.println("----------------------------------");
+		System.out.println("----------- COMPILING ------------");
+		System.out.println("----------------------------------");
+		
 		System.out.println("Compiling "+StringUtils.join( unitsToCompile , "\n" ) );
+		
+		System.out.println("-------------------------------------");
+		System.out.println("----------- DEPENDENCIES ------------");
+		System.out.println("-------------------------------------");
+		
+		System.out.println("Compiling "+StringUtils.join( otherUnits, "\n" ) );
 
 		// sanity check for duplicate compilation units
 		// or compilation units that are in both unitsToCompile

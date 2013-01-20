@@ -239,12 +239,6 @@ public class ParseContext implements IParseContext
     }
     
     @Override
-    public void changeResourceType(IResource resource, ResourceType newType)
-    {
-        resourceResolver.changeResourceType( resource , newType);
-    }
-
-    @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
         return this.resourceResolver.resolveRelative( identifier , parent );        
@@ -335,7 +329,10 @@ public class ParseContext implements IParseContext
 		getCompilationUnit().addDependency( unit );
 		
 		final ILexer lexer = new Lexer( new Scanner( source ) );
-		return new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
+		IParseContext result =
+				new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
+		
+		return result;
 	}
 
 	@Override

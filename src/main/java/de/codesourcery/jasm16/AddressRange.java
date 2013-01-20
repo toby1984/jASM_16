@@ -45,6 +45,31 @@ public final class AddressRange
         this.end = start.plus( size , false );
     }    
     
+    public boolean overlaps(AddressRange other) {
+    	
+    	if ( contains( other.getStartAddress() ) ) {
+    		return true;
+    	}
+    	
+    	if ( other.contains( getStartAddress() ) ) {
+    		return true;
+    	}    	
+    	
+    	if ( this.getStartAddress().isLessThan( other.getStartAddress() ) && 
+    		 this.getEndAddress().isEqualOrGreaterThan( other.getEndAddress() ) ) 
+    	{
+    		return true;
+    	}
+    	
+    	if ( other.getStartAddress().isLessThan( this.getStartAddress() ) && 
+    			other.getEndAddress().isEqualOrGreaterThan( this.getEndAddress() ) ) 
+       	{
+    		return true;
+       	}    	
+    	
+    	return false;
+    }
+    
     @Override
     public final boolean equals(Object obj)
     {
@@ -125,6 +150,14 @@ public final class AddressRange
         }
         
         return other.getStartAddress().isLessThan( getStartAddress() ) && other.getEndAddress().isGreaterThan( getEndAddress() );
+    }
+    
+    public AddressRange addOffset(Size size) {
+    	return new AddressRange( this.getStartAddress().plus( size , false ) , getSize() );
+    }    
+    
+    public AddressRange addOffset(Address offset) {
+    	return new AddressRange( this.getStartAddress().plus( offset , false ) , getSize() );
     }
 
     public List<AddressRange> subtract(AddressRange gap)

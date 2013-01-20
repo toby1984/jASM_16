@@ -56,6 +56,8 @@ public interface IAssemblyProject extends IResourceResolver, IWorkspaceListener,
      */
     public boolean isSame(IAssemblyProject other);
     
+    public IResourceResolver getResourceResolver();    
+    
     public boolean isOpen();
     
     public boolean isClosed();

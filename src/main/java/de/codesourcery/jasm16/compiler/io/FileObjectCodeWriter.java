@@ -20,6 +20,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import de.codesourcery.jasm16.WordAddress;
+
 /**
  * {@link IObjectCodeWriter} that writes to a file in the local filesystem.
  * 
@@ -31,12 +33,23 @@ public class FileObjectCodeWriter extends AbstractObjectCodeWriter
 	private final boolean append;
 	
 	protected FileObjectCodeWriter() {
+		this(WordAddress.ZERO);
+	}
+	
+	protected FileObjectCodeWriter(WordAddress offset) {
+		super(offset);
 	    this.outputFile = null;
 	    this.append = false;
-	}
+	}	
 	
 	public FileObjectCodeWriter(File outputFile,boolean append) 
 	{
+		this(outputFile,WordAddress.ZERO , append );
+	}
+	
+	public FileObjectCodeWriter(File outputFile,WordAddress offset, boolean append) 
+	{
+		super(offset);
 		if (outputFile == null) {
 			throw new IllegalArgumentException("outputFile must not be NULL");
 		}

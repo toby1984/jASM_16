@@ -787,8 +787,16 @@ public class WorkspaceExplorer extends AbstractView {
 						final boolean oldFlag = fn.hasCompilationErrors();
 	
 						fn.refresh();
-						System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors());
-	
+						if ( fn.hasCompilationErrors() ) 
+						{
+							ICompilationUnit unit = fn.getCompilationUnit();
+							System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors()+" [ resource = "+unit.getResource()+" ]");
+							try {
+								Misc.printCompilationErrors( unit , unit.getResource() , true );
+							} catch (Exception e) {
+								System.err.println( "printCompilationErrors() failed: "+e.getMessage() );
+							}
+						}
 						if ( oldFlag != fn.hasCompilationErrors() || fn == child ) 
 						{
 							notifyNodeChanged( path );
@@ -1358,6 +1366,12 @@ public class WorkspaceExplorer extends AbstractView {
 				return;
 			}
 			
+			final ICompilationUnit compUnit = getCompilationUnit();
+			this.hasCompilationErrors = compUnit == null ? false : compUnit.hasErrors();
+		}
+		
+		public ICompilationUnit getCompilationUnit() 
+		{
 			final File file = this.getValue();
 
 			final IAssemblyProject project = getProjectNode().getValue();
@@ -1368,9 +1382,10 @@ public class WorkspaceExplorer extends AbstractView {
 				this.type = projectResource.getType();
 				if ( projectResource.hasType( ResourceType.SOURCE_CODE) ) 
 				{
-					this.hasCompilationErrors = project.getProjectBuilder().getCompilationUnit( projectResource ).hasErrors();
+					return  project.getProjectBuilder().getCompilationUnit( projectResource );
 				}
-			}        	
+			}  
+			return null;
 		}
 
 		public boolean isFileNode() {

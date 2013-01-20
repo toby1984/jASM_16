@@ -39,6 +39,7 @@ import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode.NodeVis
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
 import de.codesourcery.jasm16.lexer.ILexer;
@@ -97,6 +98,9 @@ public class SourceFileDependencyAnalyzer
         final List<DependencyNode> graph = new ArrayList<>();
         for ( ICompilationUnit unit : units ) 
         {
+        	if ( ! unit.getResource().hasType( ResourceType.SOURCE_CODE ) ) {
+        		throw new IllegalArgumentException("Refusing to parse non-source-code file "+unit.getResource()+" with unrecognized type "+unit.getResource().getType() );
+        	}
             ParsingResult parseResult;
             try {
                 parseResult = getIncludedSources( unit , resolver );
@@ -105,7 +109,11 @@ public class SourceFileDependencyAnalyzer
             }
             final List<IResource> sourceFile = parseResult.includedSources;
             final DependencyNode node = getOrCreateGraphNode( unit , graph);
-            node.setObjectCodeStartingAddress( parseResult.objectCodeStartingAddress );
+            
+            Address address1 = unit.getObjectCodeStartOffset();
+            Address address2 = parseResult.objectCodeStartingAddress;
+            
+            node.setObjectCodeStartingAddress( address1 != null ? address1 : address2 );
             
             for ( IResource r : sourceFile ) 
             {
@@ -121,7 +129,8 @@ public class SourceFileDependencyAnalyzer
     
     private ICompilationUnit findCompilationUnit(IResource resource , IResourceMatcher matcher , List<ICompilationUnit> units) 
     {
-        for ( ICompilationUnit unit : units ) {
+        for ( ICompilationUnit unit : units ) 
+        {
             if ( matcher.isSame( unit.getResource() , resource ) ) {
                 return unit;
             }
@@ -345,6 +354,12 @@ public class SourceFileDependencyAnalyzer
                     parseResult.includedSources.add( resource );
                 }
                 return; /* RETURN */
+            }
+            
+            try {
+            	Misc.printCompilationErrors( unit , unit.getResource(),true);
+            } catch(Exception e) {
+            	
             }
             String errorMsg = "Failed to parse .includesource directive in "+unit+", got node: "+node+" , unit.hasErrors = "+unit.hasErrors();
             throw new ParseException(errorMsg,-1);            

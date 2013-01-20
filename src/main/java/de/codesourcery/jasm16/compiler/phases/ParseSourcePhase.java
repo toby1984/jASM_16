@@ -65,6 +65,9 @@ public class ParseSourcePhase extends CompilerPhase {
 	    if ( context.hasCompilerOption( CompilerOption.RELAXED_PARSING ) ) {
 	        parser.setParserOption( ParserOption.RELAXED_PARSING , true );
 	    }
+	    if ( context.hasCompilerOption( CompilerOption.NO_SOURCE_INCLUDE_PROCESSING ) ) {
+	    	parser.setParserOption(ParserOption.NO_SOURCE_INCLUDE_PROCESSING ,true );
+	    }
         unit.setAST( parser.parse( context ) );                
     }
 }

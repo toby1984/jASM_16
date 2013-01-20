@@ -1,15 +1,20 @@
 package de.codesourcery.jasm16.compiler;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
@@ -18,7 +23,6 @@ import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.FileResource;
-import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -55,7 +59,7 @@ public class Linker
         final ByteArrayObjectCodeWriterFactory factory = new ByteArrayObjectCodeWriterFactory();
         c.setObjectCodeWriterFactory( factory );
 
-        final ICompilationUnit unit = CompilationUnit.createInstance("string" , source );
+        final ICompilationUnit unit = CompilationUnit.createInstance( "self-relocation code" , source );
         c.compile( Collections.singletonList( unit ) );
 
         if ( unit.hasErrors() ) 
@@ -82,10 +86,11 @@ public class Linker
      * @return
      * @throws IOException
      */
-    public IResource link(List<CompiledCode> objectFiles,File outputFile,boolean createSelfRelocatingCode,boolean rewriteLabelAddresses) throws IOException 
+    public Executable link(List<CompiledCode> objectFiles,final File outputFile,boolean createSelfRelocatingCode,boolean rewriteLabelAddresses) throws IOException 
     {
         final FileResource executable = new FileResource( outputFile , ResourceType.EXECUTABLE );
-
+        final Map<AddressRange,ICompilationUnit> sourceCode = new HashMap<>();
+        
         final OutputStream out = executable.createOutputStream( true );
         try 
         {
@@ -119,20 +124,35 @@ public class Linker
                 writeRelocationHeader( combined , out );
             }
             
+            int currentOffset = 0;
+            
             for ( CompiledCode r : objectFiles ) 
             {
+            	final boolean hasAST = r.getCompilationUnit().getAST() != null;
+            	
+            	final Address start = ASTUtils.getEarliestMemoryLocation( r.getCompilationUnit().getAST() );
+            	final Address end = ASTUtils.getLatestMemoryLocation( r.getCompilationUnit().getAST() );
+            	
+            	System.out.println("LINKING: [ "+Misc.toHexString( Address.byteAddress( currentOffset ) )+"] "+
+            	r.getObjectCode()+" [ AST: "+hasAST+" , offset_from_CU: "+start+" - "+end);
+            	
+            	// write object code
                 final InputStream in = r.getObjectCode().createInputStream();
+                int bytesWritten = 0;
                 try {
-                    IOUtils.copy( in , out );
+                	bytesWritten = IOUtils.copy( in , out );
                 } finally {
                     IOUtils.closeQuietly( in );
                 }
+               	final AddressRange range = new AddressRange( Address.byteAddress( currentOffset ) , Size.bytes( bytesWritten ) );
+               	sourceCode.put( range , r.getCompilationUnit() );
+               	
+                currentOffset += bytesWritten;
             }
             
             if ( createSelfRelocatingCode && rewriteLabelAddresses ) {
                 
                 final Size size = combined.getBinarySize().plus( Size.bytes( SELFRELOCATION_CODE.length ) );
-                
                 
                 for ( CompiledCode r : objectFiles ) 
                 {
@@ -161,13 +181,36 @@ public class Linker
                             }
                         }
                     }
+                    
+                    final Map<AddressRange,ICompilationUnit> tmpMap = new HashMap<>();
+                    for ( Map.Entry<AddressRange,ICompilationUnit> entry : sourceCode.entrySet() ) {
+                    	tmpMap.put( entry.getKey().addOffset( size ) , entry.getValue() );
+                    }
+                    sourceCode.clear();
+                    sourceCode.putAll( tmpMap );
                 }                
             }
             
         } finally {
             IOUtils.closeQuietly( out );
         }
-        return executable;
+        return new Executable(outputFile.getAbsolutePath()) {
+			
+			@Override
+			public OutputStream createOutputStream(boolean append) throws IOException {
+				return new FileOutputStream( outputFile , append );
+			}
+			
+			@Override
+			public InputStream createInputStream() throws IOException {
+				return new FileInputStream( outputFile );
+			}
+			
+			@Override
+			protected Map<AddressRange, ICompilationUnit> getCompilationUnits() {
+				return sourceCode;
+			}
+		};
     }
 
     private void writeRelocationHeader(RelocationTable table, OutputStream out) throws IOException

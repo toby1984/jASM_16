@@ -16,16 +16,18 @@
 package de.codesourcery.jasm16.compiler.io;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 
 public abstract class AbstractObjectCodeWriterFactory implements IObjectCodeWriterFactory
 {
-	// key is ICompilationUnit#getIdentifier() 
-	protected final Map<String,IObjectCodeWriter> objectCodeWriters = new HashMap<String,IObjectCodeWriter>();
+	// key is ICompilationUnit#getIdentifier()
+	
+	// we NEED to use a LinkedHashMap here since the object files need to be linked in creation order later on
+	protected final Map<String,IObjectCodeWriter> objectCodeWriters = new LinkedHashMap<String,IObjectCodeWriter>();
 	
     public AbstractObjectCodeWriterFactory() {
     }

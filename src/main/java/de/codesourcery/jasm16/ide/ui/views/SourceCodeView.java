@@ -33,6 +33,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -724,6 +725,11 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	
 	protected final void openFile(final IAssemblyProject project, final IResource sourceFile) throws IOException 
 	{
+		openFile(project,sourceFile,true);
+	}
+	
+	protected final void openFile(final IAssemblyProject project, final IResource sourceFile,boolean compileSource) throws IOException 
+	{
 		if ( project == null ) {
 			throw new IllegalArgumentException("project must not be NULL");
 		}
@@ -739,12 +745,6 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		this.sourceFileOnDisk = sourceFile;        
 		this.initialHashCode = Misc.calcHash( source );
 		this.sourceInMemory = new InMemorySourceResource( sourceFileOnDisk , editorPane ) {
-		    @Override
-		    public void setType(ResourceType type)
-		    {
-		        super.setType(type);
-		        project.changeResourceType( sourceFileOnDisk , type );
-		    }
 		    
 		    @Override
 		    public String toString()
@@ -765,8 +765,13 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 			editorPane.setText( source );
 			editorPane.setCaretPosition( 0 );
-			if ( panel != null ) {
-				validateSourceCode();
+			if ( panel != null ) 
+			{
+				ICompilationUnit existing = null;
+				if ( ! compileSource ) {
+					existing = project.getProjectBuilder().getCompilationUnit( sourceFile );
+				}
+				validateSourceCode( existing );
 			}
 		} finally {
 			enableDocumentListener();
@@ -778,8 +783,12 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	protected final boolean isBuilding() {
 		return isBuilding;
 	}
-
+	
 	protected final void validateSourceCode() throws IOException {
+		validateSourceCode(null);
+	}
+	
+	protected final void validateSourceCode(ICompilationUnit existing) throws IOException {
 
 		disableDocumentListener();
 		try 
@@ -803,15 +812,16 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 						throw new RuntimeException("Internal error, not a file-resource: "+getCurrentResource());
 					}            		
 					final FileResource fr = (FileResource) r;
-					return new FileResourceResolver( fr.getAbsoluteFile().getParentFile() );
+					return new FileResourceResolver( fr.getAbsoluteFile().getParentFile() ){
+						@Override
+						protected ResourceType determineResourceType(File file) 
+						{
+							// TODO: Maybe implement some more general mechanism of determining resource types ?
+							return project.getConfiguration().isSourceFile( file ) ? ResourceType.SOURCE_CODE : ResourceType.UNKNOWN;
+						}
+					};
 				}
 				
-				@Override
-				public void changeResourceType(IResource resource, ResourceType newType)
-				{
-				    resourceResolver.changeResourceType( resource , newType);
-				}
-
 				@Override
 				public IResource resolve(String identifier) throws ResourceNotFoundException 
 				{
@@ -850,12 +860,18 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 						}
 			};
 
-			try {
-				compilationUnit = project.getProjectBuilder().parse( 
+			try 
+			{
+				if ( existing == null || existing.getAST() == null ) 
+				{
+					compilationUnit = project.getProjectBuilder().parse( 
 						sourceInMemory ,
 						delegatingResolver,                		
 						new CompilationListener() 
 						);
+				} else {
+					compilationUnit = existing;
+				}
 			} 
 			catch(Exception e) {
 				LOG.error("validateSourceCode(): ",e);

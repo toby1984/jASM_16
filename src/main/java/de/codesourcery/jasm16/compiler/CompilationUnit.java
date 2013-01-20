@@ -48,15 +48,15 @@ import de.codesourcery.jasm16.utils.Line;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class CompilationUnit implements ICompilationUnit {
+public final class CompilationUnit implements ICompilationUnit {
 
     private static final Logger LOG = Logger.getLogger(CompilationUnit.class);
     
     private final String identifier;
     private final Map<String,List<IMarker>> markers = new HashMap<String,List<IMarker>>();
     private final IResource resource;
-    private AST ast;
-    private Address objectCodeStartAddress = Address.ZERO;
+    private volatile AST ast;
+    private volatile Address objectCodeStartAddress = Address.ZERO;
     private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
     private final ISymbolTable symbolTable = new SymbolTable();
     private final RelocationTable relocationTable = new RelocationTable();
@@ -246,6 +246,9 @@ public class CompilationUnit implements ICompilationUnit {
 
     @Override
     public void setAST(AST ast) {
+    	if (ast == null) {
+			throw new IllegalArgumentException("ast must not be NULL");
+		}
         this.ast = ast;
     }
     

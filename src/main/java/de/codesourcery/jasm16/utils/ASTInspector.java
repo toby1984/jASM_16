@@ -1218,6 +1218,11 @@ public class ASTInspector {
 			{
 				return new FileResource( new File(identifier) , ResourceType.UNKNOWN );
 			}
+
+			@Override
+			protected ResourceType determineResourceType(File file) {
+				return ResourceType.UNKNOWN;
+			}
 		} );
 	}
 }

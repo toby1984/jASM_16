@@ -482,8 +482,25 @@ public abstract class ASTNode
      */
     public final ASTNode addChild(ASTNode node,IParseContext context) 
     {
+    	return addChild(node,context,true);
+    }
+    
+    /**
+     * Add a child node.
+     * 
+     * @param node
+     * @param context parse context or <code>null</code>. If the context is not <code>null</code> and
+     * the node being added is <b>not</b> an instance of {@link UnparsedContentNode} , the parse
+     * contexts error recovery flag ({@link IParseContext#isRecoveringFromParseError()}) will be reset. See {@link ASTNode#parse(IParseContext)} for
+     * a detailed explanation on parser error recovery.
+     * @param mergeTextRegion whether to merge the text region from the newly added child with the subtree
+     * this node is in
+     * @return
+     */
+    public final ASTNode addChild(ASTNode node,IParseContext context,boolean mergeTextRegion) 
+    {
         try {
-            return addChild( children.size() , node );
+            return addChild( children.size() , node , mergeTextRegion );
         } finally {
             if ( context != null && context.isRecoveringFromParseError() && !(node instanceof UnparsedContentNode) ) {
                 context.setRecoveringFromParseError( false );
@@ -492,6 +509,11 @@ public abstract class ASTNode
     }
 
     private final ASTNode addChild(int index , ASTNode node) 
+    {
+    	return addChild(index,node,true);
+    }
+    
+    private final ASTNode addChild(int index , ASTNode node,boolean mergeTextRegion) 
     {
         if (node == null) {
             throw new IllegalArgumentException("node must not be NULL.");
@@ -511,15 +533,20 @@ public abstract class ASTNode
         } else {
             throw new IndexOutOfBoundsException("Child index "+index+" is out of range, node "+this+" only has "+getChildCount()+" children.");		    
         }
-        if ( node.textRegionIncludingAllTokens != null ) 
+        
+        if ( mergeTextRegion ) 
         {
-            if ( this.textRegionIncludingAllTokens == null ) {
-                this.textRegionIncludingAllTokens = new TextRegion( node.textRegionIncludingAllTokens );
-            } else {
-                this.textRegionIncludingAllTokens.merge( node.textRegionIncludingAllTokens );
-            }
-        } 
-        mergeTextRegion( node.getTextRegion() );
+	        if ( node.textRegionIncludingAllTokens != null ) 
+	        {
+	            if ( this.textRegionIncludingAllTokens == null ) {
+	                this.textRegionIncludingAllTokens = new TextRegion( node.textRegionIncludingAllTokens );
+	            } else {
+	                this.textRegionIncludingAllTokens.merge( node.textRegionIncludingAllTokens );
+	            }
+	        } 
+	        mergeTextRegion( node.getTextRegion() );
+        }
+        
         node.setParent( this );
         return node;
     }

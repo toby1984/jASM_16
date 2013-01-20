@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
 import de.codesourcery.jasm16.parser.Identifier;
 

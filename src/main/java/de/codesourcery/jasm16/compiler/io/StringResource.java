@@ -82,7 +82,7 @@ public class StringResource extends AbstractResource
     @Override
     public String toString()
     {
-        return "string resource";
+        return "string resource ("+identifier+")";
     }
 
     @Override

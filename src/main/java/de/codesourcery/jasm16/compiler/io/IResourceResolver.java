@@ -56,6 +56,4 @@ public interface IResourceResolver
      * @throws ResourceNotFoundException
      */
     public IResource resolveRelative(String identifier,IResource parent) throws ResourceNotFoundException;    
-    
-    public void changeResourceType(IResource resource,ResourceType newType);
 }

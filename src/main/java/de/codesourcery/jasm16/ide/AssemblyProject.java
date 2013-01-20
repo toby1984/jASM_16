@@ -36,6 +36,7 @@ import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.EmulationOptions;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.utils.Misc;
@@ -63,6 +64,8 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
     // @GuardedBy( RESOURCE_LOCK )
     private final List<IResource> resources = new ArrayList<IResource>();
     
+    private final IResourceResolver resolver;    
+    
     private final IWorkspace workspace;
     private boolean isOpen;
     
@@ -77,6 +80,20 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
         this.isOpen = isOpen;
         this.workspace = workspace;
         this.projectConfiguration = config;
+        
+        resolver = new FileResourceResolver( projectConfiguration.getBaseDirectory() ) 
+    	{
+    		@Override
+    		protected ResourceType determineResourceType(File file) {
+    			return getConfiguration().isSourceFile( file ) ? ResourceType.SOURCE_CODE : ResourceType.UNKNOWN;
+    		}
+    		
+    		@Override
+    		protected File getBaseDirectory() {
+    			return projectConfiguration.getBaseDirectory();
+    		}
+    	};
+    	
         synchronized( RESOURCE_LOCK ) { // unnecessary since we're inside this classes constructor but makes FindBugs & PMD happy
             resources.addAll( scanForResources() );
         }
@@ -260,12 +277,18 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
     @Override
     public IResource resolve(String identifier) throws ResourceNotFoundException 
     {
-        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolve( identifier );
+        return resolver.resolve( identifier );
+    }
+    
+    @Override
+    public IResourceResolver getResourceResolver() 
+    {
+    	return resolver;
     }
 
     @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException {
-        return new FileResourceResolver( projectConfiguration.getBaseDirectory() ).resolveRelative( identifier ,parent );
+        return resolver.resolveRelative( identifier ,parent );
     }
 
     @Override
@@ -508,17 +531,6 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
 	public void setEmulationOptions(EmulationOptions emulationOptions) {
 		getConfiguration().setEmulationOptions( emulationOptions );
 	}
-
-    @SuppressWarnings("deprecation")
-	@Override
-    public void changeResourceType(IResource resource, ResourceType newType)
-    {
-        if ( resource.getType() == newType ) {
-            return;
-        }
-        resource.setType( newType );
-        workspace.resourceChanged( this , resource );
-    }
 
     @Override
     public boolean containsResource(IResource resource)
