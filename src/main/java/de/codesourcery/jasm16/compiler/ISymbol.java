@@ -26,6 +26,17 @@ import de.codesourcery.jasm16.utils.ITextRegion;
 public interface ISymbol {
 
 	/**
+	 * Creates a copy of this symbol.
+	 * 
+	 * <p>Note that for performance reasons, the returned copy still retains a
+	 * reference to the same <code>ICompilationUnit</code>. 
+	 * </p>
+	 * 
+	 * @return
+	 */
+	public ISymbol createCopy();
+	
+	/**
 	 * Returns this symbol's unique identifier.
 	 * 
 	 * @return identifier, never <code>null</code>

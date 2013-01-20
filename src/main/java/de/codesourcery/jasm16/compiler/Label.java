@@ -43,6 +43,13 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 		return result;
 	}
 	
+	@Override
+	public ISymbol createCopy() {
+		final Label result = new Label( this.getCompilationUnit() , this.getLocation() , this.getIdentifier() );
+		result.address = this.address;
+		return result;
+	}
+	
 	/**
 	 * Returns the address associated with this label.
 	 * 

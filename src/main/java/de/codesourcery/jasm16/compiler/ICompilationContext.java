@@ -15,8 +15,6 @@
  */
 package de.codesourcery.jasm16.compiler;
 
-import java.util.List;
-
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
@@ -37,19 +35,11 @@ public interface ICompilationContext extends IResourceResolver , ICompilationUni
     public ICompilationUnit getCurrentCompilationUnit();
     
     /**
-     * Returns all compilation units that are part of
-     * the current compilation process.
-     * 
-     * @return
-     */
-    public List<ICompilationUnit> getAllCompilationUnits();
-
-    /**
      * Returns the global symbol table.
      * 
      * @return
      */
-    public ISymbolTable getSymbolTable();
+    public IParentSymbolTable getSymbolTable();
 
     /**
      * Returns a factory for creating {@link IObjectCodeWriter} instances

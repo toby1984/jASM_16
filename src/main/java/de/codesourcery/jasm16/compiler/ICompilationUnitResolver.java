@@ -33,8 +33,8 @@ import de.codesourcery.jasm16.compiler.io.IResource;
 public interface ICompilationUnitResolver {
 
 	/**
-	 * Locates up a compilation unit by resource, either returning an already existing one
-	 * or creating a new instance that will be resolvable by future calls. 
+	 * Returns the compilation unit associated with a given resource , creating
+	 * a new instance if none exists.
 	 * 
 	 * @param resource
 	 * @return
@@ -43,10 +43,12 @@ public interface ICompilationUnitResolver {
 	public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException;
 	
 	/**
+	 * Returns the compilation unit associated with a given resource.
 	 * 
 	 * @param resource
 	 * @return compilation unit or <code>null</code>
 	 * @throws IOException
+	 * @see {@link #getOrCreateCompilationUnit(IResource)}
 	 */
 	public ICompilationUnit getCompilationUnit(IResource resource) throws IOException;	
 }

@@ -18,7 +18,6 @@ package de.codesourcery.jasm16.parser;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 import junit.framework.TestCase;
@@ -41,15 +40,16 @@ import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
+import de.codesourcery.jasm16.compiler.IParentSymbolTable;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
-import de.codesourcery.jasm16.compiler.SymbolTable;
+import de.codesourcery.jasm16.compiler.ParentSymbolTable;
 import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.IToken;
@@ -63,7 +63,7 @@ import de.codesourcery.jasm16.utils.Misc;
 
 public abstract class TestHelper extends TestCase implements ICompilationUnitResolver
 {
-    protected ISymbolTable symbolTable;
+    protected IParentSymbolTable symbolTable;
  
     protected static final Set<CompilerOption> OPTIONS = Collections.singleton( CompilerOption.DEBUG_MODE );
     
@@ -122,7 +122,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     @Override
     protected void setUp() throws Exception
     {
-        symbolTable = new SymbolTable();
+        symbolTable = new ParentSymbolTable();
     }
     
     protected final IToken assertToken(ILexer lexer , TokenType type , String contents ) {
@@ -294,11 +294,6 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     	ICompilationContext context = new ICompilationContext() {
 
 			@Override
-			public List<ICompilationUnit> getAllCompilationUnits() {
-				throw new UnsupportedOperationException("Not implemented");
-			}
-
-			@Override
 			public ICompilationUnit getCurrentCompilationUnit() {
 				return unit;
 			}
@@ -309,7 +304,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			}
 
 			@Override
-			public ISymbolTable getSymbolTable() {
+			public IParentSymbolTable getSymbolTable() {
 				return symbolTable;
 			}
 

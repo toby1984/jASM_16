@@ -20,6 +20,7 @@ import java.util.Collections;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
+import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
@@ -37,13 +38,7 @@ public class IncludeSourceTest extends TestHelper {
 		final String source1 = ".include \"../source2\"";
 		final String source2 = ":label";
 
-		final Compiler c = new Compiler() 
-		{
-			@Override
-			protected ISymbolTable createSymbolTable() {
-				return symbolTable;
-			}
-		};
+		final Compiler c = new Compiler();
 		
 		final ICompilationUnit unit1 = CompilationUnit.createInstance( "source1" , source1 );
 		
@@ -61,7 +56,7 @@ public class IncludeSourceTest extends TestHelper {
 				if ( "../source2".equals( identifier ) ) 
 				{
 					assertSame( unit1.getResource() , parent );
-					return new StringResource( identifier , source2 , ResourceType.UNKNOWN );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");
 			}
@@ -70,7 +65,7 @@ public class IncludeSourceTest extends TestHelper {
 
 		c.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
 		
-		c.compile( Collections.singletonList( unit1) , new CompilationListener() );
+		c.compile( Collections.singletonList( unit1) , symbolTable , new CompilationListener() , DefaultResourceMatcher.INSTANCE );		
 		
 		Misc.printCompilationErrors( unit1  , source1 , true );
 		assertFalse( unit1.hasErrors() );
@@ -89,13 +84,7 @@ public class IncludeSourceTest extends TestHelper {
 		final String source1 = ".include \"source2\"";
 		final String source2 = ":label";
 
-		final Compiler c = new Compiler() 
-		{
-			@Override
-			protected ISymbolTable createSymbolTable() {
-				return symbolTable;
-			}
-		};
+		final Compiler c = new Compiler();
 		
 		c.setResourceResolver( new AbstractResourceResolver() {
 
@@ -118,7 +107,7 @@ public class IncludeSourceTest extends TestHelper {
 		c.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
 		
 		final ICompilationUnit unit1 = CompilationUnit.createInstance( "source1" , source1 );
-		c.compile( Collections.singletonList( unit1) , new CompilationListener() );
+		c.compile( Collections.singletonList( unit1) , symbolTable , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
 		
 		Misc.printCompilationErrors( unit1  , source1 , true );
 		assertFalse( unit1.hasErrors() );
@@ -137,13 +126,7 @@ public class IncludeSourceTest extends TestHelper {
 		final String source1 = ".include \"source2\"";
 		final String source2 = ".include \"source1\"";
 
-		final Compiler c = new Compiler() 
-		{
-			@Override
-			protected ISymbolTable createSymbolTable() {
-				return symbolTable;
-			}
-		};
+		final Compiler c = new Compiler();
 		
 		c.setCompilerOption( CompilerOption.DEBUG_MODE , true );
 		
@@ -159,9 +142,9 @@ public class IncludeSourceTest extends TestHelper {
 			public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
 			{
 				if ( "source2".equals( identifier ) ) {
-					return new StringResource( identifier , source2 , ResourceType.UNKNOWN );
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
 				} else if ( "source1".equals( identifier ) ) {
-					return new StringResource( identifier , source2 , ResourceType.UNKNOWN);
+					return new StringResource( identifier , source2 , ResourceType.SOURCE_CODE );
 				}
 				throw new IllegalArgumentException("Unexpected call for '"+identifier+"'");				
 			}
@@ -170,7 +153,8 @@ public class IncludeSourceTest extends TestHelper {
 		c.setObjectCodeWriterFactory( new NullObjectCodeWriterFactory() );
 		
 		final ICompilationUnit unit1 = CompilationUnit.createInstance( "source1" , source1 );
-		c.compile( Collections.singletonList( unit1) , new CompilationListener() );
+		
+		c.compile( Collections.singletonList( unit1) , symbolTable , new CompilationListener() , DefaultResourceMatcher.INSTANCE );		
 		
 		Misc.printCompilationErrors( unit1  , source1 , true );
 		

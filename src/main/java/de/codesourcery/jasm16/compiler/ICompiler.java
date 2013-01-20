@@ -133,6 +133,11 @@ public interface ICompiler
      */	
     public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) ;
     
+    public void compile(final List<ICompilationUnit> unitsToCompile,
+    		IParentSymbolTable parentSymbolTable , 
+    		ICompilationListener listener,
+    		IResourceMatcher resourceMatcher);
+    
 	/**
 	 * Compiles a set of compilation units , notifying a {@link ICompilationListener}
 	 * instance while doing so.
@@ -140,14 +145,22 @@ public interface ICompiler
      * <p>The compilation units will be compiled/linked in the order determined
      * by the current {@link ICompilationOrderProvider}.</p>
      * 	 
-	 * @param units
+	 * @param unitsToCompile compilation units to (re-)compile
+	 * @param otherUnits already compiled compilation units that may be required to compile <code>units</code>. 
+	 * @param parentSymbolTable Symbol table used to keep track of symbol definitions across multiple compilation-unit , will be populated
+	 * during compilation. Pass <code>null</code> to create a new instance on-the-fly.
+	 * 
 	 * @param listener
 	 * @param resourceMatcher used to pick the matching <code>ICompilationUnit</code> out of the input list for a given source file (<code>IResource</code>)
 	 * @return processed compilation units
 	 * @see #setCompilationOrderProvider(ICompilationOrderProvider)
 	 * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
 	 */
-	public void compile(List<ICompilationUnit> units,ICompilationListener listener,IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException;
+	public void compile(List<ICompilationUnit> unitsToCompile,
+			final List<ICompilationUnit> otherUnits,
+			IParentSymbolTable parentSymbolTable , 
+			ICompilationListener listener,
+			IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException;
 	
 	/**
 	 * Returns all compiler phases currently that are currently configured.

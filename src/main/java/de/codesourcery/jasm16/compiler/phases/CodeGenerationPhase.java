@@ -33,9 +33,10 @@ import de.codesourcery.jasm16.compiler.GenericCompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.IParentSymbolTable;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -54,13 +55,13 @@ public class CodeGenerationPhase extends CompilerPhase {
     }
 
     @Override
-    public boolean execute(List<ICompilationUnit> units, ISymbolTable symbolTable,
+    public boolean execute(List<ICompilationUnit> units, IParentSymbolTable symbolTable,
             IObjectCodeWriterFactory writerFactory, ICompilationListener listener, 
             IResourceResolver resourceResolver, 
-            Set<CompilerOption> options)
+            Set<CompilerOption> options, ICompilationUnitResolver compUnitResolver)
     {
         try {
-            return super.execute(units, symbolTable, writerFactory, listener, resourceResolver, options);
+            return super.execute(units, symbolTable, writerFactory, listener, resourceResolver, options, compUnitResolver);
         } 
         finally 
         {

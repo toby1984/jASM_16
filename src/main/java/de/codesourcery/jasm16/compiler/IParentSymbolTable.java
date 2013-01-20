@@ -28,5 +28,11 @@ public interface IParentSymbolTable extends ISymbolTable
      * @return
      */
     public List<ISymbol> getSymbols(Identifier identifier);
-
+    
+    /**
+     * Remove all symbols defined in a given compilation unit.
+     * 
+     * @param unit
+     */
+    public void clear(ICompilationUnit unit);
 }

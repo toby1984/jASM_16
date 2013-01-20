@@ -38,6 +38,16 @@ public class SymbolTable implements ISymbolTable {
 	}
 	
 	@Override
+	public ISymbolTable createCopy() 
+	{
+		SymbolTable result = new SymbolTable();
+		for ( Map.Entry<Identifier,ISymbol> entry : symbols.entrySet() ) {
+			result.symbols.put( entry.getKey() , entry.getValue().createCopy() );
+		}
+		return result;
+	}
+	
+	@Override
 	public void defineSymbol( ISymbol symbol) throws DuplicateSymbolException
 	{
 		if (symbol == null) {

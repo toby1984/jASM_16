@@ -16,7 +16,6 @@
 package de.codesourcery.jasm16.compiler;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -26,8 +25,8 @@ import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 /**
@@ -38,15 +37,14 @@ import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 public class CompilationContext implements ICompilationContext {
 
 	private final ICompilationUnit currentUnit;
-	private final ISymbolTable symbolTable;
+	private final IParentSymbolTable symbolTable;
 	private final IObjectCodeWriterFactory writerFactory;
-    private final List<ICompilationUnit> allCompilationUnits;
     private final ICompilationUnitResolver compilationUnitResolver;
     private final IResourceResolver resourceResolver;
     private final Set<CompilerOption> options= new HashSet<CompilerOption>();
     
     public CompilationContext(ICompilationUnit unit,
-    		ISymbolTable symbolTable,
+    		IParentSymbolTable symbolTable,
     		IObjectCodeWriterFactory writerFactory,
     		IResourceResolver resourceResolver,
     		ICompilationUnitResolver compilationUnitResolver,
@@ -59,7 +57,7 @@ public class CompilationContext implements ICompilationContext {
     }
     
 	public CompilationContext(ICompilationUnit currentUnit,List<ICompilationUnit> allCompilationUnits,
-			ISymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,
+			IParentSymbolTable symbolTable,IObjectCodeWriterFactory writerFactory,
 			IResourceResolver resourceResolver,
 			ICompilationUnitResolver compilationUnitResolver,
 			Set<CompilerOption> options)
@@ -86,7 +84,6 @@ public class CompilationContext implements ICompilationContext {
 			throw new IllegalArgumentException("options must not be NULL");
 		}
 		this.resourceResolver = resourceResolver;
-		this.allCompilationUnits = new ArrayList<ICompilationUnit>( allCompilationUnits );
 		this.symbolTable = symbolTable;
 		this.writerFactory = writerFactory;
 		this.currentUnit = currentUnit;
@@ -95,7 +92,7 @@ public class CompilationContext implements ICompilationContext {
 	}
 	
 	@Override
-	public ISymbolTable getSymbolTable() {
+	public IParentSymbolTable getSymbolTable() {
 		return symbolTable;
 	}
 
@@ -113,12 +110,6 @@ public class CompilationContext implements ICompilationContext {
     public IObjectCodeWriterFactory getObjectCodeWriterFactory()
     {
         return writerFactory;
-    }
-
-    @Override
-    public List<ICompilationUnit> getAllCompilationUnits()
-    {
-        return Collections.unmodifiableList( this.allCompilationUnits );
     }
 
     @Override

@@ -53,6 +53,12 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 	}
 	
 	@Override
+	public ISymbol createCopy() 
+	{
+		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() , expression == null ? null : (TermNode) expression.createCopy(false) );
+	}
+	
+	@Override
 	public ISymbol withIdentifier(Identifier newIdentifier) 
 	{
 		final TextRegion newLocation = new TextRegion( getLocation().getStartingOffset() , newIdentifier.getRawValue().length() );

@@ -86,10 +86,12 @@ public abstract class CompilerPhase implements ICompilerPhase {
 
     @Override
     public boolean execute(List<ICompilationUnit> units, 
-    		ISymbolTable symbolTable, 
+    		IParentSymbolTable globalSymbolTable, 
     		IObjectCodeWriterFactory writerFactory , 
     		ICompilationListener listener, 
-    		IResourceResolver resourceResolver, Set<CompilerOption> options)        
+    		IResourceResolver resourceResolver, 
+    		Set<CompilerOption> options, 
+    		ICompilationUnitResolver compUnitResolver)        
     {
     	/*
     	 * NEED to create a copy for the for() loop here since
@@ -109,8 +111,11 @@ public abstract class CompilerPhase implements ICompilerPhase {
             
         	listener.start( this , unit );
         	
-            try {
-                final ICompilationContext context = createCompilationContext(units, symbolTable, writerFactory, resourceResolver, options, unit);                    
+            try 
+            {
+                final ICompilationContext context =
+                		createCompilationContext( units ,  globalSymbolTable, writerFactory , resourceResolver , options , compUnitResolver , unit );
+                		
                 run( unit , context );
                 if ( hasErrors( units ) ) 
                 { 
@@ -133,47 +138,16 @@ public abstract class CompilerPhase implements ICompilerPhase {
         return true;
     }
 
-	protected ICompilationContext createCompilationContext(
+	protected final ICompilationContext createCompilationContext(
 			final List<ICompilationUnit> units,
-			ISymbolTable symbolTable, 
+			IParentSymbolTable symbolTable, 
 			IObjectCodeWriterFactory writerFactory,
 			IResourceResolver resourceResolver, 
 			final Set<CompilerOption> options,
+			ICompilationUnitResolver compUnitResolver,
 			ICompilationUnit unit) 
 	{
-		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() 
-		{
-			@Override
-			public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException 
-			{
-				ICompilationUnit result = getCompilationUnit( resource );
-				if ( result != null ) {
-					return result;
-				}
-				result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
-				System.out.println("Creating new ICompilationUnit - did not find "+resource+" in "+units);
-				
-				// !!!! the next call actually modifies the method's input argument....
-				units.add( result );
-				return result;
-			}
-
-			@Override
-			public ICompilationUnit getCompilationUnit(IResource resource)
-					throws IOException 
-			{
-				for ( ICompilationUnit unit : units ) 
-				{
-					if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
-						return unit;
-					}
-				}
-				return null;
-			}
-		};
-		
-		final ICompilationContext context = new CompilationContext( unit , units ,  symbolTable, writerFactory , resourceResolver ,unitResolver ,options );
-		return context;
+		return new CompilationContext( unit , units ,  symbolTable, writerFactory , resourceResolver ,compUnitResolver ,options );
 	}
     
     @Override

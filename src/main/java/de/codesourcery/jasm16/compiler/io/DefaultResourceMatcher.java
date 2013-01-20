@@ -9,7 +9,4 @@ public class DefaultResourceMatcher implements IResourceMatcher
     {
         return r1.getIdentifier().equals( r2.getIdentifier() );
     }
-    
-    
-
 }

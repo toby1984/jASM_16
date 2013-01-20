@@ -17,7 +17,10 @@ package de.codesourcery.jasm16.compiler;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
 import de.codesourcery.jasm16.parser.Identifier;
@@ -35,6 +38,16 @@ public class ParentSymbolTable implements IParentSymbolTable
     	final ISymbolTable table = findSymbolTable( identifier );
     	return table == null ? null : table.getSymbol( identifier );
     }
+    
+	@Override
+	public IParentSymbolTable createCopy() 
+	{
+		final ParentSymbolTable result = new ParentSymbolTable();
+		for ( Map.Entry<ICompilationUnit,ISymbolTable> entry : tables.entrySet() ) {
+			result.tables.put( entry.getKey() , entry.getValue().createCopy() );
+		}
+		return result;
+	}    
     
     private ISymbolTable findSymbolTable(Identifier identifier) {
         for ( ISymbolTable table : tables.values() ) 
@@ -88,14 +101,15 @@ public class ParentSymbolTable implements IParentSymbolTable
     public void defineSymbol(ISymbol symbol) throws DuplicateSymbolException
     {
         final ICompilationUnit unit = symbol.getCompilationUnit();
-        ISymbolTable table = tables.get( unit );
+        ISymbolTable table = findSymbolTable( unit );
         if ( table == null ) {
             table = unit.getSymbolTable();
             table.setParent( this );
             tables.put( unit  , table );
         }
         
-        for ( ISymbolTable tmp : tables.values() ) {
+        for ( ISymbolTable tmp : tables.values() ) 
+        {
             if ( tmp.containsSymbol( symbol.getIdentifier() ) ) {
                 throw new DuplicateSymbolException( tmp.getSymbol( symbol.getIdentifier() ) , symbol );
             }
@@ -146,4 +160,29 @@ public class ParentSymbolTable implements IParentSymbolTable
         }            
         return result;
     }
+
+    private ISymbolTable findSymbolTable(ICompilationUnit unit) 
+    {
+		final ISymbolTable symbolTable = tables.get( unit );
+		if ( symbolTable != null ) 
+		{
+			return symbolTable;
+		}
+		for ( Iterator<Map.Entry<ICompilationUnit,ISymbolTable>> it = tables.entrySet().iterator() ; it.hasNext() ; ) 
+		{
+			final Entry<ICompilationUnit, ISymbolTable> entry = it.next();
+			if ( entry.getKey().getResource().getIdentifier().equals( unit.getResource().getIdentifier() ) ) {
+				return entry.getValue();
+			}
+		}
+		return null;
+    }
+	@Override
+	public void clear(ICompilationUnit unit) 
+	{
+		final ISymbolTable symbolTable = findSymbolTable( unit );
+		if ( symbolTable != null ) {
+			symbolTable.clear();
+		}
+	}
 }

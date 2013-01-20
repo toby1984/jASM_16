@@ -27,6 +27,24 @@ import de.codesourcery.jasm16.parser.Identifier;
  */
 public interface ISymbolTable {
     
+	/**
+	 * Creates a deep copy of this symbol table.
+	 * 
+	 * <p>This method does <b>not</b> copy any parent symbol table 
+	 * associated with this one.</p>
+	 * 
+	 * @return an independent copy of this symbol table.
+	 * @see #getParent()
+	 * @see #setParent(IParentSymbolTable)
+	 * @see IParentSymbolTable
+	 */
+	public ISymbolTable createCopy();
+	
+	/**
+	 * Returns the number of symbols defined in this table.
+	 * 
+	 * @return number of symbols
+	 */
     public int getSize();
     
 	/**

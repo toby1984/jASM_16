@@ -5,6 +5,7 @@ import static de.codesourcery.jasm16.compiler.ICompiler.CompilerOption.GENERATE_
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -24,7 +25,9 @@ import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
+import de.codesourcery.jasm16.compiler.IParentSymbolTable;
 import de.codesourcery.jasm16.compiler.Linker;
+import de.codesourcery.jasm16.compiler.ParentSymbolTable;
 import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode;
 import de.codesourcery.jasm16.compiler.dependencyanalysis.SourceFileDependencyAnalyzer;
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
@@ -60,6 +63,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     private final IResourceMatcher resourceMatcher = DefaultResourceMatcher.INSTANCE;
     private final IWorkspace workspace;
     private final IAssemblyProject project;
+    private final IParentSymbolTable globalSymbolTable = new ParentSymbolTable();
     
     private final AtomicBoolean disposed = new AtomicBoolean(false);
     
@@ -93,34 +97,33 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     	assertNotDisposed();
     	
         final ICompiler compiler = createCompiler();
+        
+        // do not process .includesource directives here as this would recompile
+        // dependent sources as well
+        compiler.setCompilerOption(CompilerOption.NO_SOURCE_INCLUDE_PROCESSING , true );
+        
         compiler.setResourceResolver( resolver );
         compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
 
         final List<ICompilationUnit> compUnits = getCompilationUnits();
-
         final ICompilationUnit result = CompilationUnit.createInstance( source.getIdentifier() , source );
 
-        boolean replaced = false;
         for ( int i =0 ; i < compUnits.size() ; i++ ) {
             final ICompilationUnit unit  = compUnits.get(i);
             if ( unit.getResource().getIdentifier().equals( source.getIdentifier() ) ) 
             {
                 compUnits.remove( i );
-                compUnits.add( i  , result );
-                replaced = true;
                 break;
             }
         }
 
-        if ( ! replaced ) 
-        {
-            compUnits.add(  result );
-        }
-        compiler.compile( compUnits , listener );
+        compiler.compile( Collections.singletonList( result )  , 
+        		compUnits , 
+        		globalSymbolTable , 
+        		listener ,
+        		DefaultResourceMatcher.INSTANCE );
         
-        for ( ICompilationUnit unit : compUnits ) {
-        	workspace.compilationFinished( project , unit );
-        }
+      	workspace.compilationFinished( project , result );
         return result;
     }
     
@@ -311,7 +314,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             }
             
             final List<ICompilationUnit> units  = analyzer.linearize( nodeToCompile );
-            final boolean link = containsCompilationRoot( units );
+            final boolean link = units.size() == 1 || containsCompilationRoot( units );
             buildSuccessful = build( units , listener , link );
         } 
         catch (ResourceNotFoundException e) {
@@ -363,7 +366,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             }
         };
         
-        compiler.compile( compilationUnits , listener , relaxedResolver );
+        compiler.compile( compilationUnits , new ArrayList<ICompilationUnit>() , globalSymbolTable , listener , relaxedResolver );
 
         // create executable
         if ( isCompilationSuccessful( compilationUnits ) )

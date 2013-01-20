@@ -73,16 +73,20 @@ public interface ICompilerPhase
      * 
      * @param units list of compilation units to process. Note that this list actually gets MODIFIED when
      * source includes are being processed (new compilation units will be added then).
-     * @param symbolTable 
+     * @param globalSymbolTable global symbol table
      * @param writerFactory Used to obtain a writer for outputting object code
      * @param listener
      * @param resourceResolver 
      * @param options 
+     * @param compUnitResolver
      * @return <code>true</code> if compilation should continue
      */
-    public boolean execute(List<ICompilationUnit> units, ISymbolTable symbolTable , 
-    		IObjectCodeWriterFactory writerFactory, ICompilationListener listener, 
-    		IResourceResolver resourceResolver, Set<CompilerOption> options);
+    public boolean execute(List<ICompilationUnit> units, 
+    		IParentSymbolTable globalSymbolTable , 
+    		IObjectCodeWriterFactory writerFactory, 
+    		ICompilationListener listener, 
+    		IResourceResolver resourceResolver, 
+    		Set<CompilerOption> options, ICompilationUnitResolver compUnitResolver);
     
     /**
      * Returns the unique name of this phase.
