@@ -1291,7 +1291,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 			if ( symbol != null ) 
 			{
 			    if ( isCurrentCompilationUnit( symbol.getCompilationUnit() ) ) {
-			        final ITextRegion location = table.getSymbol( identifier ).getLocation();
+			        final ITextRegion location = symbol.getLocation();
 			        gotoLocation( location.getStartingOffset() );
 			    } else {
 			        // TODO: Add support for navigating to symbols in other sourcecode files once proper forward/backwards navigation history has been implemented

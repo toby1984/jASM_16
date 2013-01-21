@@ -120,7 +120,6 @@ public class SymbolTable implements ISymbolTable {
 
 	@Override
 	public void clear() {
-	    new Exception("---------- symbol table cleared -----------").printStackTrace();
 		symbols.clear();
 	}
 

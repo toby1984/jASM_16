@@ -136,19 +136,22 @@ public class Compiler implements ICompiler {
 			ICompilationListener listener,
 			IResourceMatcher resourceMatcher) 
 	{
-		new Exception("------------- compiling ---------------").printStackTrace();
-		
-		System.out.println("----------------------------------");
-		System.out.println("----------- COMPILING ------------");
-		System.out.println("----------------------------------");
-		
-		System.out.println( StringUtils.join( unitsToCompile , "\n" ) );
-		
-		System.out.println("-------------------------------------");
-		System.out.println("----------- DEPENDENCIES ------------");
-		System.out.println("-------------------------------------");
-		
-		System.out.println( StringUtils.join( dependencies, "\n" ) );
+	    if ( hasCompilerOption(CompilerOption.DEBUG_MODE ) ) 
+	    {
+    		new Exception("------------- compiling ---------------").printStackTrace();
+    		
+    		System.out.println("----------------------------------");
+    		System.out.println("----------- COMPILING ------------");
+    		System.out.println("----------------------------------");
+    		
+    		System.out.println( StringUtils.join( unitsToCompile , "\n" ) );
+    		
+    		System.out.println("-------------------------------------");
+    		System.out.println("----------- DEPENDENCIES ------------");
+    		System.out.println("-------------------------------------");
+    		
+    		System.out.println( StringUtils.join( dependencies, "\n" ) );
+	    }
 
 		// sanity check for duplicate compilation units
 		// or compilation units that are in both unitsToCompile
@@ -278,17 +281,6 @@ public class Compiler implements ICompiler {
 		} 
 		finally {
 			listener.afterCompile( lastPhase );
-
-			for ( ICompilationUnit unit : unitsToCompile ) {
-				System.out.println( " ------------------ "+unit+ "--------------" );
-				if ( unit.hasErrors() ) 
-				{
-					try {
-						Misc.printCompilationErrors( unit , unit.getResource(), true );
-					} 
-					catch (Exception e) { }
-				}
-			}
 		}
 		return debugInfo;
 	}

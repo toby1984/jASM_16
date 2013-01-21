@@ -337,10 +337,10 @@ public final class EmulationOptions {
     {
         List<IDevice> result = emulator.getDevicesByDescriptor( DefaultFloppyDrive.DESC );
         if ( result.isEmpty() ) {
-            throw new NoSuchElementException("Internal error, found no default screen?");
+            throw new NoSuchElementException("Internal error, found no floppy drive?");
         }
         if ( result.size() > 1 ) {
-            throw new RuntimeException("Internal error, found more than one default screen?");
+            throw new RuntimeException("Internal error, found more than one floppy drive?");
         }
         return (DefaultFloppyDrive) result.get(0);
     }    

@@ -18,6 +18,7 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.CompiledCode;
 import de.codesourcery.jasm16.compiler.Compiler;
@@ -47,7 +48,6 @@ import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.AmbigousCompilationOrderException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
-import de.codesourcery.jasm16.utils.DebugCompilationListener;
 import de.codesourcery.jasm16.utils.IOrdered;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -237,7 +237,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
                 
                 WordAddress currentOffset = lastWriter == null ? WordAddress.ZERO : lastWriter.getCurrentWriteOffset().toWordAddress();
                 
-                System.out.println(">>>>>>>>> createObjectCodeWriter(): Compiling "+currentUnit+" to object file "+outputFile.getAbsolutePath()+" , offset = "+currentOffset);
+//                System.out.println(">>>>>>>>> createObjectCodeWriter(): Compiling "+currentUnit+" to object file "+outputFile.getAbsolutePath()+" , offset = "+currentOffset);
                 
                 lastWriter = new FileObjectCodeWriter( outputFile , currentOffset , false ) 
                 {
@@ -251,7 +251,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
                         } else {
                             len = 0;
                         }
-                        System.out.println("closeHook(): [ "+start+" - "+end+" ] Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
+//                        System.out.println("closeHook(): [ "+start+" - "+end+" ] Closing object file "+outputFile.getAbsolutePath()+", bytes_written: "+len );
                         if ( len > 0 ) {
                             objectFiles.add( new CompiledCode( currentUnit , resource ) );
                             workspace.resourceCreated( project , resource );
@@ -272,7 +272,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     public synchronized boolean build() throws IOException 
     {
     	assertNotDisposed();
-        return build( new DebugCompilationListener(true) );
+        return build( new CompilationListener() );
     }
     
 	/**

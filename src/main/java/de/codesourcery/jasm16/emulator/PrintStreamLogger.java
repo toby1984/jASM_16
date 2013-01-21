@@ -22,7 +22,6 @@ public class PrintStreamLogger implements ILogger {
 	private final PrintStream stream;
 	
 	private volatile LogLevel logLevel=LogLevel.INFO;
-	private volatile boolean isDebugEnabled = false;
 
 	public PrintStreamLogger(PrintStream stream) {
 		if (stream == null) {
@@ -38,6 +37,9 @@ public class PrintStreamLogger implements ILogger {
             throw new IllegalArgumentException("logLevel must not be NULL.");
         }
 	    this.logLevel=logLevel;
+        synchronized ( stream ) {
+            stream.println( "Loglevel changed to "+logLevel);
+        }   	    
 	}
 
 	@Override
@@ -98,7 +100,7 @@ public class PrintStreamLogger implements ILogger {
 
 	@Override
 	public void debug(String message) {
-		if ( isDebugEnabled ) {
+		if ( isDebugEnabled() ) {
 			synchronized ( stream ) {
 				stream.println( "DEBUG: "+message );
 			}		
@@ -107,7 +109,7 @@ public class PrintStreamLogger implements ILogger {
 
 	@Override
 	public void debug(String message, Throwable cause) {
-		if ( isDebugEnabled ) {
+		if ( isDebugEnabled()  ) {
 			synchronized ( stream ) {
 				stream.println( "DEBUG: "+message );
 				logException(cause);			

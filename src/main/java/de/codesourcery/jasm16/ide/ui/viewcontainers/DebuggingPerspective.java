@@ -403,12 +403,9 @@ public class DebuggingPerspective extends Perspective
             try
             {            
                 if ( this.emulator == e ) {
-                    System.out.println("Same proxy target, doing nothing.");
                     return;
                 }
 
-                System.out.println("Changing proxy target from "+this.emulator+" to "+e);
-                
                 removeEmulationListeners();
 
                 this.emulator=e;
@@ -416,7 +413,6 @@ public class DebuggingPerspective extends Perspective
                 if ( e != null ) {
                     restoreEmulatorState();
                 } else {
-                    System.out.println("Proxy discards cached state");
                     address = null;
                     data = null;
                 }
@@ -430,12 +426,10 @@ public class DebuggingPerspective extends Perspective
         {
             if ( this.emulator != null ) 
             {
-                System.out.println("Adding "+listeners.size()+" listeners to emulator "+this.emulator);
                 for ( IEmulationListener l : listeners ) {
                     this.emulator.addEmulationListener( l );
                 }           
                 if ( address != null ) {
-                    System.out.println("Restoring memory of emulator "+this.emulator);
                     this.emulator.loadMemory( address , data );
                 }
             }
@@ -445,7 +439,6 @@ public class DebuggingPerspective extends Perspective
         {
             if ( this.emulator != null ) 
             {
-                System.out.println("Removing "+listeners.size()+" listeners from emulator "+this.emulator);
                 for ( IEmulationListener l : listeners ) {
                     this.emulator.removeEmulationListener( l );
                 }
@@ -472,11 +465,7 @@ public class DebuggingPerspective extends Perspective
             lock(readLock);
             try
             {
-                if ( method.getName().equals("dispose" ) ) 
-                {
-                    System.out.println("Intercepted dispose() call.");
-                } 
-                else if ( method.getName().equals("loadMemory" ) ) 
+                if ( method.getName().equals("loadMemory" ) ) 
                 {
                     final Address adr = (Address) args[0];
                     final byte[] data = (byte[]) args[1];
@@ -485,20 +474,17 @@ public class DebuggingPerspective extends Perspective
                 } else if ( method.getName().equals("addEmulationListener" ) ) {
                     IEmulationListener listener = (IEmulationListener) args[0];
                     if ( listener != null && ! listener.belongsToHardwareDevice() ) {
-                        System.out.println("Intercepted addEmulationListener() call");
                         listeners.add( listener );
                     }
                 } else if ( method.getName().equals("removeEmulationListener" ) ) {
                     IEmulationListener listener = (IEmulationListener) args[0];
                     if ( listener != null ) 
                     {
-                        System.out.println("Intercepted removeEmulationListener() call");
                         listeners.remove( listener );
                     }                
                 } 
                 else if ( method.getName().equals("removeAllEmulationListeners" ) ) 
                 {
-                    System.out.println("Intercepted removeAllEmulationListeners() call");
                     listeners.clear();
                 }
                 emu = this.emulator;
@@ -522,9 +508,7 @@ public class DebuggingPerspective extends Perspective
             {
                 if ( success && method.getName().equals("reset" ) ) 
                 {
-                    System.out.println("Intercepted reset() call");
                     if ( address != null ) {
-                        System.out.println("Restoring memory");
                         emu.loadMemory( address , data );
                     }
                 }                 

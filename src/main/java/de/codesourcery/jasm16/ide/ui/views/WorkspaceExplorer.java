@@ -693,10 +693,8 @@ public class WorkspaceExplorer extends AbstractView {
 		// the latest changes anyway... rebuild if necessary
 		if ( project.getProjectBuilder().isBuildRequired() ) 
 		{
-			System.out.println("Building "+project.getName()+" before opening debug perspective");		    
 			if ( ! project.getProjectBuilder().build() ) 
 			{
-				System.out.println("Won't open debug perspective, building "+project.getName()+" failed.");
 				return false;
 			}
 		}
@@ -843,7 +841,6 @@ public class WorkspaceExplorer extends AbstractView {
 						if ( fn.hasCompilationErrors() && ( unit = fn.getCompilationUnit() ) != null ) 
 						{
 							try {					
-							    System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors()+" [ resource = "+unit.getResource()+" ]");
 								Misc.printCompilationErrors( unit , unit.getResource() , true );
 							} catch (Exception e) {
 							    System.err.println( "printCompilationErrors() failed: "+e.getMessage() );							    
@@ -861,7 +858,6 @@ public class WorkspaceExplorer extends AbstractView {
 						if ( pn.recalculateHasCompilationErrorsFlag() ) {
 							notifyNodeChanged( node.getPathToRoot() );
 						}
-						System.out.println("Project "+pn.getValue()+" has compilation errors = "+pn.hasCompilationErrors());
 					}
 				}
 			} else {

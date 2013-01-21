@@ -48,7 +48,7 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class DefaultWorkspace implements IWorkspace
 {
-	private static final boolean DEBUG_EVENTS = true;
+	private static final boolean DEBUG_EVENTS = false;
 	
 	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
 
