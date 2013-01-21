@@ -211,7 +211,7 @@ public class EmulatorControllerView extends AbstractView
                 if ( emulatorRunningContinously ) {
                     stepReturnButton.setEnabled( false );
                 } else {
-                    stepReturnButton.setEnabled( emulator.canStepReturn() );
+                    stepReturnButton.setEnabled( true );
                 }
                 resetButton.setEnabled( true );  
             }
@@ -274,7 +274,11 @@ public class EmulatorControllerView extends AbstractView
                     @Override
                     public void invoke(IEmulator emulator)
                     {                
-                        emulator.stepReturn();
+                        if ( emulator.canStepReturn() ) {
+                            emulator.stepReturn();
+                        } else {
+                            emulator.executeOneInstruction();
+                        }
                     }
                 });
             }
