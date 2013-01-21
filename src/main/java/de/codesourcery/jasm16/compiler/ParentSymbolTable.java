@@ -38,13 +38,6 @@ public class ParentSymbolTable implements IParentSymbolTable
         return "ParentSymbolTable";
     }
     
-    @Override
-    public ISymbol getSymbol(Identifier identifier)
-    {
-    	final ISymbolTable table = findSymbolTable( identifier );
-    	return table == null ? null : table.getSymbol( identifier );
-    }
-    
 	@Override
 	public IParentSymbolTable createCopy() 
 	{
@@ -55,10 +48,10 @@ public class ParentSymbolTable implements IParentSymbolTable
 		return result;
 	}    
     
-    private ISymbolTable findSymbolTable(Identifier identifier) {
+    private ISymbolTable findSymbolTable(Identifier identifier,Identifier scope) {
         for ( ISymbolTable table : tables.values() ) 
         {
-            final ISymbol result = table.getSymbol( identifier );
+            final ISymbol result = table.getSymbol( identifier , scope );
             if ( result != null ) {
                 return table;
             }
@@ -66,26 +59,14 @@ public class ParentSymbolTable implements IParentSymbolTable
         return null;
     }
     
-    @Override
-    public List<ISymbol> getSymbols(Identifier identifier)
-    {
-        final List<ISymbol>  result = new ArrayList<ISymbol>();
-        for ( ISymbolTable table : tables.values() ) 
-        {
-            ISymbol s = table.getSymbol( identifier );
-            if ( s != null ) {
-                result.add( s );
-            }
-        }        
-        return result;
-    }    
-    
 	@Override
 	public ISymbol renameSymbol(ISymbol symbol, Identifier newIdentifier) throws DuplicateSymbolException 
 	{
-		final ISymbolTable existingTable = findSymbolTable( symbol.getIdentifier() );
+		final Identifier scope = symbol.isLocalSymbol() ? null : symbol.getScope().getIdentifier();
 		
-		final ISymbol existing = existingTable == null ? null : existingTable.getSymbol( symbol.getIdentifier() );
+		final ISymbolTable existingTable= findSymbolTable( symbol.getIdentifier() , scope );
+		
+		final ISymbol existing = existingTable == null ? null : existingTable.getSymbol( symbol.getIdentifier() , scope );
 		if ( existing == null ) {
 			throw new IllegalArgumentException("Symbol "+symbol+" is not part of this symbol table?");
 		}
@@ -116,24 +97,26 @@ public class ParentSymbolTable implements IParentSymbolTable
         
         for ( ISymbolTable tmp : tables.values() ) 
         {
-            if ( tmp.containsSymbol( symbol.getIdentifier() ) ) {
-                throw new DuplicateSymbolException( tmp.getSymbol( symbol.getIdentifier() ) , symbol );
+            if ( tmp.containsSymbol( symbol.getIdentifier() , symbol.getScopeIdentifier() ) ) 
+            {
+            	final ISymbol existing = tmp.getSymbol( symbol.getIdentifier() , symbol.getScopeIdentifier() );
+                throw new DuplicateSymbolException( existing , symbol );
             }
         }
         table.defineSymbol( symbol );
     }
 
-    @Override
-    public boolean containsSymbol(Identifier identifier)
-    {
-        for ( ISymbolTable table : tables.values() ) 
-        {
-            if ( table.containsSymbol( identifier ) ) {
-                return true;
-            }
-        }        
-        return false;
-    }
+	@Override
+	public ISymbol getSymbol(Identifier identifier, Identifier scope) 
+	{
+		final ISymbolTable table = findSymbolTable( identifier , scope  );
+    	return table == null ? null : table.getSymbol( identifier , scope );
+	}
+
+	@Override
+	public boolean containsSymbol(Identifier identifier, Identifier scope) {
+		return getSymbol(identifier,scope ) != null;
+	}    
 
     @Override
     public void clear()

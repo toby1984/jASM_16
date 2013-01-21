@@ -1281,12 +1281,13 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 	protected final void gotoToSymbolDefinition(SymbolReferenceNode ref) 
 	{
 		Identifier identifier = ref.getIdentifier();
+		Identifier scope = ref.getScope();
 		if ( getCurrentCompilationUnit() != null ) 
 		{
 			ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
-			ISymbol symbol = table.getSymbol( identifier );
+			ISymbol symbol = table.getSymbol( identifier , scope );
 			if ( symbol == null && table.getParent() != null ) {
-			    symbol = table.getParent().getSymbol( identifier );
+			    symbol = table.getParent().getSymbol( identifier , scope );
 			}
 			if ( symbol != null ) 
 			{

@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.compiler;
 
 import java.util.List;
 
-import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
 import de.codesourcery.jasm16.parser.Identifier;
 
@@ -42,19 +41,20 @@ public interface ISymbolTable {
 	public ISymbolTable createCopy();
 	
 	/**
-	 * Returns the number of symbols defined in this table.
+	 * Returns the total number of symbols defined in this table.
 	 * 
 	 * @return number of symbols
 	 */
     public int getSize();
     
 	/**
-	 * Look up a symbol by identifier.
+	 * Look up a (local) symbol by identifier.
 	 * 
 	 * @param identifier
+	 * @param scope optional scope or <code>null</code> to look for a global symbol.
 	 * @return symbol with this identifier or <code>null</code>
-	 */
-	public ISymbol getSymbol(Identifier identifier);
+	 */	
+	public ISymbol getSymbol(Identifier identifier,Identifier scope); 
 	
 	/**
 	 * Returns all known symbols from this table.
@@ -95,12 +95,13 @@ public interface ISymbolTable {
 	public ISymbol renameSymbol(ISymbol symbol,Identifier newIdentifier) throws DuplicateSymbolException;
 	
 	/**
-	 * Check whether there is a symbol with a given identifier.
+	 * Check whether there is a (local) symbol with a given identifier.
 	 * 
 	 * @param identifier
+	 * @param scope optional scope, may be <code>null</code> to search for a global symbol.
 	 * @return
 	 */
-	public boolean containsSymbol(Identifier identifier);
+	public boolean containsSymbol(Identifier identifier,Identifier scope);	
 	
 	/**
 	 * Removes all symbols from this symbol table.

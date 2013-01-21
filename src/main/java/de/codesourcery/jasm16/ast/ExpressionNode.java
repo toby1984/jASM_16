@@ -297,8 +297,9 @@ public class ExpressionNode extends TermNode
                 op.mergeWithAllTokensTextRegion( context.read(TokenType.PARENS_CLOSE ) );
                 previousNode = handleStack( termStack , op , index ,previousNode , context );
             } 
-            else if ( context.peek().hasType( TokenType.CHARACTERS ) ) {
-
+            else if ( context.peek().hasType( TokenType.DOT ) || context.peek().hasType( TokenType.CHARACTERS ) ) 
+            {
+                // (local) identifier
                 final int index = context.currentParseIndex();
                 final ASTNode parsed;
                 if ( Register.isRegisterIdentifier( context.peek().getContents() ) ) {

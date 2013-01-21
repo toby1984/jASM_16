@@ -91,7 +91,12 @@ public interface ICompiler
 		 * @see DebugInfo
 		 * @see Executable#getDebugInfo()
 		 */
-		GENERATE_DEBUG_INFO;
+		GENERATE_DEBUG_INFO,
+		/**
+		 * Whether labels may be scoped to the preceeding
+		 * global label by prepending their identifier with a dot ('.').
+		 */
+		LOCAL_LABELS_SUPPORTED;
 	}
 	
 	/**

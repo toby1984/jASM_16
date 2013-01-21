@@ -212,7 +212,7 @@ public abstract class AbstractEmulatorTest extends TestCase
     {
         final ISymbol symbol;
         try {
-            symbol = compiledCode.compilationUnit.getSymbolTable().getSymbol(new Identifier(label) );
+            symbol = compiledCode.compilationUnit.getSymbolTable().getSymbol( new Identifier(label) , null );
         } catch (ParseException e) {
             throw new RuntimeException("Not a valid label: '"+label+"'",e);
         }

@@ -17,12 +17,13 @@ package de.codesourcery.jasm16.parser;
 
 import java.io.IOException;
 
-import com.sun.corba.se.impl.logging.ORBUtilSystemException;
+import com.sun.org.apache.xml.internal.utils.StopParseException;
 
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.IMarker;
+import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -81,7 +82,7 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @see LabelNode
      * @see Identifier
      */
-    public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException;
+    public Identifier parseIdentifier(ITextRegion range,boolean localLabelsAllowed) throws EOFException, ParseException;
 
     /**
      * Parse whitespace at the current parse position.
@@ -152,4 +153,23 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @throws IOException 
      */
     public IParseContext createParseContextForInclude(IResource resource) throws IOException,CircularSourceIncludeException;
+    
+    /**
+     * Used to keep track of the last global symbol that was parsed.
+     * 
+     * @param globalSymbol global symbol or <code>null</code>
+     * 
+     * @see LabelNode
+     * @see ISymbol#isLocalSymbol()
+     * @see #getPreviousGlobalSymbol()
+     */
+    public void storePreviousGlobalSymbol(ISymbol globalSymbol);
+    
+    /**
+     * Returns the last global symbol seen in this compilation unit.
+     * 
+     * @return previous global symbol or <code>null</code>
+     * @see #storePreviousGlobalSymbol(ISymbol)
+     */
+    public ISymbol getPreviousGlobalSymbol();    
 }

@@ -31,7 +31,7 @@ public class DuplicateSymbolException extends RuntimeException {
 	
 	public DuplicateSymbolException(ISymbol existing , ISymbol duplicate) 
 	{
-		super("Duplicate symbol '"+duplicate+"' in compilation unit "+duplicate.getCompilationUnit() );
+		super("Duplicate symbol '"+duplicate+"' in compilation unit "+duplicate.getCompilationUnit()+", previous definition: "+existing );
 		this.duplicate = duplicate;
 		this.existing = existing;
 	}

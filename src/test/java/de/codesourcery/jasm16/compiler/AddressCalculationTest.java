@@ -48,7 +48,7 @@ public class AddressCalculationTest extends TestHelper
 			{
 				Label label = null;
 				try {
-					label = (Label) context.getSymbolTable().getSymbol( new Identifier("label") );
+					label = (Label) context.getSymbolTable().getSymbol( new Identifier("label") , null );
 				} catch (ParseException e) {
 					fail( e.getMessage() );
 				}

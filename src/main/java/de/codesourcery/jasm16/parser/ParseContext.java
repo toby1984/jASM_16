@@ -29,10 +29,10 @@ import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.IMarker;
+import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.exceptions.EOFException;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -64,6 +64,8 @@ public class ParseContext implements IParseContext
 	
 	// values are IResource#getIdentifier() values
 	private final LinkedHashSet<String> includedSourceFiles;
+	
+	private ISymbol lastGlobalSymbol;
 	
 	private boolean recoveringFromParseError;
 	
@@ -186,25 +188,50 @@ public class ParseContext implements IParseContext
         return eof() ? "Parser is at EOF" : peek().toString()+" ( offset "+currentParseIndex()+" )";
     }	
 
-    public Identifier parseIdentifier(ITextRegion range) throws EOFException, ParseException  
+    public Identifier parseIdentifier(ITextRegion range,boolean localLabelsAllowed) throws EOFException, ParseException  
     {
     	if ( eof() || ! peek().hasType( TokenType.CHARACTERS ) ) 
     	{
-    	    if ( ! eof() && peek().hasType( TokenType.INSTRUCTION ) ) {
-    	           throw new ParseException("Not a valid identifier (instructions cannot be used as identifiers)" , peek() );
+    	    if ( ! eof() && peek().hasType( TokenType.INSTRUCTION ) ) 
+    	    {
+    	    	throw new ParseException("Not a valid identifier (instructions cannot be used as identifiers)" , peek() );
     	    }
-    		throw new ParseException("Expected an identifier" , currentParseIndex() ,0 );
+    	    
+    	    if ( ! eof() && peek().hasType(TokenType.DOT ) ) 
+    	    {
+    	    	if ( ! localLabelsAllowed ) {
+        	    	throw new ParseException("Support for local labels disabled by configuration" , currentParseIndex() ,0 );    	    		
+    	    	}
+    	    	// fall-through
+    	    } else {
+    	    	throw new ParseException("Expected an identifier" , currentParseIndex() ,0 );
+    	    }
     	}
     	
         int startOffset = currentParseIndex();  
-        final IToken token = read( TokenType.CHARACTERS  );
+        String chars = "";
+        IToken token = peek();
+        if ( token.hasType( TokenType.DOT ) ) 
+        {
+        	chars += read().getContents();
+        	if ( range != null ) {
+        		range.merge( token );
+        	}
+        }
+        
+        token = read( TokenType.CHARACTERS  );
         if ( range != null ) {
         	range.merge( token );
         }
         
-        final String chars = token.getContents();
+        chars += token.getContents();
         int i = 0;
-        for ( char c : chars.toCharArray() ) {
+        for ( char c : chars.toCharArray() ) 
+        {
+        	if ( i == 0 && c == '.' ) { // special case: local label
+        		continue;
+        	}
+        	
             if ( ! Identifier.isValidIdentifierChar( c ) ) {
                 throw new ParseException("Character '"+c+"' is not allowed within an identifier", 
                 		startOffset+i , 1 );
@@ -388,5 +415,17 @@ public class ParseContext implements IParseContext
 		}
 		return contents.toString();
 	}
-	
+
+	@Override
+	public void storePreviousGlobalSymbol(ISymbol globalSymbol) {
+		if ( globalSymbol != null && globalSymbol.isLocalSymbol() ) {
+			throw new IllegalArgumentException("You need to pass a GLOBAL symbol, not "+globalSymbol);
+		}
+		this.lastGlobalSymbol = globalSymbol;
+	}
+
+	@Override
+	public ISymbol getPreviousGlobalSymbol() {
+		return lastGlobalSymbol;
+	}
 }

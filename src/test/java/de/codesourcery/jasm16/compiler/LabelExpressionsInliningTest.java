@@ -130,7 +130,7 @@ public class LabelExpressionsInliningTest extends TestHelper {
 		assertTrue( valueNode.getClass().getName() , valueNode instanceof TermNode );
 		Long value = ((TermNode) valueNode).calculate( symbolTable[0] );
 		
-		final Label label = (Label) symbolTable[0].getSymbol(new Identifier("label"));
+		final Label label = (Label) symbolTable[0].getSymbol(new Identifier("label") , null );
 		assertEquals(  label.getAddress().getValue()+1 , value.intValue() );
 	}
 	
@@ -198,7 +198,7 @@ public class LabelExpressionsInliningTest extends TestHelper {
 		assertTrue( valueNode.getClass().getName() , valueNode instanceof TermNode );
 		Long value = ((TermNode) valueNode).calculate( symbolTable[0] );
 		
-		final Label label = (Label) symbolTable[0].getSymbol(new Identifier("label"));
+		final Label label = (Label) symbolTable[0].getSymbol(new Identifier("label") , null );
 		assertEquals(  label.getAddress().getValue()+1 , value.intValue() );
 	}	
 }

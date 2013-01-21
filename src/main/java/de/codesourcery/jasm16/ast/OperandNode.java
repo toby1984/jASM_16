@@ -115,8 +115,12 @@ public class OperandNode extends ASTNode
 			addChild( expr , context );
 			mergeWithAllTokensTextRegion( context.read( TokenType.ANGLE_BRACKET_CLOSE ) );
 			return this;
-		} else if ( tok.hasType( TokenType.CHARACTERS ) || tok.hasType(TokenType.STRING_DELIMITER) ) { // REGISTER or IMMEDIATE (label reference)
-
+		} 
+		else if ( tok.hasType( TokenType.CHARACTERS ) ||
+				  tok.hasType( TokenType.DOT ) || // local label
+				  tok.hasType(TokenType.STRING_DELIMITER) ) 
+		{ 
+			// REGISTER or IMMEDIATE (label reference)
 			if ( tok.hasType( TokenType.CHARACTERS ) && nextTokenIsRegisterIdentifier( context ) )
 			{ 
 				this.addressingMode = AddressingMode.REGISTER;
@@ -204,7 +208,8 @@ public class OperandNode extends ASTNode
                 if ( node instanceof SymbolReferenceNode) 
                 {
                     final Identifier identifier = ((SymbolReferenceNode) node).getIdentifier();
-                    ISymbol symbol = symbolTable.getSymbol( identifier );
+                    final Identifier scope = ((SymbolReferenceNode) node).getScope();
+                    ISymbol symbol = symbolTable.getSymbol( identifier , scope );
                     if ( symbol == null ) {
                         unresolvedSymbolsFound.set(true);
                     } 

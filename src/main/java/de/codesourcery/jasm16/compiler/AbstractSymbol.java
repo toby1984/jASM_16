@@ -27,22 +27,49 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public abstract class AbstractSymbol implements ISymbol {
 
+	private final ISymbol scope;
 	private final ICompilationUnit unit;
 	private final Identifier identifier;
 	private final ITextRegion location;
 	
 	protected AbstractSymbol(ICompilationUnit unit , ITextRegion location , Identifier identifier) {
+		this(unit,location,identifier,null);
+	}
+	
+	protected AbstractSymbol(ICompilationUnit unit , ITextRegion location , Identifier identifier,ISymbol scope) {
 		if (identifier == null) {
 			throw new IllegalArgumentException("identifier must not be NULL");
 		}
 		if ( location == null ) {
             throw new IllegalArgumentException("location must not be NULL.");
         }
+		this.scope = scope;
 		this.location = new TextRegion( location );
 		this.unit = unit;
 		this.identifier = identifier;
 	}
 	
+	@Override
+	public boolean isLocalSymbol() {
+		return scope != null;
+	}
+	
+	@Override
+	public boolean isGlobalSymbol() {
+		return scope == null;
+	}	
+	
+	@Override
+	public ISymbol getScope() {
+		return scope;
+	}
+	
+	@Override
+	public Identifier getScopeIdentifier() {
+		return scope != null ? scope.getIdentifier() : null;
+	}
+	
+	@Override
 	public final Identifier getIdentifier() {
 		return identifier;
 	}
@@ -57,5 +84,4 @@ public abstract class AbstractSymbol implements ISymbol {
     {
         return location;
     }
-	
 }

@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.ast;
 
 import org.apache.commons.lang.ObjectUtils;
 
+import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.Equation;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ISymbol;
@@ -25,6 +26,7 @@ import de.codesourcery.jasm16.compiler.IValueSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
+import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
@@ -37,6 +39,7 @@ import de.codesourcery.jasm16.utils.TextRegion;
  */
 public class SymbolReferenceNode extends ConstantValueNode
 {
+	private Identifier scope;
 	private Identifier identifier;
 
 	public Identifier getIdentifier()
@@ -48,13 +51,30 @@ public class SymbolReferenceNode extends ConstantValueNode
 	protected SymbolReferenceNode parseInternal(IParseContext context) throws ParseException
 	{
 		final int startOffset = context.currentParseIndex();
-		this.identifier = context.parseIdentifier( null );
+		this.identifier = context.parseIdentifier( null , context.hasParserOption(ParserOption.LOCAL_LABELS_SUPPORTED ) );
+		
+		if ( this.identifier.isLocalIdentifier() ) 
+		{
+			final ISymbol globalSymbol = context.getPreviousGlobalSymbol();
+			if ( globalSymbol != null ) 
+			{
+				this.scope = globalSymbol.getIdentifier();
+			} else {
+				context.addMarker( new CompilationError("Cannot use forward-reference to local label '"+identifier+"'" ,
+						context.getCompilationUnit() , this ) );
+			} 
+		}
 		mergeWithAllTokensTextRegion( new TextRegion( startOffset , identifier.getRawValue().length() ) );
 		return this;
 	}
 
-	public void setIdentifier(Identifier identifier) {
+	public void setIdentifier(Identifier identifier,Identifier scope) {
 		this.identifier = identifier;
+		this.scope = scope;
+	}
+	
+	public Identifier getScope() {
+		return scope;
 	}
     
     @Override
@@ -64,7 +84,8 @@ public class SymbolReferenceNode extends ConstantValueNode
             return true;
         }
         if ( obj instanceof SymbolReferenceNode) {
-            return ObjectUtils.equals( this.identifier , ((SymbolReferenceNode) obj).identifier );
+            return ObjectUtils.equals( this.identifier , ((SymbolReferenceNode) obj).identifier ) &&
+            		ObjectUtils.equals( this.scope , ((SymbolReferenceNode) obj).scope );
         }
         return false; 
     }
@@ -79,13 +100,14 @@ public class SymbolReferenceNode extends ConstantValueNode
 	{
 		final SymbolReferenceNode result = new SymbolReferenceNode();
 		result.identifier = identifier;
+		result.scope = scope;
 		return result;
 	}
 
 	@Override
 	public Long getNumericValue(ISymbolTable table)
 	{
-		final ISymbol symbol = table.getSymbol( this.identifier );
+		final ISymbol symbol = table.getSymbol( this.identifier , this.scope );
 		if ( symbol == null ) {
 		    return null;
 		}
@@ -96,7 +118,11 @@ public class SymbolReferenceNode extends ConstantValueNode
 	}
 	
 	@Override
-	public String toString() {
+	public String toString() 
+	{
+		if ( this.scope != null ) {
+			return scope.toString()+ ( identifier != null ? identifier.toString() : "<null identifier?>" );	
+		}
 		return identifier != null ? identifier.toString() : "<null identifier?>";
 	}
 	

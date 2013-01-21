@@ -30,22 +30,36 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 
 	private Address address;
 	
-	public Label(ICompilationUnit unit , ITextRegion location , Identifier identifier) {
-		super( unit , location , identifier );
+	public Label(ICompilationUnit unit , ITextRegion location , Identifier identifier,ISymbol scope) {
+		super( unit , location , identifier , scope );
 	}
 	
 	@Override
 	public ISymbol withIdentifier(Identifier newIdentifier) 
 	{
 		final TextRegion newLocation = new TextRegion( getLocation().getStartingOffset() , newIdentifier.getRawValue().length() );
-		final Label result = new Label( getCompilationUnit() , newLocation , newIdentifier );
+		final Label result = new Label( getCompilationUnit() , newLocation , newIdentifier , getScope() );
+		result.address = this.address;
+		return result;
+	}
+	
+	@Override
+	public ISymbol withScope(ISymbol newScope)
+	{
+		if ( this.getScope() == null && newScope != null ) {
+			throw new IllegalArgumentException("Cannot set scope on global label "+this);
+		}
+		if ( this.getScope() != null && newScope == null ) {
+			throw new IllegalArgumentException("Cannot remove scope from local label "+this);
+		}		
+		final Label result = new Label( getCompilationUnit() , getLocation() , getIdentifier() , newScope );
 		result.address = this.address;
 		return result;
 	}
 	
 	@Override
 	public ISymbol createCopy() {
-		final Label result = new Label( this.getCompilationUnit() , this.getLocation() , this.getIdentifier() );
+		final Label result = new Label( this.getCompilationUnit() , this.getLocation() , this.getIdentifier() , getScope() );
 		result.address = this.address;
 		return result;
 	}

@@ -158,6 +158,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         // set compiler options
         compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
         compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
+        compiler.setCompilerOption(CompilerOption.LOCAL_LABELS_SUPPORTED,true );
         compiler.setCompilerOption( CompilerOption.DISABLE_INLINING,true );
         compiler.setCompilerOption( CompilerOption.GENERATE_DEBUG_INFO ,true );
         

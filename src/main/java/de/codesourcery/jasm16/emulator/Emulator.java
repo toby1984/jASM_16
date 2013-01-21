@@ -685,8 +685,11 @@ public final class Emulator implements IEmulator
 					// adjust execution speed every 10000 cycles
 					// to account for CPU load changes / JIT / different instruction profiles
 					if ( ( cpu.currentCycle % 10000 ) == 0 ) {
-						final double cyclesPerSecond = (cpu.currentCycle-cycleCountAtLastStart) / ( ( System.currentTimeMillis() - lastStart ) / 1000d);
-						adjustmentFactor = ( cyclesPerSecond / 100000.0d ); 
+						final double deltaSeconds = ( System.currentTimeMillis() - lastStart) / 1000d;
+						final double cyclesPerSecond = (cpu.currentCycle-cycleCountAtLastStart) / deltaSeconds;
+						if ( ! Double.isInfinite( cyclesPerSecond ) ) {
+							adjustmentFactor = ( cyclesPerSecond / 100000.0d );
+						}
 					}
 					
 					// delay execution, this code is exactly the same code as the one timed in
@@ -742,13 +745,14 @@ public final class Emulator implements IEmulator
 			
 			if ( cmd.hasType(CommandType.TERMINATE ) ) 
 			{
+				if ( ! terminateCommandReceived.compareAndSet( false , true ) ) {
+					throw new IllegalStateException("Can't process any more commands , worker thread already terminated");					
+				}
+				
 				if ( DEBUG ) {
 					new Exception("[emulator "+emulatorId+"] Received TERMINATE command").printStackTrace();
 				}
-				terminateCommandReceived.set( true );
-			} else if ( terminateCommandReceived.get() ) {
-				throw new IllegalStateException("Can't process any more commands , worker thread already terminated");
-			}
+			} 
 			
 			safePut( cmdQueue , cmd );
 

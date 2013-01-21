@@ -54,15 +54,26 @@ public class Identifier
 outer:        
         for ( ; i < actual.length ; i++ ) 
         {
-            final char got = actual[i];
-            for ( char c : VALID_CHARACTERS ) {
-                if ( got == c ) {
+            final char currentChar = actual[i];
+            for ( char validChar : VALID_CHARACTERS ) {
+                if ( currentChar == validChar ) {
                     continue outer;
                 }
             }
-            throw new ParseException("Found invalid character '"+got+"' in identifier '"+identifier+"'", i , 1);
+            if ( i == 0 && currentChar == '.' ) { // local labels may start with '.'
+            	continue;
+            }
+            throw new ParseException("Found invalid character '"+currentChar+"' in identifier '"+identifier+"'", i , 1);
         }
         this.identifier = identifier;
+    }
+    
+    public boolean isLocalIdentifier() {
+    	return this.identifier.startsWith(".");
+    }
+    
+    public boolean isGlobalIdentifier() {
+    	return ! isLocalIdentifier();
     }
     
     public static boolean isValidIdentifier(String identifier) 
@@ -78,12 +89,15 @@ outer:
 outer:        
         for ( ; i < actual.length ; i++ ) 
         {
-            final char got = actual[i];
-            for ( char c : VALID_CHARACTERS ) {
-                if ( got == c ) {
+            final char currentChar = actual[i];
+            for ( char validChar : VALID_CHARACTERS ) {
+                if ( currentChar == validChar ) {
                     continue outer;
                 }
             }
+            if ( i == 0 && currentChar == '.' ) { // local labels may start with '.'
+            	continue;
+            }            
             return false;
         }
         return true;
@@ -160,5 +174,4 @@ outer:
             throw new ParseException("Reserved keywords (register name) must not be used as identifiers", textRegion );
         } 
     }
-    
 }

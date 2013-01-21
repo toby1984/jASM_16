@@ -52,6 +52,7 @@ import javax.swing.table.AbstractTableModel;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -404,17 +405,20 @@ public class SourceEditorView extends SourceCodeView {
 
 		final ASTNode node = compilationUnit.getAST().getNodeInRange( caretPosition );
 
+		final Identifier scopeOfSymbolToRename;
 		final Identifier symbolToRename;
 		if ( node instanceof LabelNode) 
 		{
 			symbolToRename = ((LabelNode) node).getIdentifier();
+			scopeOfSymbolToRename = ((LabelNode) node).getScope();
 		} else if ( node instanceof SymbolReferenceNode) {
 			symbolToRename = ((SymbolReferenceNode) node).getIdentifier();
+			scopeOfSymbolToRename = ((SymbolReferenceNode) node).getScope();
 		} else {
 			return;
 		}
 
-		final ISymbol oldSymbol = compilationUnit.getSymbolTable().getSymbol( symbolToRename );
+		final ISymbol oldSymbol = compilationUnit.getSymbolTable().getSymbol( symbolToRename , scopeOfSymbolToRename );
 		if ( oldSymbol == null ) {
 			System.out.println("*** Renaming symbols defined in other source files is currently not implemented, sorry. ***");
 			return;
@@ -425,6 +429,7 @@ public class SourceEditorView extends SourceCodeView {
 			return;
 		}
 
+		final Identifier oldScope = oldSymbol.getScope() == null ? null : oldSymbol.getScope().getIdentifier();
 		final Identifier oldIdentifier = oldSymbol.getIdentifier();
 
 		String result = UIUtils.showInputDialog(null, "Please choose a new identifier","Enter a new identifier for '"+oldIdentifier.getRawValue()+"'");
@@ -453,7 +458,8 @@ public class SourceEditorView extends SourceCodeView {
 			{
 				if ( node instanceof LabelNode ) {
 					final LabelNode label = (LabelNode) node;
-					if ( oldIdentifier.equals( label.getIdentifier() ) ) 
+					if ( ObjectUtils.equals( oldIdentifier , label.getIdentifier() ) &&
+						 ObjectUtils.equals( oldScope, label.getScope() ) ) 
 					{
 						nodesRequiringUpdate.add( node );
 					}
@@ -461,7 +467,8 @@ public class SourceEditorView extends SourceCodeView {
 				else if ( node instanceof SymbolReferenceNode) 
 				{
 					final SymbolReferenceNode ref = (SymbolReferenceNode) node;
-					if ( oldIdentifier.equals( ref.getIdentifier() ) ) 
+					if ( ObjectUtils.equals( oldIdentifier , ref.getIdentifier() ) && 
+					     ObjectUtils.equals( oldScope , ref.getScope() ) ) 
 					{
 						nodesRequiringUpdate.add( node );
 					}
@@ -520,13 +527,14 @@ public class SourceEditorView extends SourceCodeView {
 									oldRegion.getLength() );
 
 							replaceText( newRegion , newIdentifier.getRawValue() );
+							
 							((LabelNode) n).setLabel( (Label) newSymbol );
 							n.adjustTextRegion( currentOffsetAdjustment , lengthDelta ); 
 							currentOffsetAdjustment += lengthDelta;
 						} 
 						else if ( n instanceof SymbolReferenceNode) 
 						{
-							((SymbolReferenceNode) n).setIdentifier( newIdentifier );
+							((SymbolReferenceNode) n).setIdentifier( newIdentifier , oldScope );
 
 							final ITextRegion oldRegion = n.getTextRegion();
 							final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,

@@ -51,6 +51,6 @@ public enum TokenType
     UNINITIALIZED_MEMORY_BYTES, // .bss
     INCLUDE_BINARY, // .incbin
     ORIGIN, // .org
-    EQUATION, // .equ
+    EQUATION, // .equ or #define
 	INCLUDE_SOURCE; // .include
 }

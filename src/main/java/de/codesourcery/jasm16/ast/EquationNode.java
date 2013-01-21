@@ -85,7 +85,7 @@ public class EquationNode extends ConstantValueNode implements IPreprocessorDire
 		final ITextRegion region = new TextRegion( context.read( TokenType.EQUATION ) );
 		region.merge( context.read( TokenType.WHITESPACE) );
 		
-		identifier = context.parseIdentifier( region );
+		identifier = context.parseIdentifier( region , false );
 		region.merge( context.read( TokenType.WHITESPACE) );		
 		
 		final ASTNode expr = new ExpressionNode().parseInternal( context );
@@ -98,7 +98,7 @@ public class EquationNode extends ConstantValueNode implements IPreprocessorDire
 		
 		mergeWithAllTokensTextRegion( region );		
 		
-		if ( context.getSymbolTable().containsSymbol( identifier ) ) {
+		if ( context.getSymbolTable().containsSymbol( identifier , null ) ) {
 			context.getCompilationUnit().addMarker(
 				new CompilationError("Duplicate symbol with identifier '"+identifier+"'",
 					context.getCompilationUnit() , expr ) );			

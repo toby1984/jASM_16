@@ -56,7 +56,7 @@ public class EquationNodeTest extends TestHelper {
 
 		ASTUtils.printAST( result );
 		
-		final ISymbol symbol = context.getSymbolTable().getSymbol( new Identifier("value" ) );
+		final ISymbol symbol = context.getSymbolTable().getSymbol( new Identifier("value" ) , null );
 		if ( symbol == null ) {
 			throw new IllegalArgumentException("symbol must not be NULL");
 		}
@@ -77,7 +77,7 @@ public class EquationNodeTest extends TestHelper {
 
 		ASTUtils.printAST( result );
 		
-		final ISymbol symbol = context.getSymbolTable().getSymbol( new Identifier("value" ) );
+		final ISymbol symbol = context.getSymbolTable().getSymbol( new Identifier("value" ) , null );
 		if ( symbol == null ) {
 			throw new IllegalArgumentException("symbol must not be NULL");
 		}
@@ -95,7 +95,7 @@ public class EquationNodeTest extends TestHelper {
 		
 		assertFalse( unit.hasErrors() );
 
-		final ISymbol symbol = symbolTable.getSymbol( new Identifier("value" ) );
+		final ISymbol symbol = symbolTable.getSymbol( new Identifier("value" ) , null );
 		assertNotNull( symbol );
 		assertEquals( Equation.class , symbol.getClass() );
 		assertEquals( Long.valueOf(2) , ((Equation) symbol).getValue( symbolTable ) );

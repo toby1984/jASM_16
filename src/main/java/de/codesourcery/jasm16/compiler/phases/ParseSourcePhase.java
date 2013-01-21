@@ -64,6 +64,10 @@ public class ParseSourcePhase extends CompilerPhase {
 	    
 	    final IParser parser = new Parser(context);
 	    
+	    if ( context.hasCompilerOption( CompilerOption.LOCAL_LABELS_SUPPORTED ) ) {
+	        parser.setParserOption(ParserOption.LOCAL_LABELS_SUPPORTED,true);
+	    }
+	    
 	    if ( context.hasCompilerOption( CompilerOption.DEBUG_MODE ) ) {
 	        parser.setParserOption(ParserOption.DEBUG_MODE,true);
 	    }

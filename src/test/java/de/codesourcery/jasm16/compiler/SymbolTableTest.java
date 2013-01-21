@@ -27,9 +27,9 @@ public class SymbolTableTest extends TestCase {
 		SymbolTable table = new SymbolTable("SymbolTableTest");
 		
 		ICompilationUnit unit = CompilationUnit.createInstance("id" , "test" );
-		Label label = new Label(  unit , new TextRegion(0,4) , new Identifier( "test" ) );
+		Label label = new Label(  unit , new TextRegion(0,4) , new Identifier( "test" ) , null );
 		table.defineSymbol( label );
 		
-		assertTrue( table.containsSymbol( label.getIdentifier() ) );
+		assertTrue( table.containsSymbol( label.getIdentifier() , null ) );
 	}
 }

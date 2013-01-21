@@ -74,8 +74,8 @@ public class IncludeSourceTest extends TestHelper {
 		final ICompilationUnit unit2 = unit1.getDependencies().get(0);
 		assertFalse( unit2.hasErrors() );		
 		
-		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
-		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
+		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) , null ) );
+		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) , null ) ;
 		assertEquals( Address.wordAddress( 0 ) , symbol.getAddress() );		
 	}
 	
@@ -116,8 +116,8 @@ public class IncludeSourceTest extends TestHelper {
 		final ICompilationUnit unit2 = unit1.getDependencies().get(0);
 		assertFalse( unit2.hasErrors() );		
 		
-		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) ) );
-		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) ) ;
+		assertNotNull( symbolTable.containsSymbol( new Identifier("label" ) , null ) );
+		final Label symbol = (Label) symbolTable.getSymbol( new Identifier("label" ) , null  ) ;
 		assertEquals( Address.wordAddress( 0 ) , symbol.getAddress() );		
 	}
 	

@@ -45,7 +45,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 			Identifier identifier,
 			TermNode expression) 
 	{
-		super(unit, location, identifier);
+		super(unit, location, identifier,null);
 		if ( expression == null ) {
 			throw new IllegalArgumentException("expression must not be NULL");
 		}
@@ -55,7 +55,8 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 	@Override
 	public ISymbol createCopy() 
 	{
-		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() , expression == null ? null : (TermNode) expression.createCopy(false) );
+		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() ,
+				expression == null ? null : (TermNode) expression.createCopy(false) );
 	}
 	
 	@Override
@@ -64,6 +65,15 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		final TextRegion newLocation = new TextRegion( getLocation().getStartingOffset() , newIdentifier.getRawValue().length() );
 		return new Equation( getCompilationUnit() , newLocation , newIdentifier , expression );
 	}
+	
+	@Override
+	public ISymbol withScope(ISymbol newScope) 
+	{
+		if ( newScope != null ) {
+			throw new IllegalArgumentException(".equ definitions always have global scope");
+		}
+		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() , expression );
+	}	
 	
 	/**
 	 * Invoked by ASTValidationPhase1 to prevent later
@@ -104,9 +114,10 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		checkCyclicDependencies( id , symbolTable , symbolsSeen );
 	}
 
-	private static void checkCyclicDependencies(final Identifier id,ISymbolTable symbolTable, LinkedHashMap<Identifier, Equation> symbolsSeen) 
+	private static void checkCyclicDependencies(final Identifier id,
+			ISymbolTable symbolTable, LinkedHashMap<Identifier, Equation> symbolsSeen) 
 	{
-		final ISymbol symbol = symbolTable.getSymbol( id );
+		final ISymbol symbol = symbolTable.getSymbol( id , null );
 		if ( symbol instanceof Equation ) 
 		{
 			try {

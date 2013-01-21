@@ -37,6 +37,37 @@ public interface ISymbol {
 	public ISymbol createCopy();
 	
 	/**
+	 * Returns this symbol's scope or <code>null</code> if this is a global symbol.
+	 * 
+	 * @return scope or <code>null</code> if this is a global symbol.
+	 * @see #isLocalSymbol()
+	 * @see #getScopeIdentifier()
+	 */
+	public ISymbol getScope();
+	
+	/**
+	 * For local symbols, returns the global symbol the symbol is attached to.
+	 * 
+	 * @return global symbol name or <code>null</code>
+	 * @see #isLocalSymbol()
+	 */
+	public Identifier getScopeIdentifier();
+	
+	/**
+	 * Returns whether this is a local symbol.
+	 * 
+	 * @return local symbols are defined relative to a {@link #getScope() scope}.
+	 */
+	public boolean isLocalSymbol();
+	
+	/**
+	 * Returns whether this is a local symbol.
+	 * 
+	 * @return global symbols are defined in the top-level scope (NULL)
+	 */	
+	public boolean isGlobalSymbol();
+	
+	/**
 	 * Returns this symbol's unique identifier.
 	 * 
 	 * @return identifier, never <code>null</code>
@@ -65,4 +96,14 @@ public interface ISymbol {
 	 * @see #getIdentifier()
 	 */
 	public ISymbol withIdentifier(Identifier newIdentifier);
+	
+	/**
+	 * Creates a copy of this symbol with a new scope assigned.
+	 * 
+	 * <p>Note that it's not possible to use this method to turn a local
+	 * symbol into a global one or vice versa.</p>
+	 * @param newScope
+	 * @return
+	 */
+	public ISymbol withScope(ISymbol newScope);
 }

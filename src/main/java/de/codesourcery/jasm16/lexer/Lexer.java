@@ -298,7 +298,7 @@ public final class Lexer implements ILexer {
             return ;
         }   
         
-        if ( ".equ".equalsIgnoreCase( buffer ) ) {
+        if ( ".equ".equalsIgnoreCase( buffer ) || "#define".equalsIgnoreCase(buffer) ) {
             currentTokens.add( new Token(TokenType.EQUATION , buffer , startIndex ) );
             return ;            
         }        

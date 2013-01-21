@@ -57,7 +57,7 @@ public class ASTValidationPhase1 extends CompilerPhase {
         	public void visit(SymbolReferenceNode node, IIterationContext context) 
         	{
                 final Identifier id = node.getIdentifier();
-                if ( ! compContext.getSymbolTable().containsSymbol( id ) ) {
+                if ( ! compContext.getSymbolTable().containsSymbol( id , node.getScope() ) ) {
                     unit.addMarker( new CompilationError("Unknown identifier '"+id+"'", unit, node ) );
                 } 
                	Equation.checkCyclicDependencies(id,compContext.getSymbolTable());

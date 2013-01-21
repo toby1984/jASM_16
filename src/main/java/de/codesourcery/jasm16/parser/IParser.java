@@ -34,7 +34,7 @@ public interface IParser
     public enum ParserOption {
         DEBUG_MODE,
         RELAXED_PARSING,
-		NO_SOURCE_INCLUDE_PROCESSING; 
+		NO_SOURCE_INCLUDE_PROCESSING, LOCAL_LABELS_SUPPORTED; 
     }
     
     /**

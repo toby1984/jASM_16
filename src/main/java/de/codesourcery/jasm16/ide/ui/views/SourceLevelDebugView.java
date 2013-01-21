@@ -171,15 +171,18 @@ public class SourceLevelDebugView extends SourceCodeView
             if ( n != null && ( n instanceof SymbolReferenceNode || n instanceof LabelNode) ) 
             {
             	final Identifier identifier;
+            	final Identifier scope;
             	if ( n instanceof SymbolReferenceNode) {
             	    identifier = ((SymbolReferenceNode) n).getIdentifier();
+            	    scope = ((SymbolReferenceNode) n).getScope();            	    
             	} else {
                     identifier = ((LabelNode) n).getIdentifier();
+                    scope = ((LabelNode) n).getScope();
             	}
             	
-            	ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier );
+            	ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier , scope );
             	if ( symbol == null && currentUnit.getSymbolTable().getParent() != null ) {
-            	    symbol = currentUnit.getSymbolTable().getParent().getSymbol( identifier );
+            	    symbol = currentUnit.getSymbolTable().getParent().getSymbol( identifier , scope );
             	}
             	
             	if ( symbol != null && symbol instanceof Label) 
