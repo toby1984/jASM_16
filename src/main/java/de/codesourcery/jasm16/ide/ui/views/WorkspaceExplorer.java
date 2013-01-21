@@ -463,6 +463,9 @@ public class WorkspaceExplorer extends AbstractView {
 				}
 			});		
 
+			if ( project.getProjectBuilder() == null ) {
+				throw new RuntimeException("Internal error, project "+project.getName()+" has no builder ??");
+			}
 			final IResource executable = project.getProjectBuilder().getExecutable();
 			if ( executable != null ) 
 			{
