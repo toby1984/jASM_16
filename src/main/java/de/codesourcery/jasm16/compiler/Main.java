@@ -71,6 +71,7 @@ public class Main {
     private boolean relaxedParsing = false;
     private boolean relaxedValidation = false;
     private boolean disableLiteralInlining = false;
+    private boolean enableLocalLabelSupport = false;
     
     public static void main(String[] args) throws Exception 
     {
@@ -196,6 +197,10 @@ public class Main {
             		ICompilerPhase.PHASE_GENERATE_CODE );
         }
         
+        if ( enableLocalLabelSupport ) {
+        	compiler.setCompilerOption( CompilerOption.LOCAL_LABELS_SUPPORTED, true );
+        }
+        
         if ( printStackTraces ) {
             compiler.setCompilerOption( CompilerOption.DEBUG_MODE , true );
         }
@@ -295,7 +300,9 @@ public class Main {
             this.verboseOutput = true ;
             
             arguments.pop();
-            
+        } else if ( "--local-labels".equalsIgnoreCase( option ) ) {
+            this.enableLocalLabelSupport = true;
+            arguments.pop();            
         } else if ( "--relaxed-validation".equalsIgnoreCase( option ) ) {
             this.relaxedValidation = true;
             arguments.pop();
@@ -341,11 +348,12 @@ public class Main {
                 "-d or --debug               => print debug output\n"+
                 "--print                     => print formatted source code along with hex dump of generated assembly\n"+
                 "--print-symbols             => print symbol table\n"+
+                "--local-labels              => treat identifiers starting with a dot ('.') as local labels\n"+
                 "--disable-literal-inlining  => disable inlining of literals -1 ... 30\n"+
                 "--dump                      => instead of writing generated object code to a file, write a hexdump to std out\n"+
                 "--relaxed-parsing           => relaxed parsing (instructions are parsed case-insensitive)\n"+
                 "--relaxed-validation        => out-of-range values only cause a warning)\n"+                
-                "-v or --verbose             => print slightly more verbose output during compilation\n\n";
+                "-v or --verbose             => print more verbose output during compilation\n\n";
         System.out.println( usage );		
     }
 
