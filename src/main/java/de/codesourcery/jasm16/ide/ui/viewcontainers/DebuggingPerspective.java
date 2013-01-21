@@ -193,7 +193,7 @@ public class DebuggingPerspective extends Perspective
     public DebuggingPerspective(IWorkspace workspace , ViewContainerManager viewContainerManager,
             IApplicationConfig appConfig)
     {
-        super(ID, appConfig);
+        super(ID, viewContainerManager , appConfig);
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }

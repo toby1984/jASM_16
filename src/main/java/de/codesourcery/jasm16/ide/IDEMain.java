@@ -64,11 +64,12 @@ public class IDEMain
 		
 		workspace.open();
 		
+		// TODO: Remove creation of sample project
 		createSampleProject( "sample-project" );
-		
-		final Perspective desktop = new Perspective( "desktop" , appConfig );
-		
+
 		viewContainerManager = new ViewContainerManager(workspace,appConfig);
+		
+		final Perspective desktop = new Perspective( "desktop" , viewContainerManager , appConfig );
 		
 		EditorFactory editorFactory = new EditorFactory( workspace , viewContainerManager );
 		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , editorFactory ) );

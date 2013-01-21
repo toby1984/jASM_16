@@ -79,6 +79,7 @@ public class ApplicationConfig implements IApplicationConfig {
 		boolean success = false;
 		if ( configFile.exists() ) 
 		{
+			LOG.info("loadConfig(): Loading application configuration");
 			try {
 				final Properties props = loadPropertiesFile( configFile );
 				for ( String key : props.stringPropertyNames() ) {
@@ -135,6 +136,9 @@ public class ApplicationConfig implements IApplicationConfig {
 	public void saveConfiguration() throws IOException {
 
 		final Properties props = new Properties();
+		
+		LOG.info("saveConfiguration(): Saving application config.");
+		
 		for ( Map.Entry<String,String> keyValue : configProperties.entrySet() ) {
 			props.put( keyValue.getKey() , keyValue.getValue() );
 		}

@@ -20,39 +20,31 @@ import java.awt.Point;
 
 public class SizeAndLocation 
 {
-	private Point location;
-	private Dimension dimension;
+	private final Point location;
+	private final Dimension dimension;
 	
-	public SizeAndLocation(Point location, Dimension dimension) {
-		this.location = location;
-		this.dimension = dimension;
+	public SizeAndLocation(Point location, Dimension dimension) 
+	{
+		if ( location == null ) {
+			throw new IllegalArgumentException("location must not be null");
+		}
+		if ( dimension == null ) {
+			throw new IllegalArgumentException("dimension must not be null");
+		}
+		this.location = new Point( location );
+		this.dimension = new Dimension( dimension );
 	}
 	
 	public Point getLocation() {
-		return location;
+		return new Point(location);
 	}
 	
 	public Dimension getSize() {
-		return dimension;
-	}
-	
-	public void setSize(Dimension dimension) {
-		if (dimension == null) {
-			throw new IllegalArgumentException("dimension must not be null");
-		}
-		this.dimension = dimension;
-	}
-	
-	public void setLocation(Point location) {
-		if (location == null) {
-			throw new IllegalArgumentException("location must not be null");
-		}
-		this.location = location;
+		return new Dimension(dimension);
 	}
 	
 	@Override
 	public String toString() {
 		return "x="+location.x+",y="+location.y+",width="+dimension.width+",height="+dimension.height;
 	}
-	
 }

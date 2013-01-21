@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +58,8 @@ public class Perspective extends JFrame implements IViewContainer {
 
     private final ViewContainerHelper helper = new ViewContainerHelper();
 
+    private final ViewContainerManager viewContainerManager;
+    
     private final IApplicationConfig applicationConfig;
 
     private final MenuManager menuManager = new MenuManager() {
@@ -123,10 +124,14 @@ public class Perspective extends JFrame implements IViewContainer {
         }
     }
 
-    public Perspective(String id , IApplicationConfig appConfig) 
+    public Perspective(String id , final ViewContainerManager viewContainerManager , IApplicationConfig appConfig) 
     {
         super("jASM16 DCPU emulator V"+de.codesourcery.jasm16.compiler.Compiler.getVersionNumber() );
 
+        if ( viewContainerManager == null ) {
+			throw new IllegalArgumentException("viewContainerManager must not be null");
+		}
+        
         if (appConfig == null) {
             throw new IllegalArgumentException("appConfig must not be null");
         }
@@ -135,6 +140,7 @@ public class Perspective extends JFrame implements IViewContainer {
             throw new IllegalArgumentException("ID must not be NULL/blank.");
         }
 
+        this.viewContainerManager = viewContainerManager;
         this.id = id;
         this.applicationConfig = appConfig;
         setPreferredSize( new Dimension(400,200 ) );
@@ -142,8 +148,10 @@ public class Perspective extends JFrame implements IViewContainer {
 
         addWindowListener( new WindowAdapter() {
 
-            public void windowClosing(java.awt.event.WindowEvent e) {
-                dispose();
+            public void windowClosing(java.awt.event.WindowEvent e) 
+            {
+            	viewContainerManager.disposeAllExcept( Perspective.this );
+            	dispose();
             };
         } );
 
@@ -160,7 +168,14 @@ public class Perspective extends JFrame implements IViewContainer {
             @Override
             public void onClick() 
             {
-                System.exit(0);
+            	dispose();
+            	try {
+            		applicationConfig.saveConfiguration();
+            	} catch (IOException e) {
+            		e.printStackTrace();
+				} finally {
+            		System.exit(0);
+            	}
             }
 
         } );		
@@ -190,82 +205,6 @@ public class Perspective extends JFrame implements IViewContainer {
                 return;
             }
         }
-    }
-
-    //	protected SizeAndLocation findLargestFreeSpace() {
-    //	
-    //		final Dimension maxSize = desktop.getSize();
-    //		
-    //		if ( views.isEmpty() ) {
-    //			return new SizeAndLocation( new Point(0,0) , maxSize );
-    //		}
-    //		
-    //		/*
-    //		 * +-----+
-    //		 * |     |
-    //		 * |     |
-    //		 * +-----+    
-    //		 */
-    //		final List<InternalFrameWithView > existing = new ArrayList<InternalFrameWithView>( views );
-    //		final Comparator<InternalFrameWithView> comparator = new Comparator<InternalFrameWithView>() 
-    //		{
-    //			
-    //			@Override
-    //			public int compare(InternalFrameWithView o1, InternalFrameWithView o2) 
-    //			{
-    //				final Point loc1 = o1.frame.getLocation();
-    //				final Point loc2 = o2.frame.getLocation();
-    //				
-    //				if ( loc1.y <= loc2.y )
-    //				{
-    //					return Integer.valueOf( loc1.x ).compareTo( loc2.x );
-    //				}
-    //				return 1;
-    //			}
-    //		};
-    //		
-    //		Collections.sort( existing , comparator );
-    //		
-    //		Rectangle rect = new Rectangle(0,0,400,400);
-    //		
-    //		for (Iterator<InternalFrameWithView> it = existing.iterator(); it.hasNext();) 
-    //		{
-    //			final InternalFrameWithView thisFrame =  it.next();
-    //			if ( ! it.hasNext() ) 
-    //			{
-    //				final int x1 = thisFrame.frame.getSize().width;
-    //				final int y1 = (int) thisFrame.frame.getLocation().getY();
-    //				final int width = 200;
-    //				final int height = 200;
-    //				Rectangle result = new Rectange( x1,y1,width,height );
-    //				if ( isFullyVisible( result ) ) {
-    //					return new SizeAndLocation( result );
-    //				}
-    //			}
-    //			final InternalFrameWithView nextFrame =  it.next();
-    //			if ( thisFrame.frame.getLocation().getY() < nextFrame.frame.getLocation().getY() ) {
-    //				final Rectangle bounds = new Rectangle( new Point( 0 , 0 ) , frameAndView.frame.getSize() );
-    //			}
-    //		}
-    //	}
-
-    @SuppressWarnings("unused")
-    private boolean isFullyVisible(Rectangle rect) 
-    {
-        final int x1 = (int) rect.getX();
-        final int y1 = (int) rect.getY();
-
-        final int x2 = (int) rect.getMaxX();
-        final int y2 = (int) rect.getMaxY();
-
-        if ( x1 < desktop.getBounds().getX() || y1 < desktop.getBounds().y ) {
-            return false;
-        }
-
-        if ( x2 > desktop.getBounds().getMaxX() || y2 > desktop.getBounds().getMaxY() ) {
-            return false;
-        }
-        return true;
     }
 
     @Override

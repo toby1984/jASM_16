@@ -41,6 +41,20 @@ public class ViewContainerManager implements IViewContainerListener
     	this.applicationConfig = applicationConfig;
     }
     
+    public void disposeAllExcept(IViewContainer container) {
+    	
+    	List<IViewContainer> toClose;
+        synchronized(containers) 
+        {
+        	toClose = new ArrayList<>( this.containers );
+        }
+        for ( IViewContainer c : toClose ) {
+        	if ( c != container ) {
+        		c.dispose();
+        	}
+        }
+    }
+    
     public void addViewContainer(Perspective p) 
     {
         if (p == null) {
