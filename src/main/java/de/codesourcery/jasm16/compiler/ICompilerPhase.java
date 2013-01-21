@@ -82,6 +82,7 @@ public interface ICompilerPhase
      * @return <code>true</code> if compilation should continue
      */
     public boolean execute(List<ICompilationUnit> units, 
+            DebugInfo debugInfo,
     		IParentSymbolTable globalSymbolTable , 
     		IObjectCodeWriterFactory writerFactory, 
     		ICompilationListener listener, 

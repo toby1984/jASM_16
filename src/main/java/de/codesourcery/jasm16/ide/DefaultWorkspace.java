@@ -48,7 +48,7 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class DefaultWorkspace implements IWorkspace
 {
-	private static final boolean DEBUG_EVENTS = false;
+	private static final boolean DEBUG_EVENTS = true;
 	
 	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
 
@@ -156,7 +156,7 @@ public class DefaultWorkspace implements IWorkspace
 				public void invoke(IResourceListener listener) 
 				{
 				    if ( listener instanceof IWorkspaceListener) {
-				        ((IWorkspaceListener) listener).projectOpened( p );
+				        ((IWorkspaceListener) listener).projectLoaded( p );
 				    }
 				}
 				@Override
@@ -697,8 +697,9 @@ public class DefaultWorkspace implements IWorkspace
 		try {
 			getWorkspaceConfig().projectClosed( project );
 			getWorkspaceConfig().saveConfiguration();
-		} catch (IOException e) {
-			LOG.error("closeProject(): Failed to update workspace configuration");
+		} 
+		catch (IOException e) {
+			LOG.error("closeProject(): Failed to update workspace configuration",e);
 		}
 		
 		// nothing to do here since IAssemblyProject

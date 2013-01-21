@@ -26,9 +26,9 @@ import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.IASTNodeVisitor;
 import de.codesourcery.jasm16.ast.IIterationContext;
-import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.DebugInfo;
 import de.codesourcery.jasm16.compiler.GenericCompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
@@ -55,13 +55,15 @@ public class CodeGenerationPhase extends CompilerPhase {
     }
 
     @Override
-    public boolean execute(List<ICompilationUnit> units, IParentSymbolTable symbolTable,
+    public boolean execute(List<ICompilationUnit> units,
+            DebugInfo debugInfo,
+            IParentSymbolTable symbolTable,
             IObjectCodeWriterFactory writerFactory, ICompilationListener listener, 
             IResourceResolver resourceResolver, 
             Set<CompilerOption> options, ICompilationUnitResolver compUnitResolver)
     {
         try {
-            return super.execute(units, symbolTable, writerFactory, listener, resourceResolver, options, compUnitResolver);
+            return super.execute(units, debugInfo,symbolTable, writerFactory, listener, resourceResolver, options, compUnitResolver);
         } 
         finally 
         {
@@ -128,16 +130,6 @@ public class CodeGenerationPhase extends CompilerPhase {
                             context.stop();
                             return;
                         }
-                    }
-                    
-                    if ( n instanceof IncludeSourceFileNode) 
-                    {
-                    	// already added as a separate compilation unit
-                    	// by IncludeSourceFileNode , do not process AST here
-                    	// otherwise we'll generate duplicate object code
-                    	context.dontGoDeeper();
-                    } else {
-                    	context.continueTraversal();
                     }
                 }
             };

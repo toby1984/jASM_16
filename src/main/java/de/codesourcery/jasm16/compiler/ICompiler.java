@@ -85,7 +85,13 @@ public interface ICompiler
 		 * <p>Generating relocation information automatically implies {@link #DISABLE_INLINING}.</p>
 		 * @see ICompilationUnit#getRelocationTable()
 		 */
-		GENERATE_RELOCATION_INFORMATION;
+		GENERATE_RELOCATION_INFORMATION,
+		/**
+		 * Whether debug information should be generated.
+		 * @see DebugInfo
+		 * @see Executable#getDebugInfo()
+		 */
+		GENERATE_DEBUG_INFO;
 	}
 	
 	/**
@@ -131,9 +137,9 @@ public interface ICompiler
      * @see #setCompilationOrderProvider(ICompilationOrderProvider)
      * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
      */	
-    public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) ;
+    public DebugInfo compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) ;
     
-    public void compile(final List<ICompilationUnit> unitsToCompile,
+    public DebugInfo compile(final List<ICompilationUnit> unitsToCompile,
     		IParentSymbolTable parentSymbolTable , 
     		ICompilationListener listener,
     		IResourceMatcher resourceMatcher);
@@ -146,7 +152,7 @@ public interface ICompiler
      * by the current {@link ICompilationOrderProvider}.</p>
      * 	 
 	 * @param unitsToCompile compilation units to (re-)compile
-	 * @param otherUnits already compiled compilation units that may be required to compile <code>units</code>. 
+	 * @param dependencies already compiled compilation units that may be required to compile <code>units</code>. 
 	 * @param parentSymbolTable Symbol table used to keep track of symbol definitions across multiple compilation-unit , will be populated
 	 * during compilation. Pass <code>null</code> to create a new instance on-the-fly.
 	 * 
@@ -156,8 +162,8 @@ public interface ICompiler
 	 * @see #setCompilationOrderProvider(ICompilationOrderProvider)
 	 * @throws UnknownCompilationOrderException if the compiler's {@link ICompilationOrderProvider} failed to determine the compilation order
 	 */
-	public void compile(List<ICompilationUnit> unitsToCompile,
-			final List<ICompilationUnit> otherUnits,
+	public DebugInfo compile(List<ICompilationUnit> unitsToCompile,
+			final List<ICompilationUnit> dependencies,
 			IParentSymbolTable parentSymbolTable , 
 			ICompilationListener listener,
 			IResourceMatcher resourceMatcher) throws UnknownCompilationOrderException;

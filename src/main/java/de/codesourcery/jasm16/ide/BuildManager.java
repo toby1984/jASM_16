@@ -9,7 +9,6 @@ import de.codesourcery.jasm16.compiler.io.IResource;
 
 public class BuildManager implements IBuildManager , IWorkspaceListener
 {
-    @SuppressWarnings("unused")
 	private final IWorkspace workspace;
     
     private final IdentityHashMap<IAssemblyProject,IProjectBuilder> builders = new IdentityHashMap<>();
@@ -56,9 +55,12 @@ public class BuildManager implements IBuildManager , IWorkspaceListener
     }
     
     @Override
+    public void projectLoaded(IAssemblyProject project)
+    {
+    }
+    @Override
     public void projectOpened(IAssemblyProject project)
     {
-        System.out.println("BUILD-MANAGER: Project opened: "+project);
     }
 
     public void projectDisposed(IAssemblyProject project) 

@@ -41,6 +41,11 @@ public class WorkspaceListener implements IWorkspaceListener {
 	}
 
 	@Override
+	public void projectLoaded(IAssemblyProject project)
+	{
+	}
+	
+	@Override
 	public void projectDeleted(IAssemblyProject project) {
 	}
 

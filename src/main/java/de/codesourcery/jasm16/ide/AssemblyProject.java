@@ -85,7 +85,10 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
     	{
     		@Override
     		protected ResourceType determineResourceType(File file) {
-    			return getConfiguration().isSourceFile( file ) ? ResourceType.SOURCE_CODE : ResourceType.UNKNOWN;
+    			if ( getConfiguration().isSourceFile( file ) ) {
+    			    return ResourceType.SOURCE_CODE;
+    			}
+    			return ResourceType.UNKNOWN;
     		}
     		
     		@Override
@@ -496,7 +499,6 @@ public class AssemblyProject extends WorkspaceListener implements IAssemblyProje
             this.isOpen = true;
         }
     }
-    
 
 	@Override
 	public void projectConfigurationChanged(IAssemblyProject project) {

@@ -17,8 +17,13 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.IASTNodeVisitor;
+import de.codesourcery.jasm16.ast.IIterationContext;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -53,7 +58,7 @@ public class ParseSourcePhase extends CompilerPhase {
     }
 
 	@Override
-    protected void run(ICompilationUnit unit , ICompilationContext context) throws IOException
+    protected void run(final ICompilationUnit unit , ICompilationContext context) throws IOException
     {
 	    LOG.info("run():PARSING: "+unit);
 	    
@@ -68,6 +73,34 @@ public class ParseSourcePhase extends CompilerPhase {
 	    if ( context.hasCompilerOption( CompilerOption.NO_SOURCE_INCLUDE_PROCESSING ) ) {
 	    	parser.setParserOption(ParserOption.NO_SOURCE_INCLUDE_PROCESSING ,true );
 	    }
-        unit.setAST( parser.parse( context ) );                
+	    
+        unit.setAST( parser.parse( context ) );
+        
+        // TODO: Performance - remove check once debugging is finished
+        
+        if ( ! unit.hasErrors() ) { 
+            
+            final boolean[] linesPrinted = {false};
+            
+            final IASTNodeVisitor<ASTNode> visitor = new IASTNodeVisitor<ASTNode>() {
+                
+                @Override
+                public void visit(ASTNode n, IIterationContext context)
+                {
+                    try {
+                        unit.getSourceLocation( n.getTextRegion() );
+                    } catch(Exception e) 
+                    {
+                        System.err.println("[ "+e.getMessage()+" ] Invalid text location "+
+                                n.getTextRegion()+" on node "+n.getClass().getName()+" ("+n+") in compilation unit "+unit.getResource());
+                        if ( ! linesPrinted[0] ) {
+                            linesPrinted[0] = true;
+                            unit.dumpSourceLines();
+                        }
+                    }
+                }
+            };
+            ASTUtils.visitPostOrder( unit.getAST() , visitor );
+        }
     }
 }

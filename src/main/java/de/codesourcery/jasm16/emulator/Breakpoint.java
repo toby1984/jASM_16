@@ -171,7 +171,7 @@ public class Breakpoint
 		final String expanded = substitutePlaceholders( emulator , trimmed.toString() );
 		
 		final TermNode expression = parseCondition( expanded );
-		final Long value = expression.calculate( new SymbolTable() );
+		final Long value = expression.calculate( new SymbolTable("calculateConditionValue(IEmulator)") );
 		if ( value == null ) {
 			throw new ParseException("Failed to evaluate condition '"+expanded+"'",0,expanded.length());
 		}
@@ -303,7 +303,7 @@ public class Breakpoint
 	{
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , 
 				new StringResource( "dummy", condition , ResourceType.UNKNOWN ) );
-		final ISymbolTable symbolTable = new SymbolTable();
+		final ISymbolTable symbolTable = new SymbolTable("parseCondition(String) in IEmulator");
 		final ILexer lexer = new Lexer( new Scanner( condition ) );
 		final IResourceResolver resourceResolver=new FileResourceResolver() {
 

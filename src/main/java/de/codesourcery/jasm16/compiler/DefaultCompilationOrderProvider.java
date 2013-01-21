@@ -56,11 +56,6 @@ public class DefaultCompilationOrderProvider implements ICompilationOrderProvide
                 } else if ( o1.getObjectCodeStartingAddress().isGreaterThan( o2.getObjectCodeStartingAddress() ) ) {
                     return 1;
                 }
-//                for ( DependencyNode n : rootSet ) {
-//                    System.out.println("------------ Ambigous: "+n);
-//                    System.out.println( toDOT( n.getCompilationUnit().getResource().getIdentifier() , n ) );
-//                }
-//                System.out.println("------------");
                 throw new AmbigousCompilationOrderException("Unable to determine compilation order,ambigous root set:"+rootSet, rootSet);
             }
         } );

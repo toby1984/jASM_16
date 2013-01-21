@@ -81,7 +81,7 @@ public class Parser implements IParser
                 throw new UnsupportedOperationException("Not implemented"); 
             }
         };
-        return parse(  unit , new SymbolTable() , source , resolver );
+        return parse(  unit , new SymbolTable("Parser#parse()") , source , resolver );
     }
 
     protected AST parse(final ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver) 

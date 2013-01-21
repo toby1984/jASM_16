@@ -232,4 +232,7 @@ public interface ICompilationUnit {
      * @return
      */
     public List<ICompilationUnit> getDependencies();
+    
+    // TODO: Used for debugging only, remove one done !!!
+    public void dumpSourceLines();
 }

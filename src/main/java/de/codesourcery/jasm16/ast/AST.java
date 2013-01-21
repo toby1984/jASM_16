@@ -30,7 +30,6 @@ import de.codesourcery.jasm16.utils.Line;
  */
 public class AST extends ASTNode 
 {
-
 	@Override
 	protected ASTNode copySingleNode() {
 		return new AST();

@@ -15,7 +15,9 @@ import org.apache.commons.io.IOUtils;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.ByteAddress;
 import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.Size.SizeInBytes;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
@@ -86,10 +88,13 @@ public class Linker
      * @return
      * @throws IOException
      */
-    public Executable link(List<CompiledCode> objectFiles,final File outputFile,boolean createSelfRelocatingCode,boolean rewriteLabelAddresses) throws IOException 
+    public Executable link(List<CompiledCode> objectFiles,
+            DebugInfo debugInfo,
+            final File outputFile,
+            boolean createSelfRelocatingCode,
+            boolean rewriteLabelAddresses) throws IOException 
     {
         final FileResource executable = new FileResource( outputFile , ResourceType.EXECUTABLE );
-        final Map<AddressRange,ICompilationUnit> sourceCode = new HashMap<>();
         
         final OutputStream out = executable.createOutputStream( true );
         try 
@@ -145,14 +150,14 @@ public class Linker
                     IOUtils.closeQuietly( in );
                 }
                	final AddressRange range = new AddressRange( Address.byteAddress( currentOffset ) , Size.bytes( bytesWritten ) );
-               	sourceCode.put( range , r.getCompilationUnit() );
                	
                 currentOffset += bytesWritten;
             }
             
             if ( createSelfRelocatingCode && rewriteLabelAddresses ) {
                 
-                final Size size = combined.getBinarySize().plus( Size.bytes( SELFRELOCATION_CODE.length ) );
+                final SizeInBytes offset = Size.bytes( SELFRELOCATION_CODE.length );
+                final Size size = combined.getBinarySize().plus( offset );
                 
                 for ( CompiledCode r : objectFiles ) 
                 {
@@ -182,19 +187,14 @@ public class Linker
                         }
                     }
                     
-                    final Map<AddressRange,ICompilationUnit> tmpMap = new HashMap<>();
-                    for ( Map.Entry<AddressRange,ICompilationUnit> entry : sourceCode.entrySet() ) {
-                    	tmpMap.put( entry.getKey().addOffset( size ) , entry.getValue() );
-                    }
-                    sourceCode.clear();
-                    sourceCode.putAll( tmpMap );
+                    debugInfo.relocate( Address.byteAddress( offset.getSizeInBytes() ) );
                 }                
             }
             
         } finally {
             IOUtils.closeQuietly( out );
         }
-        return new Executable(outputFile.getAbsolutePath()) {
+        return new Executable(outputFile.getAbsolutePath(),debugInfo) {
 			
 			@Override
 			public OutputStream createOutputStream(boolean append) throws IOException {
@@ -204,11 +204,6 @@ public class Linker
 			@Override
 			public InputStream createInputStream() throws IOException {
 				return new FileInputStream( outputFile );
-			}
-			
-			@Override
-			protected Map<AddressRange, ICompilationUnit> getCompilationUnits() {
-				return sourceCode;
 			}
 		};
     }

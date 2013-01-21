@@ -93,6 +93,7 @@ import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Severity;
 import de.codesourcery.jasm16.compiler.SourceLocation;
@@ -101,8 +102,8 @@ import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -1274,21 +1275,34 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 					gotoToSymbolDefinition( ref );
 				}
 			}
-		};
+		}
 	};
 
 	protected final void gotoToSymbolDefinition(SymbolReferenceNode ref) 
 	{
 		Identifier identifier = ref.getIdentifier();
-		if ( getCurrentCompilationUnit() != null ) {
-			final ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
-			if ( table.containsSymbol( identifier ) ) {
-				final ITextRegion location = table.getSymbol( identifier ).getLocation();
-				gotoLocation( location.getStartingOffset() );
-			} else {
-				// TODO: navigate to labels in other source files as well...
+		if ( getCurrentCompilationUnit() != null ) 
+		{
+			ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
+			ISymbol symbol = table.getSymbol( identifier );
+			if ( symbol == null && table.getParent() != null ) {
+			    symbol = table.getParent().getSymbol( identifier );
 			}
+			if ( symbol != null ) 
+			{
+			    if ( isCurrentCompilationUnit( symbol.getCompilationUnit() ) ) {
+			        final ITextRegion location = table.getSymbol( identifier ).getLocation();
+			        gotoLocation( location.getStartingOffset() );
+			    } else {
+			        // TODO: Add support for navigating to symbols in other sourcecode files once proper forward/backwards navigation history has been implemented
+			        System.err.println("NOT IMPLEMENTED: Navigating to symbol '"+identifier+"' in different compilation unit "+symbol.getCompilationUnit().getResource());
+			    }
+			} 
 		}
+	}
+	
+	private boolean isCurrentCompilationUnit(ICompilationUnit unit) {
+	    return unit.getResource().getIdentifier().equals( compilationUnit.getResource().getIdentifier() );
 	}
 
 	private final JPanel createPanel() 
@@ -1591,7 +1605,8 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 		editorPane.add( menu );
 	}
 
-	protected final ASTNode getASTNodeForLocation(Point p) {
+	protected final ASTNode getASTNodeForLocation(Point p) 
+	{
 		final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
 		if ( ast == null ) {
 			return null;
@@ -1599,7 +1614,7 @@ public class SourceCodeView extends AbstractView implements IEditorView {
 
 		int offset = editorPane.viewToModel( p );
 		if ( offset != -1 ) {
-			return ast.getNodeInRange( offset );
+			return ast.getNodeInRange( offset , true );
 		}
 		return null;
 	}

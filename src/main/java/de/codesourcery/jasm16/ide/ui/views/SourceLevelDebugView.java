@@ -22,7 +22,6 @@ import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,6 @@ import javax.swing.text.DefaultHighlighter;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
@@ -46,9 +44,12 @@ import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.Equation;
+import de.codesourcery.jasm16.compiler.Executable;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.Breakpoint;
@@ -57,7 +58,6 @@ import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
-import de.codesourcery.jasm16.ide.IProjectBuilder;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
@@ -141,8 +141,7 @@ public class SourceLevelDebugView extends SourceCodeView
                 public void run() {
                     scrollToVisible( emulator.getCPU().getPC() , true ,true);  
                 }
-            } );
-                   
+            });
         }
     };
     
@@ -177,7 +176,12 @@ public class SourceLevelDebugView extends SourceCodeView
             	} else {
                     identifier = ((LabelNode) n).getIdentifier();
             	}
-            	final ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier );
+            	
+            	ISymbol symbol = currentUnit.getSymbolTable().getSymbol( identifier );
+            	if ( symbol == null && currentUnit.getSymbolTable().getParent() != null ) {
+            	    symbol = currentUnit.getSymbolTable().getParent().getSymbol( identifier );
+            	}
+            	
             	if ( symbol != null && symbol instanceof Label) 
             	{
                 	final Address dumpStartAddress = ((Label) symbol).getAddress();
@@ -189,9 +193,15 @@ public class SourceLevelDebugView extends SourceCodeView
             				bytes, bytes.length ,  WORDS_TO_SHOW , true , true );
             		
             		showTooltip( tooltip );
-            	} else if ( symbol != null && symbol instanceof Equation ) {
+            	} 
+            	else if ( symbol != null && symbol instanceof Equation ) 
+            	{
             	    Equation eq = (Equation) symbol;
-            	    Long value = eq.getValue( currentUnit.getSymbolTable() );
+            	    ISymbolTable table = currentUnit.getSymbolTable();
+            	    if ( table.getParent() != null ) {
+            	        table = table.getParent();
+            	    }
+            	    Long value = eq.getValue( table );
             	    if ( value != null ) 
             	    {
             	        if ( value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) {
@@ -371,49 +381,47 @@ public class SourceLevelDebugView extends SourceCodeView
             this.currentProject = perspective.getCurrentProject();
         }
         
-        final ICompilationUnit unit = getCompilationUnitForAddress( address );
-        if ( unit == null ) {
+        final Executable executable = this.currentProject.getProjectBuilder().getExecutable();
+        if ( executable == null ) {
+            return false;
+        }
+        
+        final SourceLocation loc = executable.getDebugInfo().getSourceLocation( address );
+        if ( loc == null ) {
             System.out.println("Found no source for address "+address);
             return false;
         }
         
-        final StatementNode node = getStatementNodeForAddress( unit , address );
-        if ( node != null ) 
+        if ( updateParentView || this.currentUnit == null ||
+             ! DefaultResourceMatcher.INSTANCE.isSame( this.currentUnit.getResource() , loc.getCompilationUnit().getResource() ) ) 
         {
-            if ( updateParentView || this.currentUnit == null || ! DefaultResourceMatcher.INSTANCE.isSame( this.currentUnit.getResource() , unit.getResource() ) ) 
-            {
-                switchToCompilationUnit( perspective.getCurrentProject() , unit );
-                highlightBreakpoints();
-            }
-            
-            final ITextRegion region = node.getTextRegion();
-            
-            // scroll to current location
-            gotoLocation( region.getStartingOffset() );
-            
-            if ( highlight ) 
-            {
-                // highlight location
-                try 
-                {            
-                    if ( currentHighlight == null ) 
-                    {
-                        currentHighlight = getHighlighter().addHighlight( 
-                                region.getStartingOffset() , 
-                                region.getEndOffset() , 
-                                new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
-                    } else {
-                        getHighlighter().changeHighlight( currentHighlight ,
-                                region.getStartingOffset() ,
-                                region.getEndOffset() );
-                    }
-                    return true;
-                } catch (BadLocationException e) {
-                    LOG.error("refreshDisplayHook(): ",e);
-                }      
-            }
-        } else {
-            System.out.println("Failed to locate AST node for address "+address);
+            switchToCompilationUnit( perspective.getCurrentProject() , loc.getCompilationUnit() );
+            highlightBreakpoints();
+        }
+        
+        // scroll to current location
+        gotoLocation( loc.getStartingOffset() );
+        
+        if ( highlight ) 
+        {
+            // highlight location
+            try 
+            {            
+                if ( currentHighlight == null ) 
+                {
+                    currentHighlight = getHighlighter().addHighlight( 
+                            loc.getStartingOffset() , 
+                            loc.getEndOffset() , 
+                            new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
+                } else {
+                    getHighlighter().changeHighlight( currentHighlight ,
+                            loc.getStartingOffset() ,
+                            loc.getEndOffset() );
+                }
+                return true;
+            } catch (BadLocationException e) {
+                LOG.error("refreshDisplayHook(): ",e);
+            }      
         }
         return false;
     }
@@ -535,12 +543,6 @@ public class SourceLevelDebugView extends SourceCodeView
         ASTUtils.visitInOrder( unit.getAST() , visitor );
         return result[0];
     }    
-    
-    private ICompilationUnit getCompilationUnitForAddress(Address address) 
-    {
-        LOG.debug("getCompilationUnitForAddress(): Looking for compilation unit at "+address);
-        return this.currentProject.getProjectBuilder().getExecutable().getCompilationUnitFor( address );
-    }
     
     @Override
     public String getTitle()

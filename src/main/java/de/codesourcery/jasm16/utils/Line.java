@@ -82,6 +82,6 @@ public class Line
     
     @Override
     public String toString() {
-    	return "line "+lineNumber;
+    	return "line "+lineNumber+" (start: "+lineStartingOffset+")";
     }
 }

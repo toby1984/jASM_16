@@ -42,6 +42,7 @@ public class CompilationContext implements ICompilationContext {
     private final ICompilationUnitResolver compilationUnitResolver;
     private final IResourceResolver resourceResolver;
     private final Set<CompilerOption> options= new HashSet<CompilerOption>();
+    private final DebugInfo debugInfo = new DebugInfo();
     
     public CompilationContext(ICompilationUnit unit,
     		IParentSymbolTable symbolTable,
@@ -89,6 +90,12 @@ public class CompilationContext implements ICompilationContext {
 		this.currentUnit = currentUnit;
 		this.compilationUnitResolver = compilationUnitResolver;
 		this.options.addAll( options );
+	}
+	
+	@Override
+	public DebugInfo getDebugInfo()
+	{
+	    return debugInfo;
 	}
 	
 	@Override

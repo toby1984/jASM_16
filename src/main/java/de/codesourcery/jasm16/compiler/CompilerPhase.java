@@ -39,7 +39,6 @@ public abstract class CompilerPhase implements ICompilerPhase {
 	private static final Logger LOG = Logger.getLogger( CompilerPhase.class );
 	
     private final String name;
-
 	private boolean stopAfterExecution;
 
     public CompilerPhase(String name) 
@@ -85,7 +84,8 @@ public abstract class CompilerPhase implements ICompilerPhase {
     }
 
     @Override
-    public boolean execute(List<ICompilationUnit> units, 
+    public boolean execute(List<ICompilationUnit> units,
+            DebugInfo debugInfo,
     		IParentSymbolTable globalSymbolTable, 
     		IObjectCodeWriterFactory writerFactory , 
     		ICompilationListener listener, 
@@ -113,8 +113,7 @@ public abstract class CompilerPhase implements ICompilerPhase {
         	
             try 
             {
-                final ICompilationContext context =
-                		createCompilationContext( units ,  globalSymbolTable, writerFactory , resourceResolver , options , compUnitResolver , unit );
+                final ICompilationContext context = createCompilationContext( units ,  globalSymbolTable, writerFactory , resourceResolver , options , compUnitResolver , unit );
                 		
                 run( unit , context );
                 if ( hasErrors( units ) ) 

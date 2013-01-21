@@ -35,7 +35,6 @@ import de.codesourcery.jasm16.utils.TextRegion;
 
 public class FoldExpressionsPhaseTest extends TestHelper
 {
-	
 	protected final class MyResolver implements ICompilationUnitResolver {
 
 		private final ICompilationUnit unit;
@@ -78,7 +77,7 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertFalse( unit.hasErrors() );
         assertNotNull( unit.getAST() );
         
-        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , 
+        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , debugInfo,
         		symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit) );
         
         System.out.println("----------------------------");
@@ -98,7 +97,7 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertFalse( unit.hasErrors() );
         assertNotNull( unit.getAST() );
         
-        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
+        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , debugInfo,symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
         
         ASTUtils.printAST( ast , source );
         
@@ -138,7 +137,7 @@ public class FoldExpressionsPhaseTest extends TestHelper
         
         ASTUtils.printAST( ast , source );
         
-        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
+        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , debugInfo,symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
         
         assertEquals(StatementNode.class ,             ast.child(0).getClass() );
         assertEquals(InstructionNode.class ,           ast.child(0).child(0).getClass() );
@@ -174,7 +173,7 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertFalse( unit.hasErrors() );
         assertNotNull( unit.getAST() );
         
-        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
+        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , debugInfo,symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
         ASTUtils.printAST( ast );
         
         assertEquals(StatementNode.class ,             ast.child(0).getClass() );
@@ -207,7 +206,7 @@ public class FoldExpressionsPhaseTest extends TestHelper
         assertFalse( unit.hasErrors() );
         assertNotNull( unit.getAST() );
         
-        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
+        new FoldExpressionsPhase().execute( Collections.singletonList( unit ) , debugInfo,symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
         ASTUtils.printAST( ast );
         
         assertEquals(StatementNode.class ,             ast.child(0).getClass() );

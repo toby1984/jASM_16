@@ -115,23 +115,23 @@ public class Compiler implements ICompiler {
 	}
 
 	@Override
-	public void compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
+	public DebugInfo compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
 	{
-		compile( unitsToCompile , new ArrayList<ICompilationUnit>() , new ParentSymbolTable() , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
+		return compile( unitsToCompile , new ArrayList<ICompilationUnit>() , new ParentSymbolTable() , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
 	}
 
 	@Override
-	public void compile(final List<ICompilationUnit> unitsToCompile,
+	public DebugInfo compile(final List<ICompilationUnit> unitsToCompile,
 			IParentSymbolTable parentSymbolTable , 
 			ICompilationListener listener,
 			IResourceMatcher resourceMatcher) 
 	{
-		compile(unitsToCompile,new ArrayList<ICompilationUnit>() , parentSymbolTable , listener , resourceMatcher );
+		return compile(unitsToCompile,new ArrayList<ICompilationUnit>() , parentSymbolTable , listener , resourceMatcher );
 	}
 
 	@Override
-	public void compile(final List<ICompilationUnit> unitsToCompile,
-			final List<ICompilationUnit> otherUnits,
+	public DebugInfo compile(final List<ICompilationUnit> unitsToCompile,
+			final List<ICompilationUnit> dependencies,
 			IParentSymbolTable parentSymbolTable , 
 			ICompilationListener listener,
 			IResourceMatcher resourceMatcher) 
@@ -142,20 +142,20 @@ public class Compiler implements ICompiler {
 		System.out.println("----------- COMPILING ------------");
 		System.out.println("----------------------------------");
 		
-		System.out.println("Compiling "+StringUtils.join( unitsToCompile , "\n" ) );
+		System.out.println( StringUtils.join( unitsToCompile , "\n" ) );
 		
 		System.out.println("-------------------------------------");
 		System.out.println("----------- DEPENDENCIES ------------");
 		System.out.println("-------------------------------------");
 		
-		System.out.println("Compiling "+StringUtils.join( otherUnits, "\n" ) );
+		System.out.println( StringUtils.join( dependencies, "\n" ) );
 
 		// sanity check for duplicate compilation units
 		// or compilation units that are in both unitsToCompile
 		// and otherUnits
 		for ( ICompilationUnit u1 : unitsToCompile ) 
 		{
-			for ( ICompilationUnit u2 : otherUnits) 
+			for ( ICompilationUnit u2 : dependencies) 
 			{
 				if ( u1 == u2 || resourceMatcher.isSame( u1.getResource(), u2.getResource() ) ) {
 					throw new IllegalArgumentException("ICompilationUnit for "+u1.getResource()+" must not be present in both lists, unitsToCompile and otherUnits");
@@ -175,12 +175,12 @@ public class Compiler implements ICompiler {
 			}
 		}
 
-		for ( int i = 0 ; i < otherUnits.size() ; i++ ) 
+		for ( int i = 0 ; i < dependencies.size() ; i++ ) 
 		{
-			final ICompilationUnit unit1 = otherUnits.get(i);
-			for ( int j = 0 ; j < otherUnits.size() ; j++ )
+			final ICompilationUnit unit1 = dependencies.get(i);
+			for ( int j = 0 ; j < dependencies.size() ; j++ )
 			{
-				final ICompilationUnit unit2 = otherUnits.get(j);
+				final ICompilationUnit unit2 = dependencies.get(j);
 				if ( j != i && ( unit1 == unit2 || resourceMatcher.isSame( unit1.getResource() , unit2.getResource() ) ) ) {
 					throw new IllegalArgumentException("Duplicate compilation unit "+unit1+" in otherUnits");
 				}
@@ -209,6 +209,8 @@ public class Compiler implements ICompiler {
 		catch (ResourceNotFoundException e1) {
 			throw new UnknownCompilationOrderException( e1.getMessage(), e1);
 		}
+		
+		final DebugInfo debugInfo = new DebugInfo();
 
 		// notify listeners of compilation start
 		final ICompilerPhase firstPhase = compilerPhases.isEmpty() ? null : compilerPhases.get(0);
@@ -236,8 +238,9 @@ public class Compiler implements ICompiler {
 			// the compilation phases.
 			// Whenever a - previously unseen - include is being processed
 			// , a new ICompilationUnit may be added to this copy
-			final List<ICompilationUnit> copy = new ArrayList<ICompilationUnit>(unitsInCompilationOrder);
-			final ICompilationUnitResolver compUnitResolver = createCompilationUnitResolver( copy , otherUnits );
+			final List<ICompilationUnit> unitsToProcess = new ArrayList<ICompilationUnit>(unitsInCompilationOrder);
+			
+			final ICompilationUnitResolver compUnitResolver = createCompilationUnitResolver( unitsToProcess , dependencies , parentSymbolTable );
 
 			for ( ICompilerPhase phase : compilerPhases ) 
 			{
@@ -247,7 +250,8 @@ public class Compiler implements ICompiler {
 				boolean success = false;
 				try {
 					success = phase.execute( 
-							copy ,
+					        unitsInCompilationOrder ,
+					        debugInfo,
 							globalSymbolTable ,  
 							writerFactory , 
 							listener, 
@@ -268,7 +272,7 @@ public class Compiler implements ICompiler {
 					}
 				}
 				if ( ! success || phase.isStopAfterExecution() ) {
-					return;
+					return debugInfo;
 				}
 			}
 		} 
@@ -281,15 +285,18 @@ public class Compiler implements ICompiler {
 				{
 					try {
 						Misc.printCompilationErrors( unit , unit.getResource(), true );
-					} catch (Exception e) {
-					}
+					} 
+					catch (Exception e) { }
 				}
 			}
 		}
+		return debugInfo;
 	}
 
-	protected ICompilationUnitResolver createCompilationUnitResolver(final List<ICompilationUnit> unitsToCompile,
-			final List<ICompilationUnit> otherUnits) 
+	protected ICompilationUnitResolver createCompilationUnitResolver(
+	        final List<ICompilationUnit> unitsToCompile,
+	        final List<ICompilationUnit> otherUnits,
+	        final IParentSymbolTable parentSymbolTable) 
 	{
 		final ICompilationUnitResolver unitResolver = new ICompilationUnitResolver() 
 		{
@@ -302,6 +309,9 @@ public class Compiler implements ICompiler {
 				}
 
 				result = CompilationUnit.createInstance( resource.getIdentifier() , resource );
+
+				result.getSymbolTable().setParent( parentSymbolTable );
+				
 				System.out.println("Creating new ICompilationUnit - did not find "+resource+" in "+unitsToCompile+" NOR "+otherUnits);
 
 				// !!!! the next call actually modifies the method's input argument....
@@ -310,15 +320,14 @@ public class Compiler implements ICompiler {
 			}
 
 			@Override
-			public ICompilationUnit getCompilationUnit(IResource resource)
-					throws IOException 
-					{
+			public ICompilationUnit getCompilationUnit(IResource resource) throws IOException 
+			{
 				ICompilationUnit result = findCompilationUnit( resource , unitsToCompile );
 				if ( result == null ) {
 					result = findCompilationUnit( resource , otherUnits );
 				}
 				return result;
-					}
+			}
 
 			private ICompilationUnit findCompilationUnit(IResource resource,List<ICompilationUnit> units) 
 			{

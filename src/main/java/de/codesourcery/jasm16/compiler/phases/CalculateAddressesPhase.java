@@ -19,19 +19,24 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.Stack;
 
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.ByteAddress;
 import de.codesourcery.jasm16.ISymbolAware;
+import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
-import de.codesourcery.jasm16.ast.IASTNodeVisitor;
-import de.codesourcery.jasm16.ast.IIterationContext;
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.DebugInfo;
 import de.codesourcery.jasm16.compiler.GenericCompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
@@ -41,7 +46,9 @@ import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.IParentSymbolTable;
 import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.SourceLocation;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
+import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
 /**
@@ -58,12 +65,13 @@ public class CalculateAddressesPhase extends CompilerPhase {
     }
 
     @Override
-    public boolean execute(List<ICompilationUnit> units, 
+    public boolean execute(final List<ICompilationUnit> units, 
+            final DebugInfo debugInfo,
             final IParentSymbolTable symbolTable , 
-            IObjectCodeWriterFactory writerFactory , 
-            ICompilationListener listener, 
-            IResourceResolver resourceResolver, 
-            Set<CompilerOption> options, ICompilationUnitResolver compUnitResolver)
+            final IObjectCodeWriterFactory writerFactory , 
+            final ICompilationListener listener, 
+            final IResourceResolver resourceResolver, 
+            final Set<CompilerOption> options, final ICompilationUnitResolver compUnitResolver)
     {
 
         /*
@@ -79,22 +87,40 @@ public class CalculateAddressesPhase extends CompilerPhase {
          * values can or cannot be inlined into the instruction itself)
          */
         final Map<String,Long> sizeByCompilationUnit = new HashMap<String,Long>(); 
+        
+        final DebugInfo debugInfoToUpdate = options.contains(CompilerOption.GENERATE_DEBUG_INFO) ? debugInfo : null;
+        
+        final ICompilationContextFactory factory = new ICompilationContextFactory() {
+
+            @Override
+            public ICompilationContext createContext(ICompilationUnit unit)
+            {
+                return createCompilationContext(units, symbolTable, writerFactory, resourceResolver, options,compUnitResolver,unit);               
+            }
+            
+        };        
         boolean sizeIsStable;
-        do {
+        do 
+        {
             sizeIsStable = true;
+            if ( debugInfoToUpdate != null ) {
+                debugInfoToUpdate.clear();
+            }
+            
+            Address currentOffset = ByteAddress.ZERO;
             for ( final ICompilationUnit unit : units ) 
             {
                 if ( unit.getAST() == null ) 
                 {
                     continue;
                 }
-                final ICompilationContext context = createCompilationContext(units,
-                        symbolTable, writerFactory, resourceResolver, options,
-                        compUnitResolver,
-                        unit); 				
-                final Address startingOffset = unit.getObjectCodeStartOffset();            
-                final long newSizeInBytes = assignAddresses( context , startingOffset);
+                final ICompilationContext context = factory.createContext( unit );
+                
+                final long newSizeInBytes = assignAddresses( context , unit , debugInfoToUpdate , currentOffset , factory );
+//                System.out.println("Objectcode size for "+unit.getResource()+" is now: "+newSizeInBytes+" bytes");
+                
                 Long oldSizeInBytes = sizeByCompilationUnit.get( unit.getIdentifier() );
+                
                 if ( oldSizeInBytes == null ) {
                     sizeByCompilationUnit.put( unit.getIdentifier() , newSizeInBytes );
                     sizeIsStable = false;
@@ -104,76 +130,238 @@ public class CalculateAddressesPhase extends CompilerPhase {
                         sizeIsStable = false;
                     }
                 }
+                currentOffset = currentOffset.plus( Size.bytes( (int) newSizeInBytes ) , false );
             }
         } while ( ! sizeIsStable );
         return true;
     }
-
-    private long assignAddresses(final ICompilationContext compContext,Address startingOffset) 
-    {
-        final long[] currentSize = { startingOffset.getValue() };
-
-        final ICompilationUnit unit = compContext.getCurrentCompilationUnit();
-
-        final IASTNodeVisitor<ASTNode> visitor = new IASTNodeVisitor<ASTNode>() {
-
-            @Override
-            public void visit(ASTNode n,IIterationContext ctx) 
-            {
-                try {
-                    internalVisit( n , ctx );
-                } catch(RuntimeException e) {
-                    LOG.error("visit(): Failed to assign addresses to "+n+" at "+unit+" ( "+n.getTextRegion()+") ");
-                    throw e;
-                }
-            }
-            public void internalVisit(ASTNode n,IIterationContext ctx) 
-            {
-                if ( n instanceof LabelNode) 
-                {
-                    final Label symbol = ((LabelNode) n).getLabel();
-                    if ( symbol != null )
-                    {
-                        long byteAddress = currentSize[0];
-                        int wordAddress = (int) (byteAddress >> 1);
-                        if ( ( wordAddress << 1 ) != byteAddress ) {
-                            throw new RuntimeException("Internal error, address of label "+symbol+" is "+
-                                    byteAddress+" which is not on a 16-bit boundary?");
-                        }
-                        symbol.setAddress( Address.wordAddress( wordAddress ) );
-                    }
-                } 
-                else if ( n instanceof ObjectCodeOutputNode) 
-                {
-                    final ObjectCodeOutputNode outputNode = (ObjectCodeOutputNode) n;
-
-                    if ( n instanceof ISymbolAware ) {
-                        outputNode.symbolsResolved( compContext );
-                    }
-
-                    final int sizeInBytes = outputNode.getSizeInBytes(currentSize[0]);
-                    if ( sizeInBytes != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
-                    {
-                        currentSize[0] += sizeInBytes;
-                    }
-                } else if ( n instanceof ISymbolAware ) {
-                    ((ISymbolAware) n).symbolsResolved( compContext );
-                }
-            }
-        };   
-
-        try {
-            ASTUtils.visitPostOrder( unit.getAST() , visitor );
-        } 
-        catch(Exception e) {
-            unit.addMarker( 
-                    new GenericCompilationError( "Internal compiler error during phase '"+getName()+
-                            "' : "+e.getMessage() ,unit,e ) );
-            LOG.error("execute(): Caught while handling "+unit,e);
-        }
-        return currentSize[0];
+    
+    protected interface ICompilationContextFactory {
+        
+        public ICompilationContext createContext(ICompilationUnit unit);
     }
 
+    private int assignAddresses(final ICompilationContext compContext,
+            final ICompilationUnit currentUnit,
+            final DebugInfo debugInfo , 
+            final Address startingOffset,
+            final ICompilationContextFactory contextFactory) 
+    {
+        final MyVisitor first = new MyVisitor(compContext,currentUnit,debugInfo,startingOffset);
+        
+        final FancyVisitor visitor = new FancyVisitor() {
+            
+            protected MyVisitor current;
+            
+            private final Stack<MyVisitor> stack = new Stack<MyVisitor>() {
+                @Override
+                public MyVisitor push(MyVisitor item)
+                {
+                    final MyVisitor result = super.push(item);
+                    current = item;
+                    return result;
+                }
+                
+                @Override
+                public synchronized MyVisitor pop()
+                {
+                    MyVisitor result = super.pop();
+                    current = peek();
+                    return result;
+                }
+            };
+            
+            {
+                stack.push(first);
+            }
+            
+            @Override
+            public void visit(ASTNode node)
+            {
+                current.visit( node );
+            }
+            
+            @Override
+            public void beforeDescent(ASTNode node)
+            {
+                if ( node instanceof IncludeSourceFileNode) 
+                {
+                    final IResource resource = ((IncludeSourceFileNode) node).getResource();
+                    final ICompilationUnit newUnit;
+                    try {
+                        newUnit = compContext.getCompilationUnit( resource );
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    if ( newUnit == null ) {
+                        throw new RuntimeException("Failed to locate compilation unit for resource "+resource );
+                    }
+                    
+                    final ICompilationContext newContext = contextFactory.createContext( newUnit );
+                    
+                    stack.push( new MyVisitor(newContext, newUnit , debugInfo , Address.byteAddress( stack.peek().getCurrentByteOffset() ) ) );                    
+                }
+            }
+            
+            @Override
+            public void afterDescent(ASTNode node)
+            {
+                if ( node instanceof IncludeSourceFileNode) {
+                    MyVisitor previous = stack.pop();
+                    stack.peek().incOffset( previous.getSizeInBytes() );
+                }
+            }
+        };
+        
+        visitPostOrder( currentUnit.getAST() , visitor );
+        
+        return first.getSizeInBytes();
+    }
+    
+    protected final class MyVisitor implements FancyVisitor  
+    {
+        private long currentByteOffset;
+        private final ICompilationUnit currentUnit;
+        private final DebugInfo debugInfo;
+        private final Address startingOffset;
+        private final ICompilationContext compContext;
+        
+        public MyVisitor(final ICompilationContext compContext,
+                final ICompilationUnit currentUnit,
+                final DebugInfo debugInfo , Address startingOffset) 
+        {
+            this.compContext = compContext;
+            this.startingOffset = startingOffset;
+            this.currentByteOffset = startingOffset.getByteAddressValue();
+            this.debugInfo = debugInfo;
+            this.currentUnit = currentUnit;
+        }
+        
+        public int getSizeInBytes() {
+            return (int) (currentByteOffset - startingOffset.getByteAddressValue());
+        }
+        
+        public void incOffset(int bytes) {
+            currentByteOffset+=bytes;
+        }
+        
+        public long getCurrentByteOffset()
+        {
+            return currentByteOffset;
+        }
+        
+        @Override
+        public void visit(ASTNode n) 
+        {
+            try {
+                internalVisit( n );
+            } catch(RuntimeException e) {
+                LOG.error("visit(): Failed to assign addresses to "+n+" at "+currentUnit+" ( "+n.getTextRegion()+") ");
+                throw e;
+            }
+        }
+        
+        public void internalVisit(ASTNode n) 
+        {
+            // System.out.println("---> [ "+currentUnit.getResource()+"] visiting "+n.getClass().getSimpleName()+" ("+n+")");
+            
+            if ( n instanceof IncludeSourceFileNode ) 
+            {
+                // already handled by parent visitor
+            }
+            else if ( n instanceof LabelNode) 
+            {
+                final Label symbol = ((LabelNode) n).getLabel();
+                if ( symbol != null )
+                {
+                    long byteAddress = currentByteOffset;
+                    int wordAddress = (int) (byteAddress >> 1);
+                    if ( ( wordAddress << 1 ) != byteAddress ) {
+                        throw new RuntimeException("Internal error, address of label "+symbol+" is "+
+                                byteAddress+" which is not on a 16-bit boundary?");
+                    }
+                    final WordAddress labelAddress = Address.wordAddress( wordAddress ) ;
+//                    System.out.println("Assigning "+labelAddress+" to label "+symbol.getIdentifier() );
+                    symbol.setAddress( labelAddress );
+                }
+            } 
+            else if ( n instanceof ObjectCodeOutputNode) 
+            {
+                final ObjectCodeOutputNode outputNode = (ObjectCodeOutputNode) n;
+
+                if ( n instanceof ISymbolAware ) {
+                    outputNode.symbolsResolved( compContext );
+                }
+
+                if ( debugInfo != null && compContext.hasCompilerOption( CompilerOption.GENERATE_DEBUG_INFO ) ) 
+                {
+                    final long byteAddress = currentByteOffset;
+                    final int wordAddress = (int) (byteAddress >> 1);
+                    if ( ( wordAddress << 1 ) != byteAddress ) {
+                        throw new RuntimeException("Internal error, address of instruction "+outputNode+" is "+
+                                byteAddress+" which is not on a 16-bit boundary?");
+                    }
+                    final WordAddress address = Address.wordAddress( wordAddress ) ;
+                    SourceLocation sourceLocation = null;
+                    try {
+                        sourceLocation = currentUnit.getSourceLocation( outputNode.getTextRegion() );
+                    } 
+                    catch(NoSuchElementException e) {
+                        final String msg = "Failed to find source location for node "+outputNode+" with "+outputNode.getTextRegion();
+                        final NoSuchElementException ex = new NoSuchElementException( msg );
+                        throw ex;
+                    }
+                    debugInfo.addSourceLocation( address, sourceLocation ); 
+                }
+                
+                final int sizeInBytes = outputNode.getSizeInBytes( currentByteOffset );
+                if ( sizeInBytes != ObjectCodeOutputNode.UNKNOWN_SIZE ) 
+                {
+                    currentByteOffset += sizeInBytes;
+                }
+            } else if ( n instanceof ISymbolAware ) {
+                ((ISymbolAware) n).symbolsResolved( compContext );
+            }
+        }
+
+        @Override
+        public void beforeDescent(ASTNode node)
+        {
+        }
+
+        @Override
+        public void afterDescent(ASTNode node)
+        {
+        }
+    }    
+
+    protected interface FancyVisitor {
+        
+        public void beforeDescent(ASTNode node);
+        
+        public void visit(ASTNode node);
+        
+        public void afterDescent(ASTNode node);        
+    }
+    
+    private static void visitPostOrder(ASTNode node,FancyVisitor visitor) 
+    {
+        visitPostOrder( node ,0 , visitor );
+    }      
+    
+    private static void visitPostOrder(ASTNode node, int depth , FancyVisitor visitor) 
+    {
+        int currentDepth = depth;
+        for ( ASTNode child : node.getChildren() ) 
+        {
+            visitor.beforeDescent( child );
+            visitPostOrder( child , currentDepth+1, visitor );
+            visitor.afterDescent( child );
+        }
+        
+        visitor.visit( node );
+    }      
+    
     @Override
     protected void run(ICompilationUnit unit, ICompilationContext context)
             throws IOException {

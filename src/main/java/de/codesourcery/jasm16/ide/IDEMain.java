@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import de.codesourcery.jasm16.compiler.Linker;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
@@ -50,7 +51,10 @@ public class IDEMain
     
     public IDEMain() throws IOException, ProjectAlreadyExistsException
     {
+        new Linker();
+        
     	final File appConfigFile = new File( Misc.getUserHomeDirectory() , ApplicationConfig.FILE_NAME );
+    	
 		final IApplicationConfig appConfig = new ApplicationConfig( appConfigFile );
 		
 		workspace = new DefaultWorkspace( appConfig );

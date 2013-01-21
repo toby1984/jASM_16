@@ -242,10 +242,14 @@ public class WorkspaceExplorer extends AbstractView {
 					{
 						final ProjectNode projectNode = (ProjectNode) value;
 						final IAssemblyProject project = projectNode.getValue();
-
-						label = project.getName();
-						if ( projectNode.hasCompilationErrors() ) {
-							color = Color.RED;
+                        label = project.getName();
+                        
+						if ( project.isClosed() ) {
+						    color = Color.LIGHT_GRAY;
+						} else {
+						    if ( projectNode.hasCompilationErrors() ) {
+						        color = Color.RED;
+						    }
 						}
 					} 
 					else if ( value instanceof FileNode) 
@@ -272,6 +276,7 @@ public class WorkspaceExplorer extends AbstractView {
 								{
 									color = Color.RED;
 								} 
+								break;
 							default:
 								// ok
 						}
@@ -390,16 +395,43 @@ public class WorkspaceExplorer extends AbstractView {
 	{
 		tree.addMouseListener( new PopupListener() );
 	}
+	
+	private void openAllProjects() 
+	{
+        for ( IAssemblyProject p : workspace.getAllProjects() ) {
+            if ( p.isClosed() ) {
+                workspace.openProject( p );
+            }
+        }
+	}
+	
+    private void closeAllProjects() 
+    {
+        for ( IAssemblyProject p : workspace.getAllProjects() ) {
+            if ( p.isOpen() ) {
+                workspace.closeProject( p );
+            }
+        }        
+    }	
 
 	protected JPopupMenu createPopupMenu(final WorkspaceTreeNode selectedNode) 
 	{
 		final JPopupMenu popup = new JPopupMenu();
 
+		int openProjects = 0;
+		int closedProjects = 0;
+        for ( IAssemblyProject p : workspace.getAllProjects() ) {
+            if ( p.isOpen() ) {
+                openProjects++;
+            } else {
+                closedProjects++;
+            }
+        }
+        
 		// open debugger
 		final IAssemblyProject project = getProject( selectedNode );
 		if ( project != null ) 
 		{
-
 			if ( project.isOpen() ) {
 				addMenuEntry( popup , "Close project", new ActionListener() {
 
@@ -448,7 +480,6 @@ public class WorkspaceExplorer extends AbstractView {
 					}
 				}); 	
 			}
-
 		}
 
 		if ( canCreateFileIn( selectedNode ) ) {
@@ -567,6 +598,26 @@ public class WorkspaceExplorer extends AbstractView {
 
 			});     		
 		}
+		
+        if ( closedProjects > 0 ) {
+            addMenuEntry( popup , "Open ALL projects", new ActionListener() {
+
+                  @Override
+                  public void actionPerformed(ActionEvent e) {
+                      openAllProjects();
+                  }
+              }); 
+      }
+        
+        if ( openProjects > 0 ) {
+              addMenuEntry( popup , "Close ALL projects", new ActionListener() {
+
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        closeAllProjects();
+                    }
+                }); 
+        }		
 		return popup;
 	}	
 
@@ -787,14 +838,16 @@ public class WorkspaceExplorer extends AbstractView {
 						final boolean oldFlag = fn.hasCompilationErrors();
 	
 						fn.refresh();
-						if ( fn.hasCompilationErrors() ) 
+						
+						ICompilationUnit unit;
+						if ( fn.hasCompilationErrors() && ( unit = fn.getCompilationUnit() ) != null ) 
 						{
-							ICompilationUnit unit = fn.getCompilationUnit();
-							System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors()+" [ resource = "+unit.getResource()+" ]");
-							try {
+							try {					
+							    System.out.println("File "+fn.getValue()+" has compilation errors = "+fn.hasCompilationErrors()+" [ resource = "+unit.getResource()+" ]");
 								Misc.printCompilationErrors( unit , unit.getResource() , true );
 							} catch (Exception e) {
-								System.err.println( "printCompilationErrors() failed: "+e.getMessage() );
+							    System.err.println( "printCompilationErrors() failed: "+e.getMessage() );							    
+							    e.printStackTrace();
 							}
 						}
 						if ( oldFlag != fn.hasCompilationErrors() || fn == child ) 
@@ -1067,6 +1120,12 @@ public class WorkspaceExplorer extends AbstractView {
 				fireTreeNodesRemoved( this , node.getPathToRoot() , indices , 
 						formerChildren.toArray( new Object[ formerChildren.size() ] ) );
 			}
+		}
+		
+		@Override
+		public void projectLoaded(IAssemblyProject project)
+		{
+		    projectOpened(project);
 		}
 
 		@Override

@@ -33,15 +33,17 @@ public class SymbolTable implements ISymbolTable {
 
 	private final Map<Identifier,ISymbol> symbols = new HashMap<Identifier,ISymbol>();
 
+	private final String debugIdentifier;
 	private IParentSymbolTable parent;
 	
-	public SymbolTable() {
+	public SymbolTable(String debugIdentifier) {
+	    this.debugIdentifier = debugIdentifier;
 	}
 	
 	@Override
 	public ISymbolTable createCopy() 
 	{
-		SymbolTable result = new SymbolTable();
+		SymbolTable result = new SymbolTable(this.debugIdentifier);
 		for ( Map.Entry<Identifier,ISymbol> entry : symbols.entrySet() ) {
 			result.symbols.put( entry.getKey() , entry.getValue().createCopy() );
 		}
@@ -107,16 +109,18 @@ public class SymbolTable implements ISymbolTable {
 	@Override
 	public String toString() 
 	{
-		StringBuilder result = new StringBuilder();
-		for ( Identifier key : symbols.keySet() ) 
-		{
-			result.append("      "+key+" => "+symbols.get( key ) ).append("\n");
-		}
-		return result.toString();
+	    return "SymbolTable{"+debugIdentifier+"}";
+//		StringBuilder result = new StringBuilder("SymbolTable{"+debugIdentifier+"}\n");
+//		for ( Identifier key : symbols.keySet() ) 
+//		{
+//			result.append("      "+key+" => "+symbols.get( key ) ).append("\n");
+//		}
+//		return result.toString();
 	}
 
 	@Override
 	public void clear() {
+	    new Exception("---------- symbol table cleared -----------").printStackTrace();
 		symbols.clear();
 	}
 

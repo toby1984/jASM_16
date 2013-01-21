@@ -33,6 +33,12 @@ public class ParentSymbolTable implements IParentSymbolTable
     }
     
     @Override
+    public String toString()
+    {
+        return "ParentSymbolTable";
+    }
+    
+    @Override
     public ISymbol getSymbol(Identifier identifier)
     {
     	final ISymbolTable table = findSymbolTable( identifier );

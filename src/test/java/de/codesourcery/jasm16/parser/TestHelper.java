@@ -33,6 +33,7 @@ import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.Compiler;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.DebugInfo;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -41,13 +42,11 @@ import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
 import de.codesourcery.jasm16.compiler.IParentSymbolTable;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
 import de.codesourcery.jasm16.compiler.ParentSymbolTable;
 import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
 import de.codesourcery.jasm16.compiler.io.ByteArrayObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
@@ -65,6 +64,8 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 {
     protected IParentSymbolTable symbolTable;
  
+    protected DebugInfo debugInfo;
+    
     protected static final Set<CompilerOption> OPTIONS = Collections.singleton( CompilerOption.DEBUG_MODE );
     
     protected static final IResourceResolver RESOURCE_RESOLVER = new IResourceResolver() {
@@ -116,6 +117,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     @Override
     protected void setUp() throws Exception
     {
+        debugInfo = new DebugInfo();
         symbolTable = new ParentSymbolTable();
     }
     
@@ -330,6 +332,12 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 			{
 				return null;
 			}
+
+            @Override
+            public DebugInfo getDebugInfo()
+            {
+                return debugInfo;
+            }
 		};
         if ( node instanceof ObjectCodeOutputNode ) 
         {

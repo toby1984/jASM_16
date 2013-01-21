@@ -3,18 +3,11 @@ package de.codesourcery.jasm16.ide;
 import static de.codesourcery.jasm16.compiler.ICompiler.CompilerOption.GENERATE_RELOCATION_INFORMATION;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -24,11 +17,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.CompiledCode;
 import de.codesourcery.jasm16.compiler.Compiler;
+import de.codesourcery.jasm16.compiler.DebugInfo;
 import de.codesourcery.jasm16.compiler.Executable;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationListener;
@@ -118,13 +111,15 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
 
         final List<ICompilationUnit> toCompile = new ArrayList<>();
+        
         final ICompilationUnit result = CompilationUnit.createInstance( source.getIdentifier() , source );
         
         toCompile.add( result );
         
         final List<ICompilationUnit> dependencies = new ArrayList<>( getCompilationUnits() );
 
-        for ( int i =0 ; i < dependencies.size() ; i++ ) {
+        for ( int i =0 ; i < dependencies.size() ; i++ ) 
+        {
             final ICompilationUnit unit  = dependencies.get(i);
             if ( unit.getResource().getIdentifier().equals( source.getIdentifier() ) ) 
             {
@@ -161,9 +156,11 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         final ICompiler compiler = new Compiler();
 
         // set compiler options
-//        compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
+        compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
         compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
-       
+        compiler.setCompilerOption( CompilerOption.DISABLE_INLINING,true );
+        compiler.setCompilerOption( CompilerOption.GENERATE_DEBUG_INFO ,true );
+        
         if ( getConfiguration().getBuildOptions().isGenerateSelfRelocatingCode() ) {
             compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
         }
@@ -365,12 +362,28 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             clean();
 
             // compile stuff
-            final List<ICompilationUnit> units  = getCompilationUnitsForExecutable();
+            List<ICompilationUnit> units  = getCompilationUnits();
             if ( units.isEmpty() ) {
             	return true; // => return 'success' immediately
             }
-            final boolean link = units.size() == 1 || containsCompilationRoot( units );
-            buildSuccessful = build( units , listener , link );
+            if ( units.size() > 1 ) 
+            {
+                File root =  getConfiguration().getCompilationRoot() ; 
+                if ( root == null ) {
+                    throw new IllegalArgumentException("Please set the compilation root on project "+project.getName());
+                }
+                for (Iterator<ICompilationUnit> it = units.iterator(); it.hasNext();) {
+                    final ICompilationUnit unit = it.next();
+                    if ( ! unit.getResource().getIdentifier().equals( root.getAbsolutePath() ) ) {
+                        it.remove();
+                    }
+                }
+                if ( units.isEmpty() ) {
+                    throw new RuntimeException("Internal error, Failed to find resource for compilation root "+root.getAbsolutePath()+" in project "+project.getName());
+                }
+            }  
+            
+            buildSuccessful = build( units , listener );
         } 
         catch (ResourceNotFoundException e) {
         	LOG.error("build(): Caught ",e);
@@ -395,7 +408,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     	return false;
     }
 
-    private boolean build(List<ICompilationUnit> compilationUnits,ICompilationListener listener,boolean link) throws IOException 
+    private boolean build(List<ICompilationUnit> compilationUnits,ICompilationListener listener) throws IOException 
     {
         final ICompiler compiler = createCompiler();
 
@@ -421,17 +434,34 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
             }
         };
         
-        compiler.compile( compilationUnits , new ArrayList<ICompilationUnit>() , globalSymbolTable , listener , relaxedResolver );
+        globalSymbolTable.clear();
+        
+        final ArrayList<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
+//        for ( ICompilationUnit unit : getCompilationUnits() ) 
+//        {
+//            boolean alreadyContained = false;
+//            for ( ICompilationUnit unit2 : compilationUnits ) {
+//                if ( unit2.getResource().getIdentifier().equals( unit.getResource().getIdentifier() ) ) {
+//                    alreadyContained=true;
+//                    break;
+//                }
+//            }
+//            if ( ! alreadyContained ) {
+//                dependencies.add( unit );
+//            }
+//        }
+  
+        final DebugInfo debugInfo = compiler.compile( compilationUnits , dependencies , globalSymbolTable , listener , relaxedResolver );
 
         // create executable
         if ( isCompilationSuccessful( compilationUnits ) )
         {
-        	if ( link ) 
-        	{
-        		LOG.debug("[ "+this+"] Linking "+compilationUnits);
-        		executable = link( objectFiles ,compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
-        		workspace.resourceCreated( project , executable );
-        	}
+//            System.out.println("\n-------- DEBUG ------------\n"+debugInfo.dumpToString());
+            
+            final List<CompiledCode> toLink = objectFiles.subList(0, 1 );
+    		LOG.debug("[ "+this+"] Linking "+toLink);
+            executable = link( toLink , debugInfo , compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
+    		workspace.resourceCreated( project , executable );
             buildSuccessful = true; 
         } else {
             buildSuccessful = false;
@@ -450,11 +480,13 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         return true;
     }
 
-    private Executable link(List<CompiledCode> objectFiles,boolean generateRelocatableCode) throws IOException 
+    private Executable link(List<CompiledCode> objectFiles,
+            DebugInfo debugInfo,
+            boolean generateRelocatableCode) throws IOException 
     {
         final File outputFolder = getConfiguration().getOutputFolder();
         final File outputFile = new File( outputFolder , getConfiguration().getExecutableName() );
-        return new Linker().link( objectFiles , outputFile , generateRelocatableCode , true );
+        return new Linker().link( objectFiles , debugInfo , outputFile , generateRelocatableCode , true );
     }
 
     @Override

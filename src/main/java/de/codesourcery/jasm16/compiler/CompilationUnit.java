@@ -58,14 +58,25 @@ public final class CompilationUnit implements ICompilationUnit {
     private volatile AST ast;
     private volatile Address objectCodeStartAddress = Address.ZERO;
     private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
-    private final ISymbolTable symbolTable = new SymbolTable();
+    private final ISymbolTable symbolTable;
     private final RelocationTable relocationTable = new RelocationTable();
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
     @Override
+    public void dumpSourceLines()
+    {
+        List<Integer> keys = new ArrayList<>(lines.keySet());
+        Collections.sort(keys);
+        for ( Integer key : keys ) {
+            System.out.println( lines.get(key) );
+        }
+    }
+    
+    @Override
     public void beforeCompilationStart() 
     {
+        System.err.println("----------------- before compilation of "+this+" -----------------");
         this.relocationTable.clear();
         this.lines.clear();
         this.ast = null;
@@ -122,11 +133,14 @@ public final class CompilationUnit implements ICompilationUnit {
             throw new IllegalArgumentException("offset must not be negative");
         }
         Line previousLine = null;
-        for ( Line l : lines.values() ) 
+        for (Iterator<Line> it = lines.values().iterator(); it.hasNext();) 
         {
+            final Line l = it.next();
+            
             if ( l.getLineStartingOffset() == offset ) {
                 return l;
             }
+            
             if ( previousLine != null && 
                  previousLine.getLineStartingOffset() < offset &&
                  l.getLineStartingOffset() > offset ) 
@@ -134,6 +148,9 @@ public final class CompilationUnit implements ICompilationUnit {
                 return previousLine;
             }
             previousLine = l;
+        }
+        if ( previousLine != null && previousLine.getLineStartingOffset() <= offset ) {
+            return previousLine;
         }
         throw new NoSuchElementException("Found no line with offset "+offset);
     }
@@ -216,6 +233,7 @@ public final class CompilationUnit implements ICompilationUnit {
         }
         this.resource = resource;
         this.identifier=identifier;
+        this.symbolTable = new SymbolTable("CompilationUnit: "+resource);
     }
 
     @Override

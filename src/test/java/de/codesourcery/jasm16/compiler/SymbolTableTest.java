@@ -24,7 +24,7 @@ public class SymbolTableTest extends TestCase {
 
 	public void testStoreSymbol() throws ParseException {
 		
-		SymbolTable table = new SymbolTable();
+		SymbolTable table = new SymbolTable("SymbolTableTest");
 		
 		ICompilationUnit unit = CompilationUnit.createInstance("id" , "test" );
 		Label label = new Label(  unit , new TextRegion(0,4) , new Identifier( "test" ) );

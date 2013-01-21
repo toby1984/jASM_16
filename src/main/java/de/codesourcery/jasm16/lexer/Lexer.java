@@ -40,12 +40,12 @@ public final class Lexer implements ILexer {
     private final IScanner scanner;
 
     private final StringBuilder buffer = new StringBuilder();	
-    private final List<IToken> currentTokens=new ArrayList<IToken>();
-    private final Stack<State> marks = new Stack<State>();
     private final Set<LexerOption> options = new HashSet<LexerOption>(); 
-
     private boolean caseSensitiveOpCodes = true;
     
+    // internal state
+    private final List<IToken> currentTokens=new ArrayList<IToken>();
+    private final Stack<State> marks = new Stack<State>();
     private int currentLineNumber=1;
     private int currentLineStartOffset;
 
@@ -93,9 +93,12 @@ public final class Lexer implements ILexer {
             throw new IllegalStateException("Must call mark() first");
         }
         final State state = marks.peek();
+        
         scanner.setCurrentParseIndex( state.scannerOffset );
+        
         currentTokens.clear();
         currentTokens.addAll( state.markedTokens );
+        
         currentLineNumber = state.lineNumber;
         currentLineStartOffset = state.lineStartOffset;
     }

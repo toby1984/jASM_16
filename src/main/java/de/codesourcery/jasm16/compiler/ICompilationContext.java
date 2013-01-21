@@ -40,6 +40,8 @@ public interface ICompilationContext extends IResourceResolver , ICompilationUni
      * @return
      */
     public IParentSymbolTable getSymbolTable();
+    
+    public DebugInfo getDebugInfo();
 
     /**
      * Returns a factory for creating {@link IObjectCodeWriter} instances

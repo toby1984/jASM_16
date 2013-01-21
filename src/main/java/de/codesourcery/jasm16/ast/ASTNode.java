@@ -894,23 +894,72 @@ public abstract class ASTNode
      */
     public final ASTNode getNodeInRange(int offset) 
     {
-        final ITextRegion region = getTextRegion();
+        return getNodeInRange(offset,false);
+    }
+    
+    public final ASTNode getNodeInRange(int offset,boolean debug) 
+    {
+        if ( debug ) {
+            System.out.println("Looking for node at offset "+offset);
+        }
+        SearchResult result= internalGetNodeInRange( this , offset ,0 , debug);
+        if ( debug ) {
+            System.out.println("RESULT: "+result);
+        }
+        return result == null ? null : result.node;
+    }
+    
+    protected static final class SearchResult 
+    {
+        public final ASTNode node;
+        public final int depth;
+        
+        private SearchResult(ASTNode node, int depth)
+        {
+            this.node = node;
+            this.depth = depth;
+        }
+        
+        public boolean isMoreSpecificThan(SearchResult other) 
+        {
+            return this.node.getTextRegion().getLength() <= other.node.getTextRegion().getLength() &&
+                    this.depth > other.depth;
+        }
+        
+        @Override
+        public String toString()
+        {
+            return "SearchResult[ "+node.getTextRegion()+" , depth="+depth+", node="+node;
+        }
+    }
+    
+    private static final SearchResult internalGetNodeInRange(ASTNode node, int offset,int currentDepth,boolean debug) 
+    {        
+        final ITextRegion region = node.getTextRegion();
         if ( region == null || ! region.contains( offset ) ) 
         {
             return null;
         }
-        ASTNode result = this;
-        for ( ASTNode child : children ) {
-            ASTNode tmp = child.getNodeInRange( offset );
-            if ( tmp != null ) 
+        
+        SearchResult candidate =  new SearchResult(node,currentDepth);
+        
+        // special case: IncludeSourceFileNodes have at most one child and that's the AST
+        //               of the included source file...we do not want to search this one !
+        
+        if ( ! ( node instanceof IncludeSourceFileNode) ) 
+        {
+            for ( ASTNode child : node.getChildren() ) 
             {
-//                final int delta1 = Math.abs( offset - result.getTextRegion().getStartingOffset() );
-//                final int delta2 = Math.abs( offset - tmp.getTextRegion().getStartingOffset() );
-//                if ( delta2 < delta1 || ! child.hasChildren() ) {
-                    result = tmp;
-//                } 
+                SearchResult tmp = internalGetNodeInRange( child , offset , currentDepth +1 , debug );
+                if ( tmp != null && tmp.isMoreSpecificThan( candidate ) )
+                {
+                    if ( debug ) {
+                        System.out.println("-> more specific: "+tmp);
+                    }
+                    candidate = tmp;
+                }
             }
         }
-        return result;
+        return candidate;
     }	
 }

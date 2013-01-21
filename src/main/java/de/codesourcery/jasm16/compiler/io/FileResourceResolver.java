@@ -75,6 +75,10 @@ public abstract class FileResourceResolver extends AbstractResourceResolver
     
     protected abstract ResourceType determineResourceType(File file);
 
+    private boolean isAbsolutePath(String path) {
+        return path.startsWith( File.pathSeparator );
+    }
+    
     @Override
     public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException
     {
@@ -83,27 +87,29 @@ public abstract class FileResourceResolver extends AbstractResourceResolver
             LOG.error("resolveRelative(): resolveRelative() in "+this+" must not be called with non-file resource "+parent);
             throw new IllegalArgumentException("resolveRelative() in "+this+" must not be called with non-file resource "+parent);
         }
-        if ( identifier.startsWith( File.pathSeparator ) ) {
-            return resolve( identifier );
-        }
-        final File parentFile;
-        if ( getBaseDirectory() == null ) 
-        {
-        	final FileResource fr = (FileResource) parent;
-            parentFile= fr.getAbsoluteFile().getParentFile();
-        } else {
-            parentFile = getBaseDirectory();
-        }
-        if ( parentFile == null ) {
-            return resolve( identifier );
-        }
         
+        if ( isAbsolutePath( identifier ) ) {
+            return resolve( identifier );
+        }
+        final FileResource fr = (FileResource) parent;
+        File parentFile = fr.getAbsoluteFile().getParentFile();
+        File canonical = resolveCanonical(identifier, parentFile);
+        
+        if ( ! canonical.exists() && getBaseDirectory() != null )
+        {
+            canonical = resolveCanonical( identifier , getBaseDirectory() );
+        }
+        return new FileResource( canonical , determineResourceType( canonical ) );
+    }
+
+    private File resolveCanonical(String identifier, File parentFile)
+    {
         File canonical= new File( parentFile , identifier );
         try {
             canonical = canonical.getCanonicalFile();
         } catch (IOException e) {
             throw new RuntimeException("While resolving '"+canonical.getAbsolutePath()+"'",e);
         }
-        return new FileResource( canonical , determineResourceType( canonical ) );
+        return canonical;
     }
 }
