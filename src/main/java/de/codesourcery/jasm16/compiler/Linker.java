@@ -22,15 +22,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.ByteAddress;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.Size.SizeInBytes;
 import de.codesourcery.jasm16.ast.ASTNode;
@@ -139,7 +136,8 @@ public class Linker
             {
                 for ( CompiledCode r : objectFiles ) 
                 {
-                    combined.merge( r.getCompilationUnit().getRelocationTable() , r.getCompilationUnit().getObjectCodeStartOffset() );
+                    combined.merge( r.getCompilationUnit().getRelocationTable() , 
+                    		r.getCompilationUnit().getObjectCodeStartOffset() );
                 }
                 writeRelocationHeader( combined , out );
             }
@@ -164,8 +162,6 @@ public class Linker
                 } finally {
                     IOUtils.closeQuietly( in );
                 }
-               	final AddressRange range = new AddressRange( Address.byteAddress( currentOffset ) , Size.bytes( bytesWritten ) );
-               	
                 currentOffset += bytesWritten;
             }
             

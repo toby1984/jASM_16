@@ -116,9 +116,9 @@ public class ASTValidationPhase2 extends CompilerPhase {
 							@Override
 							public boolean visit(ASTNode node) 
 							{
-								if ( node instanceof OperatorNode) 
+								if ( node instanceof TermNode) 
 								{
-									return checkValueInRange( compContext , (OperatorNode) node );
+									return checkTermNode( compContext, (TermNode) node);
 								}
 								return true;
 							}
@@ -159,6 +159,7 @@ public class ASTValidationPhase2 extends CompilerPhase {
 		final ICompilationUnit unit = compContext.getCurrentCompilationUnit();
 	
 		final boolean[] valueInRange = {true};
+		
 		final ISimpleASTNodeVisitor<ASTNode> visitor = new ISimpleASTNodeVisitor<ASTNode>() {
 
 			@Override
@@ -202,6 +203,37 @@ public class ASTValidationPhase2 extends CompilerPhase {
 		return valueInRange[0];
 	}
 
+	private boolean checkTermNode(final ICompilationContext compContext,TermNode op) {
+
+		final ICompilationUnit unit = compContext.getCurrentCompilationUnit();
+		
+		final Long longValue = op.calculate( compContext.getSymbolTable() );
+		if ( longValue == null ) {
+			unit.addMarker( new CompilationError("Internal error, operand value has no value?",unit,op) );
+			return false;
+		} 
+		
+		final boolean isInRange;
+		if ( longValue.longValue() < 0 ) { 
+			isInRange = longValue >= -32768 && longValue <= 65535;
+		} else { // value is >= 0
+			isInRange = longValue <= 65535;
+		}
+		
+		if ( ! isInRange )
+		{
+			final IMarker marker;
+		    if ( ! compContext.hasCompilerOption( CompilerOption.RELAXED_VALIDATION ) ) {
+		    	marker=new CompilationError("Operand value "+longValue+" out-of-range(does not fit in 16 bits)",unit,op);
+		    } else {
+		        marker= new CompilationWarning("Operand value "+longValue+" out-of-range(does not fit in 16 bits)",unit,op);
+		    }
+		    unit.addMarker( marker );
+            return false;                        
+		}
+		return true;
+	}
+	
 	protected boolean isAbortOnErrors() {
 		return true;
 	}
