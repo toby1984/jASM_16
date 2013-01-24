@@ -29,7 +29,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
-import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -70,7 +69,9 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.DefaultStyledDocument.AttributeUndoableEdit;
+import javax.swing.text.AbstractDocument;
 import javax.swing.text.Document;
+import javax.swing.text.DocumentFilter;
 import javax.swing.text.Highlighter;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -91,6 +92,7 @@ import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
+import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
@@ -629,8 +631,59 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
         } 
         compilationThread.documentChanged();		
     }
+    
+    private final DocumentFilter documentFilter = new DocumentFilter() 
+    {
+        
+        private Line getLine(int offset) 
+        {
+            try {
+                return compilationUnit.getLineForOffset( offset );
+            } catch(NoSuchElementException e) {
+                return null;
+            }
+        }
+        
+        private int getIndentionOfPreviousLine(int currentOffset) 
+        {
+            if ( compilationUnit == null || compilationUnit.getAST() == null ) {
+                return -1;
+            }
+            
+            Line previous = null;
+            try {
+                previous = compilationUnit.getLineForOffset( currentOffset );
+            } 
+            catch(NoSuchElementException e) {
+                return -1;
+            }            
+            
+            while ( previous != null ) 
+            {
+                StatementNode stmt = compilationUnit.getAST().getFirstStatementForOffset( previous.getLineStartingOffset() );
+                if ( stmt != null && stmt.hasChildren() ) {
+                    return stmt.child(0).getTextRegion().getStartingOffset() - previous.getLineStartingOffset();
+                }
+                previous = compilationUnit.getPreviousLine( previous );
+            }
+            return -1;
+        }
+        
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException 
+        {
+            if ( text.equals("\n") && length == 0 ) 
+            {
+                final int indention = getIndentionOfPreviousLine( offset );
+                if ( indention > 0 ) {
+                    super.replace( fb , offset , length , text+StringUtils.repeat(" " , indention ), attrs );
+                    return;
+                }
+            }
+            super.replace(fb, offset, length, text, attrs);
+        }
+    };
 
-    private DocumentListener recompilationListener = new DocumentListener() {
+    private final DocumentListener recompilationListener = new DocumentListener() {
 
         private void textChanged(DocumentEvent e) 
         {
@@ -641,7 +694,9 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
         public void removeUpdate(DocumentEvent e) { textChanged(e); }        
 
         @Override
-        public void insertUpdate(DocumentEvent e) { textChanged(e); }
+        public void insertUpdate(DocumentEvent e) { 
+            textChanged(e); 
+        }
 
         @Override
         public void changedUpdate(DocumentEvent e)  { /* do nothing, style change only */ }
@@ -1285,6 +1340,9 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
     {
         documentListenerDisableCount++;     
         editorPane.getDocument().removeDocumentListener( recompilationListener );
+        if ( editorPane.getDocument() instanceof AbstractDocument) {
+            ((AbstractDocument) editorPane.getDocument()).setDocumentFilter( null );
+        }         
     }
 
     protected final void enableDocumentListener() 
@@ -1293,6 +1351,9 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
         if ( documentListenerDisableCount == 0) 
         {
             editorPane.getDocument().addDocumentListener( recompilationListener );
+            if ( editorPane.getDocument() instanceof AbstractDocument) {
+                ((AbstractDocument) editorPane.getDocument()).setDocumentFilter( documentFilter );
+            }            
         }
     }   
 

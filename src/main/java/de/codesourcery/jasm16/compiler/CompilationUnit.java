@@ -126,6 +126,25 @@ public final class CompilationUnit implements ICompilationUnit {
         return new SourceLocation(this,l,textRegion);
     }
 
+    
+    @Override
+    public Line getPreviousLine(Line line)
+    {
+        if (line == null) {
+            throw new IllegalArgumentException("line must not be NULL.");
+        }
+        
+        Line previous = null;
+        for (Iterator<Line> it = lines.values().iterator(); it.hasNext();) 
+        {
+            final Line l = it.next();
+            if ( line.equals( l ) ) {
+                return previous;
+            }
+            previous = l;
+        }
+        return null;
+    }
     @Override
     public Line getLineForOffset(int offset) throws NoSuchElementException
     {

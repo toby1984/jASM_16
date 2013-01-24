@@ -35,6 +35,23 @@ public class AST extends ASTNode
 		return new AST();
 	}
 
+	/**
+	 * Returns the first statement that covers a specific source code offset.
+	 * 
+	 * @param offset
+	 * @return statement or <code>null</code> if no statement could be found
+	 */
+	public StatementNode getFirstStatementForOffset(int offset) {
+	    
+	    for ( ASTNode n : getChildren() ) {
+	        StatementNode stmt = (StatementNode) n;
+	        if ( stmt.getTextRegion().contains( offset ) ) {
+	            return stmt;
+	        }
+	    }
+	    return null;
+	}
+	
 	@Override
 	protected ASTNode parseInternal(IParseContext context) throws ParseException 
 	{

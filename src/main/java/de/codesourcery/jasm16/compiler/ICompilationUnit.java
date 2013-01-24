@@ -107,6 +107,14 @@ public interface ICompilationUnit {
     public Line getLineForOffset(int offset) throws NoSuchElementException;
     
     /**
+     * Returns the line that comes right before a given <code>Line</code>
+     * instance.
+     * @param line
+     * @return previous line or <code>null</code> if this is the first line
+     */
+    public Line getPreviousLine(Line line);
+    
+    /**
      * Returns the text coordinates for a given line number.
      *   
      * @param lineNumber line number (first line is 1)

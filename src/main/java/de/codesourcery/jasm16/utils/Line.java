@@ -44,7 +44,7 @@ public class Line
         this.lineNumber = lineNumber;
         this.lineStartingOffset = lineStartingOffset;
     }
-
+    
     /**
      * Returns the line number.
      * @return line number , starting with 1
@@ -83,5 +83,39 @@ public class Line
     @Override
     public String toString() {
     	return "line "+lineNumber+" (start: "+lineStartingOffset+")";
+    }
+
+
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + lineNumber;
+        result = prime * result + lineStartingOffset;
+        return result;
+    }
+
+
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Line other = (Line) obj;
+        if (lineNumber != other.lineNumber) {
+            return false;
+        }
+        if (lineStartingOffset != other.lineStartingOffset) {
+            return false;
+        }
+        return true;
     }
 }
