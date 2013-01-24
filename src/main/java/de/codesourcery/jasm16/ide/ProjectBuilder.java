@@ -119,7 +119,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         final ICompiler compiler = createCompiler();
         
         // do not process .includesource directives here as this would recompile
-        // dependent sources as well
+        // dependent sources as well (and these are probably already compiled)
         compiler.setCompilerOption(CompilerOption.NO_SOURCE_INCLUDE_PROCESSING , true );
         
         compiler.setResourceResolver( resolver );
