@@ -29,20 +29,22 @@ import de.codesourcery.jasm16.utils.ITextRegion;
 
 public class InMemorySourceResource extends AbstractResource {
 	
-	private final IResource resourceOnDisk;
+	private final IResource persistentResource;
 	private final JTextComponent editor;
 	
 	public InMemorySourceResource(IResource resourceOnDisk , JTextComponent editor) 
 	{
 		super(ResourceType.SOURCE_CODE);
-		
 		if ( resourceOnDisk == null ) {
 			throw new IllegalArgumentException("resourceOnDisk must not be null");
+		}
+		if ( resourceOnDisk instanceof InMemorySourceResource) {
+		    throw new IllegalArgumentException("InMemorySourceResource called with another InMemorySourceResource as source ?");
 		}
 		if ( editor == null ) {
 			throw new IllegalArgumentException("editor must not be null");
 		}
-		this.resourceOnDisk = resourceOnDisk;
+		this.persistentResource = resourceOnDisk;
 		this.editor = editor;
 	}
 	
@@ -52,8 +54,8 @@ public class InMemorySourceResource extends AbstractResource {
         return range.apply( getTextFromEditor() );
     }
     
-    public IResource getResourceOnDisk() {
-		return resourceOnDisk;
+    public IResource getPersistentResource() {
+		return persistentResource;
 	}
     
     public final String getTextFromEditor() 
@@ -72,7 +74,7 @@ public class InMemorySourceResource extends AbstractResource {
     @Override
     public String getIdentifier()
     {
-        return resourceOnDisk.getIdentifier();
+        return persistentResource.getIdentifier();
     }
 
     @Override

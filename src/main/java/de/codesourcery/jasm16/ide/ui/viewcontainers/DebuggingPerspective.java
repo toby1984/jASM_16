@@ -40,6 +40,7 @@ import de.codesourcery.jasm16.ide.IApplicationConfig;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.NavigationHistory;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
@@ -184,7 +185,7 @@ public class DebuggingPerspective extends Perspective
                 return perspective.resolveRelative( identifier , parent );
             }            
             if ( parent instanceof InMemorySourceResource) {
-                return project.resolveRelative( identifier , ((InMemorySourceResource) parent).getResourceOnDisk() );
+                return project.resolveRelative( identifier , ((InMemorySourceResource) parent).getPersistentResource() );
             }
             return project.resolveRelative( identifier , parent );
         }
@@ -311,8 +312,9 @@ public class DebuggingPerspective extends Perspective
         }     
 
         // setup source level debug view
-        if ( getSourceLevelDebugView() == null ) {
-            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this , emulator() );
+        if ( getSourceLevelDebugView() == null ) 
+        {
+            final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this ,new NavigationHistory(), emulator() );
             addView( view );
             view.refreshDisplay();            
         }

@@ -21,8 +21,8 @@ import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.SourceEditorView;
 
-public class EditorFactory {
-
+public class EditorFactory 
+{
 	private final ViewContainerManager viewContainerManager; 
 	private final IWorkspace workspace;
 	
@@ -31,8 +31,11 @@ public class EditorFactory {
 		this.viewContainerManager= viewContainerManager;
 	}
 	
-	public IEditorView createEditor( IAssemblyProject project, IResource resource, IResourceResolver resolver) 
+	public IEditorView createEditor( IAssemblyProject project, 
+	        IResource resource, 
+	        IResourceResolver resolver,
+	        NavigationHistory navigationHistory) 
 	{
-		return new SourceEditorView(resolver,workspace,viewContainerManager);
+		return new SourceEditorView(resolver,workspace,viewContainerManager,navigationHistory);
 	}
 }

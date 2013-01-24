@@ -364,7 +364,7 @@ public class WorkspaceExplorer extends AbstractView {
 			editorContainer = new EditorContainer("Editors",workspace,getViewContainer(),editorFactory);
 			getViewContainer().addView( editorContainer );
 		}
-		editorContainer.openResource( workspace , project , resource );
+		editorContainer.openResource( workspace , project , resource , 0 );
 	}
 
 	@Override

@@ -39,6 +39,7 @@ import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.SizeAndLocation;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.IView;
+import de.codesourcery.jasm16.ide.ui.views.IViewStateListener;
 
 /**
  * A view container that inherits from {@link JFrame} and uses {@link JInternalFrame}s to display
@@ -75,11 +76,29 @@ public class Perspective extends JFrame implements IViewContainer {
     {
         public final JInternalFrame frame;
         public final IView view;
+        private final InternalFrameListener frameListener;
 
-        public InternalFrameWithView(JInternalFrame frame,IView view) 
-        {
+        public InternalFrameWithView(JInternalFrame frame,final IView view) {
             this.view = view;
             this.frame = frame;
+            
+            if ( view instanceof IViewStateListener ) {
+                frameListener = new InternalFrameAdapter() {
+                    @Override
+                    public void internalFrameActivated(InternalFrameEvent e)
+                    {
+                        ((IViewStateListener) view).viewVisible();
+                    }
+                    @Override
+                    public void internalFrameDeactivated(InternalFrameEvent e)
+                    {
+                        ((IViewStateListener) view).viewHidden();
+                    }                    
+                };
+                frame.addInternalFrameListener( frameListener );
+            } else {
+                frameListener = null;
+            }
         }
 
         public void dispose() 
@@ -87,6 +106,10 @@ public class Perspective extends JFrame implements IViewContainer {
             final SizeAndLocation sizeAndLoc = new SizeAndLocation( frame.getLocation() , frame.getSize() );
             applicationConfig.storeViewCoordinates( getUniqueID( view ) , sizeAndLoc );
             frame.dispose();
+            if ( frameListener != null ) {
+                frame.removeInternalFrameListener( frameListener );
+            }            
+            
             LOG.debug("dispose(): Disposing "+view);
             view.dispose();			
         }

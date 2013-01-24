@@ -31,6 +31,7 @@ import org.apache.commons.lang.StringUtils;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.IView;
+import de.codesourcery.jasm16.ide.ui.views.IViewStateListener;
 
 /**
  * A view container that inherits from {@link JFrame} and 
@@ -148,6 +149,25 @@ public class ViewFrame extends JFrame implements IViewContainer
 		return menuManager;
 	}
 
+	@Override
+	public void setVisible(boolean b)
+	{
+	    super.setVisible(b);
+	    visibilityChanged(b);
+	}
+	
+	private void visibilityChanged(boolean visible) 
+	{
+	    if ( ! (component instanceof IViewStateListener) ) {
+	        return;
+	    }
+	    if ( visible ) {
+	        ((IViewStateListener) component).viewVisible();
+	    } else {
+	        ((IViewStateListener) component).viewHidden();
+	    }
+	}
+	
     @Override
     public String getID()
     {

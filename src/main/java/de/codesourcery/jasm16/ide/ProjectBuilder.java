@@ -126,10 +126,10 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         compiler.setObjectCodeWriterFactory(new NullObjectCodeWriterFactory());
 
         final List<ICompilationUnit> toCompile = new ArrayList<>();
+        final ICompilationUnit newCompilationUnit = CompilationUnit.createInstance( source.getIdentifier() , source );
+        toCompile.add( newCompilationUnit );
         
-        final ICompilationUnit result = CompilationUnit.createInstance( source.getIdentifier() , source );
-        
-        toCompile.add( result );
+        globalSymbolTable.clear( newCompilationUnit );
         
         final List<ICompilationUnit> dependencies = new ArrayList<>( getCompilationUnits() );
 
@@ -151,15 +151,15 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         		toCompile.add( dependency );
         	}
         }
-
+        
         compiler.compile( toCompile  , 
         		dependencies , 
         		globalSymbolTable , 
         		listener ,
         		DefaultResourceMatcher.INSTANCE );
         
-      	workspace.compilationFinished( project , result );
-        return result;
+      	workspace.compilationFinished( project , newCompilationUnit );
+        return newCompilationUnit;
     }
     
     private ProjectConfiguration getConfiguration() {

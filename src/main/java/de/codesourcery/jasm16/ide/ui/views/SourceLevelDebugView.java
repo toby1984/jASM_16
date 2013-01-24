@@ -59,6 +59,7 @@ import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.NavigationHistory;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
@@ -78,6 +79,7 @@ public class SourceLevelDebugView extends SourceCodeView
     
     private volatile Object currentHighlight;
     private IAssemblyProject currentProject;
+    
     private volatile ICompilationUnit currentUnit;
     private final DebuggingPerspective perspective;
     
@@ -148,9 +150,10 @@ public class SourceLevelDebugView extends SourceCodeView
     public SourceLevelDebugView(IResourceResolver resourceResolver,
     		IWorkspace workspace,
     		DebuggingPerspective perspective, 
+    		NavigationHistory navigationHistory,
     		IEmulator emulator)
     {
-        super(resourceResolver,workspace, false);
+        super(resourceResolver,workspace, navigationHistory,false);
         if ( perspective == null ) {
             throw new IllegalArgumentException("perspective must not be NULL.");
         }
@@ -492,7 +495,7 @@ public class SourceLevelDebugView extends SourceCodeView
     {
         try {
             clearHighlights();
-            openFile( this.currentProject , unit.getResource() , false );
+            openResource( this.currentProject , unit.getResource() , false );
         } catch (IOException e) {
             LOG.error("refreshDisplayHook(): Caught ",e);
             return;

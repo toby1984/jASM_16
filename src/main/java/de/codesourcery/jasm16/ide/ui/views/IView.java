@@ -19,6 +19,16 @@ import javax.swing.JPanel;
 
 import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
 
+/**
+ * A view.
+ * 
+ * <p>Views are the building blocks of the IDE's user-interface and
+ * may either be displayed as separate windows or using internal frames.</p>
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ * 
+ * @see IViewContainer
+ */
 public interface IView
 {
     public IViewContainer getViewContainer();

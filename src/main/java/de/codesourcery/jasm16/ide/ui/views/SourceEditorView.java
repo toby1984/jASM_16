@@ -81,6 +81,7 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
 import de.codesourcery.jasm16.ide.IWorkspaceListener;
+import de.codesourcery.jasm16.ide.NavigationHistory;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.ASTTableModelWrapper;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
@@ -113,12 +114,12 @@ public class SourceEditorView extends SourceCodeView {
 	private final JTable statusArea = new JTable();
 	private final StatusModel statusModel = new StatusModel();
 
-	private final JButton navigationHistoryBack = new JButton("<");
-	private final JButton navigationHistoryForward = new JButton(">");
+	private final JButton navigationHistoryBack = new JButton("Previous");
+	private final JButton navigationHistoryForward = new JButton("Next");
 
 	private final SymbolTableModel symbolTableModel = new SymbolTableModel();
 	private final JTable symbolTable = new JTable( symbolTableModel );	
-
+	
 	// compiler
 	private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
 
@@ -350,13 +351,19 @@ public class SourceEditorView extends SourceCodeView {
 
 	protected void onCaretUpdate(CaretEvent e) 
 	{
+	    // if AST inspector is visible, make sure the current AST node is visible
+	    // (scroll there if it isn't)
+	    if ( ! isASTInspectorVisible() ) {
+	        return;
+	    }
+	    
 		final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
 		if ( ast == null ) {
 			return;
 		}
 
 		final ASTNode n = ast.getNodeInRange( e.getDot() );
-		if ( n != null && isASTInspectorVisible() ) {
+		if ( n != null ) {
 			TreePath path = new TreePath( n.getPathToRoot() );
 			astTree.setSelectionPath( path );
 			astTree.scrollPathToVisible( path );
@@ -368,10 +375,10 @@ public class SourceEditorView extends SourceCodeView {
 	}
 
 	public SourceEditorView(IResourceResolver resourceResolver,IWorkspace workspace,
-			ViewContainerManager viewContainerManager)
+			ViewContainerManager viewContainerManager,NavigationHistory navigationHistory)
 
 	{
-		super( resourceResolver,workspace , true );
+		super( resourceResolver,workspace , navigationHistory , true );
 		workspace.addWorkspaceListener( workspaceListener );
 		this.viewContainerManager = viewContainerManager;
 	}
@@ -684,12 +691,14 @@ public class SourceEditorView extends SourceCodeView {
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				if ( e.getButton() == MouseEvent.BUTTON1 ) {
+				if ( e.getButton() == MouseEvent.BUTTON1 ) 
+				{
 					int viewRow = symbolTable.rowAtPoint( e.getPoint() );
 					if ( viewRow != -1 ) {
 						final int modelRow = symbolTable.convertRowIndexToModel( viewRow );
 						final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
-
+						final int caretPosition = symbol.getLocation().getStartingOffset();
+						
 						IEditorView editor = null;
 						if ( DefaultResourceMatcher.INSTANCE.isSame( symbol.getCompilationUnit().getResource() , getSourceFromMemory() ) ) {
 							editor = SourceEditorView.this;
@@ -698,7 +707,9 @@ public class SourceEditorView extends SourceCodeView {
 						{
 							final EditorContainer parent = (EditorContainer) getViewContainer();
 							try {
-								editor = parent.openResource( workspace , getCurrentProject() , symbol.getCompilationUnit().getResource() );
+								editor = parent.openResource( 
+								        workspace , getCurrentProject() ,
+								        symbol.getCompilationUnit().getResource() , caretPosition );
 							} 
 							catch (IOException e1) {
 								LOG.error("mouseClicked(): Failed top open "+symbol.getCompilationUnit().getResource(),e1);
@@ -706,7 +717,7 @@ public class SourceEditorView extends SourceCodeView {
 							}
 						}
 						if ( editor instanceof SourceCodeView) {
-							((SourceCodeView) editor).moveCursorTo( symbol.getLocation() );
+							((SourceCodeView) editor).moveCursorTo( caretPosition , true );
 						}
 					}
 				}
@@ -821,7 +832,7 @@ public class SourceEditorView extends SourceCodeView {
 	}
 
 	@Override
-	protected void navigationHistoryPointerChanged() 
+	protected void onNavigationHistoryChange() 
 	{
 		navigationHistoryBack.setEnabled( canNavigationHistoryBack() );
 		navigationHistoryForward.setEnabled( canNavigationHistoryForward() );
@@ -863,11 +874,28 @@ public class SourceEditorView extends SourceCodeView {
 		// navigation history back button
 		cnstrs = constraints( 1, 0 , false , true , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryBack, cnstrs );
+		navigationHistoryBack.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                navigationHistoryBack();
+            }
+        });
+		
 		navigationHistoryBack.setEnabled( false );
 
 		// navigation history forward button
 		cnstrs = constraints( 2, 0 , true , true  , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryForward , cnstrs );
+		navigationHistoryForward.addActionListener( new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                navigationHistoryForward();
+            }
+        });		
 		navigationHistoryForward.setEnabled( false );
 
 		// create status area
@@ -910,7 +938,7 @@ public class SourceEditorView extends SourceCodeView {
 						StatusMessage message = statusModel.getMessage( modelRow );
 						if ( message.getLocation() != null ) 
 						{
-							moveCursorTo( message.getLocation() );
+							moveCursorTo( message.getLocation() , true );
 						}
 					}
 				}
@@ -968,19 +996,12 @@ public class SourceEditorView extends SourceCodeView {
 	public void disposeHook2()
 	{
 		workspace.removeWorkspaceListener( workspaceListener );
+		
 		if ( astInspector != null ) 
 		{
 			astInspector.setVisible( false );
 			astInspector.dispose();
 		}
-	}
-
-	@Override
-	public IEditorView getOrCreateEditor(IAssemblyProject project, 
-			IResource resource,
-			IResourceResolver resourceResolver) 
-	{
-	    return new SourceEditorView(resourceResolver,this.workspace,viewContainerManager);
 	}
 
 	@Override
@@ -1026,5 +1047,4 @@ public class SourceEditorView extends SourceCodeView {
 
 		return gotEntries ? popup : null;
 	}
-
 }

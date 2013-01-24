@@ -30,23 +30,26 @@ import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.EditorFactory;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
+import de.codesourcery.jasm16.ide.NavigationHistory;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.views.AbstractView;
 import de.codesourcery.jasm16.ide.ui.views.IEditorView;
 import de.codesourcery.jasm16.ide.ui.views.IView;
+import de.codesourcery.jasm16.ide.ui.views.IViewStateListener;
 import de.codesourcery.jasm16.ide.ui.views.SourceCodeView;
 
 public class EditorContainer extends AbstractView implements IViewContainer , IResourceResolver {
@@ -57,11 +60,33 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	
 	private final ViewContainerHelper helper = new ViewContainerHelper();
 	private final EditorFactory editorFactory;
-	   
+	private final NavigationHistory navigationHistory = new NavigationHistory();
+	
 	private final IWorkspace workspace;
 	private final List<ViewWithPanel> views = new ArrayList<ViewWithPanel>();
 	private final JTabbedPane tabbedPane = new JTabbedPane();
 	
+	private final ChangeListener changeListener = new ChangeListener() {
+
+	    private int previouslySelectedTab = -1;
+	    
+        @Override
+        public void stateChanged(ChangeEvent e)
+        {
+            final int newIndex = tabbedPane.getSelectedIndex();
+            int oldIndex = previouslySelectedTab;
+            previouslySelectedTab = newIndex;
+            
+            if ( oldIndex != newIndex ) { // selected index changed
+                
+                if ( oldIndex != -1 ) {
+                    getViewWithPanelForTabIndex( oldIndex ).tabDeselected();
+                }
+                getViewWithPanelForTabIndex( newIndex ).tabSelected();
+            }
+        }
+    };
+    
 	private MenuEntry saveCurrent = new MenuEntry("File/Save") {
 
 		@Override
@@ -77,6 +102,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	protected final class ViewWithPanel 
 	{
 	    public int tabIndex;
+	    
 		public final IView view;
 		public final JPanel panel;
 		
@@ -87,7 +113,21 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 			this.panel = view.getPanel( EditorContainer.this );
 		}
 		
-		public void toFront() {
+		public void tabSelected()
+        {
+		    if ( view instanceof IViewStateListener) {
+		        ((IViewStateListener) view).viewVisible();
+		    }
+        }
+		
+		public void tabDeselected()
+		{
+		    if ( view instanceof IViewStateListener) {
+		        ((IViewStateListener) view).viewHidden();
+		    }
+		}
+
+        public void toFront() {
 		    tabbedPane.setSelectedIndex( tabIndex );
 		}
 	}
@@ -140,6 +180,8 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 		if ( getViewContainer().getMenuManager() != null ) {
 			getViewContainer().getMenuManager().addEntry( saveCurrent );
 		}
+		
+		tabbedPane.addChangeListener( changeListener );
 		
 		tabbedPane.addKeyListener( new KeyAdapter() 
         {
@@ -200,15 +242,20 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
 	    }
 	}
 	
-	protected IView getViewForTabIndex(int tabIndex) 
-	{
+    protected ViewWithPanel getViewWithPanelForTabIndex(int tabIndex) 
+    {
        for ( ViewWithPanel v : views ) 
        {
             if ( v.tabIndex == tabIndex ) {
-                return v.view;
+                return v;
             }
         }
        throw new IllegalArgumentException("Invalid tab index: "+tabIndex);
+    }	
+	
+	protected IView getViewForTabIndex(int tabIndex) 
+	{
+	    return getViewWithPanelForTabIndex( tabIndex ).view;
 	}
 	
 	@Override
@@ -381,7 +428,7 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
         helper.removeViewContainerListener( listener );
     }
     
-    public IEditorView openResource(IWorkspace workspace , IAssemblyProject project,IResource resource) throws IOException 
+    public IEditorView openResource(IWorkspace workspace , IAssemblyProject project,IResource resource,int caretPosition) throws IOException 
     {
         IEditorView editor = getEditor( resource );
         if ( editor != null ) {
@@ -390,12 +437,15 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
             return editor;
         }
         
-        editor = editorFactory.createEditor( project , resource , this );
+        editor = editorFactory.createEditor( project , resource , this , navigationHistory );
+        
         final ViewWithPanel viewWithPanel = internalAddView( editor );
+        
         tabbedPane.setSelectedIndex( viewWithPanel.tabIndex );
+        
         // open resource AFTER IView has been added to this container,
         // view may rely on methods of this container
-        editor.openResource( project , resource );
+        editor.openResource( project , resource , caretPosition );
         return editor;
     }
 
