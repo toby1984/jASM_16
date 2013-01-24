@@ -219,7 +219,7 @@ public class DisassemblerView extends AbstractView
     private DisassembledLine parseDisassembledLine(String text) {
     	
     	// [B] >> 0000: 
-    	final Pattern pattern = Pattern.compile( "^(\\[B\\]){0,1}[ ]*(>>){0,1}[ ]*([0-9a-f]+):(.*?);(.*)");
+    	final Pattern pattern = Pattern.compile( "^(\\[[B_]{1}\\]){0,1}[ ]*(>>){0,1}[ ]*([0-9a-f]+):(.*?);(.*)");
     	
     	final Matcher m = pattern.matcher( text );
     	if ( ! m.matches() ) {
