@@ -894,18 +894,7 @@ public abstract class ASTNode
      */
     public final ASTNode getNodeInRange(int offset) 
     {
-        return getNodeInRange(offset,false);
-    }
-    
-    public final ASTNode getNodeInRange(int offset,boolean debug) 
-    {
-        if ( debug ) {
-            System.out.println("Looking for node at offset "+offset);
-        }
-        SearchResult result= internalGetNodeInRange( this , offset ,0 , debug);
-        if ( debug ) {
-            System.out.println("RESULT: "+result);
-        }
+        final SearchResult result= internalGetNodeInRange( this , offset ,0 );
         return result == null ? null : result.node;
     }
     
@@ -933,7 +922,7 @@ public abstract class ASTNode
         }
     }
     
-    private static final SearchResult internalGetNodeInRange(ASTNode node, int offset,int currentDepth,boolean debug) 
+    private static final SearchResult internalGetNodeInRange(ASTNode node, int offset,int currentDepth) 
     {        
         final ITextRegion region = node.getTextRegion();
         if ( region == null || ! region.contains( offset ) ) 
@@ -950,12 +939,9 @@ public abstract class ASTNode
         {
             for ( ASTNode child : node.getChildren() ) 
             {
-                SearchResult tmp = internalGetNodeInRange( child , offset , currentDepth +1 , debug );
+                SearchResult tmp = internalGetNodeInRange( child , offset , currentDepth +1 );
                 if ( tmp != null && tmp.isMoreSpecificThan( candidate ) )
                 {
-                    if ( debug ) {
-                        System.out.println("-> more specific: "+tmp);
-                    }
                     candidate = tmp;
                 }
             }

@@ -17,18 +17,23 @@ package de.codesourcery.jasm16.ide.ui.views;
  */
 import java.awt.Color;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Event;
+import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.PopupMenu;
 import java.awt.Rectangle;
+import java.awt.Shape;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -42,7 +47,6 @@ import java.util.NoSuchElementException;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.FocusManager;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
@@ -64,18 +68,21 @@ import javax.swing.event.DocumentListener;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.text.AbstractDocument;
 import javax.swing.text.AbstractDocument.DefaultDocumentEvent;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.DefaultStyledDocument.AttributeUndoableEdit;
-import javax.swing.text.AbstractDocument;
 import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
 import javax.swing.text.Highlighter;
+import javax.swing.text.JTextComponent;
+import javax.swing.text.Position;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import javax.swing.text.View;
 import javax.swing.undo.CannotRedoException;
 import javax.swing.undo.CannotUndoException;
 import javax.swing.undo.UndoManager;
@@ -147,6 +154,8 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
     private boolean registeredWithTooltipManager = false;
     private volatile boolean editable;
     private SearchDialog searchDialog;
+    
+    private Object currentUnderlineHighlight;
 
     private final NavigationHistory navigationHistory;
 
@@ -318,6 +327,63 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
     private ICompilationUnit compilationUnit;
 
     private CompilationThread compilationThread = null;
+
+    protected static final class UnderlineHighlightPainter extends DefaultHighlighter.DefaultHighlightPainter {
+
+        private int thickness;
+
+        public UnderlineHighlightPainter(Color c, int thickness) {
+            super(c);
+            this.thickness = thickness;
+        }
+
+        @Override
+        public Shape paintLayer(Graphics g, int offs0, int offs1, Shape bounds,JTextComponent c, View view) 
+        {
+            Rectangle r;
+            if (offs0 == view.getStartOffset() &&
+                offs1 == view.getEndOffset()) {
+                // Contained in view, can just use bounds.
+                if (bounds instanceof Rectangle) {
+                    r = (Rectangle) bounds;
+                }
+                else {
+                    r = bounds.getBounds();
+                }
+            }
+            else {
+                // Should only render part of View.
+                try {
+                    // --- determine locations ---
+                    Shape shape = view.modelToView(offs0, Position.Bias.Forward,
+                                                   offs1,Position.Bias.Backward,
+                                                   bounds);
+                    r = (shape instanceof Rectangle) ?
+                                  (Rectangle)shape : shape.getBounds();
+                } catch (BadLocationException e) {
+                    // can't render
+                    r = null;
+                }
+            }
+
+            if (r != null) 
+            {
+                Color color = getColor();
+
+                if (color == null) {
+                    color = c.getSelectionColor();
+                }
+                g.setColor(color);
+                
+                // If we are asked to highlight, we should draw something even
+                // if the model-to-view projection is of zero width (6340106).
+                r.width = Math.max(r.width, 1);
+                g.fillRect(r.x, r.y+r.height, r.width, thickness );
+            }
+
+            return r;            
+        }
+    }    
 
     /*  WAIT_FOR_EDIT-------> WAIT_FOR_TIMEOUT ------>( do compilation ) ----+
      *     ^    ^                     |                                      |
@@ -717,7 +783,6 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
                     // programatically triggered
                     if ( navigationHistoryUpdatesEnabled && sourceInMemory != null ) 
                     {
-                        System.out.println("===========> Caret update: "+e);                        
                         navigationHistory.add( new Location( project , sourceInMemory , e.getDot() ) );
                     } 
 
@@ -1319,8 +1384,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
         } 
         catch(NullPointerException e) 
         {
-            System.out.println("startPoint: "+startPoint+" / size: "+size);
-            e.printStackTrace();
+            LOG.error("getVisibleTextRegion(): Caught ",e);
             return null;
         }
     }
@@ -1537,6 +1601,22 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
         panel.add( topPanel , cnstrs );
         return panel;
     }
+    
+    /**
+     * Returns the mouse pointer's location relative to the
+     * editorpane or <code>null</code> if the mouse pointer is 
+     * outside of the editor.
+     * 
+     * @return location or <code>null</code> if mouse ptr is outside of the editor pane
+     */
+    protected final Point getMouseLocation()
+    {
+        final Point location = MouseInfo.getPointerInfo().getLocation() ;
+        final Point locOnScreen = editorPane.getLocationOnScreen();
+        
+        final Point result= new Point( location.x - locOnScreen.x , location.y - locOnScreen.y );
+        return editorPane.contains( result ) ? result : null;
+    }
 
     protected final void setupKeyBindings(final JTextPane editor) 
     {
@@ -1550,7 +1630,32 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
                 saveCurrentFile();
             }
         });
-
+        
+        // 'Underline text when pressing CTRL while hovering over an identifier' 
+        editorPane.addKeyListener( new KeyAdapter() 
+        {
+            private boolean isControlKey(KeyEvent e) {
+                return e.getKeyCode() == KeyEvent.VK_CONTROL;
+            }
+            
+            public void keyPressed(KeyEvent e) 
+            {
+                if ( isControlKey(e) ) 
+                {
+                    final Point ptr = getMouseLocation();
+                    if ( ptr != null ) {
+                        maybeUnderlineIdentifierAt( ptr );
+                    }
+                }
+            }
+            
+            public void keyReleased(KeyEvent e) {
+                if ( isControlKey(e) ) {
+                    clearUnderlineHighlight();
+                }                
+            };
+        } );
+        
         // "Undo" action
         addKeyBinding( editor , 
                 KeyStroke.getKeyStroke(KeyEvent.VK_Z,Event.CTRL_MASK),
@@ -1752,7 +1857,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
         int offset = editorPane.viewToModel( p );
         if ( offset != -1 ) {
-            return ast.getNodeInRange( offset , true );
+            return ast.getNodeInRange( offset );
         }
         return null;
     }
@@ -1820,6 +1925,71 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
             LOG.error("highlightLocation(): Bad location "+region,e);
             throw new RuntimeException("Bad text location "+region,e);
         }
+    }
+    
+    
+    protected final void clearUnderlineHighlight() 
+    {
+        final Runnable r = new Runnable() {
+
+            @Override
+            public void run()
+            {
+                if ( currentUnderlineHighlight != null ) 
+                {
+                    editorPane.getHighlighter().removeHighlight( currentUnderlineHighlight );
+                    currentUnderlineHighlight = null;
+                    editorPane.setCursor( Cursor.getPredefinedCursor( Cursor.DEFAULT_CURSOR ) );
+                    editorPane.repaint();
+                }                 
+            }
+        };
+       UIUtils.invokeLater( r );
+    }    
+    
+    protected final void maybeUnderlineIdentifierAt(Point mouseLocation) {
+        
+        final ASTNode node = getASTNodeForLocation( mouseLocation );
+        if ( !(node instanceof SymbolReferenceNode) ) 
+        {
+            return;
+        }
+        final SymbolReferenceNode ref = (SymbolReferenceNode) node;
+        underlineLocation( ref.getTextRegion() );
+    }    
+    
+    protected final void underlineLocation(final ITextRegion region) 
+    {
+        if ( region == null ) {
+            throw new IllegalArgumentException("region must not be NULL.");
+        }
+        
+        Runnable r = new Runnable() {
+            @Override
+            public void run()
+            {
+                try 
+                {
+                    if ( currentUnderlineHighlight == null ) {
+                        currentUnderlineHighlight = editorPane.getHighlighter().addHighlight(
+                                region.getStartingOffset() ,
+                                region.getEndOffset() , 
+                                new UnderlineHighlightPainter(Color.BLUE,1) );
+                    } else {
+                        editorPane.getHighlighter().changeHighlight( 
+                                currentUnderlineHighlight,
+                                region.getStartingOffset() , 
+                                region.getEndOffset() );
+                    }
+                    editorPane.setCursor( Cursor.getPredefinedCursor( Cursor.HAND_CURSOR ) );
+                    editorPane.repaint();
+                } 
+                catch (BadLocationException e) {
+                    LOG.error("underlineLocation(): Bad location "+region,e);
+                }                  
+            }
+        };
+        UIUtils.invokeLater( r );
     }
 
     protected final void clearHighlight() {

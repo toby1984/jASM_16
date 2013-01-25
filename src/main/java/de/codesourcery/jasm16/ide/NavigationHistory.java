@@ -17,6 +17,8 @@ public class NavigationHistory
 {
     private static final Logger LOG = Logger.getLogger(NavigationHistory.class);
     
+    private static final boolean DEBUG = false;
+    
     public static final int DEFAULT_NAVIGATION_HISTORY_SIZE = 50;
     
     private final int maxSize;
@@ -122,7 +124,9 @@ public class NavigationHistory
     
     private void notifyListeners() {
         
-        System.out.println("\n----------- Navigation history -----------\n"+toString() );
+        if ( DEBUG ) {
+            System.out.println("\n----------- Navigation history -----------\n"+toString() );
+        }
         
         final List<INavigationHistoryListener> copy;
         synchronized (listeners) {
