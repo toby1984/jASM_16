@@ -7,7 +7,6 @@ import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -15,11 +14,6 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.engine.linalg.Frustum;
-import de.codesourcery.engine.linalg.LinAlgUtils;
-import de.codesourcery.engine.linalg.Matrix;
-import de.codesourcery.engine.linalg.Vector4;
-import de.codesourcery.engine.render.Camera;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Register;
@@ -31,11 +25,15 @@ import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
+import de.codesourcery.jasm16.utils.LinAlgUtils;
+import de.codesourcery.jasm16.utils.Matrix;
 import de.codesourcery.jasm16.utils.Misc;
+import de.codesourcery.jasm16.utils.Vector4;
 
 public class DefaultVectorDisplay implements IDevice {
 
 	private static final Logger LOG = Logger.getLogger(DefaultVectorDisplay.class);
+	
 	/*
 Name: Mackapar Suspended Particle Exciter Display, Rev 3 (SPED-3) 
 ID: 0x42babf3c, version: 0x0003
@@ -52,19 +50,17 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 	/**
 	 * Target frame rate (30 fps).
 	 */
-	public static final int FRAMES_PER_SECOND = 30; 
+	public static final int FRAMES_PER_SECOND = 25; 
 	
-	public static final int DISPLAY_WIDTH_PIXELS = 320;
+	public static final int DISPLAY_WIDTH_PIXELS = 640;
 	
-	public static final int DISPLAY_HEIGHT_PIXELS = 160;
+	public static final int DISPLAY_HEIGHT_PIXELS = 480;
 
 	private volatile IEmulator emulator;
 	
 	private volatile DeviceState deviceState=DeviceState.NO_DATA;
 	private volatile ErrorCode lastError = ErrorCode.NO_ERROR;
 	
-	private final Frustum frustum;
-	private final Camera camera;
 	private final Matrix viewMatrix;
 
 	private final AtomicReference<Float> rotationInDegreesPerFrame = new AtomicReference<>(Float.valueOf(0));
@@ -229,6 +225,8 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 		
 		private final CountDownLatch terminateLatch = new CountDownLatch(1);
 		
+		private int currentRotationIndex;
+		
 		private volatile boolean halt = true;
 		
 		public RenderingThread() {
@@ -329,17 +327,27 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 				return;
 			}
 			
-			final Matrix rotMatrix = LinAlgUtils.rotZ( rotationInDegreesPerFrame.get() );
-			final Matrix mvpMatrix = viewMatrix.multiply( rotMatrix );
+			Matrix modelMatrix = LinAlgUtils.translationMatrix( -128 , -128 , 0);
+			modelMatrix = modelMatrix.multiply( LinAlgUtils.scalingMatrix( 1 , 1 , -1 ) );
+			modelMatrix = LinAlgUtils.rotZ( rotationInDegreesPerFrame.get() * (float) currentRotationIndex );
+			modelMatrix = modelMatrix.multiply( LinAlgUtils.translationMatrix( -128 , -128 , 0) );
+			final Matrix mvpMatrix = modelMatrix.multiply( viewMatrix );
 			
 			// draw vertices
 			for ( int i = 0 ; i< (copy.size()-1) ; i+=1 ) {
 				final Vertex p1 = copy.get(i);
-				final Vector4 p1Point = p1.transform( mvpMatrix );
+				Vector4 p1Point = mvpMatrix.multiply( p1.p );
 				
 				final Vertex p2 = copy.get(i+1);
-				final Vector4 p2Point = p2.transform( mvpMatrix );
-				renderLine(graphics,p1Point,p1.color,p2Point,p2.color);
+				Vector4 p2Point = mvpMatrix.multiply( p2.p );
+//				System.out.println("Drawing "+p1Point+" -> "+p2Point);
+				
+				p1Point = p1Point.normalizeW();
+				p2Point = p2Point.normalizeW();
+				
+				System.out.println("Drawing "+p1Point+" -> "+p2Point);				
+				
+				drawLine(graphics,p1Point,p1.color,p2Point,p2.color);
 			}
 			
 			if ( rotationInDegreesPerFrame.get() != 0 ) {
@@ -347,27 +355,31 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 			} else {
 				deviceState = DeviceState.STATE_RUNNING;
 			}
+			
+			currentRotationIndex++;
+			if ( currentRotationIndex >= 360 ) {
+				currentRotationIndex -= 360;
+			}			
 		}
 		
-		private void renderLine(Graphics graphics,Vector4 p1,Color colorStart, Vector4 p2,Color colorEnd) 
+		private void drawLine(Graphics graphics,
+				Vector4 p1, Color color1, 
+				Vector4 p2, Color color2) 
 		{
-			final Color c = averageColor( colorStart , colorEnd );
+			final Color c = averageColor( color1 , color2 );
 			graphics.setColor(c);
 			
-			final float scaleX = 5.0f;
-			final float scaleY = 5.0f;
+			final float scaleX = 1f;
+			final float scaleY = 1f;
 			
 			final int halfWidth = DISPLAY_WIDTH_PIXELS/2;
 			final int halfHeight = DISPLAY_HEIGHT_PIXELS/2;
 			
-			p1 = p1.normalizeW();
-			p2 = p2.normalizeW();
+			final int p1x = halfWidth  + round( p1.x() * scaleX);
+			final int p1y = halfHeight - round( p1.y() * scaleY);
 			
-			final int p1x = halfWidth  + round( p1.x() *scaleX);
-			final int p1y = halfHeight + round( p1.y() *scaleY);
-			
-			final int p2x = halfWidth  + round( p2.x() *scaleX);
-			final int p2y = halfHeight + round( p2.y() *scaleY);
+			final int p2x = halfWidth  + round( p2.x() * scaleX);
+			final int p2y = halfHeight - round( p2.y() * scaleY);
 			
 			graphics.drawLine( p1x , p1y , p2x , p2y );
 		}
@@ -386,15 +398,15 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 	
 	public DefaultVectorDisplay() 
 	{
-		frustum = new Frustum();
-		final Vector4 eyePosition = new Vector4(0,0, -10 );
-		camera = new Camera( frustum );
-		camera.setEyePosition( eyePosition , 0 , 0);
-		final Matrix perspectiveProjection = LinAlgUtils.createPerspectiveProjection( 90, 1.0f , 1 , 300 );
-		viewMatrix = camera.getViewMatrix().multiply( perspectiveProjection );
+		viewMatrix = setupPerspectiveProjection( 90, DISPLAY_WIDTH_PIXELS / (float) DISPLAY_HEIGHT_PIXELS , 1 , 1024 );
 	}
 	
-	public void attach(Component peer) 
+    public Matrix setupPerspectiveProjection(float fieldOfView, float aspectRatio ,float zNear, float zFar) 
+    {
+    	return LinAlgUtils.createPerspectiveProjection( fieldOfView , aspectRatio , zNear , zFar );
+    }
+    
+    public void attach(Component peer) 
 	{
 		synchronized(UI_PEER_LOCK) 
 		{
@@ -468,13 +480,8 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 		
 		private Vertex(int x, int y, int z, ColorCode color, boolean intensity) 
 		{
-			this.p = new Vector4(x-128,y-128, z+1); 
+			this.p = new Vector4(x,y,z); 
 			this.color = color.getColor( intensity );
-		}
-		
-		public Vector4 transform(Matrix mvpMatrix) 
-		{
-			return mvpMatrix.multiply( p );
 		}
 		
 		@Override
@@ -498,7 +505,7 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 		 */		
 		public static Vertex fromMemory(int word0, int word1) 
 		{
-			final int y = (word0 & 0xff00) >>> 8;
+			final int y = (word0 >> 8) & 0xff;
 			final int x = word0 & 0xff;
 			final int z = word1 & 0xff;
 			final int colorCode = (word1 >>> 8) & 0b11;
