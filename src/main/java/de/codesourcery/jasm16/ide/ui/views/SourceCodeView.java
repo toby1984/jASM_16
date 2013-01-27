@@ -1100,11 +1100,11 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
             try 
             {
                 final int markerCount = unit.getMarkers( (String[]) null ).size();
-                System.out.println("DEBUG: Starting to highlight "+unit.getResource()+" with "+markerCount+" markers.");
+//                System.out.println("DEBUG: Starting to highlight "+unit.getResource()+" with "+markerCount+" markers.");
                 doSemanticHighlighting( unit );
             } finally {
                 time += System.currentTimeMillis();
-                System.out.println("DEBUG: Highlighting "+unit.getResource()+" took "+time+" ms.");
+//                System.out.println("DEBUG: Highlighting "+unit.getResource()+" took "+time+" ms.");
             }
         }
 

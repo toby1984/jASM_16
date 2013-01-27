@@ -31,6 +31,7 @@ import de.codesourcery.jasm16.emulator.devices.impl.DefaultClock;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultFloppyDrive;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultKeyboard;
 import de.codesourcery.jasm16.emulator.devices.impl.DefaultScreen;
+import de.codesourcery.jasm16.emulator.devices.impl.DefaultVectorDisplay;
 import de.codesourcery.jasm16.emulator.devices.impl.FileBasedFloppyDisk;
 
 /**
@@ -330,6 +331,7 @@ public final class EmulationOptions {
         result.addDevice( new DefaultKeyboard( useLegacyKeyboardBuffer ) );
         result.addDevice( new DefaultScreen( mapVideoRamUponAddDevice , mapFontRamUponAddDevice ) );
         result.addDevice( new DefaultFloppyDrive( runFloppyAtFullSpeed ) );
+        result.addDevice( new DefaultVectorDisplay() );
         
         apply( result );
         
@@ -371,6 +373,18 @@ public final class EmulationOptions {
         }
         return (DefaultScreen) result.get(0);
     }
+    
+    public DefaultVectorDisplay getVectorDisplay(IEmulator emulator) 
+    {
+        List<IDevice> result = emulator.getDevicesByDescriptor( DefaultVectorDisplay.DEVICE_DESCRIPTOR );
+        if ( result.isEmpty() ) {
+            throw new NoSuchElementException("Internal error, found no default vector display ?");
+        }
+        if ( result.size() > 1 ) {
+            throw new RuntimeException("Internal error, found more than one vector display ?");
+        }
+        return (DefaultVectorDisplay) result.get(0);
+    }    
 
     public DefaultKeyboard getKeyboard(IEmulator emulator)
     {

@@ -66,7 +66,7 @@ public class DefaultKeyboard implements IDevice {
 	
 	private volatile boolean receivedAtLeastOneInterrupt = false;
 	
-	public static final DeviceDescriptor DESC = new DeviceDescriptor( "keyboard" , "default keyboard", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
+	public static final DeviceDescriptor DESC = new DeviceDescriptor( "Generic keyboard" , "Generic keyboard (compatible)", 0x30cf7406 , 0x01 , Constants.JASM16_MANUFACTURER );	
 
 	private final AtomicBoolean emulationRunning = new AtomicBoolean(false);
 	

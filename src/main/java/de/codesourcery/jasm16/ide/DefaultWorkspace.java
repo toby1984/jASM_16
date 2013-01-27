@@ -234,9 +234,9 @@ public class DefaultWorkspace implements IWorkspace
 		 return internalAddProject( config , true );
 	}
 	
-	private IAssemblyProject internalAddProject(ProjectConfiguration config,boolean deleteProjectFilesOnError) throws IOException 
+	private AssemblyProject internalAddProject(ProjectConfiguration config,boolean deleteProjectFilesOnError) throws IOException 
 	{
-		final IAssemblyProject result = new AssemblyProject( this , config , true );
+		final AssemblyProject result = new AssemblyProject( this , config , true );
 		projects.add( result );
 		
 		try {
@@ -260,6 +260,9 @@ public class DefaultWorkspace implements IWorkspace
 		
 		// register project as resource listener
 		result.addedToWorkspace( this );
+		
+		final IProjectBuilder builder = buildManager.getProjectBuilder( result );			
+		result.setProjectBuilder( builder );		
 		
 		notifyListeners( new IInvoker() {
 			@Override

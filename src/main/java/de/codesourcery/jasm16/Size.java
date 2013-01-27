@@ -105,6 +105,8 @@ public abstract class Size implements Comparable<Size>
     	return false;
     }
     
+    public abstract Size multiply(int factor);
+    
     @Override
     public final int hashCode() {
     	return getSizeInBytes();
@@ -160,7 +162,16 @@ public abstract class Size implements Comparable<Size>
         public String toString()
         {
             return getValue()+" bytes";
-        }         
+        }
+
+		@Override
+		public Size multiply(int factor) 
+		{
+			if ( factor < 0 ) {
+				throw new IllegalArgumentException("Factor must be positive");
+			}
+			return Size.bytes( getSizeInBytes() * factor );
+		}         
     }
     
     public static final class SizeInWords extends Size 
@@ -183,6 +194,15 @@ public abstract class Size implements Comparable<Size>
             return new SizeInBytes( getValue() << 1);
         }
 
+		@Override
+		public Size multiply(int factor) 
+		{
+			if ( factor < 0 ) {
+				throw new IllegalArgumentException("Factor must be positive");
+			}
+			return Size.words( getSizeInWords() * factor );
+		} 
+		
         @Override
         public SizeInWords toSizeInWords()
         {

@@ -51,6 +51,7 @@ import de.codesourcery.jasm16.ide.ui.views.InMemorySourceResource;
 import de.codesourcery.jasm16.ide.ui.views.ScreenView;
 import de.codesourcery.jasm16.ide.ui.views.SourceLevelDebugView;
 import de.codesourcery.jasm16.ide.ui.views.StackView;
+import de.codesourcery.jasm16.ide.ui.views.VectorDisplayView;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class DebuggingPerspective extends Perspective
@@ -310,6 +311,14 @@ public class DebuggingPerspective extends Perspective
             addView( view );
             view.refreshDisplay();
         }     
+        
+        // setup SPED-3 vector display view
+        if ( getVectorDisplayView() == null ) {
+            final VectorDisplayView view = new VectorDisplayView( project , emulator() );
+            addView( view );
+            view.refreshDisplay();
+        }            
+        
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) 
@@ -338,6 +347,10 @@ public class DebuggingPerspective extends Perspective
     private ScreenView getScreenView() {
         return (ScreenView) getViewByID( ScreenView.VIEW_ID );
     }    
+    
+    private VectorDisplayView getVectorDisplayView() {
+        return (VectorDisplayView) getViewByID( VectorDisplayView.VIEW_ID );
+    }        
 
     private DisassemblerView getDisassemblerView() {
         return (DisassemblerView) getViewByID( DisassemblerView.VIEW_ID );

@@ -88,8 +88,8 @@ public final class DefaultScreen implements IDevice {
 
     private volatile ILogger out;
 
-    public static final DeviceDescriptor DESC = new DeviceDescriptor("default screen",
-            "jASM16 default screen" , 
+    public static final DeviceDescriptor DESC = new DeviceDescriptor("LEM-1802",
+            "Low Energy Monitor" , 
             0x7349f615,
             0x1802, 
             0x1c6c8b36 );
@@ -948,14 +948,14 @@ public final class DefaultScreen implements IDevice {
             this.screenWidth = screenWidth;
             this.screenHeight=screenHeight;
             this.borderColor = borderColor;
-            this.screen = new RawImage( glyphBitmap , "console" , screenWidth , screenHeight );
+            this.screen = new RawImage( screenWidth , screenHeight );
             setFontImage( glyphBitmap );
             renderBorder();
         }
 
         public synchronized void setFontImage(final BufferedImage image) 
         {
-            this.glyphBitmap = new RawImage( image, "glyphs" , image.getWidth() , image.getHeight() );
+            this.glyphBitmap = new RawImage( image.getWidth() , image.getHeight() );
             this.glyphBitmap.getGraphics().drawImage( image , 0 , 0, null );  
 
             // choose darkest color as background color , lighest as foreground
@@ -1207,53 +1207,6 @@ public final class DefaultScreen implements IDevice {
             }
         }
 
-    }
-
-    protected static final class RawImage 
-    {
-        private final BufferedImage image;
-        private final int[] data;
-
-        public RawImage(BufferedImage proto, String name,int width,int height) 
-        {
-            data = new int[ width*height ];
-
-            final DataBufferInt dataBuffer = new DataBufferInt(data, width * height);
-
-            final ColorModel cm = new DirectColorModel(24, 0xff0000, 0xff00, 0xff ); 
-            final SampleModel sm = cm.createCompatibleSampleModel( width , height );
-            final WritableRaster wr = Raster.createWritableRaster(sm, dataBuffer, null);
-
-            image = new BufferedImage(cm, wr, false, null);
-        }       
-
-        public int[] getUniqueColors() {
-            final Set<Integer> result = new HashSet<Integer>();
-            for ( int i = 0 ; i < data.length ; i++ ) {
-                result.add( data[i] );
-            }
-            return ArrayUtils.toPrimitive( result.toArray( new Integer[ result.size() ] ));
-        }
-
-        public int getWidth() {
-            return image.getWidth();
-        }
-
-        public int getHeight() {
-            return image.getHeight();
-        }
-
-        public BufferedImage getImage() {
-            return image;
-        }
-
-        public Graphics2D getGraphics() {
-            return (Graphics2D) image.getGraphics();
-        }
-
-        public int[] getBackingArray() {
-            return data;
-        }
     }
 
     @Override

@@ -34,8 +34,8 @@ public class DefaultClock implements IDevice
 {
     private static final int INITIAL_TICKS_PER_SECOND = (int) Math.round( 1000.0 / 60.0d);	
 	
-    private static final DeviceDescriptor DESC = new DeviceDescriptor("generic clock",
-    		"jASM16 default clock" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
+    private static final DeviceDescriptor DESC = new DeviceDescriptor("Generic clock",
+    		"Generic clock (compatible)" , 0x12d0b402,1, Constants.JASM16_MANUFACTURER );
 
     private volatile IEmulator emulator;
     
