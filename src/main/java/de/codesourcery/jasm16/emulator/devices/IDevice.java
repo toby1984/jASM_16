@@ -15,7 +15,9 @@
  */
 package de.codesourcery.jasm16.emulator.devices;
 
+import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulator;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 
 /**
  * A hardware device.
@@ -58,8 +60,12 @@ public interface IDevice {
 	
 	/**
 	 * Handle a hardware interrupt triggered by the application.
-	 * @param emulator
+	 * @param emulator the emulator invoking this method. Do not use {@link IEmulator#getCPU()} or
+	 * {@link IEmulator#getMemory()} to access the emulator's CPU/memory, use the <code>ICPU</code> / <code>IMemory</code>
+	 * instances passed to this method call instead
+	 * @param cpu 
+	 * @param memory 
 	 * @return number of CPU cycles the device consumed to handle the interrupt
 	 */
-	public int handleInterrupt(IEmulator emulator);
+	public int handleInterrupt(IEmulator emulator, ICPU cpu, IMemory memory);
 }

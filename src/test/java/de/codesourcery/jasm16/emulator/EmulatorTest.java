@@ -23,6 +23,7 @@ import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.memory.IMemory;
 
 public class EmulatorTest extends AbstractEmulatorTest
 {
@@ -1581,7 +1582,7 @@ public class EmulatorTest extends AbstractEmulatorTest
 		}
 
 		@Override
-		public int handleInterrupt(IEmulator emulator) {
+		public int handleInterrupt(IEmulator emulator, ICPU cpu, IMemory memory) {
 			interruptCount.incrementAndGet();
 			return 0;
 		}

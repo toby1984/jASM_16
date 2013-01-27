@@ -19,6 +19,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+/**
+ * A {@link FloppyDisk} implementation that accesses a 
+ * file in the local filesystem.
+ *
+ * @author tobias.gierke@code-sourcery.de
+ */
 public class FileBasedFloppyDisk extends FloppyDisk
 {
     private final File file;

@@ -51,7 +51,6 @@ import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulator;
-import de.codesourcery.jasm16.emulator.IEmulatorInvoker;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
@@ -791,151 +790,139 @@ public final class DefaultScreen implements IDevice {
         }
     }
 
-    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
+    @Override
+    public int handleInterrupt(IEmulator emulator, ICPU cpu, IMemory memory) 
+    {
+        /*
+         * Interrupt behavior:
+         * When a HWI is received by the LEM1802, it reads the A register and does one
+         * of the following actions:
+         */
+        final int a = cpu.getRegisterValue( Register.A );
 
-        @SuppressWarnings("deprecation")
-        @Override
-        public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
-                IMemory memory) 
+        if ( a == 0 ) 
         {
-
             /*
-             * Interrupt behavior:
-             * When a HWI is received by the LEM1802, it reads the A register and does one
-             * of the following actions:
+             * 0: MEM_MAP_SCREEN
+             *    Reads the B register, and maps the video ram to DCPU-16 ram starting
+             *    at address B. See below for a description of video ram.
+             *    If B is 0, the screen is disconnected.
+             *    When the screen goes from 0 to any other value, the the LEM1802 takes
+             *    about one second to start up. Other interrupts sent during this time
+             *    are still processed.
              */
-            final int a = cpu.getRegisterValue( Register.A );
+            final int b = cpu.getRegisterValue( Register.B );
+            if ( b == 0 ) {
+                disconnect();
+            } else {
+                final Address ramStart = Address.wordAddress( b );
+                final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
 
-            if ( a == 0 ) 
-            {
-                /*
-                 * 0: MEM_MAP_SCREEN
-                 *    Reads the B register, and maps the video ram to DCPU-16 ram starting
-                 *    at address B. See below for a description of video ram.
-                 *    If B is 0, the screen is disconnected.
-                 *    When the screen goes from 0 to any other value, the the LEM1802 takes
-                 *    about one second to start up. Other interrupts sent during this time
-                 *    are still processed.
-                 */
-                final int b = cpu.getRegisterValue( Register.B );
-                if ( b == 0 ) {
-                    disconnect();
-                } else {
-                    final Address ramStart = Address.wordAddress( b );
-                    final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
-
-                    // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-                    if ( videoRamEnd > 0xffff ) 
-                    {
-                        final String msg = "Cannot map video ram to "+ramStart+" because it would "
-                                +" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
-                        out.error( msg );
-                        throw new DeviceErrorException(msg , DefaultScreen.this);
-                    }
-
-                    logDebugHeadline("Mapping video RAM to "+ramStart);
-                    mapVideoRAM( ramStart );
+                // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+                if ( videoRamEnd > 0xffff ) 
+                {
+                    final String msg = "Cannot map video ram to "+ramStart+" because it would "
+                            +" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
+                    out.error( msg );
+                    throw new DeviceErrorException(msg , DefaultScreen.this);
                 }
-            }
-            else if ( a== 1 ) 
-            {
-                /*
-                 * 1: MEM_MAP_FONT
-                 *    Reads the B register, and maps the font ram to DCPU-16 ram starting
-                 *    at address B. See below for a description of font ram.
-                 *    If B is 0, the default font is used instead.
-                 */
 
-                int value = cpu.getRegisterValue(Register.B );
-                if ( value == 0 ) 
+                logDebugHeadline("Mapping video RAM to "+ramStart);
+                mapVideoRAM( ramStart );
+            }
+        }
+        else if ( a== 1 ) 
+        {
+            /*
+             * 1: MEM_MAP_FONT
+             *    Reads the B register, and maps the font ram to DCPU-16 ram starting
+             *    at address B. See below for a description of font ram.
+             *    If B is 0, the default font is used instead.
+             */
+
+            int value = cpu.getRegisterValue(Register.B );
+            if ( value == 0 ) 
+            {
+                synchronized(PEER_LOCK) 
                 {
-                    synchronized(PEER_LOCK) 
-                    {
-                        ConsoleScreen screen = screen();
-                        if ( screen != null && peer != null ) {
-                            screen.setFontImage( DEFAULT_GLYPH_IMAGE );
-                        }
-                        setupDefaultFontRAM();
+                    ConsoleScreen screen = screen();
+                    if ( screen != null && peer != null ) {
+                        screen.setFontImage( DEFAULT_GLYPH_IMAGE );
                     }
-                } 
-                else 
-                {
-                    logDebugHeadline("Mapping font RAM to 0x"+Misc.toHexString( value ) );
-                    mapFontRAM( Address.wordAddress( value ) );
+                    setupDefaultFontRAM();
                 }
             } 
-            else if ( a == 2 ) 
+            else 
             {
-                /*
-                 * 2: MEM_MAP_PALETTE
-                 *    Reads the B register, and maps the palette ram to DCPU-16 ram starting
-                 *    at address B. See below for a description of palette ram.
-                 *    If B is 0, the default palette is used instead.
-                 */
-                final int b = cpu.getRegisterValue( Register.B );
-                logDebugHeadline("Mapping palette RAM to "+Misc.toHexString( b ) );
-
-                if ( b == 0 ) {
-                    setupDefaultPaletteRAM();
-                } else {
-                    final Address ramStart = Address.wordAddress( b );
-                    // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-                    mapPaletteRAM( ramStart );
-                }           
-            } else if ( a == 3 ) {
-                /*
-                 * 3: SET_BORDER_COLOR
-                 *    Reads the B register, and sets the border color to palette index B&0xF
-                 */
-                final int b = cpu.getRegisterValue( Register.B );
-                borderPaletteIndex = b & 0x0f;
-                final ConsoleScreen screen = screen();
-                if ( screen != null ) {
-                    screen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
-                }
-            } else if ( a == 4 ) {
-                /*
-                 * 4: MEM_DUMP_FONT
-                 *    Reads the B register, and writes the default font data to DCPU-16 ram
-                 *    starting at address B.
-                 *    Halts the DCPU-16 for 256 cycles
-                 */
-                int target = cpu.getRegisterValue(Register.B );
-
-                logDebugHeadline("Dumping font RAM to 0x"+Misc.toHexString( target) );
-
-                final int len = fontRAM.getSize().getSizeInWords();
-                for ( int src = 0 ; src < len ; src++ ) {
-                    memory.write( target+src , fontRAM.read( src ) );
-                }
-                return 256;
-            } else if ( a == 5 ) {
-                /*
-                 * 5: MEM_DUMP_PALETTE
-                 *    Reads the B register, and writes the default palette data to DCPU-16
-                 *    ram starting at address B.       
-                 *    Halts the DCPU-16 for 16 cycles
-                 */
-                Address start = Address.wordAddress( cpu.getRegisterValue( Register.B ) );
-                logDebugHeadline("Dumping palette RAM to "+start);
-                for ( int words = 0 ; words < 16 ; words++) 
-                {
-                    final int value = paletteRAM.read( words );
-                    memory.write( start , value );
-                    start = start.incrementByOne(true);
-                }
-                return 16;
-            } else {
-                out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
+                logDebugHeadline("Mapping font RAM to 0x"+Misc.toHexString( value ) );
+                mapFontRAM( Address.wordAddress( value ) );
             }
-            return 0;
-        }
-    };
+        } 
+        else if ( a == 2 ) 
+        {
+            /*
+             * 2: MEM_MAP_PALETTE
+             *    Reads the B register, and maps the palette ram to DCPU-16 ram starting
+             *    at address B. See below for a description of palette ram.
+             *    If B is 0, the default palette is used instead.
+             */
+            final int b = cpu.getRegisterValue( Register.B );
+            logDebugHeadline("Mapping palette RAM to "+Misc.toHexString( b ) );
 
-    @Override
-    public int handleInterrupt(IEmulator emulator) 
-    {
-        return emulator.doWithEmulator( invoker );
+            if ( b == 0 ) {
+                setupDefaultPaletteRAM();
+            } else {
+                final Address ramStart = Address.wordAddress( b );
+                // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+                mapPaletteRAM( ramStart );
+            }           
+        } else if ( a == 3 ) {
+            /*
+             * 3: SET_BORDER_COLOR
+             *    Reads the B register, and sets the border color to palette index B&0xF
+             */
+            final int b = cpu.getRegisterValue( Register.B );
+            borderPaletteIndex = b & 0x0f;
+            final ConsoleScreen screen = screen();
+            if ( screen != null ) {
+                screen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
+            }
+        } else if ( a == 4 ) {
+            /*
+             * 4: MEM_DUMP_FONT
+             *    Reads the B register, and writes the default font data to DCPU-16 ram
+             *    starting at address B.
+             *    Halts the DCPU-16 for 256 cycles
+             */
+            int target = cpu.getRegisterValue(Register.B );
+
+            logDebugHeadline("Dumping font RAM to 0x"+Misc.toHexString( target) );
+
+            final int len = fontRAM.getSize().getSizeInWords();
+            for ( int src = 0 ; src < len ; src++ ) {
+                memory.write( target+src , fontRAM.read( src ) );
+            }
+            return 256;
+        } else if ( a == 5 ) {
+            /*
+             * 5: MEM_DUMP_PALETTE
+             *    Reads the B register, and writes the default palette data to DCPU-16
+             *    ram starting at address B.       
+             *    Halts the DCPU-16 for 16 cycles
+             */
+            Address start = Address.wordAddress( cpu.getRegisterValue( Register.B ) );
+            logDebugHeadline("Dumping palette RAM to "+start);
+            for ( int words = 0 ; words < 16 ; words++) 
+            {
+                final int value = paletteRAM.read( words );
+                memory.write( start , value );
+                start = start.incrementByOne(true);
+            }
+            return 16;
+        } else {
+            out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
+        }
+        return 0;
     }
 
     protected static final class ConsoleScreen {

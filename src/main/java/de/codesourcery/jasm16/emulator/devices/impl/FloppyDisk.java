@@ -24,6 +24,14 @@ import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.disassembler.ByteArrayMemoryAdapter;
 import de.codesourcery.jasm16.emulator.memory.IMemory;
 
+/**
+ * Abstract super-class for floppy disk media implementations.
+ * 
+ * <p>Subclasses need to implement {@link #read(byte[], long)} and
+ * {@link #write(byte[], long)}.</p>
+ *
+ * @author tobias.gierke@code-sourcery.de
+ */
 public abstract class FloppyDisk {
 
     public static final int CAPACITY_IN_WORDS = 737280;

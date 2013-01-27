@@ -23,7 +23,6 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.ICPU;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
-import de.codesourcery.jasm16.emulator.IEmulatorInvoker;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.HardwareInterrupt;
@@ -209,75 +208,65 @@ public class DefaultClock implements IDevice
         return DESC;
     }
 
-    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
-
-		@Override
-		public Integer doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory) {
-
-	        /*
-	         * Name: Generic Clock (compatible)
-	         * ID: 0x12d0b402
-	         * Version: 1
-	         * 
-	         * Interrupts do different things depending on contents of the A register:
-	         * 
-	         *  A | BEHAVIOR
-	         * ---+----------------------------------------------------------------------------
-	         *  0 | The B register is read, and the clock will tick 60/B times per second.
-	         *    | If B is 0, the clock is turned off.
-	         *  1 | Store number of ticks elapsed since last call to 0 in C register
-	         *  2 | If register B is non-zero, turn on interrupts with message B. If B is zero,
-	         *    | disable interrupts
-	         * ---+----------------------------------------------------------------------------
-	         * 
-	         * When interrupts are enabled, the clock will trigger an interrupt whenever it
-	         * ticks.     
-	         */      
-	        final int a = cpu.getRegisterValue(Register.A);
-	        switch( a ) 
-	        {
-	            case 0: // The B register is read, and the clock will tick 60/B times per second. If B is 0, the clock is turned off.
-	                int b = cpu.getRegisterValue(Register.B) & 0xffff;
-	                if ( b == 0 ) {
-	                    stopClock();
-	                    return 0;
-	                } 
-	                if ( b < 0 ) {
-	                    clockThread.setTicksPerSecond( 60 );                    
-	                } else if ( b > 60 ) {
-	                    clockThread.setTicksPerSecond( 1 );                    
-	                } else {
-	                    clockThread.setTicksPerSecond( (int) Math.round( 60.0 / b ) );
-	                }
-	                startClock();
-	                break;
-	            case 1:
-	                // Store number of ticks elapsed since last call to 0 in C register
-	                cpu.setRegisterValue( Register.C , clockThread.tickCounter & 0xffff );
-	                break;
-	            case 2: 
-	                // If register B is non-zero, turn on interrupts with message B. If B is zero, disable interrupts.
-	                b = cpu.getRegisterValue(Register.B) & 0xffff;
-	                if ( b == 0 ) {
-	                    clockThread.irqEnabled=false;
-	                } else {
-	                    clockThread.irqMessage = b;
-	                    clockThread.irqEnabled = true;
-	                    out.debug("Clock IRQs enabled with message "+Misc.toHexString( b ));
-	                }
-	                break;
-	            default:
-	                out.warn("handleInterrupt(): Clock received unknown interrupt msg "+Misc.toHexString( a ));
-	        }
-	        return 0;
-		}
-    	
-    };
-    
     @Override
-    public int handleInterrupt(IEmulator emulator)
+    public int handleInterrupt(IEmulator emulator, ICPU cpu, IMemory memory)
     {
-    	return emulator.doWithEmulator( invoker );
+        /*
+         * Name: Generic Clock (compatible)
+         * ID: 0x12d0b402
+         * Version: 1
+         * 
+         * Interrupts do different things depending on contents of the A register:
+         * 
+         *  A | BEHAVIOR
+         * ---+----------------------------------------------------------------------------
+         *  0 | The B register is read, and the clock will tick 60/B times per second.
+         *    | If B is 0, the clock is turned off.
+         *  1 | Store number of ticks elapsed since last call to 0 in C register
+         *  2 | If register B is non-zero, turn on interrupts with message B. If B is zero,
+         *    | disable interrupts
+         * ---+----------------------------------------------------------------------------
+         * 
+         * When interrupts are enabled, the clock will trigger an interrupt whenever it
+         * ticks.     
+         */      
+        final int a = cpu.getRegisterValue(Register.A);
+        switch( a ) 
+        {
+            case 0: // The B register is read, and the clock will tick 60/B times per second. If B is 0, the clock is turned off.
+                int b = cpu.getRegisterValue(Register.B) & 0xffff;
+                if ( b == 0 ) {
+                    stopClock();
+                    return 0;
+                } 
+                if ( b < 0 ) {
+                    clockThread.setTicksPerSecond( 60 );                    
+                } else if ( b > 60 ) {
+                    clockThread.setTicksPerSecond( 1 );                    
+                } else {
+                    clockThread.setTicksPerSecond( (int) Math.round( 60.0 / b ) );
+                }
+                startClock();
+                break;
+            case 1:
+                // Store number of ticks elapsed since last call to 0 in C register
+                cpu.setRegisterValue( Register.C , clockThread.tickCounter & 0xffff );
+                break;
+            case 2: 
+                // If register B is non-zero, turn on interrupts with message B. If B is zero, disable interrupts.
+                b = cpu.getRegisterValue(Register.B) & 0xffff;
+                if ( b == 0 ) {
+                    clockThread.irqEnabled=false;
+                } else {
+                    clockThread.irqMessage = b;
+                    clockThread.irqEnabled = true;
+                    out.debug("Clock IRQs enabled with message "+Misc.toHexString( b ));
+                }
+                break;
+            default:
+                out.warn("handleInterrupt(): Clock received unknown interrupt msg "+Misc.toHexString( a ));
+        }
+        return 0;
     }
     
     @Override

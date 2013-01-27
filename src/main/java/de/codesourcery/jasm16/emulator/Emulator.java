@@ -63,8 +63,6 @@ public final class Emulator implements IEmulator
 	
 	private static final boolean DEBUG = false;
 	
-	private static final AtomicLong DEBUG_EMULATOR_ID = new AtomicLong(0);
-	
 	/**
 	 * Maximum number of interrupts the emulator's interrupt queue may hold.
 	 */
@@ -76,8 +74,6 @@ public final class Emulator implements IEmulator
 
 	private final ClockThread clockThread;
 
-	private final long emulatorId = DEBUG_EMULATOR_ID.incrementAndGet();
-	
 	private final ListenerHelper listenerHelper = new ListenerHelper();
 
 	private static final AtomicLong cmdId = new AtomicLong(0);
@@ -387,7 +383,6 @@ public final class Emulator implements IEmulator
 
 	// @GuardedBy( devices )
 	private final List<IDevice> devices = new ArrayList<IDevice>();
-
 
 	// ============ CPU =============== 
 
@@ -739,18 +734,10 @@ public final class Emulator implements IEmulator
 
 		private void sendToClockThread(Command cmd) 
 		{
-			if ( DEBUG ) {
-				System.out.println("[emulator "+emulatorId+"] Sending command to clock thread: "+cmd);
-			}
-			
 			if ( cmd.hasType(CommandType.TERMINATE ) ) 
 			{
 				if ( ! terminateCommandReceived.compareAndSet( false , true ) ) {
 					throw new IllegalStateException("Can't process any more commands , worker thread already terminated");					
-				}
-				
-				if ( DEBUG ) {
-					new Exception("[emulator "+emulatorId+"] Received TERMINATE command").printStackTrace();
 				}
 			} 
 			
@@ -760,9 +747,6 @@ public final class Emulator implements IEmulator
 				return;
 			}
 
-			if ( DEBUG ) {
-				System.out.println("[emulator "+emulatorId+"] Waiting for ack to: "+cmd);
-			}
 			do 
 			{
 				final Long cmdId = ackQueue.peek();
@@ -890,10 +874,6 @@ public final class Emulator implements IEmulator
 
 		private Command waitForCommand(boolean expectingStartCommand) 
 		{
-			if ( DEBUG ) {
-				System.out.println("[emulator "+emulatorId+"] Waiting for "+(expectingStartCommand? " START command " : "STOP command"));
-			}
-			
 			while ( true ) 
 			{
 				final Command result = safeTake( cmdQueue );
@@ -911,13 +891,7 @@ public final class Emulator implements IEmulator
 				if ( ( expectingStartCommand && result.isStartWorkerMainLoopCommand() ) ||
 					 ( ! expectingStartCommand && result.isStopCommand() ) ) 
 				{
-					if ( DEBUG ) {
-						System.out.println("[emulator "+emulatorId+"] Got "+(expectingStartCommand? " START command " : "STOP command"));
-					}
 					return result;
-				}
-				if ( DEBUG ) {
-					System.out.println("[emulator "+emulatorId+"] Ignoring unexpected command: "+result);
 				}
 				acknowledgeCommand( result );
 			}
@@ -926,9 +900,6 @@ public final class Emulator implements IEmulator
 		private void acknowledgeCommand(Command cmd) 
 		{
 			if ( cmd.requiresACK() ) {
-				if ( DEBUG ) {
-					System.out.println("[emulator "+emulatorId+"] Acknowledging "+cmd);
-				}
 				safePut( ackQueue , cmd.getId() );
 			}
 		}
@@ -974,14 +945,13 @@ public final class Emulator implements IEmulator
 					cpu.currentCycle+=execDurationInCycles;
 					cpu.pc = Address.wordAddress( cpu.currentInstructionPtr );
 					
-					cpu.maybeProcessOneInterrupt(); 
+					cpu.maybeProcessOneInterrupt();  // might push A on stack and set PC to IA 
 					
 					success = true;
 				} 
 				finally 
 				{
 					if ( success ) {
-						// TODO: Any asynchronous register changes done by hardware in the meantime get lost here ...
 						visibleCPU.populateFrom( cpu );
 					} else {
 					    // restore CPU register state on error
@@ -2807,7 +2777,7 @@ public final class Emulator implements IEmulator
             else 
             {
                 try {
-                    cyclesConsumed = device.handleInterrupt( Emulator.this );
+                    cyclesConsumed = device.handleInterrupt( Emulator.this, this , this.memory );
                 } 
                 catch(RuntimeException e) {
                     if ( e instanceof DeviceErrorException) {
@@ -3218,40 +3188,21 @@ public final class Emulator implements IEmulator
             if ( interruptsEnabled() ) 
             { 
                 final IInterrupt irq = getNextProcessableInterrupt( true );
-                if ( irq != null ) {
-                    processInterrupt( irq );
+                if ( irq != null ) 
+                {
+                    // push PC to stack
+					// SET [ --SP ] , PC
+					push( pc.getValue() );
+					
+					// push A to stack
+					push( commonRegisters[0] );
+					
+					pc = interruptAddress;
+					commonRegisters[0] = irq.getMessage() & 0xffff;
                     return true;
                 }
             }
             return false;
-        }     
-
-        public void processInterrupt(IInterrupt irq) 
-        {
-            /* When IA is set to something other than 0, interrupts triggered on the DCPU-16
-             * will 
-             * 
-             * - push PC to the stack, 
-             * - push A to the stack
-             * - set the PC to IA
-             * - set A to the interrupt message
-             * 
-             * A well formed interrupt handler must 
-             * - pop A from the stack 
-             * - popping PC from the stack
-             * 
-             * when returning.       
-             */
-
-            // push PC to stack
-            // SET [ --SP ] , PC
-            push( pc.getValue() );
-
-            // push A to stack
-            push( commonRegisters[0] );
-
-            pc = interruptAddress;
-            commonRegisters[0] = irq.getMessage() & 0xffff;
         }        
     } // end of class: CPU	
 }

@@ -256,7 +256,7 @@ public class DefaultFloppyDrive implements IDevice {
 		}
 		logDebug( "Disk inserted: "+disk);
 		if ( emulator != null ) {
-		    getWorkerThread().diskChanged();
+			getWorkerThread().diskChanged();
 		}
 	}
 
@@ -274,7 +274,7 @@ public class DefaultFloppyDrive implements IDevice {
 		{
 			logDebug("Disk ejected");
 			if ( emulator != null ) {
-			    getWorkerThread().diskChanged();
+				getWorkerThread().diskChanged();
 			}
 		}
 	}
@@ -378,9 +378,9 @@ public class DefaultFloppyDrive implements IDevice {
 						while(true) 
 						{
 							try {
-							    synchronized(SLEEP_LOCK) {
-							        SLEEP_LOCK.wait(1000); // sleep for 1 second
-							    }
+								synchronized(SLEEP_LOCK) {
+									SLEEP_LOCK.wait(1000); // sleep for 1 second
+								}
 								break;
 							} catch(InterruptedException e) {
 								Thread.currentThread().interrupt();
@@ -444,74 +444,74 @@ public class DefaultFloppyDrive implements IDevice {
 
 			switch( cmd.getType() ) 
 			{
-			case READ: /* READ */
-				final ReadCommand readCmd = (ReadCommand) cmd;
-				moveHead( readCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
+				case READ: /* READ */
+					final ReadCommand readCmd = (ReadCommand) cmd;
+					moveHead( readCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
 
-				synchronized( DISK_LOCK ) 
-				{
-					if ( disk != null ) 
+					synchronized( DISK_LOCK ) 
 					{
-						enforceSpeed();
-						
-						final IOException outcome = emulator.doWithEmulator( new IEmulatorInvoker<IOException>() {
-
-                            @Override
-                            public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
-                            {
-                                try {
-                                    disk.readSector( readCmd.getSector() , memory , readCmd.getTargetMemoryAddress() );
-                                } catch (IOException e) {
-                                    return e;
-                                }                                
-                                return null;
-                            }
-                        });
-						if ( outcome != null ) {
-						    throw outcome;
-						}
-						return ErrorCode.NONE;
-					}
-				}
-				return ErrorCode.NO_MEDIA;
-
-			case WRITE: /* WRITE */
-				final WriteCommand writeCmd = (WriteCommand) cmd;
-				moveHead( writeCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
-				boolean writeProtected=false;
-				synchronized( DISK_LOCK ) 
-				{
-					if ( disk != null ) 
-					{
-						if ( ! disk.isWriteProtected() ) 
+						if ( disk != null ) 
 						{
 							enforceSpeed();
-							
+
 							final IOException outcome = emulator.doWithEmulator( new IEmulatorInvoker<IOException>() {
 
-	                            @Override
-	                            public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
-	                            {
-	                                try {
-                                        disk.writeSector( writeCmd.getSector() , memory , writeCmd.getSourceMemoryAddress() );
-                                    } catch (IOException e) {
-                                        return e;
-                                    }	                                
-	                                return null;
-	                            }
-	                        });
+								@Override
+								public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
+								{
+									try {
+										disk.readSector( readCmd.getSector() , memory , readCmd.getTargetMemoryAddress() );
+									} catch (IOException e) {
+										return e;
+									}                                
+									return null;
+								}
+							});
 							if ( outcome != null ) {
-							    throw outcome;
+								throw outcome;
 							}
 							return ErrorCode.NONE;
-						} 
-						writeProtected = true;
+						}
 					}
-				}
-				return writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA;
+					return ErrorCode.NO_MEDIA;
 
-			default:
-				throw new RuntimeException("Internal error,unhandled command type "+cmd);
+				case WRITE: /* WRITE */
+					final WriteCommand writeCmd = (WriteCommand) cmd;
+					moveHead( writeCmd.getSector() ); // moveHead() calls Object#sleep() , do NOT use in synchronized block
+					boolean writeProtected=false;
+					synchronized( DISK_LOCK ) 
+					{
+						if ( disk != null ) 
+						{
+							if ( ! disk.isWriteProtected() ) 
+							{
+								enforceSpeed();
+
+								final IOException outcome = emulator.doWithEmulator( new IEmulatorInvoker<IOException>() {
+
+									@Override
+									public IOException doWithEmulator(IEmulator emulator, ICPU cpu, IMemory memory)
+									{
+										try {
+											disk.writeSector( writeCmd.getSector() , memory , writeCmd.getSourceMemoryAddress() );
+										} catch (IOException e) {
+											return e;
+										}	                                
+										return null;
+									}
+								});
+								if ( outcome != null ) {
+									throw outcome;
+								}
+								return ErrorCode.NONE;
+							} 
+							writeProtected = true;
+						}
+					}
+					return writeProtected ? ErrorCode.PROTECTED : ErrorCode.NO_MEDIA;
+
+				default:
+					throw new RuntimeException("Internal error,unhandled command type "+cmd);
 			}
 		}
 
@@ -566,7 +566,7 @@ public class DefaultFloppyDrive implements IDevice {
 						commandQueue.put( cmd );
 						result = true;
 					}  else {
-					    result = commandQueue.offer( cmd );
+						result = commandQueue.offer( cmd );
 					}
 					break;
 				} 
@@ -574,7 +574,7 @@ public class DefaultFloppyDrive implements IDevice {
 					Thread.currentThread().interrupt();
 				}
 			}
-			
+
 			if ( result ) 
 			{
 				synchronized (SLEEP_LOCK) {
@@ -700,11 +700,11 @@ public class DefaultFloppyDrive implements IDevice {
 		{
 			error = ErrorCode.NONE;
 			if ( disk == null ) {
-			    status = StatusCode.NO_MEDIA;
+				status = StatusCode.NO_MEDIA;
 			} else if ( disk.isWriteProtected() ) {
-			    status = StatusCode.READY_WP;
+				status = StatusCode.READY_WP;
 			} else {
-			    status = StatusCode.READY;
+				status = StatusCode.READY;
 			}
 		}
 	}
@@ -720,37 +720,33 @@ public class DefaultFloppyDrive implements IDevice {
 	}
 
 	private void logError(String msg) {
-	    if ( emulator != null ) {
-	        emulator.getOutput().error( msg );
-	    }
+		if ( emulator != null ) {
+			emulator.getOutput().error( msg );
+		}
 	}
 
 	private void logError(String msg,Throwable t) {
-	    if ( emulator != null ) {
-	        emulator.getOutput().error( msg , t );
-	    }
+		if ( emulator != null ) {
+			emulator.getOutput().error( msg , t );
+		}
 	}	
 
 	private void logDebug(String msg) {
-	    if ( emulator != null ) {
-	        emulator.getOutput().debug( msg );
-	    }
+		if ( emulator != null ) {
+			emulator.getOutput().debug( msg );
+		}
 	}
-	
-    private final IEmulatorInvoker<Integer> invoker = new IEmulatorInvoker<Integer>() {
 
-		@Override
-		public Integer doWithEmulator(IEmulator emulator, ICPU cpu,
-				IMemory memory) 
-		{
-			final int msg= cpu.getRegisterValue( Register.A ); 
-			switch( msg) {
+	@Override
+	public int handleInterrupt(IEmulator emulator, ICPU cpu, IMemory memory) {
+		final int msg= cpu.getRegisterValue( Register.A ); 
+		switch( msg) {
 			case 0:
 				/*  0  Poll device. 
 				 * Sets B to the current state (see below) and C to the last error
 				 * since the last device poll. 
 				 */
-			    logDebug("Device status polled");
+				logDebug("Device status polled");
 				cpu.setRegisterValue(Register.B , status.getCode() );
 				cpu.setRegisterValue(Register.C , error.getCode() );
 				synchronized(DISK_LOCK) {
@@ -783,7 +779,7 @@ public class DefaultFloppyDrive implements IDevice {
 				 *    STATE_READY_WP.
 				 *    Protects against partial reads.
 				 */		
-		        final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+				final Address targetAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
 				final int readSector = cpu.getRegisterValue(Register.X);
 				logDebug("Read request for sector #"+readSector+" , store at "+targetAddress);
 				if ( ! isValidSector( readSector ) ) 
@@ -806,11 +802,11 @@ public class DefaultFloppyDrive implements IDevice {
 				 *    fails. Writing is only possible if the state is STATE_READY.
 				 *    Protects against partial writes.
 				 */		
-	            final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
+				final Address sourceAddress = Address.wordAddress( cpu.getRegisterValue( Register.Y ) );
 				final int writeSector = cpu.getRegisterValue(Register.X);
-				
+
 				logDebug("Write request for sector #"+writeSector+" , read from "+sourceAddress);
-				
+
 				if ( ! isValidSector( writeSector ) ) 
 				{
 					logError("Invalid sector number "+writeSector);
@@ -827,15 +823,8 @@ public class DefaultFloppyDrive implements IDevice {
 			default:
 				logError("Received unknown interrupt message: "+msg);
 				throw new DeviceErrorException("Received unknown interrupt message: "+msg,DefaultFloppyDrive.this);
-			}
-
-			return 0;
 		}
-    };
-
-	@Override
-	public int handleInterrupt(IEmulator emulator) {
-		return emulator.doWithEmulator( invoker );
+		return 0;
 	}
 
 	private boolean isValidSector(int sector) 
