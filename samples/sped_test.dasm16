@@ -1,0 +1,197 @@
+jsr get_devices
+jsr activate_sped
+set x, 0
+:loop
+set y, 0
+:sub_loop
+add y, 1
+ifl y, 1000
+set pc, sub_loop
+add x, 1
+set a, 2
+hwi [spedID]
+set pc, loop
+
+:get_devices ;find hardware and store IDs
+hwn i ;get number of devices
+:get_devices_loop
+sub i, 1
+hwq i ;get info on device i
+ife b, 0x42ba
+    jsr got_sped
+ife b, 0x30cf
+    jsr got_keyboard
+ife b, 0x7349
+    jsr got_screen
+ife i, 0
+    set pc, pop
+set pc, get_devices_loop
+
+:got_sped
+ife a, 0xbf3c
+    set [spedID], i
+set pc, pop
+
+:got_keyboard
+ife a, 0x7406
+    set [keyboardID], i
+set pc, pop
+
+:got_screen
+ife a, 0xf615
+    set [screenID], i
+set pc, pop
+
+:activate_sped
+:sphere
+set c, model
+set i, 0
+:sphere_circle
+set j, 0
+:circle_line
+set a, j
+jsr sin
+set x, b
+set a, i
+jsr sin
+mli x, b
+set x, ex
+add x, 0x8000
+
+set a, j
+jsr sin
+set y, b
+set a, i
+jsr cos
+mli y, b
+set y, ex
+add y, 0x8000
+
+set a, j
+jsr cos
+set z, b
+asr z, 1
+add z, 0x4000
+
+shr x, 8
+and y, 0xff00
+bor y, x
+shr z, 8
+bor z, 0x0300
+set [c], y
+set [c+1], z
+add c, 2
+add j, 1
+ifl j, 16
+set pc, circle_line
+add i, 2
+ifl i, 8
+set pc, sphere_circle
+
+set [c], 0x8080
+set [c+1], 0x0380
+add c, 2
+set [c], 0x8080
+set [c+1], 0x0080
+add c, 2
+
+set i, 2
+:sphere_circle_h
+set j, 0
+:circle_line_h
+set a, j
+jsr sin
+set x, b
+set a, i
+jsr sin
+mli x, b
+set x, ex
+add x, 0x8000
+
+set a, j
+jsr cos
+set y, b
+set a, i
+jsr sin
+mli y, b
+set y, ex
+add y, 0x8000
+
+set a, i
+jsr cos
+set z, b
+asr z, 1
+add z, 0x4000
+
+shr x, 8
+and y, 0xff00
+bor y, x
+shr z, 8
+bor z, 0x0300
+set [c], y
+set [c+1], z
+add c, 2
+add j, 2
+ifl j, 17
+set pc, circle_line_h
+add i, 1
+ifl i, 7
+set pc, sphere_circle_h
+
+set [c], y
+and z, 0x00ff
+set [c+1], z
+add c, 2
+set [c], 0x8080
+set [c+1], 0x0080
+add c, 2
+
+sub c, axis
+shr c, 1
+
+set a, 1 ;memory map
+set x, axis
+set y, c
+hwi [spedID]
+set pc, pop
+
+:sin ; b = sin(a*Pi/8)*32768, a = a
+and a, 15 ; trunc to 0..2Pi
+set b, a
+and b, 7
+set b, [b+sin_table]
+ifc a, 8
+    set pc, sin_12
+xor b, 0xffff
+add b, 1
+:sin_12
+set pc, pop
+
+:cos ; b = cos(a*Pi/8)*32768, a = a
+add a, 4
+jsr sin
+set pc, pop
+
+:spedID dat 0 ; IDs of hardware
+:keyboardID dat 0
+:screenID dat 0
+
+:sin_table ; sin(a*Pi/8)*32768
+dat 1     ; 0
+dat 12540 ; Pi/8
+dat 23170 ; 2Pi/8
+dat 30274 ; 3Pi/8
+dat 32767 ; 4Pi/8
+dat 30274 ; 3Pi/8
+dat 23170 ; 2Pi/8
+dat 12540 ; Pi/8
+
+:axis
+ dat 0x0000, 0x0000
+ dat 0x00ff, 0x0100
+ dat 0x0000, 0x0000
+ dat 0xff00, 0x0200
+ dat 0x0000, 0x0000
+ dat 0x0000, 0x03ff
+ dat 0x0000, 0x0000
+:model

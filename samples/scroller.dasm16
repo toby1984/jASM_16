@@ -1,0 +1,152 @@
+
+.equ SCREEN_ID_LOW 0x7349f615 & 0xffff
+.equ SCREEN_ID_HI ( 0x7349f615 >> 16 ) & 0xffff
+
+.equ VRAM 0x8000
+
+.equ ROWS 12
+.equ COLUMNS 32
+
+   JSR detect_hardware
+   IFE [screen_slot],-1   
+   HCF 0      
+   SET z , 0 
+
+scroll_test:
+   SET x , z
+   SET y, ROWS-1
+   SET a , text
+   JSR print_string ; output sample text
+
+   JSR scroll_up
+;   JSR scroll_down
+
+   ADD z , 1
+   IFG z , COLUMNS
+   SET z, 0
+
+   SET PC , scroll_test
+
+; ------------------------------
+; --- clear row in A ---
+; ------------------------------
+
+clear_row:
+      SET j , a
+      SHL j , 5 ; 1 << 5 = * 32 columns
+      ADD j , VRAM
+      SET i , 0
+clear_loop:
+      STI [j] ,0           
+      IFL i, COLUMNS
+      SET PC,clear_loop
+      SET PC,POP
+
+; ---------------------------------------------------------------
+; --- scroll down whole screen by one row
+; ---------------------------------------------------------------
+
+scroll_down:
+       SET a , ROWS-2
+scroll_down_loop:       
+       JSR move_one_row_down
+       IFE a, 0
+       SET PC,clear_first_row
+       SUB a , 1
+       SET PC , scroll_down_loop
+clear_first_row:
+       SET a,0
+       JSR clear_row ; clear first row       
+       SET PC,POP
+       
+; move a single row , row number is in A
+move_one_row_down:
+       SET i,a
+       SHL i , 5  ; 1 << 5 = * 32 columns
+       SET j , i
+
+       ADD i , VRAM
+       ADD j , VRAM+COLUMNS
+              
+       SET x , j
+       ADD x , COLUMNS
+copy_down_loop:       
+       STI [j],[i]       
+       IFL j , x
+       SET PC,copy_down_loop
+       SET PC , POP
+
+; ---------------------------------------------------------------
+; --- scroll down whole screen by one row
+; ---------------------------------------------------------------
+
+scroll_up:
+       SET a , 1
+scroll_up_loop:       
+       JSR move_one_row_up
+       IFE a, ROWS
+       SET PC,clear_last_row
+       ADD a , 1
+       SET PC , scroll_up_loop
+clear_last_row:
+      SET a,ROWS-1
+      JSR clear_row ; clear last row
+      SET PC,POP
+       
+; move a single row up , row number is in A
+move_one_row_up:
+       SET i,a
+       SHL i , 5  ; 1 << 5 = * 32 columns
+       SET j , i
+
+       ADD i , VRAM
+       ADD  j , VRAM-COLUMNS
+              
+       SET x , i       
+copy_up_loop:       
+       STI [j],[i]       
+       IFL j , x
+       SET PC,copy_up_loop
+       SET PC , POP
+
+; ---------------------------------------------------------------------------------------------------
+; ---- print string ( x = column , y = row , a = characterasdasd) ---
+; --------------------------------------------------------------------------------------------------
+
+print_string:
+   SHL y , 5  ; 1 << 5 = 32 columns
+   ADD y , x
+   ADD y , VRAM
+write_string:
+   IFE [a] , 0
+   SET PC,POP
+   SET b , [a]
+   ADD a, 1
+   BOR b , 0xa000 
+   SET [y] , b 
+   ADD y , 1
+   SET PC,write_string
+
+; --------------------------------------------------------
+; -------------------- scan devices --------------
+; --------------------------------------------------------
+
+detect_hardware:
+   HWN i
+detection_loop:
+   IFE 0,i
+   SET PC,POP
+   SUB i,1
+   HWQ i
+   IFE a, SCREEN_ID_LOW ; A+(B<<16) is a 32 bit word identifying the hardware id
+   IFE b, SCREEN_ID_HI
+   SET PC , screen_found
+   SET PC , detection_loop
+
+:screen_found
+  SET [screen_slot],i
+  SET PC,detection_loop
+
+text: .dat "Hello,world!" ,0
+
+screen_slot: .dat -1
