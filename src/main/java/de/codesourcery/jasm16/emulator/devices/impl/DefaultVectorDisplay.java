@@ -34,17 +34,15 @@ public class DefaultVectorDisplay implements IDevice {
 
 	private static final Logger LOG = Logger.getLogger(DefaultVectorDisplay.class);
 	
-	/*
-Name: Mackapar Suspended Particle Exciter Display, Rev 3 (SPED-3) 
-ID: 0x42babf3c, version: 0x0003
-Manufactorer: 0x1eb37e91 (MACKAPAR)	 
-	 */
 	public static final DeviceDescriptor DEVICE_DESCRIPTOR = new DeviceDescriptor("SPED-3", 
 			"Mackapar Suspended Particle Exciter Display", 0x42babf3c, 0x03, 0x1eb37e91); 
 	
-	public static final boolean DEBUG = true;
-	public static final Size VERTEX_SIZE_IN_WORDS = Size.words(2);
+	public static final boolean DEBUG = false;
+	
+	public static final Size VERTEX_SIZE_IN_WORDS = Size.words(1);
+	
 	public static final Color BACKGROUND_COLOR = Color.BLACK;
+	
 	public static final int MAX_VERTICES = 128;
 	
 	/**
@@ -128,25 +126,27 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 			synchronized( VERTICES_LOCK ) 
 			{
 				if ( hasChanged ) {
-					vertices = calculateVertices();
+					vertices = readVertices();
 					hasChanged = false;
 				}
 				return vertices;
 			}
 		}
 		
-		private List<Vertex> calculateVertices() 
+		private List<Vertex> readVertices() 
 		{
 			final List<Vertex> result = new ArrayList<>();
+			
 			if ( ! isMapped ) {
 				return result;
 			}
-			System.out.println("Recalculating vertices");
 			final int words = vertexCount*2;
 			for ( int i = 0 ; i < words ; i+=2 ) {
 				int word0 = read( i );
 				int word1 = read( i+1 );
-				result.add( Vertex.fromMemory(word0,word1 ) );
+				final Vertex vertex = Vertex.fromMemory(word0,word1 );
+				System.out.println("READ: "+vertex);
+                result.add( vertex );
 			}
 			return result;
 		}
@@ -224,8 +224,6 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 		private volatile boolean terminate = false;
 		
 		private final CountDownLatch terminateLatch = new CountDownLatch(1);
-		
-		private int currentRotationIndex;
 		
 		private volatile boolean halt = true;
 		
@@ -327,39 +325,29 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 				return;
 			}
 			
-			Matrix modelMatrix = LinAlgUtils.translationMatrix( -128 , -128 , 0);
-			modelMatrix = modelMatrix.multiply( LinAlgUtils.scalingMatrix( 1 , 1 , -1 ) );
-			modelMatrix = LinAlgUtils.rotZ( rotationInDegreesPerFrame.get() * (float) currentRotationIndex );
-			modelMatrix = modelMatrix.multiply( LinAlgUtils.translationMatrix( -128 , -128 , 0) );
-			final Matrix mvpMatrix = modelMatrix.multiply( viewMatrix );
+//			Matrix modelMatrix = LinAlgUtils.rotZ( rotationInDegreesPerFrame.get() );
+//			final Matrix mvpMatrix = viewMatrix.multiply( modelMatrix );
+			
+            Matrix modelMatrix = LinAlgUtils.rotZ( rotationInDegreesPerFrame.get() );
+            final Matrix mvpMatrix = modelMatrix.multiply( viewMatrix );
 			
 			// draw vertices
-			for ( int i = 0 ; i< (copy.size()-1) ; i+=1 ) {
+			for ( int i = 0 ; i< (copy.size()-1) ; i+=1 ) 
+			{
 				final Vertex p1 = copy.get(i);
-				Vector4 p1Point = mvpMatrix.multiply( p1.p );
+				Vector4 p1Point = mvpMatrix.multiply( p1.p);
 				
 				final Vertex p2 = copy.get(i+1);
 				Vector4 p2Point = mvpMatrix.multiply( p2.p );
-//				System.out.println("Drawing "+p1Point+" -> "+p2Point);
 				
 				p1Point = p1Point.normalizeW();
 				p2Point = p2Point.normalizeW();
 				
-				System.out.println("Drawing "+p1Point+" -> "+p2Point);				
+                System.out.println( p1Point+" -> "+p2Point );
 				
 				drawLine(graphics,p1Point,p1.color,p2Point,p2.color);
 			}
-			
-			if ( rotationInDegreesPerFrame.get() != 0 ) {
-				deviceState = DeviceState.STATE_TURNING;
-			} else {
-				deviceState = DeviceState.STATE_RUNNING;
-			}
-			
-			currentRotationIndex++;
-			if ( currentRotationIndex >= 360 ) {
-				currentRotationIndex -= 360;
-			}			
+			deviceState = DeviceState.STATE_RUNNING;
 		}
 		
 		private void drawLine(Graphics graphics,
@@ -369,8 +357,8 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 			final Color c = averageColor( color1 , color2 );
 			graphics.setColor(c);
 			
-			final float scaleX = 1f;
-			final float scaleY = 1f;
+			final float scaleX = 2f;
+			final float scaleY = 2f;
 			
 			final int halfWidth = DISPLAY_WIDTH_PIXELS/2;
 			final int halfHeight = DISPLAY_HEIGHT_PIXELS/2;
@@ -398,11 +386,12 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 	
 	public DefaultVectorDisplay() 
 	{
-		viewMatrix = setupPerspectiveProjection( 90, DISPLAY_WIDTH_PIXELS / (float) DISPLAY_HEIGHT_PIXELS , 1 , 1024 );
+		viewMatrix = setupPerspectiveProjection( 60, DISPLAY_WIDTH_PIXELS / (float) DISPLAY_HEIGHT_PIXELS , 1 , 300 );
 	}
 	
     public Matrix setupPerspectiveProjection(float fieldOfView, float aspectRatio ,float zNear, float zFar) 
     {
+//        return LinAlgUtils.createOrthoProjection( fieldOfView , aspectRatio , zNear , zFar );
     	return LinAlgUtils.createPerspectiveProjection( fieldOfView , aspectRatio , zNear , zFar );
     }
     
@@ -480,7 +469,7 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 		
 		private Vertex(int x, int y, int z, ColorCode color, boolean intensity) 
 		{
-			this.p = new Vector4(x,y,z); 
+			this.p = new Vector4(x-128,y-128,-(z+3)); 
 			this.color = color.getColor( intensity );
 		}
 		
@@ -577,7 +566,7 @@ Manufactorer: 0x1eb37e91 (MACKAPAR)
 	@Override
 	public void beforeRemoveDevice(IEmulator emulator) {
 		stopRenderingThread();
-		emulator = null;
+		this.emulator = null;
 	}
 
 	@Override

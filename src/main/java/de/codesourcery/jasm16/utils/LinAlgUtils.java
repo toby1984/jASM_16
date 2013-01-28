@@ -220,7 +220,18 @@ public class LinAlgUtils
 
 	public static Matrix createPerspectiveProjection(float field_of_view, float aspect_ratio ,float zNear, float zFar) 
 	{
-		return createPerspectiveProjection1(field_of_view, aspect_ratio, zNear, zFar);
+		return createPerspectiveProjection2(field_of_view, aspect_ratio, zNear, zFar);
+	}
+	
+	private static Matrix createPerspectiveProjection2(float field_of_view, float aspect_ratio ,float zNear, float zFar) 
+	{
+
+	    float tangent = (float) Math.tan(field_of_view/2 * DEG_TO_RAD);   // tangent of half fovY
+	    float height = zNear * tangent;          // half height of near plane
+	    float width = height * aspect_ratio;      // half width of near plane
+
+	    // params: left, right, bottom, top, near, far
+	    return makeFrustum(-width, width, -height, height, zNear, zFar);	    
 	}
 
 	private static Matrix createPerspectiveProjection1(float field_of_view, float aspect_ratio ,float zNear, float zFar) 
