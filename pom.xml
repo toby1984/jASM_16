@@ -159,7 +159,8 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/ma
                 <finalName>jasm16</finalName>
                 <archive>
                     <manifest>
-                        <mainClass>de.codesourcery.jasm16.compiler.Main</mainClass>
+                        <!-- <mainClass>de.codesourcery.jasm16.compiler.Main</mainClass> -->
+                        <mainClass>de.codesourcery.jasm16.ide.IDEMain</mainClass>
                     </manifest>
                 </archive>
                <descriptors>
