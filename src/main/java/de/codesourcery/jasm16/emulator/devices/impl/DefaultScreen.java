@@ -250,7 +250,7 @@ public final class DefaultScreen implements IDevice {
     }   
 
     protected void logDebugHeadline(String msg) {
-        if ( emulator != null ) 
+        if ( emulator != null && emulator.getOutput().isDebugEnabled() ) 
         {
             final String separator = StringUtils.repeat("*" , msg.length()+4 )+"\n";
             emulator.getOutput().debug( "\n"+separator+"* "+msg+" *\n"+separator );
@@ -258,7 +258,7 @@ public final class DefaultScreen implements IDevice {
     }
 
     protected void logDebug(String msg) {
-        if ( emulator != null ) {
+        if ( emulator != null && emulator.getOutput().isDebugEnabled() ) {
             emulator.getOutput().debug( msg );
         }
     }
