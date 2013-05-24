@@ -31,17 +31,19 @@ public final class BuildOptions {
      * adding/removing configuration options:
      * 
      * - copy constructor
-     * - loadEmulationOptions()
-     * - saveEmulationOptions()
+     * - loadBuildOptions()
+     * - saveBuildOptions()
      * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      */
     private boolean generateSelfRelocatingCode = false;
+    private boolean inlineShortLiterals = true;    
 
     public BuildOptions() {
     }
     
     public BuildOptions(BuildOptions other) {
         this.generateSelfRelocatingCode = other.generateSelfRelocatingCode;
+        this.inlineShortLiterals = other.inlineShortLiterals;
     }
 
     public void saveBuildOptions(Element element,Document document) 
@@ -49,6 +51,19 @@ public final class BuildOptions {
         if ( generateSelfRelocatingCode ) {
             element.setAttribute("generateSelfRelocatingCode" , "true" );
         }
+        if ( inlineShortLiterals ) {
+            element.setAttribute("inlineShortLiterals" , "true" );            
+        }
+    }
+    
+    public boolean isInlineShortLiterals()
+    {
+        return inlineShortLiterals;
+    }
+    
+    public void setInlineShortLiterals(boolean inlineShortLiterals)
+    {
+        this.inlineShortLiterals = inlineShortLiterals;
     }
     
     public void setGenerateSelfRelocatingCode(boolean generateSelfRelocatingCode)
@@ -64,7 +79,8 @@ public final class BuildOptions {
     public static BuildOptions loadBuildOptions(Element element) 
     {
         final BuildOptions result = new BuildOptions();
-        result.generateSelfRelocatingCode = isSet(element,"generateSelfRelocatingCode" );
+        result.generateSelfRelocatingCode = isSet(element,"generateSelfRelocatingCode" , false );
+        result.inlineShortLiterals = isSet(element,"inlineShortLiterals" , true );        
         return result;
     }   
     
@@ -82,7 +98,7 @@ public final class BuildOptions {
         return null;
     }
 
-    private static boolean isSet(Element element,String attribute) {
+    private static boolean isSet(Element element,String attribute,boolean defaultValue) {
         final String value = element.getAttribute(attribute);
         return "true".equals( value );
     }

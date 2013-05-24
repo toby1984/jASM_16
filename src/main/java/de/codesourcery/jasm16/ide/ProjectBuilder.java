@@ -171,15 +171,14 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         final ICompiler compiler = new Compiler();
 
         // set compiler options
-        compiler.setCompilerOption(CompilerOption.DEBUG_MODE , true );
-        compiler.setCompilerOption(CompilerOption.RELAXED_PARSING , true );
-        compiler.setCompilerOption(CompilerOption.LOCAL_LABELS_SUPPORTED,true );
-//        compiler.setCompilerOption( CompilerOption.DISABLE_INLINING,true );
-        compiler.setCompilerOption( CompilerOption.GENERATE_DEBUG_INFO ,true );
+        final BuildOptions buildOptions = getConfiguration().getBuildOptions();
         
-        if ( getConfiguration().getBuildOptions().isGenerateSelfRelocatingCode() ) {
-            compiler.setCompilerOption(GENERATE_RELOCATION_INFORMATION , true );
-        }
+        compiler.setCompilerOption( CompilerOption.DEBUG_MODE , true );
+        compiler.setCompilerOption( CompilerOption.RELAXED_PARSING , true );
+        compiler.setCompilerOption( CompilerOption.LOCAL_LABELS_SUPPORTED,true );
+        compiler.setCompilerOption( CompilerOption.DISABLE_INLINING, ! buildOptions.isInlineShortLiterals() );
+        compiler.setCompilerOption( CompilerOption.GENERATE_DEBUG_INFO ,true );
+        compiler.setCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION , buildOptions.isGenerateSelfRelocatingCode() );
         
         final FileResourceResolver delegate  = new FileResourceResolver() {
         	@Override

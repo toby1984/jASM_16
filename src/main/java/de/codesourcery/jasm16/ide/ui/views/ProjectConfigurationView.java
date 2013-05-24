@@ -47,6 +47,7 @@ public abstract class ProjectConfigurationView extends AbstractView
     private final JTextField compilationRootName = new JTextField();  
     private final JButton compilationRootButton = new JButton("Choose");    
     
+    private final JCheckBox inlineShortLiterals = new JCheckBox();    
     private final JCheckBox generateSelfRelocatingCode = new JCheckBox();
     
     private final JButton saveButton = new JButton("Save");
@@ -77,6 +78,7 @@ public abstract class ProjectConfigurationView extends AbstractView
                 }
                 projectName.setText( project.getName() );
                 generateSelfRelocatingCode.setSelected( project.getConfiguration().getBuildOptions().isGenerateSelfRelocatingCode() );
+                inlineShortLiterals.setSelected( project.getConfiguration().getBuildOptions().isInlineShortLiterals() );
                 final File f = project.getConfiguration().getCompilationRoot();
                 compilationRootName.setText( f != null ? f.getAbsolutePath() : null );
             }
@@ -92,6 +94,7 @@ public abstract class ProjectConfigurationView extends AbstractView
         if ( hasValidInput() ) {
             final BuildOptions buildOptions = config.getBuildOptions();
             buildOptions.setGenerateSelfRelocatingCode( generateSelfRelocatingCode.isSelected() );
+            buildOptions.setInlineShortLiterals( inlineShortLiterals.isSelected() );
             if ( StringUtils.isNotEmpty( compilationRootName.getText() ) ) {
                 config.setCompilationRoot( new File(compilationRootName.getText()) );
             } else {
@@ -132,8 +135,7 @@ public abstract class ProjectConfigurationView extends AbstractView
         cnstrs = constraints(1, y++, true, false, GridBagConstraints.NONE );
         result.add( projectName , cnstrs );
         
-        // build options
-        
+        // build options panel
         final JPanel buildOptionsPanel = new JPanel();
         buildOptionsPanel.setLayout( new GridBagLayout() );
         
@@ -181,14 +183,23 @@ public abstract class ProjectConfigurationView extends AbstractView
             }
         });
         
-        //
+        // generate self-relocating code ?
         cnstrs = constraints(0, 1, false, false, GridBagConstraints.NONE );
         buildOptionsPanel.add( new JLabel("Generate self-relocating code?") , cnstrs );
         
         cnstrs = constraints(1, 1, true, true, GridBagConstraints.NONE );
         cnstrs.gridwidth=2;       
-        buildOptionsPanel.add( generateSelfRelocatingCode , cnstrs );        
+        buildOptionsPanel.add( generateSelfRelocatingCode , cnstrs );      
+        
+        // inline short literals ?
+        cnstrs = constraints(0, 2, false, false, GridBagConstraints.NONE );
+        buildOptionsPanel.add( new JLabel("Inline short literals?") , cnstrs );
+        
+        cnstrs = constraints(1, 2, true, true, GridBagConstraints.NONE );
+        cnstrs.gridwidth=2;       
+        buildOptionsPanel.add( inlineShortLiterals , cnstrs );               
 
+        // add build options panel to parent
         cnstrs = constraints(0, y++, true, false , GridBagConstraints.BOTH);
         cnstrs.gridwidth=2;
         result.add( buildOptionsPanel, cnstrs );

@@ -86,8 +86,6 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	private String compilationRoot; // path relative to project basedir, points to source file that should be compiled first (and that will
 	// include all other files that need to be compiled) 
 	
-	private boolean generateSelfRelocatingCode;
-	
 	private final Set<String> sourceFilenamePatterns = new HashSet<>();
 	private final List<Pattern> sourceFilenameRegexPatterns = new ArrayList<>();
 	
@@ -104,7 +102,6 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		this.projectName = other.projectName;
 		this.executableName = other.executableName;
 		this.compilationRoot = other.compilationRoot;
-		this.generateSelfRelocatingCode = other.generateSelfRelocatingCode;
 		this.setSourceFilenamePatterns( other.sourceFilenamePatterns );
 		setBuildOptions( other.getBuildOptions() );
 		setEmulationOptions( other.getEmulationOptions() );
@@ -528,16 +525,6 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 		return baseDir;
 	}
 
-    public boolean isGenerateSelfRelocatingCode()
-    {
-        return generateSelfRelocatingCode;
-    }
-
-    public void setGenerateSelfRelocatingCode(boolean generateSelfRelocatingCode)
-    {
-        this.generateSelfRelocatingCode = generateSelfRelocatingCode;
-    }
-    
     public BuildOptions getBuildOptions()
     {
         return new BuildOptions( buildOptions );
