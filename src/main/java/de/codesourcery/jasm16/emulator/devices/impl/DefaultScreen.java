@@ -21,24 +21,16 @@ import java.awt.Component;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.DataBufferInt;
-import java.awt.image.DirectColorModel;
-import java.awt.image.Raster;
-import java.awt.image.SampleModel;
-import java.awt.image.WritableRaster;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.LockSupport;
 
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -161,7 +153,7 @@ public final class DefaultScreen implements IDevice {
                     renderScreen();
 
                     int counter = fpsCounter++;
-                    if ( (counter % 30) == 0 ) {
+                    if ( (counter % 30) == 0 ) { // let characters blink every 30 frames
                         blinkState = ! blinkState;
                     }
 
@@ -272,12 +264,16 @@ public final class DefaultScreen implements IDevice {
 
             paletteRAM.unmap();
             paletteRAM.setDefaultPalette();
-    
+
             if ( videoRAM != null && ! mapVideoRamUponAddDevice ) {
                 videoRAM.unmap();
                 videoRAM = null;
             }
             renderScreenDisconnectedMessage( );
+
+            blinkingCharactersOnScreen = false;
+            lastBlinkState=false;
+            blinkState=false;         
         }
     }
 
@@ -314,7 +310,7 @@ public final class DefaultScreen implements IDevice {
 
     protected final class FontRAM extends StatefulMemoryRegion 
     {
-        private boolean hasChanged = true;
+        private final AtomicBoolean hasChanged = new AtomicBoolean(true);
 
         public FontRAM(Address start) {
             super("Font RAM", TYPE_FONT_RAM , new AddressRange( start , Size.words( 256 ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  ); // 2 words per character
@@ -330,36 +326,32 @@ public final class DefaultScreen implements IDevice {
         super.write( adr++ , word0 );
         super.write( adr++ , word1 );
             }
-            hasChanged = true;
+            hasChanged.set(true);
         }
 
         @Override
         public void write(Address address, int value) 
         {
             super.write( address , value );
-            hasChanged = true;
+            hasChanged.set(true);
         }
 
         @Override
         public void write(int wordAddress, int value) 
         {
             super.write(wordAddress, value);
-            hasChanged = true;
+            hasChanged.set(true);            
         }		
 
         @Override
         public void clear() {
             super.clear();
-            hasChanged = true;
-        }
-
-        public void clearChanged() {
-            hasChanged = false;
+            hasChanged.set(true);            
         }
 
         public boolean hasChanged() 
         {
-            return hasChanged;
+            return hasChanged.getAndSet(false);
         }        
 
         public void defineAllGlyphs() {
@@ -403,10 +395,10 @@ public final class DefaultScreen implements IDevice {
         synchronized(PEER_LOCK) 
         {
             final boolean wasAlreadyMapped = this.fontRAM.unmap();
-            
+
             this.fontRAM = new FontRAM(address);
             this.fontRAM.map();
-            
+
             // initialize RAM *AFTER* map() because the map() method
             // will OVERWRITE the palette RAMs contents
             if ( ! wasAlreadyMapped ) {
@@ -420,7 +412,7 @@ public final class DefaultScreen implements IDevice {
     {
         private final AtomicReferenceArray<Color> cache = new AtomicReferenceArray<Color>( PALETTE_COLORS );
 
-        private volatile boolean hasChanged = true;
+        private final AtomicBoolean hasChanged = new AtomicBoolean(true);
 
         public static final int a = 1;
 
@@ -430,12 +422,8 @@ public final class DefaultScreen implements IDevice {
 
         public boolean hasChanged() 
         {
-            return hasChanged;
+            return hasChanged.getAndSet( false );
         }
-
-        public void clearChanged() {
-            hasChanged = false;
-        }		
 
         public void setDefaultPalette() 
         {
@@ -487,20 +475,20 @@ public final class DefaultScreen implements IDevice {
         public void write(Address address, int value) {
             super.write( address, value);
             cache.set( address.getValue() , toJavaColor( value ) );
-            hasChanged = true;
+            hasChanged.set(true);
         }
 
         @Override
         public void write(int wordAddress, int value) {
             super.write( wordAddress , value );
             cache.set( wordAddress , toJavaColor( value ) );    
-            hasChanged = true;
+            hasChanged.set(true);
         }       
     }    
 
     protected final class VideoRAM extends StatefulMemoryRegion {
 
-        private volatile boolean hasChanged = true;
+        private final AtomicBoolean hasChanged = new AtomicBoolean(false);
 
         public VideoRAM(Address start) {
             super("Video RAM", TYPE_VRAM , new AddressRange( start , Size.words( VIDEO_RAM_SIZE_IN_WORDS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW );
@@ -509,28 +497,24 @@ public final class DefaultScreen implements IDevice {
         @Override
         public void clear() {
             super.clear();
-            hasChanged = true;
-        }
-
-        public void clearChanged() {
-            hasChanged = false;
+            hasChanged.set(true);
         }
 
         public boolean hasChanged() 
         {
-            return hasChanged;
+            return hasChanged.getAndSet(false);
         }
 
         @Override
         public void write(Address address, int value) {
             super.write( address, value);
-            hasChanged = true;
+            hasChanged.set(true);
         }
 
         @Override
         public void write(int wordAddress, int value) {
             super.write( wordAddress , value );
-            hasChanged = true;
+            hasChanged.set(true);
         }       
     }
 
@@ -548,11 +532,11 @@ public final class DefaultScreen implements IDevice {
             if ( paletteRAM.isMappedTo( address ) ) {
                 return;
             }
-    
+
             final boolean wasAlreadyMapped = paletteRAM.unmap();
             paletteRAM = new PaletteRAM( address );
             paletteRAM.map();
-    
+
             // initialize RAM *AFTER* map() because the map() method
             // will OVERWRITE the palette RAMs contents
             if ( ! wasAlreadyMapped ) {
@@ -618,10 +602,6 @@ public final class DefaultScreen implements IDevice {
                 }        
                 blinkingCharactersOnScreen = blinkingChars;
 
-                fontRAM.clearChanged();
-                paletteRAM.clearChanged();
-                videoRAM.clearChanged();				
-
                 repaintPeer();
             }
         }
@@ -669,29 +649,25 @@ public final class DefaultScreen implements IDevice {
 
         final int backgroundPalette = ( memoryValue >>> 8) & ( 1+2+4+8);
 
-        if ( asciiCode != 0 ) {
-            /*
-             * The video RAM is made up of 32x12 cells of the following bit format (in LSB-0):
-             * 
-             * ffffbbbbBccccccc
-             *
-             * - The lowest 7 bits (ccccccc) select define character to display.
-             * - If B (bit 7) is set the character color will blink slowly.
-             * - ffff selects which foreground color to use.
-             * - bbbb selects which background color to use.    
-             */
-            final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
-            final Color fg = paletteRAM.getColor( foregroundPalette );
-            final Color bg = paletteRAM.getColor( backgroundPalette );
+        /*
+         * The video RAM is made up of 32x12 cells of the following bit format (in LSB-0):
+         * 
+         * ffffbbbbBccccccc
+         *
+         * - The lowest 7 bits (ccccccc) select define character to display.
+         * - If B (bit 7) is set the character color will blink slowly.
+         * - ffff selects which foreground color to use.
+         * - bbbb selects which background color to use.    
+         */
+        final int foregroundPalette = ( memoryValue >>> 12) & ( 1+2+4+8);
+        final Color fg = paletteRAM.getColor( foregroundPalette );
+        final Color bg = paletteRAM.getColor( backgroundPalette );
 
-            if ( blink && ! blinkState ) 
-            {
-                consoleScreen.putChar( column , row , asciiCode , bg , fg );					
-            } else {
-                consoleScreen.putChar( column , row , asciiCode , fg , bg );
-            }
+        if ( blink && ! blinkState ) 
+        {
+            consoleScreen.putChar( column , row , asciiCode , bg , fg );					
         } else {
-            consoleScreen.clearChar( column , row , paletteRAM.getColor( backgroundPalette ) );
+            consoleScreen.putChar( column , row , asciiCode , fg , bg );
         }
         return blink;
     }
@@ -799,8 +775,7 @@ public final class DefaultScreen implements IDevice {
          * of the following actions:
          */
         final int a = cpu.getRegisterValue( Register.A );
-
-        if ( a == 0 ) 
+        switch(a) 
         {
             /*
              * 0: MEM_MAP_SCREEN
@@ -810,117 +785,118 @@ public final class DefaultScreen implements IDevice {
              *    When the screen goes from 0 to any other value, the the LEM1802 takes
              *    about one second to start up. Other interrupts sent during this time
              *    are still processed.
-             */
-            final int b = cpu.getRegisterValue( Register.B );
-            if ( b == 0 ) {
-                disconnect();
-            } else {
-                final Address ramStart = Address.wordAddress( b );
-                final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
+             */            
+            case 0:
+                int b = cpu.getRegisterValue( Register.B );
+                if ( b == 0 ) {
+                    disconnect();
+                } else {
+                    final Address ramStart = Address.wordAddress( b );
+                    final int videoRamEnd = ramStart.getWordAddressValue() + VIDEO_RAM_SIZE_IN_WORDS;
 
-                // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-                if ( videoRamEnd > 0xffff ) 
-                {
-                    final String msg = "Cannot map video ram to "+ramStart+" because it would "
-                            +" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
-                    out.error( msg );
-                    throw new DeviceErrorException(msg , DefaultScreen.this);
+                    // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+                    if ( videoRamEnd > 0xffff ) 
+                    {
+                        final String msg = "Cannot map video ram to "+ramStart+" because it would "
+                                +" end at 0x"+Misc.toHexString( videoRamEnd )+" which is outside the DCPU-16's address space";
+                        out.error( msg );
+                        throw new DeviceErrorException(msg , DefaultScreen.this);
+                    }
+
+                    logDebugHeadline("Mapping video RAM to "+ramStart);
+                    mapVideoRAM( ramStart );
                 }
-
-                logDebugHeadline("Mapping video RAM to "+ramStart);
-                mapVideoRAM( ramStart );
-            }
-        }
-        else if ( a== 1 ) 
-        {
+                break;
             /*
              * 1: MEM_MAP_FONT
              *    Reads the B register, and maps the font ram to DCPU-16 ram starting
              *    at address B. See below for a description of font ram.
              *    If B is 0, the default font is used instead.
-             */
+             */                
+            case 1: 
 
-            int value = cpu.getRegisterValue(Register.B );
-            if ( value == 0 ) 
-            {
-                synchronized(PEER_LOCK) 
+                int value = cpu.getRegisterValue(Register.B );
+                if ( value == 0 ) 
                 {
-                    ConsoleScreen screen = screen();
-                    if ( screen != null && peer != null ) {
-                        screen.setFontImage( DEFAULT_GLYPH_IMAGE );
+                    synchronized(PEER_LOCK) 
+                    {
+                        ConsoleScreen screen = screen();
+                        if ( screen != null && peer != null ) {
+                            screen.setFontImage( DEFAULT_GLYPH_IMAGE );
+                        }
+                        setupDefaultFontRAM();
                     }
-                    setupDefaultFontRAM();
+                } 
+                else 
+                {
+                    logDebugHeadline("Mapping font RAM to 0x"+Misc.toHexString( value ) );
+                    mapFontRAM( Address.wordAddress( value ) );
                 }
-            } 
-            else 
-            {
-                logDebugHeadline("Mapping font RAM to 0x"+Misc.toHexString( value ) );
-                mapFontRAM( Address.wordAddress( value ) );
-            }
-        } 
-        else if ( a == 2 ) 
-        {
+                break;
             /*
              * 2: MEM_MAP_PALETTE
              *    Reads the B register, and maps the palette ram to DCPU-16 ram starting
              *    at address B. See below for a description of palette ram.
              *    If B is 0, the default palette is used instead.
-             */
-            final int b = cpu.getRegisterValue( Register.B );
-            logDebugHeadline("Mapping palette RAM to "+Misc.toHexString( b ) );
+             */                
+            case 2:
+                b = cpu.getRegisterValue( Register.B );
+                logDebugHeadline("Mapping palette RAM to "+Misc.toHexString( b ) );
 
-            if ( b == 0 ) {
-                setupDefaultPaletteRAM();
-            } else {
-                final Address ramStart = Address.wordAddress( b );
-                // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
-                mapPaletteRAM( ramStart );
-            }           
-        } else if ( a == 3 ) {
+                if ( b == 0 ) {
+                    setupDefaultPaletteRAM();
+                } else {
+                    final Address ramStart = Address.wordAddress( b );
+                    // TODO: Behaviour if ramStart + vRAMSize > 0xffff ?
+                    mapPaletteRAM( ramStart );
+                }    
+                break;
             /*
              * 3: SET_BORDER_COLOR
              *    Reads the B register, and sets the border color to palette index B&0xF
-             */
-            final int b = cpu.getRegisterValue( Register.B );
-            borderPaletteIndex = b & 0x0f;
-            final ConsoleScreen screen = screen();
-            if ( screen != null ) {
-                screen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
-            }
-        } else if ( a == 4 ) {
+             */                
+            case 3:
+                b = cpu.getRegisterValue( Register.B );
+                borderPaletteIndex = b & 0x0f;
+                final ConsoleScreen screen = screen();
+                if ( screen != null ) {
+                    screen.setBorderColor( paletteRAM.getColor( borderPaletteIndex ) );
+                }
+                break;
             /*
              * 4: MEM_DUMP_FONT
              *    Reads the B register, and writes the default font data to DCPU-16 ram
              *    starting at address B.
              *    Halts the DCPU-16 for 256 cycles
-             */
-            int target = cpu.getRegisterValue(Register.B );
+             */                
+            case 4:
+                int target = cpu.getRegisterValue(Register.B );
 
-            logDebugHeadline("Dumping font RAM to 0x"+Misc.toHexString( target) );
+                logDebugHeadline("Dumping font RAM to 0x"+Misc.toHexString( target) );
 
-            final int len = fontRAM.getSize().getSizeInWords();
-            for ( int src = 0 ; src < len ; src++ ) {
-                memory.write( target+src , fontRAM.read( src ) );
-            }
-            return 256;
-        } else if ( a == 5 ) {
+                final int len = fontRAM.getSize().getSizeInWords();
+                for ( int src = 0 ; src < len ; src++ ) {
+                    memory.write( target+src , fontRAM.read( src ) );
+                }
+                return 256;
             /*
              * 5: MEM_DUMP_PALETTE
              *    Reads the B register, and writes the default palette data to DCPU-16
              *    ram starting at address B.       
              *    Halts the DCPU-16 for 16 cycles
-             */
-            Address start = Address.wordAddress( cpu.getRegisterValue( Register.B ) );
-            logDebugHeadline("Dumping palette RAM to "+start);
-            for ( int words = 0 ; words < 16 ; words++) 
-            {
-                final int value = paletteRAM.read( words );
-                memory.write( start , value );
-                start = start.incrementByOne(true);
-            }
-            return 16;
-        } else {
-            out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
+             */                
+            case 5:
+                Address start = Address.wordAddress( cpu.getRegisterValue( Register.B ) );
+                logDebugHeadline("Dumping palette RAM to "+start);
+                for ( int words = 0 ; words < 16 ; words++) 
+                {
+                    value = paletteRAM.read( words );
+                    memory.write( start , value );
+                    start = start.incrementByOne(true);
+                }
+                return 16;
+            default:
+                out.warn("Clock "+this+" received unknown interrupt msg "+Misc.toHexString( a ));
         }
         return 0;
     }
@@ -1085,13 +1061,6 @@ public final class DefaultScreen implements IDevice {
             }
             this.borderColor = color;
             renderBorder();
-        }
-
-        public void clearChar(int column, int row, Color color)
-        {
-            final int screenX = BORDER_WIDTH + GLYPH_WIDTH * column;
-            final int screenY = BORDER_HEIGHT + GLYPH_HEIGHT * row;    
-            fillRect( screenX,screenY , GLYPH_WIDTH, GLYPH_HEIGHT , color );
         }
 
         public void fillScreen(Color col) 
