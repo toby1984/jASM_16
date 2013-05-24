@@ -2867,7 +2867,7 @@ public final class Emulator implements IEmulator
                 case 0x1b:
                     sp = Address.wordAddress( value );
                     return 0;
-                case 0x1c:
+                case 0x1c: // PC
                     currentInstructionPtr = value;
                     return 0;
                 case 0x1d:
@@ -2927,7 +2927,8 @@ public final class Emulator implements IEmulator
                 case 0x1b:
                     return operandDesc( sp.getValue() );
                 case 0x1c:
-                    return operandDesc( pc.getValue() );
+                    return operandDesc( currentInstructionPtr );
+//                    return operandDesc( pc.getValue() );
                 case 0x1d:
                     return operandDesc( ex );
                 case 0x1e:
@@ -3023,7 +3024,8 @@ public final class Emulator implements IEmulator
                 case 0x1b:
                     return operandDesc( sp.getValue() );
                 case 0x1c:
-                    return operandDesc( pc.getValue() );
+                    return operandDesc( currentInstructionPtr );
+//                    return operandDesc( pc.getValue() );
                 case 0x1d:
                     return operandDesc( ex );
                 case 0x1e:
