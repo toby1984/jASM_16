@@ -414,12 +414,10 @@ public final class DefaultScreen implements IDevice {
 
         private final AtomicBoolean hasChanged = new AtomicBoolean(true);
 
-        public static final int a = 1;
-
         public PaletteRAM(Address start) {
             super("Palette RAM", TYPE_PALETTE_RAM , new AddressRange( start , Size.words( PALETTE_COLORS ) ) , MemoryRegion.Flag.MEMORY_MAPPED_HW  );
         }
-
+        
         public boolean hasChanged() 
         {
             return hasChanged.getAndSet( false );
@@ -427,6 +425,7 @@ public final class DefaultScreen implements IDevice {
 
         public void setDefaultPalette() 
         {
+            // default palette as used in notch's emulator
             final int[] defaultPalette = { 
                     0x0000,0x000a,0x00a0,0x00aa,0x0a00,0x0a0a,0x0a50,0x0aaa,
                     0x0555,0x055f,0x05f5,0x05ff,0x0f55,0x0f5f,0x0ff5,0x0fff
@@ -453,13 +452,14 @@ public final class DefaultScreen implements IDevice {
         private Color toJavaColor( int colorValue ) {
 
             /*
-       The LEM1802 has a default built in palette. If the user chooses, they may
-       supply their own palette by mapping a 16 word memory region with one word
-       per palette entry in the 16 color palette.
-       Each color entry has the following bit format (in LSB-0):
-           0000rrrrggggbbbb
-       Where r, g, b are the red, green and blue channels. A higher value means a
-       lighter color.        
+             * The LEM1802 has a default built in palette. If the user chooses, they may
+             * supply their own palette by mapping a 16 word memory region with one word
+             * per palette entry in the 16 color palette.
+             * 
+             * Each color entry has the following bit format (in LSB-0): 0000rrrrggggbbbb
+             *     
+             * Where r, g, b are the red, green and blue channels. A higher value means a
+             * lighter color.        
              */
             final int r = ((colorValue >>> 8) & (1+2+4+8) ) << 4; // multiply by 16 to get full 0...255 (8-bit) range
             final int g = ((colorValue >>> 4) & (1+2+4+8) ) << 4; // multiply by 16 to get full 0...255 (8-bit) range
