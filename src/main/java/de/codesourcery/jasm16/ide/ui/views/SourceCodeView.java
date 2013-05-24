@@ -38,6 +38,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseMotionListener;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -1479,9 +1481,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
         public void mouseClicked(java.awt.event.MouseEvent e) {
 
-            if ( e.getClickCount() == 1 && 
-                    e.getButton() == MouseEvent.BUTTON1 &&
-                    ( e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK ) != 0 ) 
+            if ( e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON1 && ( e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK ) != 0 ) 
             {
                 // navigate to symbol definition
                 final ASTNode node = getASTNodeForLocation( e.getPoint() );
@@ -1529,6 +1529,21 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
             setColors( editorScrollPane );
             editorPane.addCaretListener( listener );
             editorPane.addMouseListener( mouseListener );
+            editorPane.addMouseMotionListener( new MouseMotionAdapter() {
+                
+                @Override
+                public void mouseMoved(MouseEvent e) 
+                {
+                    if ( (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) != 0 ) { // ctrl pressed
+                        final ASTNode node = getASTNodeForLocation( e.getPoint() );
+                        if ( node instanceof SymbolReferenceNode) {
+                            maybeUnderlineIdentifierAt( e.getPoint() );
+                        } else {
+                            clearUnderlineHighlight();                        
+                        }
+                    }
+                }                
+            });
             editorPane.addMouseListener( popupListener );
         } finally {
             enableDocumentListener();
