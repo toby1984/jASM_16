@@ -127,8 +127,8 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
         return regionName;
     }
     
-    private IMemoryRegion createCopy(AddressRange range) {
-        
+    private IMemoryRegion createCopy(AddressRange range) 
+    {
         final MemoryRegion result = new MemoryRegion( regionName , this.typeId , range , this.flags.toArray(new Flag[this.flags.size()]));
 
         final int numberOfMemWordsToCopy= range.getSize().toSizeInWords().getValue();
@@ -163,5 +163,5 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     public String toString()
     {
         return getRegionName()+" - "+getAddressRange().toString();
-    }
+    }    
 }

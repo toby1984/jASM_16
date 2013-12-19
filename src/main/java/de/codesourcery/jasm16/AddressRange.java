@@ -18,6 +18,8 @@ package de.codesourcery.jasm16;
 import java.util.ArrayList;
 import java.util.List;
 
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+
 /**
  * An (immutable) address range made up of starting address and size.
  * 
@@ -82,6 +84,18 @@ public final class AddressRange
                    this.getSize().equals( other.getSize() );
         }
         return false;
+    }
+    
+    /**
+     * Converts a global address to a local one (relative to this adress range's start).
+     * 
+     * <p>If the input address 
+     * </p>
+     * @param address
+     * @return
+     */
+    public int globalAddressToLocal(int address) {
+        return address - start.getWordAddressValue();
     }
     
     @Override

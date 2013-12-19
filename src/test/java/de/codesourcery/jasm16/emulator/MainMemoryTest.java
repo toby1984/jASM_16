@@ -15,15 +15,13 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.util.Random;
+
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.emulator.memory.IMemory;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IMemoryTypes;
-import de.codesourcery.jasm16.emulator.memory.MainMemory;
-import de.codesourcery.jasm16.emulator.memory.MemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.*;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class MainMemoryTest extends TestCase implements IMemoryTypes {
@@ -42,6 +40,48 @@ public class MainMemoryTest extends TestCase implements IMemoryTypes {
 		MainMemoryTest test = new MainMemoryTest();
 		test.setUp();
 		test.testRemappingSpeed();
+	}
+	
+	public void testMemoryAccessSpeed() {
+		
+		final int regionCount = 10;
+		final int wordsPerRegion = 65536 / regionCount;
+		
+		int wordsLeft = 65536;
+		int currentWord = 0;
+		for ( int i = 0 ; i < regionCount ; i++ ) 
+		{
+			int sizeInWords;
+			if ( i == ( regionCount-1) ) {
+				sizeInWords = wordsLeft;
+			} else {
+				sizeInWords = wordsPerRegion;
+			}
+			final AddressRange range = new AddressRange( Address.wordAddress( currentWord ) , Size.words( sizeInWords ) );
+			final MemoryRegion region = new MemoryRegion( "region #"+i, TYPE_RAM, range );
+			memory.mapRegion( region );
+			
+			wordsLeft -= sizeInWords;
+			currentWord += sizeInWords;
+		}
+		
+		/*
+		 * Base value: 480 ms 
+		 */
+		final Random rnd = new Random(0xdeadbeef);
+		for ( int i = 0 ; i < 25 ; i++) 
+		{
+			int sum = 0;
+			rnd.setSeed( 0xdeadbeef );
+			long time = -System.currentTimeMillis();
+			for ( int j = 0 ; j < 10000000 ; j++ ) 
+			{
+				final int adr = rnd.nextInt( 65536 );
+				sum += memory.read( adr );
+			}
+			time += System.currentTimeMillis();
+			System.out.println("Time: "+time+" ms (sum: "+sum+")");
+		}
 	}
 	
 	public void testRemappingSpeed() {

@@ -293,8 +293,10 @@ public final class MainMemory implements IMemory, IMemoryTypes
 		synchronized( regions ) 
 		{
 			// TODO: performance - Maybe replace with binary search ??
-			for ( IMemoryRegion r : regions ) 
+			final int len = regions.size();
+			for ( int i = 0 ; i < len ; i++ )
 			{
+				final IMemoryRegion r = regions.get(i);
 				if ( r.getAddressRange().contains( wordAddress ) ) {
 					return r;
 				}

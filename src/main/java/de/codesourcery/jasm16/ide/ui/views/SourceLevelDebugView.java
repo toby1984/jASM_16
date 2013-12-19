@@ -494,11 +494,14 @@ public class SourceLevelDebugView extends SourceCodeView
     private void switchToCompilationUnit(IAssemblyProject project,ICompilationUnit unit) 
     {
         try {
+        	disableDocumentListener();
             clearHighlights();
             openResource( this.currentProject , unit.getResource() , false );
         } catch (IOException e) {
             LOG.error("refreshDisplayHook(): Caught ",e);
             return;
+        } finally {
+        	enableDocumentListener();
         }
         this.currentUnit = unit;
     }

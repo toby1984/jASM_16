@@ -1269,12 +1269,12 @@ public final class Emulator implements IEmulator
 		public final int cycleCount; // how long it takes to perform the operation
 
 		public OperandDesc(int value) {
-			this.value = value;
+			this.value = value & 0xffff;
 			this.cycleCount = 0;
 		}
 
 		public OperandDesc(int value,int cycleCount) {
-			this.value = value;
+			this.value = value & 0xffff;
 			this.cycleCount = cycleCount;
 		}
 	}
@@ -2865,7 +2865,7 @@ public final class Emulator implements IEmulator
                     memory.write( dst , value );
                     return 1;
                 case 0x1b:
-                    sp = Address.wordAddress( value );
+                    sp = Address.wordAddress( value & 0xffff );
                     return 0;
                 case 0x1c: // PC
                     currentInstructionPtr = value;
@@ -2939,7 +2939,7 @@ public final class Emulator implements IEmulator
             }
 
             // literal value: -1...30 ( 0x20 - 0x3f )
-            return operandDesc( operandBits - 0x21 , 0 ); 
+            return operandDesc( ( operandBits - 0x21 ) , 0 ); 
         }   
 
         private int readMemoryWithOffsetAndWrapAround(int address,int offset) {
@@ -3025,7 +3025,6 @@ public final class Emulator implements IEmulator
                     return operandDesc( sp.getValue() );
                 case 0x1c:
                     return operandDesc( currentInstructionPtr );
-//                    return operandDesc( pc.getValue() );
                 case 0x1d:
                     return operandDesc( ex );
                 case 0x1e:
