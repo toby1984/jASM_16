@@ -326,9 +326,13 @@ public final class Emulator implements IEmulator
 						listenerPerformance.put( l , existing.longValue() + execTime );
 					}
 				}         	
-			} else {
-				for ( IEmulationListener l : copy) 
+			} 
+			else 
+			{
+				final int len = copy.size(); 
+				for ( int i = 0 ; i < len ; i++) 
 				{
+					final IEmulationListener l = copy.get(i);
 					try {
 						invoker.invoke( Emulator.this , l );
 					}
@@ -1013,7 +1017,7 @@ public final class Emulator implements IEmulator
 		 */
 		Breakpoint regularBP = null;
 		Breakpoint oneShotBP = null;
-
+		
 		synchronized( breakpoints ) 
 		{
 			final List<Breakpoint> candidates = breakpoints.get( hiddenCPU.pc ); 

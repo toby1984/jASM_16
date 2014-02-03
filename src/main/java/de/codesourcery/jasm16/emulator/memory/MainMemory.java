@@ -224,14 +224,14 @@ public final class MainMemory implements IMemory, IMemoryTypes
 		mapRegion(newRegion,false);
 	}
 	
-	private void mapRegion(IMemoryRegion newRegion,boolean calledFromUnmap) 
+	private void mapRegion(IMemoryRegion newRegion,boolean calledByUnmap) 
 	{
 		if (newRegion == null) {
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
 		// refuse mapping if address holds regions of different types
-		if ( ! calledFromUnmap ) 
+		if ( ! calledByUnmap ) 
 		{
 			final long newTypeId = newRegion.getTypeId();
 			for ( IMemoryRegion existing : getRegions( newRegion.getAddressRange() ) ) 
@@ -254,8 +254,11 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			{
 				intersects = false;
 				int index = 0;
-				for ( IMemoryRegion existing : regions ) 
+				
+				final int len = regions.size();
+				for ( int i = 0 ; i < len ; i++ ) 
 				{
+					final IMemoryRegion existing = regions.get(i);
 					if ( existing.getAddressRange().intersectsWith( newRegion.getAddressRange() ) ) 
 					{
 						regions.remove( index ); // remove existing region
@@ -275,9 +278,10 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			} while ( intersects );
 
 			// no intersection, just insert into the list
-			int index = 0;
-			for ( IMemoryRegion existing : regions ) 
+			final int len = regions.size();
+			for ( int index = 0 ; index < len ; index++) 
 			{
+				IMemoryRegion existing = regions.get(index);
 				if ( newRegion.getAddressRange().getStartAddress().isLessThan( existing.getAddressRange().getStartAddress() ) ) {
 					regions.add( index , newRegion );
 					return;
