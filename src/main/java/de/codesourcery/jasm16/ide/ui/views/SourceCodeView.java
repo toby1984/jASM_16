@@ -1152,7 +1152,9 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	protected final void doSemanticHighlighting(ICompilationUnit unit, ASTNode node)
 	{
-		highlight( node );
+		if ( highlight( node ) ) {
+			return; // don't highlight children if parent already was
+		}
 		
 		if ( ! (node instanceof IncludeSourceFileNode ) ) {
 			for ( ASTNode child : node.getChildren() ) {
@@ -1161,7 +1163,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 		}
 	}
 
-	protected final void highlight(ASTNode node) 
+	protected final boolean highlight(ASTNode node) 
 	{
 		if ( node instanceof InstructionNode ) 
 		{
@@ -1177,19 +1179,25 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 			ITextRegion whole = new TextRegion( node.getTextRegion() );
 			whole.subtract( children );
 			highlight( whole , instructionStyle );
+			return true;
 		} 
 		else if ( node instanceof IPreprocessorDirective)
 		{
 			highlight( node , preProcessorStyle );
+			return true;
 		} 
 		else if ( node instanceof SymbolReferenceNode || node instanceof LabelNode ) 
 		{
 			highlight( node , labelStyle );
+			return true;
 		} else if ( node instanceof CommentNode ) {
 			highlight( node , commentStyle );
+			return true;
 		} else if ( node instanceof RegisterReferenceNode ) {
 			highlight( node , registerStyle );
+			return true;
 		}
+		return false;
 	}
 
 	protected final void highlight(ASTNode node, AttributeSet attributes) 
