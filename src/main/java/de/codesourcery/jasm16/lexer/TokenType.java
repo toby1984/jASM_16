@@ -52,5 +52,7 @@ public enum TokenType
     INCLUDE_BINARY, // .incbin
     ORIGIN, // .org
     EQUATION, // .equ or #define
+    START_MACRO, // .macro
+    END_MACRO, // .endmacro
 	INCLUDE_SOURCE; // .include
 }

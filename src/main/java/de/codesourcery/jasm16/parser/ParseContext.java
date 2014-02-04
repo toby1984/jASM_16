@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
@@ -61,6 +62,7 @@ public class ParseContext implements IParseContext
 	private final IResourceResolver resourceResolver;
 	private final ICompilationUnitResolver compilationUnitResolver;
 	private final Set<ParserOption> options = new HashSet<ParserOption>();
+	private final boolean isExpandingMacro;
 	
 	// values are IResource#getIdentifier() values
 	private final LinkedHashSet<String> includedSourceFiles;
@@ -69,15 +71,18 @@ public class ParseContext implements IParseContext
 	
 	private boolean recoveringFromParseError;
 	
+	private StartMacroNode macroBeingParsed;
+	
 	public ParseContext(ICompilationUnit unit , 
 			ISymbolTable symbolTable,
 			ILexer lexer, 
 			IResourceResolver resourceResolver,
 			ICompilationUnitResolver compilationUnitResolver,
-			Set<ParserOption> options) 
+			Set<ParserOption> options,
+			boolean isExpandingMacro) 
 	{
 		this( unit , symbolTable , lexer ,resourceResolver , compilationUnitResolver , options ,
-				new LinkedHashSet<String>() );
+				new LinkedHashSet<String>() , isExpandingMacro );
 	}
 	
 	protected ParseContext(ICompilationUnit unit , 
@@ -86,7 +91,8 @@ public class ParseContext implements IParseContext
 			IResourceResolver resourceResolver,
 			ICompilationUnitResolver compilationUnitResolver,			
 			Set<ParserOption> options,
-			LinkedHashSet<String> includedSourceFiles) 
+			LinkedHashSet<String> includedSourceFiles,
+			boolean isExpandingMacro) 
 	{
 		if (lexer == null) {
 			throw new IllegalArgumentException("lexer must not be NULL");
@@ -113,6 +119,7 @@ public class ParseContext implements IParseContext
 		this.unit = unit;
 		this.lexer = lexer;
 		this.compilationUnitResolver = compilationUnitResolver;
+		this.isExpandingMacro = isExpandingMacro;
 	}
 	
 	@Override
@@ -145,6 +152,11 @@ public class ParseContext implements IParseContext
 	public IToken peek() throws EOFException {
 		return lexer.peek();
 	}
+	
+    @Override
+    public boolean peek(TokenType t) throws EOFException {
+    	return lexer.peek(t);
+    }
 
 	@Override
 	public IToken read() throws EOFException {
@@ -356,9 +368,7 @@ public class ParseContext implements IParseContext
 		getCompilationUnit().addDependency( unit );
 		
 		final ILexer lexer = new Lexer( new Scanner( source ) );
-		IParseContext result =
-				new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles );
-		
+		IParseContext result = new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles , this.isExpandingMacro );
 		return result;
 	}
 
@@ -427,5 +437,36 @@ public class ParseContext implements IParseContext
 	@Override
 	public ISymbol getPreviousGlobalSymbol() {
 		return lastGlobalSymbol;
+	}
+	
+	@Override
+	public List<IToken> skipWhitespace(boolean skipEOL) {
+		return lexer.skipWhitespace(skipEOL);
+	}
+	
+	@Override
+	public void setCurrentMacroDefinition(StartMacroNode node) {
+		macroBeingParsed=node;		
+	}
+	
+	@Override
+	public StartMacroNode getCurrentMacroDefinition() {
+		return macroBeingParsed;
+	}
+	
+	@Override
+	public boolean isExpandingMacro() {
+		return isExpandingMacro;
+	}
+	
+	@Override
+	public boolean isParsingMacroDefinition() {
+		return macroBeingParsed != null;
+	}
+
+	@Override
+	public boolean isKeyword(String s) 
+	{
+		return lexer.isKeyword(s);
 	}
 }

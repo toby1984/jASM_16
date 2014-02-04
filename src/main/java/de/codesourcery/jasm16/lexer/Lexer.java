@@ -15,11 +15,7 @@
  */
 package de.codesourcery.jasm16.lexer;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -49,19 +45,35 @@ public final class Lexer implements ILexer {
     private int currentLineNumber=1;
     private int currentLineStartOffset;
 
-    protected static final class State 
+    protected final class State 
     {
         private final List<IToken> markedTokens = new ArrayList<IToken>();
         private final int scannerOffset;
         private final int lineNumber;
         private final int lineStartOffset;
+        private final Set<LexerOption> options;
 
-        protected State(List<IToken> tokens,int scannerOffset,int lineNumber,int lineStartOffset) 
+        protected State() 
         {
-            this.markedTokens.addAll( tokens );
-            this.scannerOffset = scannerOffset;
-            this.lineNumber = lineNumber;
-            this.lineStartOffset = lineStartOffset;
+            this.markedTokens.addAll( Lexer.this.currentTokens );
+            this.scannerOffset = Lexer.this.scanner.currentParseIndex();
+            this.lineNumber = Lexer.this.currentLineNumber;
+            this.lineStartOffset = Lexer.this.currentLineStartOffset;
+            this.options = new HashSet<>( Lexer.this.options );
+        }
+        
+        public void apply() 
+        {
+            Lexer.this.scanner.setCurrentParseIndex( this.scannerOffset );
+            
+            Lexer.this.currentTokens.clear();
+            Lexer.this.currentTokens.addAll( this.markedTokens );
+            
+            Lexer.this.currentLineNumber = this.lineNumber;
+            Lexer.this.currentLineStartOffset = this.lineStartOffset;        
+            
+            Lexer.this.options.clear();
+            Lexer.this.options.addAll( this.options );
         }
     }
 
@@ -72,10 +84,7 @@ public final class Lexer implements ILexer {
     @Override
     public void mark()
     {
-        marks.push( new State( this.currentTokens , 
-                scanner.currentParseIndex() , 
-                currentLineNumber ,
-                currentLineStartOffset) );
+        marks.push( new State() );
     }
 
     @Override
@@ -92,15 +101,8 @@ public final class Lexer implements ILexer {
         if ( marks.isEmpty() ) {
             throw new IllegalStateException("Must call mark() first");
         }
-        final State state = marks.peek();
-        
-        scanner.setCurrentParseIndex( state.scannerOffset );
-        
-        currentTokens.clear();
-        currentTokens.addAll( state.markedTokens );
-        
-        currentLineNumber = state.lineNumber;
-        currentLineStartOffset = state.lineStartOffset;
+        // TODO: Maybe should be pop() here ???
+        marks.peek().apply(); 
     }
 
     private void parseNextToken() 
@@ -261,7 +263,12 @@ public final class Lexer implements ILexer {
 
     private void handleString(String s, int length , int startIndex) 
     {
-        /*
+    	/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    	 * MAKE SURE TO ADJUST isKeyword(String) when changing keywords here 
+    	 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    	 */
+    	
+        /* 
          * Note that all comparisons here are ordered by
          * their probabilities (more likely checks come first).
          */
@@ -282,7 +289,7 @@ public final class Lexer implements ILexer {
             currentTokens.add( new Token(TokenType.NUMBER_LITERAL , buffer , startIndex ) );
             return;
         }        
-
+        
         if ( "push".equalsIgnoreCase( buffer ) ) {
             currentTokens.add( new Token(TokenType.PUSH , buffer , startIndex ) );
             return ;
@@ -348,6 +355,16 @@ public final class Lexer implements ILexer {
             return ;
         }    
         
+        if ( ".macro".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.START_MACRO , buffer , startIndex ) );
+            return ;        	
+        }
+        
+        if ( ".endmacro".equalsIgnoreCase( buffer ) ) {
+            currentTokens.add( new Token(TokenType.END_MACRO , buffer , startIndex ) );
+            return ;        	
+        }        
+        
         if ( buffer.contains("." ) ) {
             
             int idx = startIndex;
@@ -375,6 +392,84 @@ public final class Lexer implements ILexer {
             return;
         }
         currentTokens.add(  new Token( TokenType.CHARACTERS , buffer , startIndex ) );
+    }
+    
+    /**
+     * Returns whether a given string matches a keyword (case-insensitive).
+     * 
+     * @param s
+     * @return
+     */
+    public boolean isKeyword(String buffer) 
+    {
+    	if ( StringUtils.isBlank(buffer) ) {
+    		return false;
+    	}
+    	
+        if ( OpCode.fromIdentifier( buffer ) != null ) {
+            return true;
+        } 
+        
+        if ( "push".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }
+
+        if ( "pop".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }	
+        
+        if ( ".word".equalsIgnoreCase( buffer ) || "dat".equalsIgnoreCase( buffer ) || ".dat".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }   
+        
+        if ( ".equ".equalsIgnoreCase( buffer ) || "#define".equalsIgnoreCase(buffer) ) {
+            return true;            
+        }        
+        
+        if ( "pick".equalsIgnoreCase( buffer ) ) {
+            return true;        	
+        }
+
+        if ( "peek".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }  
+        
+        if ( ".byte".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }
+        
+        if ( "pack".equalsIgnoreCase( buffer ) ) {
+            return true;        	
+        }
+        
+        if ( "reserve".equalsIgnoreCase( buffer ) ) {
+            return true ;
+        }           
+
+        if ( ".bss".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }		
+        
+        if ( "#include".equals( buffer ) || ".include".equals( buffer ) || "include".equalsIgnoreCase( buffer) || ".incsource".equalsIgnoreCase( buffer ) ) {
+            return true;        	
+        }
+        
+        if ( ".incbin".equalsIgnoreCase( buffer ) || "incbin".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }
+        
+        if ( "org".equalsIgnoreCase( buffer )  || ".org".equalsIgnoreCase( buffer )  || ".origin".equalsIgnoreCase( buffer ) ) {
+            return true;
+        }    
+        
+        if ( ".macro".equalsIgnoreCase( buffer ) ) {
+            return true;        	
+        }
+        
+        if ( ".endmacro".equalsIgnoreCase( buffer ) ) {
+            return true;        	
+        }      	
+    	return false;
     }
 
     private static boolean isWhitespace(char c ) {
@@ -408,6 +503,15 @@ public final class Lexer implements ILexer {
         }
         return currentToken();
     }
+    
+    @Override
+    public boolean peek(TokenType t) throws EOFException
+    {
+        if ( eof() ) {
+            throw new EOFException("Premature end of file",currentParseIndex() );
+        }
+        return currentToken().hasType(t);
+    }    
 
     @Override
     public IToken read() throws EOFException
@@ -540,5 +644,16 @@ public final class Lexer implements ILexer {
         if ( option == LexerOption.CASE_INSENSITIVE_OPCODES ) {
             caseSensitiveOpCodes = ! enabled;
         }        
-    }    
+    }
+
+	@Override
+	public List<IToken> skipWhitespace(boolean skipEOL) 
+	{
+		List<IToken> result = new ArrayList<>();
+		while ( ! eof() && ( peek().isWhitespace() || (skipEOL && peek().isEOL() ) ) ) 
+		{
+			result.add( read() );
+		}
+		return result;
+	}    
 }

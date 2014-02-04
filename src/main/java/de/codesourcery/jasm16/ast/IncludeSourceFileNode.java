@@ -101,7 +101,14 @@ public class IncludeSourceFileNode extends ASTNode {
 						subContext.getCompilationUnit().setAST( ast );
 				    }
 				    
-					addChild( ast , context  , false );
+				    if ( context.isParsingMacroDefinition() ) // TODO: I currently don't allow this for complexity reasons (clashes arg names <-> global defines etc.) 
+				    {
+				    	addChild( ast , context  , false );
+				    } else {
+						context.getCompilationUnit().addMarker(
+							new CompilationError("Including source files inside macro definitions is not allowed",context.getCompilationUnit() , region )
+						);						    	
+				    }
 			    } 
 			    else 
 			    {

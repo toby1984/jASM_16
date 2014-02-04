@@ -17,14 +17,8 @@ package de.codesourcery.jasm16.parser;
 
 import java.io.IOException;
 
-import com.sun.org.apache.xml.internal.utils.StopParseException;
-
-import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.IMarker;
-import de.codesourcery.jasm16.compiler.ISymbol;
-import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.ast.*;
+import de.codesourcery.jasm16.compiler.*;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
@@ -66,6 +60,14 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @return
      */
     public ISymbolTable getSymbolTable();
+    
+    /**
+     * Returns whether a given string matches a keyword (case-insensitive).
+     * 
+     * @param s
+     * @return
+     */
+    public boolean isKeyword(String s);
 
     /**
      * Parse an identifier starting at the current parse position.
@@ -172,4 +174,34 @@ public interface IParseContext extends ILexer , IResourceResolver {
      * @see #storePreviousGlobalSymbol(ISymbol)
      */
     public ISymbol getPreviousGlobalSymbol();    
+    
+    /**
+     * Sets the AST node of the macro definition that is currently being parsed.
+     *  
+     * @param node AST node or <code>null</code>
+     */
+    public void setCurrentMacroDefinition(StartMacroNode node);
+    
+    /**
+     * Returns the AST node of the macro definition that is currently being parsed.
+     *  
+     * @param node AST node or <code>null</code>
+     */    
+    public StartMacroNode getCurrentMacroDefinition();
+    
+    /**
+     * Returns whether we're currently parsing a macro definition.
+     * 
+     * @return
+     * @see #getCurrentMacroDefinition()
+     * @see #setCurrentMacroDefinition(StartMacroNode)
+     */
+    public boolean isParsingMacroDefinition();
+    
+    /**
+     * Returns whether the parser is currently processing expanded macro text/a {@link InvokeMacroNode}.
+     * 
+     * @return
+     */
+    public boolean isExpandingMacro();
 }

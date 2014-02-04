@@ -53,6 +53,65 @@ public class LexerTest extends TestHelper {
         assertTrue( lexer.eof() );
     }    
     
+    public void testParseMacro() 
+    {
+		String source = ".macro\n"+
+                "loop: SET PC , loop\n"+
+		        ".endmacro";
+		
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.START_MACRO , ".macro");
+        assertToken( lexer , TokenType.EOL , "\n");
+        assertToken( lexer , TokenType.CHARACTERS , "loop");
+        assertToken( lexer , TokenType.COLON , ":");
+        assertToken( lexer , TokenType.WHITESPACE , " ");
+        assertToken( lexer , TokenType.INSTRUCTION , "SET");
+        assertToken( lexer , TokenType.WHITESPACE , " ");
+        assertToken( lexer , TokenType.CHARACTERS , "PC");
+        assertToken( lexer , TokenType.WHITESPACE , " ");
+        assertToken( lexer , TokenType.COMMA , ",");
+        assertToken( lexer , TokenType.WHITESPACE , " ");
+        assertToken( lexer , TokenType.CHARACTERS , "loop");
+        assertToken( lexer , TokenType.EOL , "\n");
+        assertToken( lexer , TokenType.END_MACRO , ".endmacro");
+        assertTrue( "Expected lexer to be at EOF" , lexer.eof() );        
+    }
+    
+    protected static void generateTests(ILexer lexer) 
+    {
+    	while ( ! lexer.eof() ) {
+    		IToken t = lexer.read();
+    		System.out.println( "assertToken( lexer , TokenType."+t.getType().name()+" , \""+escape(t.getContents())+"\");");
+    	}
+    	System.out.println("assertTrue( \"Expected lexer to be at EOF\" , lexer.eof() );");
+    }
+    
+    private static String escape(String s) {
+    	return s.replace("\r","\\r" ).replace("\n","\\n" );
+    }
+    
+    public void testParseStartMacro() 
+    {
+        final String source = ".macro";
+
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.START_MACRO, ".macro" );
+        assertTrue( lexer.eof() );
+    }  
+    
+    public void testParseEndMacro() 
+    {
+        final String source = ".endmacro";
+
+        final Lexer lexer = new Lexer( new Scanner( source ) );
+        
+        assertToken( lexer , TokenType.END_MACRO, ".endmacro" );
+        assertTrue( lexer.eof() );
+    }      
+    
+    
     public void testParseIncludeBinary() 
     {
         final String source = ".incbin \"somefile.txt\"";

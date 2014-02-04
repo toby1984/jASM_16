@@ -20,9 +20,8 @@ import java.io.IOException;
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.UnparsedContentNode;
-import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationError;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 
 /**
  * Assembler source code parser.
@@ -34,7 +33,12 @@ public interface IParser
     public enum ParserOption {
         DEBUG_MODE,
         RELAXED_PARSING,
-		NO_SOURCE_INCLUDE_PROCESSING, LOCAL_LABELS_SUPPORTED; 
+		NO_SOURCE_INCLUDE_PROCESSING, 
+		LOCAL_LABELS_SUPPORTED,
+		/**
+		 * INTERNAL USE ONLY.
+		 */
+		EXPANDING_MACRO;
     }
     
     /**
@@ -71,4 +75,6 @@ public interface IParser
 	 * @throws IOException if an I/O error occured during parsing the input.
 	 */
     public AST parse(ICompilationContext context) throws IOException;
+    
+    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver,boolean isExpandingMacro);
 }

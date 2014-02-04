@@ -19,10 +19,13 @@ import java.util.List;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
+import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.TextRegion;
 
@@ -45,11 +48,40 @@ public class StatementNode extends ASTNode
 
 		if ( ! context.eof() ) 
 		{
-			if ( context.peek().hasType( TokenType.COLON ) || 
-				 context.peek().hasType( TokenType.DOT ) || 
-				 context.peek().hasType( TokenType.CHARACTERS ) ) 
+			if ( context.peek( TokenType.CHARACTERS ) && Identifier.isValidIdentifier( context.peek().getContents() )) 
 			{
-				final int offset = context.currentParseIndex();                
+				final Identifier id = new Identifier(context.peek().getContents());
+				if ( context.getSymbolTable().getSymbol( id , null ) instanceof MacroNameSymbol ) 
+				{
+					int offset = context.currentParseIndex();
+					context.mark();
+					try {
+						addChild( new InvokeMacroNode().parse( context ) , context );
+					} 
+					catch(Exception e) 
+					{
+						final ITextRegion range;
+						if ( e instanceof ParseException) {
+							range = ((ParseException) e).getTextRegion();
+						} else {
+							range = new TextRegion( offset , context.currentParseIndex()-offset );
+						}
+						addCompilationErrorAndAdvanceParser( new CompilationError( 
+								"Failed to parse label: "+e.getMessage() ,
+								context.getCompilationUnit(),
+								range,e ) , new TokenType[]{TokenType.WHITESPACE,TokenType.EOL} , context );						
+					} finally {
+						context.clearMark();
+					}
+					return false;
+				}
+			}
+			
+			if ( context.peek().hasType( TokenType.COLON ) || 
+					context.peek().hasType( TokenType.DOT ) || 
+					context.peek().hasType( TokenType.CHARACTERS ) ) 
+			{
+				int offset = context.currentParseIndex();                
 				try {
 					context.mark();
 					addChild( new LabelNode().parseInternal( context ) , context );
@@ -58,9 +90,9 @@ public class StatementNode extends ASTNode
 				{
 					final ITextRegion range;
 					if ( e instanceof ParseException) {
-					    range = ((ParseException) e).getTextRegion();
+						range = ((ParseException) e).getTextRegion();
 					} else {
-					    range = new TextRegion( offset , context.currentParseIndex()-offset );
+						range = new TextRegion( offset , context.currentParseIndex()-offset );
 					}
 					addCompilationErrorAndAdvanceParser( new CompilationError( 
 							"Failed to parse label: "+e.getMessage() ,
@@ -168,44 +200,72 @@ public class StatementNode extends ASTNode
 
 		switch( tok.getType() ) 
 		{
-			case EQUATION:
-				addChild( new EquationNode().parseInternal( context ) , context );
-				break;
-			case INITIALIZED_MEMORY_PACK:
-				// $//$FALL-THROUGH$
-			case INITIALIZED_MEMORY_BYTE: 
-				// $FALL-THROUGH$
-			case INITIALIZED_MEMORY_WORD: 
-				addChild( new InitializedMemoryNode().parseInternal( context ) , context );
-				break;
-			case UNINITIALIZED_MEMORY_WORDS:	
-			case UNINITIALIZED_MEMORY_BYTES:
-				addChild( new UninitializedMemoryNode().parseInternal( context ) , context );
-				break;
-			case INSTRUCTION: 
-				addChild( new InstructionNode().parseInternal( context ) , context );
-				break;
-			case INCLUDE_SOURCE:
-				addChild( new IncludeSourceFileNode().parseInternal( context ) , context );
-				break;				
-			case INCLUDE_BINARY: 
-				addChild( new IncludeBinaryFileNode().parseInternal( context ) , context );
-				break;
-			case ORIGIN: 
-				final ASTNode origin = addChild( new OriginNode().parseInternal( context ) , context );
-	
-				if ( origin instanceof OriginNode ) 
+		case START_MACRO:
+			addChild( new StartMacroNode().parseInternal( context ) , context );				
+			break;
+		case END_MACRO:
+			addChild( new EndMacroNode().parseInternal( context ) , context );				
+			break;				
+		case EQUATION:
+			addChild( new EquationNode().parseInternal( context ) , context );
+			break;
+		case INITIALIZED_MEMORY_PACK:
+			// $//$FALL-THROUGH$
+		case INITIALIZED_MEMORY_BYTE: 
+			// $FALL-THROUGH$
+		case INITIALIZED_MEMORY_WORD: 
+			addChild( new InitializedMemoryNode().parseInternal( context ) , context );
+			break;
+		case UNINITIALIZED_MEMORY_WORDS:	
+		case UNINITIALIZED_MEMORY_BYTES:
+			addChild( new UninitializedMemoryNode().parseInternal( context ) , context );
+			break;
+		case INSTRUCTION: 
+			addChild( new InstructionNode().parseInternal( context ) , context );
+			break;
+		case INCLUDE_SOURCE:
+			addChild( new IncludeSourceFileNode().parseInternal( context ) , context );
+			break;				
+		case INCLUDE_BINARY: 
+			addChild( new IncludeBinaryFileNode().parseInternal( context ) , context );
+			break;
+		case ORIGIN: 
+			final ASTNode origin = addChild( new OriginNode().parseInternal( context ) , context );
+
+			if ( origin instanceof OriginNode ) 
+			{
+				final Address newOffset = ((OriginNode) origin).getAddress();
+				final Address currentOffset = context.getCompilationUnit().getObjectCodeStartOffset();
+				if ( Address.ZERO.equals( currentOffset ) ) 
 				{
-					final Address newOffset = ((OriginNode) origin).getAddress();
-					final Address currentOffset = context.getCompilationUnit().getObjectCodeStartOffset();
-					if ( Address.ZERO.equals( currentOffset ) ) 
+					context.getCompilationUnit().setObjectCodeStartOffset( newOffset );
+				}
+			}
+			break;
+		default:
+			// check for macro invocation
+			boolean isMacroInvocation = false;
+			context.mark();				
+			try 
+			{
+				context.skipWhitespace(false);
+				if ( context.peek( TokenType.CHARACTERS ) ) 
+				{
+					IToken identifierToken = context.read();
+					if ( Identifier.isValidIdentifier( identifierToken.getContents() ) ) 
 					{
-						context.getCompilationUnit().setObjectCodeStartOffset( newOffset );
+						ISymbol symbol = context.getSymbolTable().getSymbol( new Identifier( identifierToken.getContents() ) , null );
+						isMacroInvocation  = ( symbol instanceof MacroNameSymbol );
 					}
 				}
-				break;
-			default:
-				throw new ParseException( "Unexpected token '"+tok.getContents()+"' in statement, expected an instruction" , context.peek() );
+			} finally {
+				context.reset();
+				context.clearMark();
+			}
+			if ( isMacroInvocation ) {
+				addChild( new InvokeMacroNode().parseInternal( context ) , context );					
+			}
+			throw new ParseException( "Unexpected token '"+tok.getContents()+"' in statement, expected an instruction" , context.peek() );
 		}
 	}
 

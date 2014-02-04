@@ -105,13 +105,13 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected IParseContext createParseContext(String source) 
     {
         final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) );
+        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) , false );
     }
     
     protected IParseContext createParseContext(ICompilationUnit unit) throws IOException 
     {
     	final String source = Misc.readSource( unit.getResource() );
-        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) );
+        return new ParseContext( unit , symbolTable , new Lexer(new Scanner( source ) ) , RESOURCE_RESOLVER ,this, Collections.singleton( ParserOption.DEBUG_MODE ) , false );
     }    
     
     @Override

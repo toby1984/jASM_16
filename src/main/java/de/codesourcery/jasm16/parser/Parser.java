@@ -61,11 +61,12 @@ public class Parser implements IParser
     public AST parse(ICompilationContext context) throws IOException 
     {
         final String source = Misc.readSource( context.getCurrentCompilationUnit() );
-        return parse(context.getCurrentCompilationUnit(),context.getSymbolTable(),source,context);
+        return parse(context.getCurrentCompilationUnit(),context.getSymbolTable(),source,context,false);
     }
 
-    // unit-testing only
-    protected AST parse(final String source) {
+    // do not use except for unit-testing
+    protected AST parse(final String source) 
+    {
         final ICompilationUnit unit = CompilationUnit.createInstance( "string input" , source );
         final IResourceResolver resolver = new AbstractResourceResolver() {
 
@@ -81,10 +82,11 @@ public class Parser implements IParser
                 throw new UnsupportedOperationException("Not implemented"); 
             }
         };
-        return parse(  unit , new SymbolTable("Parser#parse()") , source , resolver );
+        return parse(  unit , new SymbolTable("Parser#parse()") , source , resolver , false );
     }
 
-    protected AST parse(final ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver) 
+    @Override
+    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source , IResourceResolver resolver,boolean isExpandingMacro)    
     {
         final Scanner scanner = new Scanner( source );
         final ILexer lexer = new Lexer( scanner );
@@ -97,7 +99,9 @@ public class Parser implements IParser
         		lexer , 
         		resolver , 
         		compilationUnitResolver,
-        		this.options );
+        		this.options ,
+        		isExpandingMacro );
+        
         final AST result = (AST) new AST().parse( context );
         if ( ! context.eof() ) {
         	throw new RuntimeException("Internal error, parsing finished although not at eof?");

@@ -26,6 +26,24 @@ import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
  */
 public interface IResourceResolver
 {
+	/**
+	 * Resolver whose methods always fail with {@link ResourceNotFoundException}.
+	 */
+	public static final IResourceResolver NOP_RESOLVER = new IResourceResolver() {
+
+		@Override
+		public IResource resolve(String identifier)throws ResourceNotFoundException {
+			throw new ResourceNotFoundException("Not implemented: resolve("+identifier+")",identifier);
+		}
+
+		@Override
+		public IResource resolveRelative(String identifier, IResource parent) throws ResourceNotFoundException 
+		{
+			throw new ResourceNotFoundException("Not implemented: resolve("+identifier+","+parent+")",identifier);			
+		}
+		
+	};
+	
     /**
      * Look-up a resource by it's identifier.
      * 

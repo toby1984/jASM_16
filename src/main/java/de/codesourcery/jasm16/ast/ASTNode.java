@@ -15,11 +15,7 @@
  */
 package de.codesourcery.jasm16.ast;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -179,6 +175,27 @@ public abstract class ASTNode
         mergeWithAllTokensTextRegion( node.getTextRegion() );
     }
 
+    /**
+     * Merges the  source code region with this node's {@link #textRegionIncludingAllTokens}.
+     * 
+     * <p>This method is used during expression folding/evaluation to
+     * preserve the text range covered by an AST node when an AST node
+     * gets replaced with a newly created node representing calculated value.
+     * </p>
+     * <p>Not using this method during expression folding will cause the location
+     * of all tokens that do not resemble actual AST nodes (read: almost all tokens)
+     * to be permanently lost.</p>
+     * 
+     * @param range
+     * @see ITextRegion#merge(ITextRegion)
+     */    
+    protected final void mergeWithAllTokensTextRegion(List<? extends ITextRegion> range) 
+    {
+    	for ( ITextRegion r : range ) {
+    		mergeWithAllTokensTextRegion(r);
+    	}
+    }
+    
     /**
      * Merges the  source code region with this node's {@link #textRegionIncludingAllTokens}.
      * 
@@ -679,6 +696,13 @@ public abstract class ASTNode
 
     private final ICompilationError wrapException(Exception e, IParseContext context)
     {
+    	System.out.println("=== ASTNode#wrapException(): "+e.getMessage());
+    	Throwable cause = e;
+    	while ( cause.getCause() != null ) {
+    		cause = cause.getCause();
+    	}
+    	cause.printStackTrace();
+    	
         final int errorOffset;        
         final ITextRegion errorRange;
         if ( e instanceof ParseException ) 

@@ -74,6 +74,12 @@ public interface ILexer {
 	public IToken peek() throws EOFException;
 	
 	/**
+	 * Check whether the the next token in the input stream has a specific type.
+	 * @return <code>false</code> if the next token is not of the given type
+	 */
+	public boolean peek(TokenType t) throws EOFException;	
+	
+	/**
 	 * Read the next token from the input stream.
 	 * 
 	 * @return
@@ -165,10 +171,29 @@ public interface ILexer {
 	public void clearMark();
 	
 	/**
+	 * Consumes whitespace/EOL tokens until either EOF or a non-whitespace/non-EOL token is encountered.
+	 * 
+	 * @param skipEOL whether to consume EOL tokens as well
+	 * @return the consumed tokens
+	 * 
+	 * @see IToken#isWhitespace()
+	 * @see IToken#isEOL()
+	 */
+	public List<IToken> skipWhitespace(boolean skipEOL);
+	
+	/**
 	 * Reset's the lexer's internal state to how it was the last
 	 * time {@link #mark()} got called. 
 	 * 
 	 * @throws IllegalStateException if {@link #mark()} has never been called
 	 */
 	public void reset() throws IllegalStateException;
+	
+    /**
+     * Returns whether a given string matches a keyword (case-insensitive).
+     * 
+     * @param s
+     * @return
+     */
+    public boolean isKeyword(String s);	
 }

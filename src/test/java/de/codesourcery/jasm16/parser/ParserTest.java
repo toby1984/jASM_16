@@ -16,16 +16,7 @@
 package de.codesourcery.jasm16.parser;
 
 import de.codesourcery.jasm16.AddressingMode;
-import de.codesourcery.jasm16.ast.AST;
-import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.CommentNode;
-import de.codesourcery.jasm16.ast.InitializedMemoryNode;
-import de.codesourcery.jasm16.ast.InstructionNode;
-import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.OperandNode;
-import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
-import de.codesourcery.jasm16.ast.UnparsedContentNode;
+import de.codesourcery.jasm16.ast.*;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
@@ -63,7 +54,7 @@ public class ParserTest extends TestHelper {
 		final Parser p = new Parser(this);
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
 		
-		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER);
+		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, false );
 		
 		Misc.printCompilationErrors( unit , source , true );
 		
@@ -83,7 +74,7 @@ public class ParserTest extends TestHelper {
 		final String source = "        ; Try some basic stuff\n";
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
 		
-		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER);
+		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, false );
 		
 		Misc.printCompilationErrors( unit , source , true );
 		
@@ -181,7 +172,7 @@ public class ParserTest extends TestHelper {
 		
         final String source = ".dat \"I'm great\"";
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER);
+		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER, false );
 
 	    Misc.printCompilationErrors( unit , source , true );
 	      
@@ -235,7 +226,7 @@ public class ParserTest extends TestHelper {
 		
         final String source = ".dat \"dead\"";
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER);
+		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER , false );
 
 	    Misc.printCompilationErrors( unit , source , true );
 	      
@@ -299,6 +290,174 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( InitializedMemoryNode.class , root.child(0).getClass() );
 		assertEquals( source , toSourceCode( root , source ) );
+	}		
+	
+	public void testParseMacroWithoutArguments() 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody=":loop SET PC , loop";
+		String source = ".macro brk\n"+
+		                macroBody+"\n"+
+				        ".endmacro";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals(2 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertTrue( n.getArgumentNames().isEmpty() );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+	}
+	
+	public void testParseMacroInvocationWithoutArguments() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody=":loop SET PC , loop";
+		String source = ".macro brk\n"+
+		                macroBody+"\n"+
+				        ".endmacro\n"+
+		                "brk\n";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals(3 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertTrue( n.getArgumentNames().isEmpty() );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );
+		
+		assertTrue( "Expected MacroInvocationNode but got "+ast.child(2).child(0).getClass() , ast.child(2).child(0) instanceof InvokeMacroNode );
+		
+		final InvokeMacroNode invocation = (InvokeMacroNode) ast.child(2).child(0);
+		assertEquals( new Identifier("brk") , invocation.getMacroName() );
+		assertEquals( 0 , invocation.getArgumentCount() );
+	}	
+	
+	public void testParseMacroInvocationWithOneArgument() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="ADD A,arg1";
+		String source = ".macro inc(arg1)\n"+
+		                macroBody+"\n"+
+				        ".endmacro\n"+
+		                "inc (1)\n";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals(3 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals( 1, n.getArgumentNames().size() );
+		assertEquals( new Identifier("arg1") , n.getArgumentNames().get(0) );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+		
+		assertTrue( "Expected MacroInvocationNode but got "+ast.child(2).child(0).getClass() , ast.child(2).child(0) instanceof InvokeMacroNode );
+		final InvokeMacroNode invocation = (InvokeMacroNode) ast.child(2).child(0);		
+		assertEquals( new Identifier("inc") , invocation.getMacroName() );
+		assertEquals( 1 , invocation.getArgumentCount() );
+	}		
+	
+	public void testParseMacroWithOneArgument() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="ADD arg , 1";
+		String source = ".macro inc(arg)\n"+
+		                macroBody+"\n"+
+				        ".endmacro";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals( 2 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals( 1 , n.getArgumentNames().size() );
+		assertEquals( new Identifier("arg"), n.getArgumentNames().get(0) );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+	}
+	
+	public void testParseMacroWithTwoArguments() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="ADD arg , 1";
+		String source = ".macro inc(arg1,arg2)\n"+
+		                macroBody+"\n"+
+				        ".endmacro";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals( 2 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals( 2 , n.getArgumentNames().size() );
+		assertEquals( new Identifier("arg1"), n.getArgumentNames().get(0) );
+		assertEquals( new Identifier("arg2"), n.getArgumentNames().get(1) );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+	}		
+	
+	public void testParseMacroInvocationWithTwoArguments() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="ADD arg1,arg2";
+		String source = ".macro inc(arg1,arg2)\n"+
+		                macroBody+"\n"+
+				        ".endmacro\n"+
+		                "inc (A,1)\n";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals(3 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals( 2, n.getArgumentNames().size() );
+		assertEquals( new Identifier("arg1") , n.getArgumentNames().get(0) );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+		
+		assertTrue( "Expected MacroInvocationNode but got "+ast.child(2).child(0).getClass() , ast.child(2).child(0) instanceof InvokeMacroNode );
+		final InvokeMacroNode invocation = (InvokeMacroNode) ast.child(2).child(0);		
+		assertEquals( new Identifier("inc") , invocation.getMacroName() );
+		assertEquals( 2 , invocation.getArgumentCount() );
 	}		
 	
 	public void testParseUninitializedMemory() 
