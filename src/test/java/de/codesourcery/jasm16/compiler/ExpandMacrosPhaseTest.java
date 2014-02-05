@@ -15,7 +15,7 @@ public class ExpandMacrosPhaseTest extends TestHelper {
     public void testExpandMacro() throws IOException 
     {
         final String source =".macro brk\n"+
-                             "  .loop  SET PC,loop\n"+
+                             "  ADD a,0\n"+
                               ".endmacro\n"+
                              "brk";
         
@@ -36,12 +36,11 @@ public class ExpandMacrosPhaseTest extends TestHelper {
         assertNotNull( unit.getAST() );
         
         System.out.println("=== Before expansion");
-        ASTUtils.visitInOrder( ast , new FormattingVisitor( compContext ) );
+        ASTUtils.visitInOrder( ast , new FormattingVisitor( compContext , true ) );
         
         new ExpandMacrosPhase().execute( Collections.singletonList( unit ) , debugInfo,symbolTable , NOP_WRITER , new CompilationListener(), RESOURCE_RESOLVER, OPTIONS, new MyResolver(unit)  );
 
         System.out.println("=== After expansion");
-        ASTUtils.visitInOrder( ast , new FormattingVisitor( compContext ) );        
-
-    }	
+        ASTUtils.visitInOrder( ast , new FormattingVisitor( compContext , true ) );        
+    }	    
 }

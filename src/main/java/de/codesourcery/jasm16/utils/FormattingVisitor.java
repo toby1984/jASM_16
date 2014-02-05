@@ -67,10 +67,17 @@ public class FormattingVisitor extends ASTVisitor {
     private final int column0Width = 40;
 
     private final ICompilationContext context;
+    
+    private final boolean printExpandedMacros;
 
     public FormattingVisitor(ICompilationContext context) {
-        this.context = context;
+        this(context,false);
     }
+    
+    public FormattingVisitor(ICompilationContext context,boolean printExpandedMacros) {
+        this.context = context;
+        this.printExpandedMacros = printExpandedMacros;
+    }    
 
     protected void output(String s) {
         System.out.print( s );
@@ -121,8 +128,9 @@ public class FormattingVisitor extends ASTVisitor {
     @Override
     public void visit(InvokeMacroNode node, IIterationContext context) 
     {
+    	final String line;
     	if ( node.getArgumentCount() == 0 ) {
-    		output( node.getMacroName().getRawValue()+"\n" );
+    		line = node.getMacroName().getRawValue()+"\n";
     	} 
     	else 
     	{
@@ -141,9 +149,16 @@ public class FormattingVisitor extends ASTVisitor {
     				builder.append(",");
     			}
     		}
-    		output( node.getMacroName().getRawValue()+" ("+builder+")\n" );
+    		line = node.getMacroName().getRawValue()+" ("+builder+")\n";
     	}
-    	context.dontGoDeeper();
+    	
+    	if ( printExpandedMacros ) 
+    	{
+    		output("; macro expansion: "+line+"\n" );
+    	} else {
+    		output( line );
+    		context.dontGoDeeper();
+    	}     		
     }
     
     @Override
