@@ -127,7 +127,6 @@ public class IncludeSourceFileNode extends ASTNode {
 				);			
 			}
 		}
-		
 		return this;
 	}
 

@@ -17,6 +17,9 @@ package de.codesourcery.jasm16.parser;
 
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.LabelNode;
+import de.codesourcery.jasm16.ast.UnparsedContentNode;
+import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 public class LabelNodeTest extends TestHelper
 {
@@ -30,11 +33,23 @@ public class LabelNodeTest extends TestHelper
         assertEquals( "label" , ((LabelNode) result).getIdentifier().getRawValue() );
     }
     
+    public void testParseLocalLabelWithoutPreviousGlobalFirst() throws Exception {
+        
+        String source = ".label";
+        ASTNode result = new LabelNode().parse( createParseContext( source ) );
+        assertEquals(UnparsedContentNode.class , result.getClass() );
+    }       
+    
     public void testParseLocalLabel() throws Exception {
         
         String source = ".label";
+        IParseContext context = createParseContext( source );
         
-        ASTNode result = new LabelNode().parse( createParseContext( source ) );
+        final ISymbol globalSymbol = new Label( context.getCompilationUnit() , new TextRegion(0,source.length() ) , new Identifier("globalLabel") , null );
+        context.getSymbolTable().defineSymbol( globalSymbol );
+		context.storePreviousGlobalSymbol( globalSymbol );
+		
+		ASTNode result = new LabelNode().parse( context );
         assertEquals(LabelNode.class , result.getClass() );
         assertSourceCode( source  , result );
         assertEquals( "label" , ((LabelNode) result).getIdentifier().getRawValue() );

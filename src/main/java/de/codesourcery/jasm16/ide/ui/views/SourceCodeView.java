@@ -93,16 +93,7 @@ import javax.swing.undo.UndoableEdit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.ast.AST;
-import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.CommentNode;
-import de.codesourcery.jasm16.ast.IPreprocessorDirective;
-import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
-import de.codesourcery.jasm16.ast.InstructionNode;
-import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.RegisterReferenceNode;
-import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.ast.SymbolReferenceNode;
+import de.codesourcery.jasm16.ast.*;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -249,6 +240,9 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	private final SimpleAttributeSet errorStyle;
 	private final SimpleAttributeSet defaultStyle;
+	
+	private final SimpleAttributeSet macroDefinitionStyle;
+	private final SimpleAttributeSet macroInvocationStyle;
 
 	// compiler
 	private final IResourceResolver resourceResolver;
@@ -834,6 +828,8 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 		errorStyle = createStyle( Color.RED );
 		registerStyle = createStyle( Color.ORANGE );   
 		commentStyle = createStyle( Color.WHITE );
+		macroDefinitionStyle = createStyle(Color.YELLOW );
+		macroInvocationStyle = createStyle(Color.YELLOW);
 		instructionStyle = createStyle( new Color(50,186,223) );
 		labelStyle = createStyle( new Color(237,237,81) );
 		preProcessorStyle = createStyle( new Color( 200 , 200 , 200 ) ); 
@@ -1165,7 +1161,17 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	protected final boolean highlight(ASTNode node) 
 	{
-		if ( node instanceof InstructionNode ) 
+		if ( node instanceof StartMacroNode || node instanceof EndMacroNode) 
+		{
+			highlight( node , macroDefinitionStyle );			
+			return true;
+		}
+		else if ( node instanceof InvokeMacroNode) 
+		{
+			highlight( node , macroInvocationStyle );			
+			return true;
+		}
+		else if ( node instanceof InstructionNode ) 
 		{
 			ITextRegion children = null;
 			for ( ASTNode child : node.getChildren() ) 
@@ -1541,22 +1547,20 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	protected final void gotoToSymbolDefinition(SymbolReferenceNode ref) 
 	{
-		Identifier identifier = ref.getIdentifier();
-		Identifier scope = ref.getScope();
 		if ( getCurrentCompilationUnit() != null ) 
 		{
-			ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();
-			ISymbol symbol = table.getSymbol( identifier , scope );
-			if ( symbol == null && table.getParent() != null ) {
-				symbol = table.getParent().getSymbol( identifier , scope );
-			}
+			ISymbolTable table = getCurrentCompilationUnit().getSymbolTable();			
+			ISymbol symbol = ref.resolve( table , true );
 			if ( symbol != null ) 
 			{
-				final ITextRegion location = symbol.getLocation();
-				final ICompilationUnit newCompilationUnit = symbol.getCompilationUnit();
-				final IAssemblyProject project = workspace.getProjectForResource( newCompilationUnit.getResource() );
-				gotoLocation( project , newCompilationUnit.getResource() , location.getStartingOffset() , false );
-			} 
+				if ( symbol != null ) 
+				{
+					final ITextRegion location = symbol.getLocation();
+					final ICompilationUnit newCompilationUnit = symbol.getCompilationUnit();
+					final IAssemblyProject project = workspace.getProjectForResource( newCompilationUnit.getResource() );
+					gotoLocation( project , newCompilationUnit.getResource() , location.getStartingOffset() , false );
+				} 
+			}
 		}
 	}
 

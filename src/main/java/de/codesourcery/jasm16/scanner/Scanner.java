@@ -15,6 +15,9 @@
  */
 package de.codesourcery.jasm16.scanner;
 
+import java.io.IOException;
+import java.io.InputStream;
+
 import de.codesourcery.jasm16.exceptions.EOFException;
 
 public class Scanner implements IScanner {
@@ -22,7 +25,8 @@ public class Scanner implements IScanner {
 	private final String input;
 	private int currentIndex = 0;
 	
-	public Scanner(String input) {
+	public Scanner(final String input) 
+	{
 		this.input = input;
 	}
 	

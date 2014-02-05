@@ -17,16 +17,8 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import de.codesourcery.jasm16.ast.ASTUtils;
-import de.codesourcery.jasm16.ast.ASTVisitor;
-import de.codesourcery.jasm16.ast.IIterationContext;
-import de.codesourcery.jasm16.ast.SymbolReferenceNode;
-import de.codesourcery.jasm16.compiler.CompilationError;
-import de.codesourcery.jasm16.compiler.CompilerPhase;
-import de.codesourcery.jasm16.compiler.Equation;
-import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompilerPhase;
+import de.codesourcery.jasm16.ast.*;
+import de.codesourcery.jasm16.compiler.*;
 import de.codesourcery.jasm16.parser.Identifier;
 
 /**
@@ -56,8 +48,9 @@ public class ASTValidationPhase1 extends CompilerPhase {
         	@Override
         	public void visit(SymbolReferenceNode node, IIterationContext context) 
         	{
-                final Identifier id = node.getIdentifier();
-                if ( ! compContext.getSymbolTable().containsSymbol( id , node.getScope() ) ) {
+        		final ISymbol resolved = node.resolve( compContext.getSymbolTable() );
+        		final Identifier id = node.getIdentifier();        		
+                if ( resolved == null ) {
                     unit.addMarker( new CompilationError("Unknown identifier '"+id+"'", unit, node ) );
                 } 
                	Equation.checkCyclicDependencies(id,compContext.getSymbolTable());

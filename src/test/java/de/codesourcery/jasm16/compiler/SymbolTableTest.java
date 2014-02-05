@@ -22,14 +22,42 @@ import de.codesourcery.jasm16.utils.TextRegion;
 
 public class SymbolTableTest extends TestCase {
 
-	public void testStoreSymbol() throws ParseException {
+	private SymbolTable table;
+	private ICompilationUnit unit;
+	
+	@Override
+	protected void setUp() throws Exception {
+		super.setUp();
+		table = new SymbolTable("SymbolTableTest");
+		unit = CompilationUnit.createInstance("id" , "test" );
+	}
+	
+	public void testStoreGlobaleSymbol() throws ParseException {
 		
-		SymbolTable table = new SymbolTable("SymbolTableTest");
-		
-		ICompilationUnit unit = CompilationUnit.createInstance("id" , "test" );
 		Label label = new Label(  unit , new TextRegion(0,4) , new Identifier( "test" ) , null );
 		table.defineSymbol( label );
-		
-		assertTrue( table.containsSymbol( label.getIdentifier() , null ) );
+		assertTrue( table.containsSymbol( label.getName() , null ) );
 	}
+	
+	public void testStoreLocalSymbolWithoutGlobalFails() throws ParseException {
+		
+		Label globalLabel = new Label(  unit , new TextRegion(0,4) , new Identifier( "globalTest" ) , null );
+		Label localLabel = new Label(  unit , new TextRegion(0,4) , new Identifier( "localTest" ) , globalLabel );
+		try {
+			table.defineSymbol( localLabel );
+			fail("Should've failed");
+		} catch(Exception e) {
+			// ok
+		}
+	}	
+	
+	public void testStoreLocalSymbol() throws ParseException {
+		
+		Label globalLabel = new Label(  unit , new TextRegion(0,4) , new Identifier( "globalTest" ) , null );
+		table.defineSymbol( globalLabel );
+		Label localLabel = new Label(  unit , new TextRegion(0,4) , new Identifier( "localTest" ) , globalLabel );
+		table.defineSymbol( localLabel );
+		
+		assertTrue( table.containsSymbol( localLabel.getName() , globalLabel ) );
+	}		
 }

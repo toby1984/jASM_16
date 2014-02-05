@@ -26,7 +26,9 @@ import de.codesourcery.jasm16.parser.Identifier;
  * @author tobias.gierke@code-sourcery.de
  */
 public interface ISymbolTable {
-    
+   
+	public static final boolean DEBUG_SYMBOLS = false;
+	
 	/**
 	 * Creates a deep copy of this symbol table.
 	 * 
@@ -54,7 +56,7 @@ public interface ISymbolTable {
 	 * @param scope optional scope or <code>null</code> to look for a global symbol.
 	 * @return symbol with this identifier or <code>null</code>
 	 */	
-	public ISymbol getSymbol(Identifier identifier,Identifier scope); 
+	public ISymbol getSymbol(Identifier identifier,ISymbol scope); 
 	
 	/**
 	 * Returns all known symbols from this table.
@@ -101,11 +103,17 @@ public interface ISymbolTable {
 	 * @param scope optional scope, may be <code>null</code> to search for a global symbol.
 	 * @return
 	 */
-	public boolean containsSymbol(Identifier identifier,Identifier scope);	
+	public boolean containsSymbol(Identifier identifier,ISymbol scope);	
 	
 	/**
 	 * Removes all symbols from this symbol table.
 	 * 
 	 */
 	public void clear();
+	
+	/**
+	 * DEBUG.
+	 * @return
+	 */
+	public String dumpToString();
 }

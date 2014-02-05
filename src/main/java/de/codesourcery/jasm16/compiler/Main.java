@@ -387,8 +387,9 @@ public class Main {
             Collections.sort( symbols , comp );
 
             System.out.println("\nSymbol table:\n\n");
-            for ( ISymbol s : symbols ) {
-                String name = s.getIdentifier().getRawValue();
+            for ( ISymbol s : symbols ) 
+            {
+                String name = s.getFullyQualifiedName();
                 final String sAddress;
                 if ( s instanceof Label) {
                     final Address addr = ((Label) s).getAddress();

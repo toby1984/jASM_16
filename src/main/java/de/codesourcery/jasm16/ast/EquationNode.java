@@ -119,7 +119,7 @@ public class EquationNode extends ConstantValueNode implements IPreprocessorDire
 			
 			context.getSymbolTable().defineSymbol( equation );
 			
-			Equation.checkCyclicDependencies( equation.getIdentifier() , context.getSymbolTable() );
+			Equation.checkCyclicDependencies( equation.getName() , context.getSymbolTable() );
 		}
 		return this;
 	}

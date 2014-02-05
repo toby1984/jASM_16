@@ -10,8 +10,8 @@ import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.parser.TestHelper;
 import de.codesourcery.jasm16.utils.FormattingVisitor;
 
-public class ExpandMacrosPhaseTest extends TestHelper {
-
+public class ExpandMacrosPhaseTest extends TestHelper 
+{
     public void testExpandMacro() throws IOException 
     {
         final String source =".macro brk\n"+

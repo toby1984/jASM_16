@@ -19,7 +19,7 @@ public class MacroNameSymbol extends AbstractSymbol
 
 	@Override
 	public ISymbol createCopy() {
-		return new MacroNameSymbol( this.macroDefinition  , this.getCompilationUnit() , this.getLocation() , this.getIdentifier()  );
+		return new MacroNameSymbol( this.macroDefinition  , this.getCompilationUnit() , this.getLocation() , this.getName()  );
 	}
 
 	@Override
@@ -35,7 +35,7 @@ public class MacroNameSymbol extends AbstractSymbol
 		if ( newScope != null ) {
 			throw new IllegalArgumentException("Cannot set scope on macro name "+this);
 		}
-		return new MacroNameSymbol( this.macroDefinition ,  getCompilationUnit() , getLocation() , getIdentifier() );
+		return new MacroNameSymbol( this.macroDefinition ,  getCompilationUnit() , getLocation() , getName() );
 	}
 	
 	public StartMacroNode getMacroDefinition() {

@@ -81,7 +81,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     private final IResourceMatcher resourceMatcher = DefaultResourceMatcher.INSTANCE;
     private final IWorkspace workspace;
     private final IAssemblyProject project;
-    private final IParentSymbolTable globalSymbolTable = new ParentSymbolTable();
+    private final IParentSymbolTable globalSymbolTable;
     
     private final AtomicBoolean disposed = new AtomicBoolean(false);
     
@@ -98,6 +98,7 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
 		}
     	this.workspace = workspace;
     	this.project = project;
+    	this.globalSymbolTable = new ParentSymbolTable( "project: "+project.getName() );
     }
     
     @Override
@@ -469,14 +470,13 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
         final DebugInfo debugInfo = compiler.compile( compilationUnits , dependencies , globalSymbolTable , listener , relaxedResolver );
 
         // create executable
-        if ( isCompilationSuccessful( compilationUnits ) )
+        if ( isCompilationSuccessful( compilationUnits ) && ! objectFiles.isEmpty() )
         {
 //            System.out.println("\n-------- DEBUG ------------\n"+debugInfo.dumpToString());
-            
-            final List<CompiledCode> toLink = objectFiles.subList(0, 1 );
-    		LOG.debug("[ "+this+"] Linking "+toLink);
-            executable = link( toLink , debugInfo , compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
-    		workspace.resourceCreated( project , executable );
+        	final List<CompiledCode> toLink = objectFiles.subList(0, 1 );
+        	LOG.debug("[ "+this+"] Linking "+toLink);
+        	executable = link( toLink , debugInfo , compiler.hasCompilerOption( CompilerOption.GENERATE_RELOCATION_INFORMATION ) );
+        	workspace.resourceCreated( project , executable );
             buildSuccessful = true; 
         } else {
             buildSuccessful = false;

@@ -126,17 +126,30 @@ public class StatementNode extends ASTNode
 
 	public LabelNode getLabelNode() 
 	{
-		for ( ASTNode n : getChildren() ) {
-			if ( n instanceof LabelNode) {
-				return (LabelNode) n;
+		for ( ASTNode n : getChildren() ) 
+		{
+			LabelNode result = searchLabelNode(n);
+			if ( result != null ) {
+				return result;
 			}
 		}
 		return null;
 	}
-
-	public boolean hasLabel() 
+	
+	private LabelNode searchLabelNode(ASTNode toCheck)
 	{
-		return getLabelNode() != null;
+		if ( toCheck instanceof LabelNode) {
+			return (LabelNode) toCheck;
+		}
+		if ( toCheck instanceof InvokeMacroNode) {
+			for ( ASTNode child : toCheck.getChildren() ) {
+				LabelNode result = searchLabelNode( child );
+				if ( result != null ) {
+					return result;
+				}
+			}
+		}
+		return null;
 	}
 
 	public List<ObjectCodeOutputNode> getObjectOutputNodes() {

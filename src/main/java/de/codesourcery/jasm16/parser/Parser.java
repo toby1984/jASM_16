@@ -95,7 +95,6 @@ public class Parser implements IParser
         }        
         
         final ParseContext context = new ParseContext( unit , symbolTable, lexer , resolver , compilationUnitResolver, this.options , isExpandingMacro );
-        afterParseContextCreation(context);
         
         final AST result = (AST) new AST().parse( context );
         if ( ! context.eof() ) {
@@ -107,15 +106,6 @@ public class Parser implements IParser
         return result;
     }
     
-    /**
-     * TODO: Method not called by {@link ParseContext#createParseContextForInclude(IResource)}.
-     * 
-     * @param context
-     */
-    protected void afterParseContextCreation(ParseContext context) {
-    	
-    }
-
 	@Override
     public void setParserOption(ParserOption option, boolean onOff)
     {

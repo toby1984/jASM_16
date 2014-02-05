@@ -7,18 +7,18 @@ import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
 
-public class MacroArgumentListNode extends ASTNode {
+public class MacroParametersListNode extends ASTNode {
 
-	public MacroArgumentListNode() {
+	public MacroParametersListNode() {
 	}
 	
-	private MacroArgumentListNode(MacroArgumentListNode macroArgumentListNode) 
+	private MacroParametersListNode(MacroParametersListNode macroArgumentListNode) 
 	{
 	}
 
 	@Override
 	protected ASTNode copySingleNode() {
-		return new MacroArgumentListNode(this);
+		return new MacroParametersListNode(this);
 	}
 
 	public List<Identifier> getArgumentNames() 

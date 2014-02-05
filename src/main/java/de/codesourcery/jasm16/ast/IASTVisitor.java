@@ -22,6 +22,8 @@ package de.codesourcery.jasm16.ast;
  */
 public interface IASTVisitor {
 
+    public void visit(RawStringNode node,IIterationContext context);	
+	
     public void visit(IncludeSourceFileNode node,IIterationContext context);	
     
     public void visit(EquationNode node,IIterationContext context);	
@@ -68,5 +70,5 @@ public interface IASTVisitor {
     
     public void visit(EndMacroNode node,IIterationContext context);
     
-    public void visit(MacroArgumentListNode node,IIterationContext context);
+    public void visit(MacroParametersListNode node,IIterationContext context);
 }

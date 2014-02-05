@@ -73,13 +73,18 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 			visit( (InvokeMacroNode) n , context );
 		} else if ( n instanceof EndMacroNode) {
 			visit( (EndMacroNode) n , context );
-		} else if ( n instanceof MacroArgumentListNode) {
-			visit( (MacroArgumentListNode) n , context );
+		} else if ( n instanceof MacroParametersListNode) {
+			visit( (MacroParametersListNode) n , context );
+		} else if ( n instanceof RawStringNode) {
+			visit( (RawStringNode) n , context );			
 		} else {
 			throw new RuntimeException("Unhandled node class: "+n.getClass());
 		}
 	}
 	
+    @Override
+    public void visit(RawStringNode node,IIterationContext context) { }	
+    
     @Override
     public void visit(IdentifierNode node,IIterationContext context) { }	
     
@@ -93,7 +98,7 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
     public void visit(EndMacroNode node,IIterationContext context) { }	
     
     @Override
-    public void visit(MacroArgumentListNode node,IIterationContext context) { }	
+    public void visit(MacroParametersListNode node,IIterationContext context) { }	
 	
     @Override
     public void visit(IncludeSourceFileNode node,IIterationContext context) { }		

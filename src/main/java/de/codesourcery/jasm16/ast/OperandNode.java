@@ -141,7 +141,7 @@ public class OperandNode extends ASTNode
 			validateRegisterRefCount( context, expression , 0 );
 			addChild( expression, context  );            
 		} else {
-			throw new ParseException("Unexpected operand token: "+tok.getType() , tok );
+			throw new ParseException("Unexpected operand token: "+tok , tok );
 		}
 		return this;
 	}
@@ -207,9 +207,7 @@ public class OperandNode extends ASTNode
             {
                 if ( node instanceof SymbolReferenceNode) 
                 {
-                    final Identifier identifier = ((SymbolReferenceNode) node).getIdentifier();
-                    final Identifier scope = ((SymbolReferenceNode) node).getScope();
-                    ISymbol symbol = symbolTable.getSymbol( identifier , scope );
+                    final ISymbol symbol = ((SymbolReferenceNode) node).resolve(symbolTable); // symbolTable.getSymbol( identifier , scope );
                     if ( symbol == null ) {
                         unresolvedSymbolsFound.set(true);
                     } 

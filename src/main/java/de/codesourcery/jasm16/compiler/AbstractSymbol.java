@@ -50,6 +50,12 @@ public abstract class AbstractSymbol implements ISymbol {
 	}
 	
 	@Override
+	public String getFullyQualifiedName() 
+	{
+		return scope == null ? identifier.getRawValue() : scope.getFullyQualifiedName()+"."+identifier.getRawValue();
+	}
+	
+	@Override
 	public boolean isLocalSymbol() {
 		return scope != null;
 	}
@@ -65,12 +71,12 @@ public abstract class AbstractSymbol implements ISymbol {
 	}
 	
 	@Override
-	public Identifier getScopeIdentifier() {
-		return scope != null ? scope.getIdentifier() : null;
+	public Identifier getScopeName() {
+		return scope != null ? scope.getName() : null;
 	}
 	
 	@Override
-	public final Identifier getIdentifier() {
+	public final Identifier getName() {
 		return identifier;
 	}
 	

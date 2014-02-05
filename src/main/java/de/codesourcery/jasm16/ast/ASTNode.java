@@ -991,4 +991,57 @@ public abstract class ASTNode
     public final void removeAllChildNodes() {
     	this.children.clear();
     }
+    
+    /**
+     * Returns whether this node has a parent node.
+     * 
+     * @return
+     * @see #getParent()
+     */
+    public boolean hasParent() {
+    	return getParent() != null;
+    }
+    
+    /**
+     * Returns whether this node has no parent node.
+     * 
+     * @return
+     * @see #getParent()
+     */
+    public boolean hasNoParent() {
+    	return getParent() == null;
+    }    
+    
+    /**
+     * Starting from the current node and ascending the tree upwards,looks for
+     * the closest {@link LabelNode} that defines a global label.
+     * 
+     * @return
+     */
+    protected final LabelNode getPreviousGlobalLabel() 
+    {
+    	final StatementNode stmt = getStatement();
+    	if ( stmt != null && stmt.hasParent() ) 
+    	{
+    		ASTNode stmtParent = stmt.getParent();
+    		int index = stmtParent.indexOf( stmt );
+    		for ( int i = 0 ; i <= index ; i++ ) 
+    		{
+    			StatementNode tmp = (StatementNode) stmtParent.child(i);
+    			LabelNode labelNode = tmp.getLabelNode();
+    			if ( labelNode != null && labelNode.getLabel().isGlobalSymbol() ) {
+    				return labelNode;
+    			}
+    		}
+    	}
+    	return null;
+    }
+    
+    public final StatementNode getStatement() 
+    {
+    	if ( this instanceof StatementNode) {
+    		return (StatementNode) this;
+    	}
+    	return getParent() != null ? getParent().getStatement() : null;
+    }
 }

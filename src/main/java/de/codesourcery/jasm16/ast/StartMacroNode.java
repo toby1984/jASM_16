@@ -43,8 +43,8 @@ public class StartMacroNode extends ASTNode {
 		return new ArrayList<>(); 
 	}
 
-	private MacroArgumentListNode getArgumentsNode() {
-		return (MacroArgumentListNode) child(0);
+	private MacroParametersListNode getArgumentsNode() {
+		return (MacroParametersListNode) child(0);
 	}
 	
 	public int getArgumentCount() {
@@ -96,7 +96,7 @@ public class StartMacroNode extends ASTNode {
 			region.merge( context.skipWhitespace( true ) );		
 			
 			if ( ! context.eof() && context.peek( TokenType.PARENS_OPEN ) ) {
-				addChild( new MacroArgumentListNode().parse(context) , context );
+				addChild( new MacroParametersListNode().parse(context) , context );
 			}
 			
 			region.merge( context.skipWhitespace(false) );

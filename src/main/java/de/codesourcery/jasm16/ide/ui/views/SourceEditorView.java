@@ -119,7 +119,7 @@ public class SourceEditorView extends SourceCodeView {
 
 	private final SymbolTableModel symbolTableModel = new SymbolTableModel();
 	private final JTable symbolTable = new JTable( symbolTableModel );	
-	
+
 	// compiler
 	private final IWorkspaceListener workspaceListener = new WorkspaceListener() {
 
@@ -277,14 +277,14 @@ public class SourceEditorView extends SourceCodeView {
 		public String getColumnName(int columnIndex)
 		{
 			switch(columnIndex) {
-				case COL_SEVERITY:
-					return "Severity";
-				case COL_LOCATION:
-					return "Location";
-				case COL_MESSAGE:
-					return "Message";
-				default:
-					return "no column name?";
+			case COL_SEVERITY:
+				return "Severity";
+			case COL_LOCATION:
+				return "Location";
+			case COL_MESSAGE:
+				return "Message";
+			default:
+				return "no column name?";
 			}
 		}
 
@@ -305,23 +305,23 @@ public class SourceEditorView extends SourceCodeView {
 		{
 			final StatusMessage msg = messages.get( rowIndex );
 			switch(columnIndex) {
-				case COL_SEVERITY:
-					return msg.getSeverity().toString(); 
-				case COL_LOCATION:
-					if ( msg.getLocation() != null ) {
-						SourceLocation location;
-						try {
-							location = getSourceLocation(msg.getLocation());
-							return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
-						} catch (NoSuchElementException e) {
-							// ok, can't help it
-						}
-					} 
-					return "<unknown>";
-				case COL_MESSAGE:
-					return msg.getMessage();
-				default:
-					return "no column name?";
+			case COL_SEVERITY:
+				return msg.getSeverity().toString(); 
+			case COL_LOCATION:
+				if ( msg.getLocation() != null ) {
+					SourceLocation location;
+					try {
+						location = getSourceLocation(msg.getLocation());
+						return "Line "+location.getLineNumber()+" , column "+location.getColumnNumber();
+					} catch (NoSuchElementException e) {
+						// ok, can't help it
+					}
+				} 
+				return "<unknown>";
+			case COL_MESSAGE:
+				return msg.getMessage();
+			default:
+				return "no column name?";
 			}
 		}
 
@@ -351,12 +351,12 @@ public class SourceEditorView extends SourceCodeView {
 
 	protected void onCaretUpdate(CaretEvent e) 
 	{
-	    // if AST inspector is visible, make sure the current AST node is visible
-	    // (scroll there if it isn't)
-	    if ( ! isASTInspectorVisible() ) {
-	        return;
-	    }
-	    
+		// if AST inspector is visible, make sure the current AST node is visible
+		// (scroll there if it isn't)
+		if ( ! isASTInspectorVisible() ) {
+			return;
+		}
+
 		final AST ast = getCurrentCompilationUnit() != null ? getCurrentCompilationUnit().getAST() : null;
 		if ( ast == null ) {
 			return;
@@ -412,15 +412,18 @@ public class SourceEditorView extends SourceCodeView {
 
 		final ASTNode node = compilationUnit.getAST().getNodeInRange( caretPosition );
 
-		final Identifier scopeOfSymbolToRename;
+		final ISymbol scopeOfSymbolToRename;
 		final Identifier symbolToRename;
 		if ( node instanceof LabelNode) 
 		{
 			symbolToRename = ((LabelNode) node).getIdentifier();
 			scopeOfSymbolToRename = ((LabelNode) node).getScope();
-		} else if ( node instanceof SymbolReferenceNode) {
-			symbolToRename = ((SymbolReferenceNode) node).getIdentifier();
-			scopeOfSymbolToRename = ((SymbolReferenceNode) node).getScope();
+		} 
+		else if ( node instanceof SymbolReferenceNode) 
+		{
+			ISymbol resolved = ((SymbolReferenceNode) node).resolve( compilationUnit.getSymbolTable() );
+			symbolToRename = resolved.getName();
+			scopeOfSymbolToRename = resolved.getScope();
 		} else {
 			return;
 		}
@@ -436,8 +439,8 @@ public class SourceEditorView extends SourceCodeView {
 			return;
 		}
 
-		final Identifier oldScope = oldSymbol.getScope() == null ? null : oldSymbol.getScope().getIdentifier();
-		final Identifier oldIdentifier = oldSymbol.getIdentifier();
+		final ISymbol oldScope = oldSymbol.getScope();
+		final Identifier oldIdentifier = oldSymbol.getName();
 
 		String result = UIUtils.showInputDialog(null, "Please choose a new identifier","Enter a new identifier for '"+oldIdentifier.getRawValue()+"'");
 		if ( StringUtils.isBlank(result) || ! Identifier.isValidIdentifier( result ) ) {
@@ -457,8 +460,7 @@ public class SourceEditorView extends SourceCodeView {
 		// gather all AST nodes that need to be updated
 		final List<ASTNode> nodesRequiringUpdate = new ArrayList<>();
 
-		final ISimpleASTNodeVisitor<ASTNode> simpleAstVisitor = new ISimpleASTNodeVisitor<ASTNode>() 
-				{
+		final ISimpleASTNodeVisitor<ASTNode> simpleAstVisitor = new ISimpleASTNodeVisitor<ASTNode>()  {
 
 			@Override
 			public boolean visit(ASTNode node) 
@@ -474,89 +476,91 @@ public class SourceEditorView extends SourceCodeView {
 				else if ( node instanceof SymbolReferenceNode) 
 				{
 					final SymbolReferenceNode ref = (SymbolReferenceNode) node;
-					if ( ObjectUtils.equals( oldIdentifier , ref.getIdentifier() ) && 
-					     ObjectUtils.equals( oldScope , ref.getScope() ) ) 
+					final ISymbol symbol = ref.resolve( compilationUnit.getSymbolTable() );
+					if ( symbol != null && 
+							ObjectUtils.equals( oldIdentifier , symbol.getName() ) && 
+							ObjectUtils.equals( oldScope , symbol.getScope() ) ) 
 					{
 						nodesRequiringUpdate.add( node );
 					}
 				}
 				return true;
 			}
-				};
+		};
 
-				ASTUtils.visitInOrder( compilationUnit.getAST() , simpleAstVisitor );
+		ASTUtils.visitInOrder( compilationUnit.getAST() , simpleAstVisitor );
 
-				Collections.sort( nodesRequiringUpdate , new Comparator<ASTNode>() {
+		Collections.sort( nodesRequiringUpdate , new Comparator<ASTNode>() {
 
-					@Override
-					public int compare(ASTNode n1, ASTNode n2) 
-					{
-						final ITextRegion r1 = n1.getTextRegion();
-						final ITextRegion r2 = n2.getTextRegion();
-						if ( r1 != null && r2 != null ) {
-							if ( r1.getStartingOffset() < r2.getStartingOffset() ) {
-								return -1;
-							} 
-							if ( r1.getStartingOffset() > r2.getStartingOffset() ) {
-								return 1;
-							}
-							return 0;
-						} 
-						if ( r1 != null ) {
-							return -1;
-						} 
-						if ( r2 != null )  {
-							return 1;
-						}
-						return 0;
+			@Override
+			public int compare(ASTNode n1, ASTNode n2) 
+			{
+				final ITextRegion r1 = n1.getTextRegion();
+				final ITextRegion r2 = n2.getTextRegion();
+				if ( r1 != null && r2 != null ) {
+					if ( r1.getStartingOffset() < r2.getStartingOffset() ) {
+						return -1;
+					} 
+					if ( r1.getStartingOffset() > r2.getStartingOffset() ) {
+						return 1;
 					}
-				});
+					return 0;
+				} 
+				if ( r1 != null ) {
+					return -1;
+				} 
+				if ( r2 != null )  {
+					return 1;
+				}
+				return 0;
+			}
+		});
 
-				// we now need to offset the location of EVERY AST node 
-				// that has a location > oldSymbol.getLocation()
-				final int lengthDelta;
-				if (  newIdentifier.getRawValue().length() >= oldIdentifier.getRawValue().length() ) {
-					lengthDelta = newIdentifier.getRawValue().length() - oldIdentifier.getRawValue().length();
+		// we now need to offset the location of EVERY AST node 
+		// that has a location > oldSymbol.getLocation()
+		final int lengthDelta;
+		if (  newIdentifier.getRawValue().length() >= oldIdentifier.getRawValue().length() ) {
+			lengthDelta = newIdentifier.getRawValue().length() - oldIdentifier.getRawValue().length();
+		} else {
+			// new identifier is shorter than the old one, need to adjust by a NEGATIVE offset
+			lengthDelta = -( oldIdentifier.getRawValue().length() - newIdentifier.getRawValue().length() );
+		}
+
+		try {
+			int currentOffsetAdjustment = 0;
+			for ( ASTNode n : nodesRequiringUpdate ) 
+			{
+				if ( n instanceof LabelNode ) 
+				{
+					// update symbol in document
+					final ITextRegion oldRegion = oldSymbol.getLocation();
+					final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
+							oldRegion.getLength() );
+
+					replaceText( newRegion , newIdentifier.getRawValue() );
+
+					((LabelNode) n).setLabel( (Label) newSymbol );
+					n.adjustTextRegion( currentOffsetAdjustment , lengthDelta ); 
+					currentOffsetAdjustment += lengthDelta;
+				} 
+				else if ( n instanceof SymbolReferenceNode) 
+				{
+					((SymbolReferenceNode) n).setIdentifier( newIdentifier );
+
+					final ITextRegion oldRegion = n.getTextRegion();
+					final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
+							oldRegion.getLength() );
+					replaceText( newRegion , newIdentifier.getRawValue() );
+
+					n.adjustTextRegion( currentOffsetAdjustment , lengthDelta );
+					currentOffsetAdjustment += lengthDelta;
 				} else {
-					// new identifier is shorter than the old one, need to adjust by a NEGATIVE offset
-					lengthDelta = -( oldIdentifier.getRawValue().length() - newIdentifier.getRawValue().length() );
+					throw new RuntimeException("Internal error,unhandled node type "+n);
 				}
-
-				try {
-					int currentOffsetAdjustment = 0;
-					for ( ASTNode n : nodesRequiringUpdate ) 
-					{
-						if ( n instanceof LabelNode ) 
-						{
-							// update symbol in document
-							final ITextRegion oldRegion = oldSymbol.getLocation();
-							final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
-									oldRegion.getLength() );
-
-							replaceText( newRegion , newIdentifier.getRawValue() );
-							
-							((LabelNode) n).setLabel( (Label) newSymbol );
-							n.adjustTextRegion( currentOffsetAdjustment , lengthDelta ); 
-							currentOffsetAdjustment += lengthDelta;
-						} 
-						else if ( n instanceof SymbolReferenceNode) 
-						{
-							((SymbolReferenceNode) n).setIdentifier( newIdentifier , oldScope );
-
-							final ITextRegion oldRegion = n.getTextRegion();
-							final TextRegion newRegion = new TextRegion( oldRegion.getStartingOffset()+currentOffsetAdjustment,
-									oldRegion.getLength() );
-							replaceText( newRegion , newIdentifier.getRawValue() );
-
-							n.adjustTextRegion( currentOffsetAdjustment , lengthDelta );
-							currentOffsetAdjustment += lengthDelta;
-						} else {
-							throw new RuntimeException("Internal error,unhandled node type "+n);
-						}
-					}
-				} finally {
-					notifyDocumentChanged();
-				}
+			}
+		} finally {
+			notifyDocumentChanged();
+		}
 	}
 
 	private void showASTInspector() 
@@ -613,7 +617,7 @@ public class SourceEditorView extends SourceCodeView {
 				@Override
 				public int compare(ISymbol o1, ISymbol o2)
 				{
-					return o1.getIdentifier().getRawValue().compareTo( o2.getIdentifier().getRawValue() );
+					return o1.getFullyQualifiedName().compareTo( o2.getFullyQualifiedName() );
 				}
 			} );
 			return all;
@@ -647,7 +651,7 @@ public class SourceEditorView extends SourceCodeView {
 		{
 			final ISymbol symbol = getSymbolForRow( rowIndex );
 			if ( columnIndex == COL_SYMBOL_NAME ) {
-				return symbol.getIdentifier().getRawValue();
+				return symbol.getFullyQualifiedName();
 			} 
 
 			if ( columnIndex == COL_SYMBOL_VALUE ) 
@@ -698,7 +702,7 @@ public class SourceEditorView extends SourceCodeView {
 						final int modelRow = symbolTable.convertRowIndexToModel( viewRow );
 						final ISymbol symbol = symbolTableModel.getSymbolForRow( modelRow );
 						final int caretPosition = symbol.getLocation().getStartingOffset();
-						
+
 						IEditorView editor = null;
 						if ( DefaultResourceMatcher.INSTANCE.isSame( symbol.getCompilationUnit().getResource() , getSourceFromMemory() ) ) {
 							editor = SourceEditorView.this;
@@ -708,8 +712,8 @@ public class SourceEditorView extends SourceCodeView {
 							final EditorContainer parent = (EditorContainer) getViewContainer();
 							try {
 								editor = parent.openResource( 
-								        workspace , getCurrentProject() ,
-								        symbol.getCompilationUnit().getResource() , caretPosition );
+										workspace , getCurrentProject() ,
+										symbol.getCompilationUnit().getResource() , caretPosition );
 							} 
 							catch (IOException e1) {
 								LOG.error("mouseClicked(): Failed top open "+symbol.getCompilationUnit().getResource(),e1);
@@ -767,14 +771,14 @@ public class SourceEditorView extends SourceCodeView {
 			setText( txt );
 			return result;
 		}
-		
+
 		private String getSourceFor(ASTNode node) throws IOException {
-	          final ITextRegion range = node.getTextRegion();
-	          try {
-	              return range == null ? "<no source location>" : getCurrentCompilationUnit().getSource( range );
-	          } catch(StringIndexOutOfBoundsException e) {
-	              return "<node has invalid text range "+range+">";
-	          }
+			final ITextRegion range = node.getTextRegion();
+			try {
+				return range == null ? "<no source location>" : getCurrentCompilationUnit().getSource( range );
+			} catch(StringIndexOutOfBoundsException e) {
+				return "<node has invalid text range "+range+">";
+			}
 		}
 
 		private String getLabelFor(ASTNode n) throws IOException 
@@ -790,13 +794,21 @@ public class SourceEditorView extends SourceCodeView {
 			{
 				final List<Line> linesForRange = getCurrentCompilationUnit().getLinesForRange( n.getTextRegion() );
 				return sAddress+": Statement "+StringUtils.join( linesForRange , ",");
-			} else if ( n instanceof AST ) {
-				return "AST";
-			} else if ( n instanceof OperatorNode ) {
-				return "Operator "+((OperatorNode) n).getOperator();
-			} else if ( n instanceof NumberNode ) {
-				return "Number ("+((NumberNode) n).getValue()+")";
 			} 
+			if ( n instanceof AST ) {
+				return "AST";
+			} 
+			if ( n instanceof OperatorNode ) {
+				return "Operator "+((OperatorNode) n).getOperator();
+			} 
+			if ( n instanceof NumberNode ) {
+				return "Number ("+((NumberNode) n).getValue()+")";
+			}
+			if ( n instanceof LabelNode ) 
+			{
+				final Label label = ((LabelNode) n).getLabel();
+				return ( label.isLocalSymbol() ? "." : "" )+ label.getFullyQualifiedName();
+			}
 			return txt;
 		}
 	} 
@@ -875,27 +887,27 @@ public class SourceEditorView extends SourceCodeView {
 		cnstrs = constraints( 1, 0 , false , true , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryBack, cnstrs );
 		navigationHistoryBack.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-                navigationHistoryBack();
-            }
-        });
-		
+
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				navigationHistoryBack();
+			}
+		});
+
 		navigationHistoryBack.setEnabled( false );
 
 		// navigation history forward button
 		cnstrs = constraints( 2, 0 , true , true  , GridBagConstraints.NONE );		
 		toolbar.add( navigationHistoryForward , cnstrs );
 		navigationHistoryForward.addActionListener( new ActionListener() {
-            
-            @Override
-            public void actionPerformed(ActionEvent e)
-            {
-                navigationHistoryForward();
-            }
-        });		
+
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				navigationHistoryForward();
+			}
+		});		
 		navigationHistoryForward.setEnabled( false );
 
 		// create status area
@@ -996,7 +1008,7 @@ public class SourceEditorView extends SourceCodeView {
 	public void disposeHook2()
 	{
 		workspace.removeWorkspaceListener( workspaceListener );
-		
+
 		if ( astInspector != null ) 
 		{
 			astInspector.setVisible( false );

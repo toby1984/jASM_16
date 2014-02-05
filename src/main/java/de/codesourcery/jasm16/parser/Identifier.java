@@ -60,20 +60,9 @@ outer:
                     continue outer;
                 }
             }
-            if ( i == 0 && currentChar == '.' ) { // local labels may start with '.'
-            	continue;
-            }
             throw new ParseException("Found invalid character '"+currentChar+"' in identifier '"+identifier+"'", i , 1);
         }
         this.identifier = identifier;
-    }
-    
-    public boolean isLocalIdentifier() {
-    	return this.identifier.startsWith(".");
-    }
-    
-    public boolean isGlobalIdentifier() {
-    	return ! isLocalIdentifier();
     }
     
     public static boolean isValidIdentifier(String identifier) 

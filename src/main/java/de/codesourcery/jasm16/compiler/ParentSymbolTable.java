@@ -15,11 +15,7 @@
  */
 package de.codesourcery.jasm16.compiler;
 
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import de.codesourcery.jasm16.exceptions.DuplicateSymbolException;
@@ -27,29 +23,45 @@ import de.codesourcery.jasm16.parser.Identifier;
 
 public class ParentSymbolTable implements IParentSymbolTable
 {
-    private final IdentityHashMap<ICompilationUnit,ISymbolTable> tables = new IdentityHashMap<ICompilationUnit,ISymbolTable>();
+    private final IdentityHashMap<String,ISymbolTable> tablesByUnitIdentifier = new IdentityHashMap<String,ISymbolTable>();
     
-    public ParentSymbolTable() {
+    private final String debugIdentifier;
+    
+    public ParentSymbolTable(String debugIdentifier) 
+    {
+    	this.debugIdentifier = debugIdentifier;
     }
     
+	@Override
+	public String dumpToString() 
+	{
+		String result = "ParentSymbolTable ("+debugIdentifier+")\n";
+		
+		for ( Entry<String, ISymbolTable> t : tablesByUnitIdentifier.entrySet() ) {
+			result += "\n "+t.getKey()+" => "+t.getValue().dumpToString();
+		}
+		return result;
+	}
+	
     @Override
     public String toString()
     {
-        return "ParentSymbolTable";
+        return "ParentSymbolTable( "+debugIdentifier+" ) { "+org.apache.commons.lang.StringUtils.join( tablesByUnitIdentifier.values() , " , " )+"}"; 
     }
     
 	@Override
 	public IParentSymbolTable createCopy() 
 	{
-		final ParentSymbolTable result = new ParentSymbolTable();
-		for ( Map.Entry<ICompilationUnit,ISymbolTable> entry : tables.entrySet() ) {
-			result.tables.put( entry.getKey() , entry.getValue().createCopy() );
+		final ParentSymbolTable result = new ParentSymbolTable(this.debugIdentifier);
+		for ( Map.Entry<String,ISymbolTable> entry : tablesByUnitIdentifier.entrySet() ) {
+			result.tablesByUnitIdentifier.put( entry.getKey() , entry.getValue().createCopy() );
 		}
 		return result;
 	}    
     
-    private ISymbolTable findSymbolTable(Identifier identifier,Identifier scope) {
-        for ( ISymbolTable table : tables.values() ) 
+    private ISymbolTable findSymbolTable(Identifier identifier,ISymbol scope) 
+    {
+        for ( ISymbolTable table : tablesByUnitIdentifier.values() ) 
         {
             final ISymbol result = table.getSymbol( identifier , scope );
             if ( result != null ) {
@@ -62,11 +74,11 @@ public class ParentSymbolTable implements IParentSymbolTable
 	@Override
 	public ISymbol renameSymbol(ISymbol symbol, Identifier newIdentifier) throws DuplicateSymbolException 
 	{
-		final Identifier scope = symbol.isLocalSymbol() ? null : symbol.getScope().getIdentifier();
+		final ISymbol scope = symbol.isLocalSymbol() ? null : symbol.getScope();
 		
-		final ISymbolTable existingTable= findSymbolTable( symbol.getIdentifier() , scope );
+		final ISymbolTable existingTable= findSymbolTable( symbol.getName() , scope );
 		
-		final ISymbol existing = existingTable == null ? null : existingTable.getSymbol( symbol.getIdentifier() , scope );
+		final ISymbol existing = existingTable == null ? null : existingTable.getSymbol( symbol.getName() , scope );
 		if ( existing == null ) {
 			throw new IllegalArgumentException("Symbol "+symbol+" is not part of this symbol table?");
 		}
@@ -78,7 +90,7 @@ public class ParentSymbolTable implements IParentSymbolTable
     public List<ISymbol> getSymbols()
     {
         final List<ISymbol>  result = new ArrayList<ISymbol>();
-        for ( ISymbolTable table : tables.values() ) {
+        for ( ISymbolTable table : tablesByUnitIdentifier.values() ) {
             result.addAll( table.getSymbols() );
         }        
         return result;
@@ -92,36 +104,39 @@ public class ParentSymbolTable implements IParentSymbolTable
         if ( table == null ) {
             table = unit.getSymbolTable();
             table.setParent( this );
-            tables.put( unit  , table );
+            tablesByUnitIdentifier.put( unit.getIdentifier()  , table );
         }
         
-        for ( ISymbolTable tmp : tables.values() ) 
+        for ( ISymbolTable tmp : tablesByUnitIdentifier.values() ) 
         {
-            if ( tmp.containsSymbol( symbol.getIdentifier() , symbol.getScopeIdentifier() ) ) 
+            if ( tmp.containsSymbol( symbol.getName() , symbol.getScope() ) ) 
             {
-            	final ISymbol existing = tmp.getSymbol( symbol.getIdentifier() , symbol.getScopeIdentifier() );
+            	final ISymbol existing = tmp.getSymbol( symbol.getName() , symbol.getScope() );
                 throw new DuplicateSymbolException( existing , symbol );
             }
+        }
+        if ( DEBUG_SYMBOLS ) {
+        	System.out.println("+++ Defining symbol "+symbol+" in "+this);
         }
         table.defineSymbol( symbol );
     }
 
 	@Override
-	public ISymbol getSymbol(Identifier identifier, Identifier scope) 
+	public ISymbol getSymbol(Identifier identifier, ISymbol scope) 
 	{
 		final ISymbolTable table = findSymbolTable( identifier , scope  );
     	return table == null ? null : table.getSymbol( identifier , scope );
 	}
 
 	@Override
-	public boolean containsSymbol(Identifier identifier, Identifier scope) {
+	public boolean containsSymbol(Identifier identifier, ISymbol scope) {
 		return getSymbol(identifier,scope ) != null;
 	}    
 
     @Override
     public void clear()
     {
-        for ( ISymbolTable table : tables.values() ) 
+        for ( ISymbolTable table : tablesByUnitIdentifier.values() ) 
         {
             table.clear();
         }              
@@ -143,7 +158,7 @@ public class ParentSymbolTable implements IParentSymbolTable
     public int getSize()
     {
         int result = 0;
-        for ( ISymbolTable table : tables.values() ) 
+        for ( ISymbolTable table : tablesByUnitIdentifier.values() ) 
         {
             result += table.getSize();
         }            
@@ -152,15 +167,15 @@ public class ParentSymbolTable implements IParentSymbolTable
 
     private ISymbolTable findSymbolTable(ICompilationUnit unit) 
     {
-		final ISymbolTable symbolTable = tables.get( unit );
+		final ISymbolTable symbolTable = tablesByUnitIdentifier.get( unit.getIdentifier() );
 		if ( symbolTable != null ) 
 		{
 			return symbolTable;
 		}
-		for ( Iterator<Map.Entry<ICompilationUnit,ISymbolTable>> it = tables.entrySet().iterator() ; it.hasNext() ; ) 
+		for ( Iterator<Entry<String, ISymbolTable>> it = tablesByUnitIdentifier.entrySet().iterator() ; it.hasNext() ; ) 
 		{
-			final Entry<ICompilationUnit, ISymbolTable> entry = it.next();
-			if ( entry.getKey().getResource().getIdentifier().equals( unit.getResource().getIdentifier() ) ) {
+			final Entry<String, ISymbolTable> entry = it.next();
+			if ( entry.getKey().equals( unit.getResource().getIdentifier() ) ) {
 				return entry.getValue();
 			}
 		}

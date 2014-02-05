@@ -118,7 +118,7 @@ public class Compiler implements ICompiler {
 	@Override
 	public DebugInfo compile(final List<ICompilationUnit> unitsToCompile, ICompilationListener listener) 
 	{
-		return compile( unitsToCompile , new ArrayList<ICompilationUnit>() , new ParentSymbolTable() , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
+		return compile( unitsToCompile , new ArrayList<ICompilationUnit>() , new ParentSymbolTable("generated in compile()") , new CompilationListener() , DefaultResourceMatcher.INSTANCE );
 	}
 
 	@Override
@@ -139,7 +139,7 @@ public class Compiler implements ICompiler {
 	{
 	    if ( hasCompilerOption(CompilerOption.DEBUG_MODE ) ) 
 	    {
-    		new Exception("------------- compiling ---------------").printStackTrace();
+    		// new Exception("------------- compiling ---------------").printStackTrace();
     		
     		System.out.println("----------------------------------");
     		System.out.println("----------- COMPILING ------------");
@@ -225,15 +225,16 @@ public class Compiler implements ICompiler {
 			// discard any symbols that may have been defined in a previous compilation run
 			final IParentSymbolTable globalSymbolTable;
 			if ( parentSymbolTable == null ) {
-				globalSymbolTable = new ParentSymbolTable();        
+				globalSymbolTable = new ParentSymbolTable("compiler-generated");        
 			} else {
 				globalSymbolTable = parentSymbolTable;
 			}
+			globalSymbolTable.clear();
 
 			for ( ICompilationUnit unit : unitsToCompile ) 
 			{
 				unit.beforeCompilationStart(); // clears symbol table as well
-				globalSymbolTable.clear( unit );
+				// globalSymbolTable.clear( unit );
 				unit.getSymbolTable().setParent( globalSymbolTable );        	
 			}
 

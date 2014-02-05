@@ -57,12 +57,50 @@ public final class CompilationUnit implements ICompilationUnit {
     private final IResource resource;
     private volatile AST ast;
     private volatile Address objectCodeStartAddress = Address.ZERO;
-    private final List<ICompilationUnit> dependencies = new ArrayList<ICompilationUnit>();
+    private final List<ICompilationUnit> dependencies;
     private final ISymbolTable symbolTable;
-    private final RelocationTable relocationTable = new RelocationTable();
+    private final RelocationTable relocationTable;
 
     private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
+    private CompilationUnit(CompilationUnit unit, IResource resource) 
+    {
+    	this.identifier = unit.getIdentifier();
+    	// this.markers = unit.markers;
+    	this.resource = resource;
+    	// this.ast = unit.getAST();
+    	// this.objectCodeStartAddress = unit.getObjectCodeStartOffset();
+    	this.dependencies = unit.dependencies;
+    	this.symbolTable = unit.symbolTable;
+    	this.relocationTable = unit.relocationTable;
+    	// this.lines = unit.lines
+    }
+    
+    protected CompilationUnit(String identifier,IResource resource) 
+    {
+        if (StringUtils.isBlank(identifier)) {
+            throw new IllegalArgumentException(
+                    "identifier must not be NULL/blank");
+        }
+        if ( resource == null ) {
+            throw new IllegalArgumentException("resource must not be NULL.");
+        }
+        if ( ! resource.hasType( ResourceType.SOURCE_CODE ) ) {
+        	throw new IllegalArgumentException("Cannot create compilation unit from resource "+resource);
+        }
+        this.dependencies = new ArrayList<ICompilationUnit>();
+        this.resource = resource;
+        this.identifier=identifier;
+        this.symbolTable = new SymbolTable("CompilationUnit: "+resource);
+        this.relocationTable = new RelocationTable();
+    }    
+    
+    @Override
+    public ICompilationUnit withResource(IResource resource) 
+    {
+    	return new CompilationUnit(this,resource);
+    }
+    
     @Override
     public void dumpSourceLines()
     {
@@ -125,7 +163,6 @@ public final class CompilationUnit implements ICompilationUnit {
     	final Line l = getLineForOffset( textRegion.getStartingOffset() );
         return new SourceLocation(this,l,textRegion);
     }
-
     
     @Override
     public Line getPreviousLine(Line line)
@@ -236,23 +273,6 @@ public final class CompilationUnit implements ICompilationUnit {
             this.markers.put( marker.getType() , markersByType );
         }
         markersByType.add( marker );
-    }
-
-    protected CompilationUnit(String identifier,IResource resource) 
-    {
-        if (StringUtils.isBlank(identifier)) {
-            throw new IllegalArgumentException(
-                    "identifier must not be NULL/blank");
-        }
-        if ( resource == null ) {
-            throw new IllegalArgumentException("resource must not be NULL.");
-        }
-        if ( ! resource.hasType( ResourceType.SOURCE_CODE ) ) {
-        	throw new IllegalArgumentException("Cannot create compilation unit from resource "+resource);
-        }
-        this.resource = resource;
-        this.identifier=identifier;
-        this.symbolTable = new SymbolTable("CompilationUnit: "+resource);
     }
 
     @Override
@@ -427,5 +447,10 @@ public final class CompilationUnit implements ICompilationUnit {
 	{
 	    return symbolTable;
 	}
-	
+
+	@Override
+	public List<Line> getLines() 
+	{
+		return new ArrayList<>( this.lines.values() );
+	}
 }

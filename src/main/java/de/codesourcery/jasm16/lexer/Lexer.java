@@ -272,7 +272,6 @@ public final class Lexer implements ILexer {
          * Note that all comparisons here are ordered by
          * their probabilities (more likely checks come first).
          */
-        
         if ( s.length() == 0 || length <= 0 ) {
             return;
         }

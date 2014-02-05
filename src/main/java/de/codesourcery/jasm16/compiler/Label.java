@@ -52,14 +52,14 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 		if ( this.getScope() != null && newScope == null ) {
 			throw new IllegalArgumentException("Cannot remove scope from local label "+this);
 		}		
-		final Label result = new Label( getCompilationUnit() , getLocation() , getIdentifier() , newScope );
+		final Label result = new Label( getCompilationUnit() , getLocation() , getName() , newScope );
 		result.address = this.address;
 		return result;
 	}
 	
 	@Override
 	public ISymbol createCopy() {
-		final Label result = new Label( this.getCompilationUnit() , this.getLocation() , this.getIdentifier() , getScope() );
+		final Label result = new Label( this.getCompilationUnit() , this.getLocation() , this.getName() , getScope() );
 		result.address = this.address;
 		return result;
 	}
@@ -89,9 +89,9 @@ public class Label extends AbstractSymbol implements IValueSymbol {
 	public String toString() 
 	{
 	    if ( address != null ) {
-	        return getIdentifier()+"("+address+" , "+getCompilationUnit()+")";	        
+	        return getFullyQualifiedName()+"("+address+" , "+getCompilationUnit()+")";	        
 	    }
-		return getIdentifier().toString();
+		return getFullyQualifiedName().toString();
 	}
 
 	@Override

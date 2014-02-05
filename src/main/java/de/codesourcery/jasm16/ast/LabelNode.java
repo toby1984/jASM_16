@@ -41,7 +41,7 @@ public class LabelNode extends ASTNode
 	private static final Logger LOG = Logger.getLogger(LabelNode.class);
     
     private Identifier identifier;
-    private Identifier scope;
+    private ISymbol scope;
     
     private Label label;
     
@@ -50,7 +50,7 @@ public class LabelNode extends ASTNode
         return identifier;
     }
     
-    public Identifier getScope() {
+    public ISymbol getScope() {
     	return scope;
     }
     
@@ -59,13 +59,14 @@ public class LabelNode extends ASTNode
     	return label; 
     }
     
-    public void setLabel(Label newLabel) {
+    public void setLabel(Label newLabel) 
+    {
     	if (newLabel == null) {
 			throw new IllegalArgumentException("newLabel must not be null");
 		}
     	this.label = newLabel;
-    	this.identifier = newLabel.getIdentifier();
-    	this.scope = newLabel.getScope() != null ? newLabel.getScope().getIdentifier() : null ;
+    	this.identifier = newLabel.getName();
+    	this.scope = newLabel.getScope();
 	}
     
     @Override
@@ -79,27 +80,30 @@ public class LabelNode extends ASTNode
     	boolean leadingCharacterFound = false;
     	
     	final IToken current = context.peek();
-    	if ( current.hasType( TokenType.COLON ) || 
-    	   ( current.hasType( TokenType.DOT ) ) ) // otherwise we can't tell whether this is a local or a global label
+    	final boolean isLocalLabel;
+    	if ( current.hasType( TokenType.DOT ) ) 
     	{
-    		if ( ! current.hasType(TokenType.DOT) || ! localLabelsAllowed ) {
-    			range = new TextRegion( context.read() );
+    		if ( ! localLabelsAllowed ) {
+    			context.addCompilationError("Local label not permitted here",this);
     		}
-    	    leadingCharacterFound = true;
+			range = new TextRegion( context.read() );
+			leadingCharacterFound=true;
+			isLocalLabel = true;
+    	} 
+    	else if ( current.hasType( TokenType.COLON ) ) 
+    	{
+			range = new TextRegion( context.read() );
+			leadingCharacterFound=true;  
+			isLocalLabel = false;
+    	} 
+    	else 
+    	{
+    		isLocalLabel = false;
     	}
     	
     	final int identifierStartIndex = context.currentParseIndex();
     	
         identifier = context.parseIdentifier( range , localLabelsAllowed );
-        
-        final boolean isGlobalIdentifier = identifier.isGlobalIdentifier();
-        if ( ! isGlobalIdentifier && context.getPreviousGlobalSymbol() == null ) 
-        {
-            final String message = "Local label '"+identifier+"' has no preceeding global label";
-            addCompilationErrorAndAdvanceParser(
-            		new CompilationError( message,context.getCompilationUnit(),this) , context );
-            return this;
-        }
         
         if ( range == null ) {
             range = new TextRegion( startIndex , context.currentParseIndex() - startIndex );
@@ -107,8 +111,18 @@ public class LabelNode extends ASTNode
         
         final ITextRegion symbolRange = new TextRegion(identifierStartIndex, identifier.getRawValue().length() );
         
-        final ISymbol scope = isGlobalIdentifier ? null : context.getPreviousGlobalSymbol();
+        final ISymbol scope;
+        if ( isLocalLabel ) 
+        {
+        	scope = context.getPreviousGlobalSymbol();
+        	if ( scope == null ) {
+        		throw new RuntimeException("Internal error, encountered local label "+identifier+" without any previous global label ?");
+        	}        	
+        } else {
+        	scope = null;
+        } 
         this.label = new Label( context.getCompilationUnit() , symbolRange , identifier , scope );
+        this.scope = scope;
         
         if ( ! leadingCharacterFound  ) 
         {
@@ -128,7 +142,7 @@ public class LabelNode extends ASTNode
             context.getSymbolTable().defineSymbol( this.label );
             
             // only keep track of the previous global symbol if we need to
-            if ( localLabelsAllowed && isGlobalIdentifier ) {
+            if ( ! isLocalLabel ) {
             	context.storePreviousGlobalSymbol( this.label );
             }             
         } 

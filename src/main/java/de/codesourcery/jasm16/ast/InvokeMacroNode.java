@@ -3,8 +3,6 @@ package de.codesourcery.jasm16.ast;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.codesourcery.jasm16.compiler.ISymbol;
-import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
@@ -60,7 +58,7 @@ public class InvokeMacroNode extends ASTNode {
 			
 			while ( ! context.eof() && ! context.peek(TokenType.PARENS_CLOSE ) ) 
 			{
-				arguments.add( new ExpressionNode().parse( context ) );
+				arguments.add( new RawStringNode().parse( context ) );
 				region.merge( context.skipWhitespace( false ) );
 				if ( context.eof() || context.peek(TokenType.PARENS_CLOSE ) ) {
 					break;

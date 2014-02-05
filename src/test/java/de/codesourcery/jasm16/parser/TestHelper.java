@@ -143,7 +143,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected void setUp() throws Exception
     {
         debugInfo = new DebugInfo();
-        symbolTable = new ParentSymbolTable();
+        symbolTable = new ParentSymbolTable("dummy");
     }
     
     protected final IToken assertToken(ILexer lexer , TokenType type , String contents ) {
@@ -170,6 +170,7 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
 		final Compiler compiler = new Compiler();
 		
 		compiler.setCompilerOption( CompilerOption.DEBUG_MODE  , true );
+		compiler.setCompilerOption( CompilerOption.LOCAL_LABELS_SUPPORTED  , true );
 		
 		compiler.setObjectCodeWriterFactory( NOP_WRITER );
 		

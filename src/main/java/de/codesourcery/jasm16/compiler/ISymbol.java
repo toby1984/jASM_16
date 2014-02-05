@@ -51,7 +51,7 @@ public interface ISymbol {
 	 * @return global symbol name or <code>null</code>
 	 * @see #isLocalSymbol()
 	 */
-	public Identifier getScopeIdentifier();
+	public Identifier getScopeName();
 	
 	/**
 	 * Returns whether this is a local symbol.
@@ -72,7 +72,7 @@ public interface ISymbol {
 	 * 
 	 * @return identifier, never <code>null</code>
 	 */
-	public Identifier getIdentifier();
+	public Identifier getName();
 	
 	/**
 	 * Returns the compilation unit where this symbol was defined.
@@ -106,4 +106,14 @@ public interface ISymbol {
 	 * @return
 	 */
 	public ISymbol withScope(ISymbol newScope);
+	
+	/**
+	 * Returns this symbol's fully-qualified name.
+	 * 
+	 * <p>A symbol's fully-qualified name consists of it's identifier prefixed
+	 * by the identifiers of any higher-up namespaces/scopes if may have. Name components
+	 * are separated by dots.</p> 
+	 * @return
+	 */
+	public String getFullyQualifiedName();
 }

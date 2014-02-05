@@ -153,6 +153,15 @@ public interface ICompilationUnit {
 	 * line number, it will be replaced
 	 */
     public void setLine(Line l);
+    
+    /**
+     * Returns all lines of this compilation unit.
+     * 
+     * @return
+     * 
+     * @see #setLine(Line)
+     */
+    public List<Line> getLines();
 
     /**
      * Converts a {@link ITextRegion} to a {@link SourceLocation} instance
@@ -243,4 +252,23 @@ public interface ICompilationUnit {
     
     // TODO: Used for debugging only, remove one done !!!
     public void dumpSourceLines();
+    
+    /**
+     * Creates a new compilation unit from this one , associated with a different resource.
+     * 
+     * <p>
+     * This method re-uses the following data:
+     * 
+     * <ul>
+     *   <li>compilation-unit identifier</li>
+     *   <li>symbol table</li>
+     *   <li>relocation table</li>
+     * </ul>
+     * 
+     * </p>
+     * 
+     * @param resource
+     * @return
+     */
+    public ICompilationUnit withResource(IResource resource);    
 }

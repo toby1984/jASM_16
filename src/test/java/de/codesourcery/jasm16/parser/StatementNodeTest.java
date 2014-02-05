@@ -52,13 +52,15 @@ public class StatementNodeTest extends TestHelper {
 	
     public void testParseDifferentLabelStyles() throws Exception {
         
+        assertCompiles( "globalLabel:\n"+
+                ".label" );
+        
+        assertCompiles( "globalLabel:\n"+
+                "      .label" );           
+        
         assertCompiles( ":label" );
         assertCompiles( "    :label" );
         assertCompiles( ":label   " );
-        
-        assertCompiles( ".label" );
-        assertCompiles( "    .label" );
-        assertCompiles( ".label   " );      
         
         assertCompiles( "label:" );
         assertCompiles( "    label:" );

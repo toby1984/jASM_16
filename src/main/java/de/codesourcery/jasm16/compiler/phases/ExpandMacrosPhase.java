@@ -5,30 +5,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import de.codesourcery.jasm16.ast.AST;
-import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.ASTUtils;
-import de.codesourcery.jasm16.ast.ASTVisitor;
-import de.codesourcery.jasm16.ast.IIterationContext;
-import de.codesourcery.jasm16.ast.InvokeMacroNode;
-import de.codesourcery.jasm16.ast.StartMacroNode;
-import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.compiler.CompilationUnit;
-import de.codesourcery.jasm16.compiler.CompilerPhase;
-import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationError;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.ISymbol;
-import de.codesourcery.jasm16.compiler.Label;
-import de.codesourcery.jasm16.compiler.MacroNameSymbol;
-import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.lexer.ILexer;
-import de.codesourcery.jasm16.lexer.IToken;
-import de.codesourcery.jasm16.lexer.Lexer;
-import de.codesourcery.jasm16.lexer.TokenType;
+import de.codesourcery.jasm16.ast.*;
+import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
+import de.codesourcery.jasm16.compiler.io.StringResource;
+import de.codesourcery.jasm16.lexer.*;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.parser.Identifier;
-import de.codesourcery.jasm16.parser.ParseContext;
 import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.scanner.IScanner;
 import de.codesourcery.jasm16.scanner.Scanner;
@@ -70,6 +54,48 @@ public final class ExpandMacrosPhase extends CompilerPhase
         					}
         				}
         			}
+        		}
+        	}
+        	
+        	public void visit(StartMacroNode startMacroNode, IIterationContext context) 
+        	{
+        		ASTNode current = startMacroNode;
+        		while ( !(current instanceof StatementNode) ) {
+        			current = current.getParent();
+        		}
+        		final StatementNode stmt = (StatementNode) current;
+        		final ASTNode parent = stmt.getParent();
+        		int index = parent.indexOf( stmt )+1;
+        		
+    			final boolean[] foundStart = {false};        		
+    			final boolean[] foundEnd = {false};
+    	        final ASTVisitor visitor2 = new ASTVisitor() 
+    	        {
+    	        	public void visit(StartMacroNode node, IIterationContext context) 
+    	        	{
+    	        		foundStart[0]=true;
+    	        		context.stop();
+    	        	}
+    	        	
+    	        	public void visit(EndMacroNode node, IIterationContext context) 
+    	        	{
+    	        		foundEnd[0]=true;
+    	        		context.stop();
+    	        	}
+    	        }; 
+    	        
+        		for ( ; index < parent.getChildCount() ; index++ ) 
+        		{
+					ASTUtils.visitInOrder( parent.child(index) , visitor2 );
+					if ( ! foundStart[0] && foundEnd[0] ) {
+						break;
+					}
+        		}
+        		
+        		if ( ! foundStart[0] && foundEnd[0] ) {
+        			// ok
+        		} else {
+        			compContext.addCompilationError("Unterminated macro definition", startMacroNode);
         		}
         	}
         };
@@ -185,31 +211,19 @@ public final class ExpandMacrosPhase extends CompilerPhase
 		return expandedBody;
 	}
 
-	private AST parseExpandedBody(final InvokeMacroNode invocation,StartMacroNode macroDefinition, final ICompilationContext compContext, final String expandedBody) 
+	private AST parseExpandedBody(final InvokeMacroNode invocation,StartMacroNode macroDefinition, final ICompilationContext compContext, String expandedBody) 
 	{
 		final String id =  "macro_expansion_"+macroDefinition.getName().getRawValue()+"_"+invocation.getTextRegion().getStartingOffset();
-		final Identifier identifier;
-		try {
-			identifier = new Identifier(id);
-		} catch (ParseException e) {
-			// should never happen
-			throw new RuntimeException( e.getMessage() );
-		}
 		
-		// define invocation as global scope so using local labels inside macros works
-		final ICompilationUnit unit = CompilationUnit.createInstance( id , expandedBody );
+		// define invocation as global scope so local labels inside macros works
+		expandedBody = id+":\n"+expandedBody;
 		
-		final Label scope = new Label(unit,invocation.getTextRegion() ,identifier, null );
-		compContext.getSymbolTable().defineSymbol( scope );
-
-		final Parser parser = new Parser( compContext ) {
-			@Override
-			protected void afterParseContextCreation(ParseContext context) 
-			{
-				super.afterParseContextCreation(context);
-				context.storePreviousGlobalSymbol(  scope );
-			}
-		};
+		final IResource expandedBodyResource = new StringResource( id , expandedBody , ResourceType.SOURCE_CODE );
+		final ICompilationUnit unit = compContext.getCurrentCompilationUnit().withResource( expandedBodyResource );
+		
+		final Parser parser = new Parser( compContext );
+		
+		// TODO: Copy parser options ?
 		parser.setParserOption( ParserOption.LOCAL_LABELS_SUPPORTED, true );
 		
 		final AST ast = parser.parse( unit , compContext.getSymbolTable()  , expandedBody , compContext, true);

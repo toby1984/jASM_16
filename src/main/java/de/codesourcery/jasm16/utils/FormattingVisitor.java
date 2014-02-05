@@ -23,33 +23,7 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
-import de.codesourcery.jasm16.ast.ASTNode;
-import de.codesourcery.jasm16.ast.ASTUtils;
-import de.codesourcery.jasm16.ast.ASTVisitor;
-import de.codesourcery.jasm16.ast.CharacterLiteralNode;
-import de.codesourcery.jasm16.ast.CommentNode;
-import de.codesourcery.jasm16.ast.EndMacroNode;
-import de.codesourcery.jasm16.ast.EquationNode;
-import de.codesourcery.jasm16.ast.ExpressionNode;
-import de.codesourcery.jasm16.ast.IASTVisitor;
-import de.codesourcery.jasm16.ast.IIterationContext;
-import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
-import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
-import de.codesourcery.jasm16.ast.InitializedMemoryNode;
-import de.codesourcery.jasm16.ast.InstructionNode;
-import de.codesourcery.jasm16.ast.InvokeMacroNode;
-import de.codesourcery.jasm16.ast.LabelNode;
-import de.codesourcery.jasm16.ast.NumberNode;
-import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
-import de.codesourcery.jasm16.ast.OperandNode;
-import de.codesourcery.jasm16.ast.OperatorNode;
-import de.codesourcery.jasm16.ast.OriginNode;
-import de.codesourcery.jasm16.ast.RegisterReferenceNode;
-import de.codesourcery.jasm16.ast.StartMacroNode;
-import de.codesourcery.jasm16.ast.StatementNode;
-import de.codesourcery.jasm16.ast.SymbolReferenceNode;
-import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
-import de.codesourcery.jasm16.ast.UnparsedContentNode;
+import de.codesourcery.jasm16.ast.*;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
@@ -94,6 +68,12 @@ public class FormattingVisitor extends ASTVisitor {
         }
         output( ".equ "+node.getIdentifier().getRawValue()+" "+source);
         context.dontGoDeeper();   
+    }
+    
+    @Override
+    public void visit(RawStringNode node, IIterationContext context) 
+    {
+    	output( node.getValue() );
     }
     
     @Override
@@ -345,7 +325,11 @@ public class FormattingVisitor extends ASTVisitor {
     @Override
     public void visit(LabelNode node, IIterationContext context) 
     {
-		output( toString( node ) );
+    	if ( node.getLabel().isLocalSymbol() ) {
+    		output( "."+node.getLabel().toString() );
+    	} else {
+    		output( node.getLabel().toString()+":" );
+    	}
     }
     
     private LabelNode getLabelNode(ASTNode node) {

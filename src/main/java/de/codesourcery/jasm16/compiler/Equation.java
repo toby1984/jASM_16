@@ -55,8 +55,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 	@Override
 	public ISymbol createCopy() 
 	{
-		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() ,
-				expression == null ? null : (TermNode) expression.createCopy(false) );
+		return new Equation( getCompilationUnit() , getLocation() , getName() , expression == null ? null : (TermNode) expression.createCopy(false) );
 	}
 	
 	@Override
@@ -72,7 +71,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 		if ( newScope != null ) {
 			throw new IllegalArgumentException(".equ definitions always have global scope");
 		}
-		return new Equation( getCompilationUnit() , getLocation() , getIdentifier() , expression );
+		return new Equation( getCompilationUnit() , getLocation() , getName() , expression );
 	}	
 	
 	/**
@@ -128,7 +127,7 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 				((Equation) symbol).clearExpression();
 				final ICompilationUnit unit = symbol.getCompilationUnit();
 				unit.addMarker(
-					new CompilationError( "Equation '"+symbol.getIdentifier()+"' has circular dependency: "+
+					new CompilationError( "Equation '"+symbol.getFullyQualifiedName()+"' has circular dependency: "+
 							e.getMessage() , unit , symbol.getLocation() )
 				);
 			}
@@ -138,12 +137,12 @@ public class Equation extends AbstractSymbol implements IValueSymbol {
 	private static void checkCyclicDependencies(Equation symbol,final ISymbolTable symbolTable,
 			final LinkedHashMap<Identifier,Equation> symbolsSeen) throws CircularEquationsException 
 	{
-		if ( symbolsSeen.containsKey( symbol.getIdentifier() ) ) 
+		if ( symbolsSeen.containsKey( symbol.getName() ) ) 
 		{
 			symbol.clearExpression();
 			failWithException(symbolsSeen);
 		}
-		symbolsSeen.put( symbol.getIdentifier()  , symbol );
+		symbolsSeen.put( symbol.getName()  , symbol );
 		
 		if ( symbol.getExpression() != null ) 
 		{
