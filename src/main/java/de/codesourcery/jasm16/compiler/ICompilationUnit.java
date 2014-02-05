@@ -215,6 +215,14 @@ public interface ICompilationUnit {
     public List<ICompilationError> getErrors();    
     
     /**
+     * Returns all compilation warnings of this compilation unit.
+     * 
+     * @return compilation warnings or an empty list if this unit was not compiled yet.
+     * @see CompilationWarning
+     */    
+    public List<ICompilationError> getWarnings();
+    
+    /**
      * Returns the offset where object code generated from this compilation 
      * unit should be located in-memory.
      * 

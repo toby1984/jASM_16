@@ -251,6 +251,12 @@ public final class CompilationUnit implements ICompilationUnit {
     public List<ICompilationError> getErrors() {
         return (List<ICompilationError>) internalGetMarkers( IMarker.TYPE_COMPILATION_ERROR , IMarker.TYPE_GENERIC_COMPILATION_ERROR );
     }
+    
+    @SuppressWarnings("unchecked")
+	@Override
+    public List<ICompilationError> getWarnings() {
+        return (List<ICompilationError>) internalGetMarkers( IMarker.TYPE_COMPILATION_WARNING );
+    }
 
     @Override
     public boolean hasErrors() 

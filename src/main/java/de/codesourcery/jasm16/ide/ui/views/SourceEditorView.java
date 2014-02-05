@@ -235,7 +235,6 @@ public class SourceEditorView extends SourceCodeView {
 		private final int COL_MESSAGE = 2;
 
 		public StatusModel() {
-			super();
 		}
 
 		@Override
@@ -339,7 +338,12 @@ public class SourceEditorView extends SourceCodeView {
 		public void addInfo(String message)
 		{
 			addMessage( new StatusMessage(Severity.INFO , message ) );
-		}        
+		}      
+		
+		public void addWarning(String message)
+		{
+			addMessage( new StatusMessage(Severity.WARNING , message ) );
+		} 		
 
 		public void clearMessages()
 		{
@@ -831,7 +835,13 @@ public class SourceEditorView extends SourceCodeView {
 	{
 		statusModel.addMessage( new StatusMessage( Severity.ERROR , error ) );
 	}
-
+	
+	@Override
+	protected void onCompilationWarning(ICompilationError error)
+	{
+		statusModel.addMessage( new StatusMessage( Severity.WARNING , error ) );
+	}	
+	
 	// ============= view creation ===================
 
 	@Override

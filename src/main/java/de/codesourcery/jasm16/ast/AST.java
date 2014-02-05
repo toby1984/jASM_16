@@ -43,11 +43,15 @@ public class AST extends ASTNode
 	 */
 	public StatementNode getFirstStatementForOffset(int offset) {
 	    
-	    for ( ASTNode n : getChildren() ) {
-	        StatementNode stmt = (StatementNode) n;
-	        if ( stmt.getTextRegion().contains( offset ) ) {
-	            return stmt;
-	        }
+	    for ( ASTNode n : getChildren() ) 
+	    {
+	    	if ( n instanceof StatementNode) 
+	    	{
+		        StatementNode stmt = (StatementNode) n;
+		        if ( stmt.getTextRegion().contains( offset ) ) {
+		            return stmt;
+		        }
+	    	}
 	    }
 	    return null;
 	}

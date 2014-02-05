@@ -2,15 +2,35 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import de.codesourcery.jasm16.ast.*;
-import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.ast.AST;
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.ASTVisitor;
+import de.codesourcery.jasm16.ast.EndMacroNode;
+import de.codesourcery.jasm16.ast.IIterationContext;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
+import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.compiler.CompilationWarning;
+import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.IMarker;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.StringResource;
-import de.codesourcery.jasm16.lexer.*;
+import de.codesourcery.jasm16.lexer.ILexer;
+import de.codesourcery.jasm16.lexer.IToken;
+import de.codesourcery.jasm16.lexer.Lexer;
+import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.parser.Parser;
@@ -143,7 +163,7 @@ public final class ExpandMacrosPhase extends CompilerPhase
 		final Map<String, String> params = createArgumentMap(invocation,macroDefinition, compContext);
 
 		// replace arguments in macro body with parameters from macro invocation
-		final StringBuilder expandedBody = expandBody(macroDefinition, params);
+		final StringBuilder expandedBody = expandBody(macroDefinition, params , compContext );
 		
 		// parse expanded macro
 		return parseExpandedBody(invocation, macroDefinition, compContext, expandedBody.toString() );
@@ -179,7 +199,7 @@ public final class ExpandMacrosPhase extends CompilerPhase
 		return params;
 	}	
 
-	private StringBuilder expandBody(StartMacroNode macroDefinition, final Map<String, String> params) 
+	private StringBuilder expandBody(StartMacroNode macroDefinition, final Map<String, String> params,ICompilationContext context) 
 	{
 		final IScanner scanner = new Scanner( macroDefinition.getMacroBody() );
 		final ILexer lexer = new Lexer(scanner);
@@ -187,6 +207,7 @@ public final class ExpandMacrosPhase extends CompilerPhase
 
 		boolean inQuote = false;
 		boolean escaped = false;
+		final Set<String> usedParamNames = new HashSet<>();
 		while ( ! lexer.eof() ) 
 		{
 			IToken tok = lexer.read();
@@ -201,11 +222,41 @@ public final class ExpandMacrosPhase extends CompilerPhase
 				continue;
 			}
 			escaped = false;
-			if ( ! inQuote && tok.hasType( TokenType.CHARACTERS ) && params.containsKey( tok.getContents() ) ) 
+			String contents = tok.getContents();
+			if ( ! inQuote && tok.hasType( TokenType.CHARACTERS ) && params.containsKey( contents ) ) 
 			{
-				expandedBody.append( params.get( tok.getContents() ) );
+				usedParamNames.add( contents );
+				expandedBody.append( params.get( contents ) );
 			} else {
-				expandedBody.append( tok.getContents() );
+				expandedBody.append( contents );
+			}
+		}
+		
+		/*
+		 * Add warnings for unused parameters
+		 */
+outer:		
+		for ( String key : params.keySet() ) 
+		{
+			if ( ! usedParamNames.contains(key) ) 
+			{
+				final String warningMessage = "Macro parameter '"+key+"' is never used";
+				
+				final ICompilationUnit currentUnit = context.getCurrentCompilationUnit();
+				final List<IMarker> markers = currentUnit.getMarkers(IMarker.TYPE_COMPILATION_WARNING);
+				final int len = markers.size();
+				for (int i = 0; i < len ; i++) 
+				{
+					final IMarker m = markers.get(i);
+					if ( m instanceof CompilationWarning) {
+						CompilationWarning warning = (CompilationWarning) m;
+						if ( warning.getNode() == macroDefinition && warningMessage.equals( warning.getMessage() ) ) 
+						{
+							continue outer;
+						}
+					}
+				}
+				currentUnit.addMarker( new CompilationWarning( warningMessage , currentUnit , macroDefinition ) );
 			}
 		}
 		return expandedBody;

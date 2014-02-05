@@ -290,7 +290,30 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( InitializedMemoryNode.class , root.child(0).getClass() );
 		assertEquals( source , toSourceCode( root , source ) );
-	}		
+	}	
+	
+	public void testParseMacroWithEmptyBody() 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="";
+		String source = ".macro brk\n"+
+				        ".endmacro";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals(2 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertTrue( n.getArgumentNames().isEmpty() );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+	}	
 	
 	public void testParseMacroWithoutArguments() 
 	{

@@ -39,7 +39,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseMotionListener;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -93,7 +92,19 @@ import javax.swing.undo.UndoableEdit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.ast.*;
+import de.codesourcery.jasm16.ast.AST;
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.CommentNode;
+import de.codesourcery.jasm16.ast.EndMacroNode;
+import de.codesourcery.jasm16.ast.IPreprocessorDirective;
+import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
+import de.codesourcery.jasm16.ast.InstructionNode;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
+import de.codesourcery.jasm16.ast.LabelNode;
+import de.codesourcery.jasm16.ast.RegisterReferenceNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
+import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.compiler.CompilationListener;
 import de.codesourcery.jasm16.compiler.ICompilationError;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -118,7 +129,6 @@ import de.codesourcery.jasm16.ide.NavigationHistory.Location;
 import de.codesourcery.jasm16.ide.WorkspaceListener;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.EditorContainer;
-import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.Misc;
@@ -1074,6 +1084,11 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 			{
 				onCompilationError( error );
 			}
+			for ( ICompilationError error : compilationUnit.getWarnings() ) 
+			{
+				onCompilationWarning( error );
+			}			
+			
 		} finally {
 			enableDocumentListener();
 			time += System.currentTimeMillis();
@@ -1509,6 +1524,10 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	}
 
+	protected void onCompilationWarning(ICompilationError error) {
+
+	}
+	
 	// ============= view creation ===================
 
 			@Override

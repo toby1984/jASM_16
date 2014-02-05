@@ -93,15 +93,19 @@ public class StartMacroNode extends ASTNode {
 				}
 			}
 			
-			region.merge( context.skipWhitespace( true ) );		
+			region.merge( context.skipWhitespace( false) );		
 			
 			if ( ! context.eof() && context.peek( TokenType.PARENS_OPEN ) ) {
 				addChild( new MacroParametersListNode().parse(context) , context );
 			}
 			
 			region.merge( context.skipWhitespace(false) );
-			if ( ! context.eof() && context.peek(TokenType.EOL ) ) {
+			boolean markedEOLAfterStart = false;
+			if ( ! context.eof() && context.peek(TokenType.EOL ) ) 
+			{
+				context.mark();
 				region.merge( context.read() );
+				markedEOLAfterStart =true;
 			}			
 			
 			final StringBuilder buffer = new StringBuilder();
@@ -111,9 +115,15 @@ public class StartMacroNode extends ASTNode {
 				// to parse everything (INCLUDING EOL) right after the actual instruction/whatever (implemented that way so that all comments can be handled in one place)
 				// so we must take care NOT to consume the EOL before .end_macro
 				
-				if ( context.peek().isEOL() ) { 
+				if ( context.peek().isEOL() ) {
+					if ( markedEOLAfterStart ) 
+					{
+						context.clearMark();
+						markedEOLAfterStart =false;
+					}
 					context.mark();
 				} 
+				
 				final IToken token = context.read();
 				if ( token.isEOL() ) 
 				{
@@ -128,6 +138,10 @@ public class StartMacroNode extends ASTNode {
 				buffer.append( token.getContents() );
 			}
 			this.macroBody = buffer.toString();
+			if ( buffer.length() == 0 && markedEOLAfterStart ) 
+			{
+				context.reset();
+			}
         } 
 		catch(Exception e) 
         {
