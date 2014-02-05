@@ -59,4 +59,14 @@ public interface IASTVisitor {
 	public void visit(UninitializedMemoryNode node,IIterationContext context);
 	
 	public void visit(UnparsedContentNode node,IIterationContext context);	
+	
+    public void visit(IdentifierNode node,IIterationContext context);
+
+    public void visit(StartMacroNode node,IIterationContext context);
+    
+    public void visit(InvokeMacroNode node,IIterationContext context);
+    
+    public void visit(EndMacroNode node,IIterationContext context);
+    
+    public void visit(MacroArgumentListNode node,IIterationContext context);
 }

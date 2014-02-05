@@ -204,9 +204,9 @@ public class ParseContext implements IParseContext
     {
     	if ( eof() || ! peek().hasType( TokenType.CHARACTERS ) ) 
     	{
-    	    if ( ! eof() && peek().hasType( TokenType.INSTRUCTION ) ) 
+    	    if ( ! eof() && isKeyword( peek().getContents() ) ) 
     	    {
-    	    	throw new ParseException("Not a valid identifier (instructions cannot be used as identifiers)" , peek() );
+    	    	throw new ParseException("Not a valid identifier" , peek() );
     	    }
     	    
     	    if ( ! eof() && peek().hasType(TokenType.DOT ) ) 
@@ -250,6 +250,10 @@ public class ParseContext implements IParseContext
             }
             i++;
         }
+    	if ( isKeyword( chars ) ) 
+	    {
+	    	throw new ParseException("Keywords are not allowed as identifier" , startOffset , chars.length() );
+	    }        
         Identifier.assertValidIdentifier( chars , token );
         return new Identifier( chars );
     }

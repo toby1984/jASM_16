@@ -101,7 +101,7 @@ public class IncludeSourceFileNode extends ASTNode {
 						subContext.getCompilationUnit().setAST( ast );
 				    }
 				    
-				    if ( context.isParsingMacroDefinition() ) // TODO: I currently don't allow this for complexity reasons (clashes arg names <-> global defines etc.) 
+				    if ( ! context.isParsingMacroDefinition() ) // TODO: I currently don't allow this for complexity reasons (clashes arg names <-> global defines etc.) 
 				    {
 				    	addChild( ast , context  , false );
 				    } else {

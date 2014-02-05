@@ -524,6 +524,16 @@ public abstract class ASTNode
             }
         }
     }
+    
+    /**
+     * (INTERNAL USE ONLY , macro expansion).
+     * 
+     * @param node
+     */
+    public final void internalAddChild(ASTNode node) 
+    {
+    	addChild( children.size() , node , false );
+    }
 
     private final ASTNode addChild(int index , ASTNode node) 
     {
@@ -971,5 +981,14 @@ public abstract class ASTNode
             }
         }
         return candidate;
-    }	
+    }
+    
+    /**
+     * Removes all child nodes.
+     * 
+     * <p>Note that this method does <b>not</b> alter the text regions associated with this node.</p>
+     */
+    public final void removeAllChildNodes() {
+    	this.children.clear();
+    }
 }

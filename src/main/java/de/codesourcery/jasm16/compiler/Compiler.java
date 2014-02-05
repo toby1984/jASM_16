@@ -41,6 +41,7 @@ import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase1;
 import de.codesourcery.jasm16.compiler.phases.ASTValidationPhase2;
 import de.codesourcery.jasm16.compiler.phases.CalculateAddressesPhase;
 import de.codesourcery.jasm16.compiler.phases.CodeGenerationPhase;
+import de.codesourcery.jasm16.compiler.phases.ExpandMacrosPhase;
 import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
@@ -342,6 +343,9 @@ public class Compiler implements ICompiler {
 		// parse sources
 		phases.add( new ParseSourcePhase() );
 
+		// expand macros
+		phases.add( new ExpandMacrosPhase() );
+		
 		// validate existence of referenced labels
 		phases.add( new ASTValidationPhase1() );
 

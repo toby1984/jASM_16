@@ -41,6 +41,7 @@ import de.codesourcery.jasm16.compiler.ICompilationUnitResolver;
 import de.codesourcery.jasm16.compiler.ICompiler;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.ICompilerPhase;
+import de.codesourcery.jasm16.compiler.IMarker;
 import de.codesourcery.jasm16.compiler.IParentSymbolTable;
 import de.codesourcery.jasm16.compiler.ParentSymbolTable;
 import de.codesourcery.jasm16.compiler.io.AbstractResourceResolver;
@@ -57,6 +58,7 @@ import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.DebugCompilationListener;
+import de.codesourcery.jasm16.utils.FormattingVisitor;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -82,6 +84,29 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
             throw new UnsupportedOperationException("Not implemented"); 
         }
     };
+    
+	protected final class MyResolver implements ICompilationUnitResolver {
+
+		private final ICompilationUnit unit;
+		
+		public MyResolver(ICompilationUnit unit) {
+			this.unit = unit;
+		}
+		@Override
+		public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException 
+		{
+			if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
+				return unit;
+			}
+			throw new UnsupportedOperationException("Don't know how to create ICompilationUnit for "+resource);
+		}
+
+		@Override
+		public ICompilationUnit getCompilationUnit(IResource resource) throws IOException 
+		{
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	}    
     
     protected File getTempDir() throws IOException {
     	File f = File.createTempFile("blubb"," blah");
@@ -338,6 +363,14 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
             {
                 return debugInfo;
             }
+
+			@Override
+			public void addMarker(IMarker marker) {
+			}
+
+			@Override
+			public void addCompilationError(String message, ASTNode node) {
+			}
 		};
         if ( node instanceof ObjectCodeOutputNode ) 
         {
@@ -361,4 +394,5 @@ public abstract class TestHelper extends TestCase implements ICompilationUnitRes
     protected void assertEquals(File expected,File actual) {
     	assertEquals( expected.getAbsolutePath() , actual.getAbsolutePath() );
     }
+    
 }

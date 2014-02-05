@@ -34,11 +34,7 @@ public interface IParser
         DEBUG_MODE,
         RELAXED_PARSING,
 		NO_SOURCE_INCLUDE_PROCESSING, 
-		LOCAL_LABELS_SUPPORTED,
-		/**
-		 * INTERNAL USE ONLY.
-		 */
-		EXPANDING_MACRO;
+		LOCAL_LABELS_SUPPORTED;
     }
     
     /**

@@ -35,30 +35,6 @@ import de.codesourcery.jasm16.utils.TextRegion;
 
 public class FoldExpressionsPhaseTest extends TestHelper
 {
-	protected final class MyResolver implements ICompilationUnitResolver {
-
-		private final ICompilationUnit unit;
-		
-		public MyResolver(ICompilationUnit unit) {
-			this.unit = unit;
-		}
-		@Override
-		public ICompilationUnit getOrCreateCompilationUnit(IResource resource) throws IOException 
-		{
-			if ( unit.getResource().getIdentifier().equals( resource.getIdentifier() ) ) {
-				return unit;
-			}
-			throw new UnsupportedOperationException("Don't know how to create ICompilationUnit for "+resource);
-		}
-
-		@Override
-		public ICompilationUnit getCompilationUnit(IResource resource) throws IOException 
-		{
-			throw new UnsupportedOperationException("Not implemented");
-		}
-		
-	}
-	
     public void testFoldSimpleExpression() throws IOException 
     {
         final String source ="SET I, 4+5*3";

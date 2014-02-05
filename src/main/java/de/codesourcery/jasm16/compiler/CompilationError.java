@@ -71,6 +71,5 @@ public class CompilationError extends GenericCompilationError
 	{
         super(IMarker.TYPE_COMPILATION_ERROR, message,unit,cause);
         setNodeAndLocation(null,location);
-	}	
-		
+	}			
 }

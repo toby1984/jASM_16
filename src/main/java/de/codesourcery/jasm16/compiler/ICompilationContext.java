@@ -15,6 +15,7 @@
  */
 package de.codesourcery.jasm16.compiler;
 
+import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
@@ -60,5 +61,23 @@ public interface ICompilationContext extends IResourceResolver , ICompilationUni
 	 * @param option
 	 * @return
 	 */
-	public boolean hasCompilerOption(CompilerOption option);    
+	public boolean hasCompilerOption(CompilerOption option);   
+	
+	/**
+	 * Adds a marker to the current compilation unit.
+	 * 
+	 * @param marker
+	 */
+	public void addMarker(IMarker marker);
+	
+    /**
+     * Add a compilation error.
+     * 
+     * <p>Convenience method that uses {@link ICompilationUnit#addMarker(IMarker)} 
+     * to add an error that encompasses a specific AST node to the current compilation unit.</p>
+     * @param message
+     * @param node
+     * @see ICompilationUnit#addMarker(IMarker)
+     */
+    public void addCompilationError(String message, ASTNode node); 	
 }

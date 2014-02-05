@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
 import de.codesourcery.jasm16.compiler.io.IObjectCodeWriterFactory;
@@ -149,5 +150,20 @@ public class CompilationContext implements ICompilationContext {
 	public ICompilationUnit getCompilationUnit(IResource resource)
 			throws IOException {
 		return compilationUnitResolver.getCompilationUnit( resource );
-	} 
+	}
+	
+	@Override
+	public void addMarker(IMarker marker) {
+		getCurrentCompilationUnit().addMarker( marker );
+	}
+	
+    @Override
+    public void addCompilationError(String message, ASTNode node)
+    {
+        final CompilationError error = new CompilationError( message , getCurrentCompilationUnit() , node );
+        error.setLocation( node.getTextRegion() );
+        // error.setLineNumber( node.get );
+        // error.setLineStartOffset( getCurrentLineStartOffset() );
+        addMarker( error );
+    }	
 }

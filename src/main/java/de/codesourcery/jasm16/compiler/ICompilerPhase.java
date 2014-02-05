@@ -45,6 +45,12 @@ public interface ICompilerPhase
 	 * it into an {@link AST}. 
 	 */
     public static final String PHASE_PARSE = "parse";
+    
+    /**
+     * Name of macro expansion phase.
+     */
+    public static final String PHASE_EXPAND_MACROS = "expand-macros";
+    
     /**
      * Name of first validation phase.
      */

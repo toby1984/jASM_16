@@ -24,9 +24,11 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ASTVisitor;
 import de.codesourcery.jasm16.ast.CharacterLiteralNode;
 import de.codesourcery.jasm16.ast.CommentNode;
+import de.codesourcery.jasm16.ast.EndMacroNode;
 import de.codesourcery.jasm16.ast.EquationNode;
 import de.codesourcery.jasm16.ast.ExpressionNode;
 import de.codesourcery.jasm16.ast.IASTVisitor;
@@ -35,6 +37,7 @@ import de.codesourcery.jasm16.ast.IncludeBinaryFileNode;
 import de.codesourcery.jasm16.ast.IncludeSourceFileNode;
 import de.codesourcery.jasm16.ast.InitializedMemoryNode;
 import de.codesourcery.jasm16.ast.InstructionNode;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
@@ -42,6 +45,7 @@ import de.codesourcery.jasm16.ast.OperandNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.OriginNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.ast.StatementNode;
 import de.codesourcery.jasm16.ast.SymbolReferenceNode;
 import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
@@ -49,6 +53,7 @@ import de.codesourcery.jasm16.ast.UnparsedContentNode;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
+import de.codesourcery.jasm16.parser.Identifier;
 
 /**
  * {@link IASTVisitor} implementation that outputs
@@ -70,7 +75,7 @@ public class FormattingVisitor extends ASTVisitor {
     protected void output(String s) {
         System.out.print( s );
     }
-
+    
     @Override
     public void visit(EquationNode node, IIterationContext context)
     {
@@ -82,6 +87,63 @@ public class FormattingVisitor extends ASTVisitor {
         }
         output( ".equ "+node.getIdentifier().getRawValue()+" "+source);
         context.dontGoDeeper();   
+    }
+    
+    @Override
+    public void visit(StartMacroNode node, IIterationContext context) 
+    {
+    	if ( node.getArgumentCount() > 0 ) 
+    	{
+    		String s = "";
+    		final List<Identifier> argNames = node.getArgumentNames();
+			final int len = argNames.size();
+    		for ( int i = 0 ; i < len; i++) {
+    			s += argNames.get(i).getRawValue();
+    			if ( (i+1) < len ) {
+    				s += ",";
+    			}
+    		}
+    		output(".macro "+node.getName().getRawValue()+"("+s+")\n");
+    	} else {
+    		output(".macro "+node.getName().getRawValue()+"\n");
+    	}
+    	output( node.getMacroBody() );
+    	context.dontGoDeeper();
+    }
+    
+    @Override
+    public void visit(EndMacroNode node, IIterationContext context) 
+    {
+    	output(".endmacro");
+    	context.dontGoDeeper();
+    }
+    
+    @Override
+    public void visit(InvokeMacroNode node, IIterationContext context) 
+    {
+    	if ( node.getArgumentCount() == 0 ) {
+    		output( node.getMacroName().getRawValue()+"\n" );
+    	} 
+    	else 
+    	{
+    		final List<ASTNode> arguments = node.getArguments();
+    		final int len = arguments.size();
+    		final StringBuilder builder = new StringBuilder();
+    		for ( int i = 0 ; i < len ; i++ ) 
+    		{
+    			final ASTNode argument = arguments.get(i);
+    			ASTUtils.visitInOrder(argument, new FormattingVisitor( this.context ) {
+    				protected void output(String s) {
+    					builder.append(s);
+    				}
+    			});
+    			if ( ( i+1 ) < len ) {
+    				builder.append(",");
+    			}
+    		}
+    		output( node.getMacroName().getRawValue()+" ("+builder+")\n" );
+    	}
+    	context.dontGoDeeper();
     }
     
     @Override
@@ -347,5 +409,4 @@ public class FormattingVisitor extends ASTVisitor {
     public void visit(UnparsedContentNode node, IIterationContext context) {
         output( getSource( node ) );			
     }
-
 }

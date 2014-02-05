@@ -62,10 +62,8 @@ public class ASTValidationPhase1 extends CompilerPhase {
                 } 
                	Equation.checkCyclicDependencies(id,compContext.getSymbolTable());
         	}
-        	
         };
         
         ASTUtils.visitInOrder( unit.getAST() , visitor );
     }
-    
 }

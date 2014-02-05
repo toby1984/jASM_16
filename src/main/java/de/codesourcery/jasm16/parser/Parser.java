@@ -46,7 +46,7 @@ import de.codesourcery.jasm16.utils.Misc;
  */
 public class Parser implements IParser
 {
-    private final Set<ParserOption> options = new HashSet<ParserOption>(); 
+	private final Set<ParserOption> options = new HashSet<ParserOption>(); 
     
     private final ICompilationUnitResolver compilationUnitResolver;
     
@@ -93,14 +93,9 @@ public class Parser implements IParser
         if ( hasParserOption( ParserOption.RELAXED_PARSING ) ) {
             lexer.setLexerOption( LexerOption.CASE_INSENSITIVE_OPCODES , true );
         }        
-        final ParseContext context = new ParseContext(  
-        		unit , 
-        		symbolTable, 
-        		lexer , 
-        		resolver , 
-        		compilationUnitResolver,
-        		this.options ,
-        		isExpandingMacro );
+        
+        final ParseContext context = new ParseContext( unit , symbolTable, lexer , resolver , compilationUnitResolver, this.options , isExpandingMacro );
+        afterParseContextCreation(context);
         
         final AST result = (AST) new AST().parse( context );
         if ( ! context.eof() ) {
@@ -111,8 +106,17 @@ public class Parser implements IParser
         }
         return result;
     }
+    
+    /**
+     * TODO: Method not called by {@link ParseContext#createParseContextForInclude(IResource)}.
+     * 
+     * @param context
+     */
+    protected void afterParseContextCreation(ParseContext context) {
+    	
+    }
 
-    @Override
+	@Override
     public void setParserOption(ParserOption option, boolean onOff)
     {
         if ( option == null ) {
