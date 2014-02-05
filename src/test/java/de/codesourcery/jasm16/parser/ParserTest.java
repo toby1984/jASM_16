@@ -310,6 +310,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("brk" , n.getMacroName().getRawValue() );
 		assertTrue( n.getArgumentNames().isEmpty() );
 		assertEquals( macroBody , n.getMacroBody() );
 		assertEquals( source , toSourceCode( ast , source ) );		
@@ -334,6 +335,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("brk" , n.getMacroName().getRawValue() );
 		assertTrue( n.getArgumentNames().isEmpty() );
 		assertEquals( macroBody , n.getMacroBody() );
 		assertEquals( source , toSourceCode( ast , source ) );		
@@ -359,6 +361,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("brk" , n.getMacroName().getRawValue() );
 		assertTrue( n.getArgumentNames().isEmpty() );
 		assertEquals( macroBody , n.getMacroBody() );
 		assertEquals( source , toSourceCode( ast , source ) );
@@ -390,6 +393,7 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("inc" , n.getMacroName().getRawValue() );
 		assertEquals( 1, n.getArgumentNames().size() );
 		assertEquals( new Identifier("arg1") , n.getArgumentNames().get(0) );
 		assertEquals( macroBody , n.getMacroBody() );
@@ -420,6 +424,7 @@ public class ParserTest extends TestHelper {
 
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("inc" , n.getMacroName().getRawValue() );
 		assertEquals( 1 , n.getArgumentNames().size() );
 		assertEquals( new Identifier("arg"), n.getArgumentNames().get(0) );
 		assertEquals( macroBody , n.getMacroBody() );
@@ -445,12 +450,40 @@ public class ParserTest extends TestHelper {
 		assertEquals( 1 , root.getChildCount() );
 		assertEquals( StartMacroNode.class , root.child(0).getClass() );
 		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("inc" , n.getMacroName().getRawValue() );
 		assertEquals( 2 , n.getArgumentNames().size() );
 		assertEquals( new Identifier("arg1"), n.getArgumentNames().get(0) );
 		assertEquals( new Identifier("arg2"), n.getArgumentNames().get(1) );
 		assertEquals( macroBody , n.getMacroBody() );
 		assertEquals( source , toSourceCode( ast , source ) );		
 	}		
+	
+	public void testParseMacroWithTwoArgumentsAndWhitespae() throws ParseException 
+	{
+		final Parser p = new Parser(this);
+		
+		final String macroBody="ADD arg , 1";
+		String source = ".macro inc ( arg1 , arg2 ) \n"+
+		                macroBody+"\n"+
+				        ".endmacro";
+		
+        AST ast = p.parse( source );
+		assertFalse( ast.hasErrors() );
+		assertEquals( 2 , ast.getChildCount() );
+		
+		ASTNode root = ast.child(0);
+		assertNotNull( root );
+		assertTrue( root instanceof StatementNode );
+		assertEquals( 1 , root.getChildCount() );
+		assertEquals( StartMacroNode.class , root.child(0).getClass() );
+		StartMacroNode n = (StartMacroNode) root.child(0);
+		assertEquals("inc" , n.getMacroName().getRawValue() );
+		assertEquals( 2 , n.getArgumentNames().size() );
+		assertEquals( new Identifier("arg1"), n.getArgumentNames().get(0) );
+		assertEquals( new Identifier("arg2"), n.getArgumentNames().get(1) );
+		assertEquals( macroBody , n.getMacroBody() );
+		assertEquals( source , toSourceCode( ast , source ) );		
+	}
 	
 	public void testParseMacroInvocationWithTwoArguments() throws ParseException 
 	{

@@ -90,9 +90,9 @@ public class FormattingVisitor extends ASTVisitor {
     				s += ",";
     			}
     		}
-    		output(".macro "+node.getName().getRawValue()+"("+s+")\n");
+    		output(".macro "+node.getMacroName().getRawValue()+"("+s+")\n");
     	} else {
-    		output(".macro "+node.getName().getRawValue()+"\n");
+    		output(".macro "+node.getMacroName().getRawValue()+"\n");
     	}
     	output( node.getMacroBody() );
     	context.dontGoDeeper();

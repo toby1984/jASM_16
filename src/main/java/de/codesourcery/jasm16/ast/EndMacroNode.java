@@ -22,6 +22,8 @@ public class EndMacroNode extends ASTNode {
 		mergeWithAllTokensTextRegion(  context.read(TokenType.END_MACRO) );
 		if ( ! context.isParsingMacroDefinition() ) {
 			context.addCompilationError( "End of macro without ever starting one?",this);
+		} else {
+			context.setCurrentMacroDefinition( null );
 		}
 		return this;
 	}

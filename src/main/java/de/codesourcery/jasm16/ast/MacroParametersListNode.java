@@ -45,6 +45,7 @@ public class MacroParametersListNode extends ASTNode {
 		final Set<Identifier> args = new HashSet<>();
 		while ( ! context.eof() && ! context.peek(TokenType.PARENS_CLOSE ) ) 
 		{
+			mergeWithAllTokensTextRegion( context.skipWhitespace(false) );
 			IdentifierNode idNode = (IdentifierNode) new IdentifierNode().parse( context );
 			if ( args.contains( idNode.getIdentifier() ) ) {
 				context.addCompilationError("Duplicate macro argument name" , idNode);

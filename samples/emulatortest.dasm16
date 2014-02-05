@@ -1,0 +1,3115 @@
+
+; Emulator test (C) by joel.yliluoma@iki.fi
+; http://iki.fi/bisqwit/ 
+
+.equ vram 0x8000
+.equ graphics_enable 0x9040
+
+.macro rts 
+  SET PC, POP
+.endmacro
+
+.macro neg(what)
+  xor what , 0xFFFF
+  add what , 1
+.endmacro
+
+.macro negd(lo,hi)
+  xor lo , 0xFFFF
+  xor hi , 0xFFFF
+  add lo , 1
+  add hi , ex
+.endmacro
+
+.macro shld(lo,hi,amount)
+  shl hi , amount
+  shl lo , amount
+  bor hi , ex
+.endmacro
+
+.macro shrd(lo,hi,amount)
+  shr lo , amount
+  and lo , 0x7FFF
+  shr hi , amount
+  and hi , 0x7FFF
+  bor lo , ex
+.endmacro
+
+.macro addd(lo,hi,rhslo,rhshi)
+  add hi , rhshi
+  add lo , rhslo
+  add hi , ex
+.endmacro
+
+.macro subd(lo,hi,rhslo,rhshi)
+  sub hi , rhshi
+  sub lo , rhslo
+  add hi , ex
+.endmacro
+
+.macro rol (var,n)
+  shr var , n
+  bor var , ex
+.endmacro
+
+
+:BOOT
+:INVALID_TARGET_MEMORY_BEGIN
+  ; DCPU16 detection: JSR address
+  dat 0x7C10, dcpu11_detected ; Encodes as IFB A,imm16 on DCPU-1.7, so we need a NOP
+  dat 0x0001 ; Set A,A on both CPUs.
+
+:reset_detected
+  set [reset_detected+0], 0x7F81 ; Write "SET PC,"
+  set [reset_detected+1], why_did_we_reset ; Write imm16
+
+  set sp, 0xEF80
+  jsr clearscr
+  set [color], 0xF900
+  jsr printpc_s
+:AccuracyTesterLogoLines12
+  dat "DCPU-16 EMULATOR ACCURACY TESTER"
+  dat "Version 4 http://iki.fi/bisqwit/",0
+  set [color], 0x0F00
+  jsr printpc_s
+:AccuracyTesterLogoLine3
+  dat "--------------------------------",0
+
+;;;; FAST HACK BEGIN / QUICK ;;;;
+  ;set [clock_rate],20
+  ;jsr inithw
+  ;set [a_value],0
+  ;set [b_value],0
+  ;set [o_value],0
+  ;SET PC ,  instruction_tester_loop
+;;;; FAST HACK END ;;;;
+
+  set a, 55
+  set sp,0xFFFF
+  set [selfmod_test+0], 0x7C02 ;add A,imm16
+:selfmod_test
+  mul a, 77
+  sub [selfmod_test+1], 77-133
+  ife sp,0xFFFF
+  jsr selfmod_test
+  ife a, 55+77+133
+  SET PC ,  selfmod_works
+
+  set [color], 0x4E00
+  jsr printpc_s
+  ; 0123456789ABCDEF0123456789ABCDEF
+  dat "ERROR: Self-modifying code does",10
+  dat "not work... This will pose some",10
+  dat "problems later on.",0
+  jsr clreol_newline
+:selfmod_works
+  set sp,0xEF80
+
+  set a, 1
+  set b, 2
+  set c, 1
+  set x, 0x5001
+  set y, -500
+
+  ; Test for false positives
+:bfb_f
+  ifb a, [no11_graphics]
+  jsr fail_b_p ; a bitmask that doesn't include 1
+:ifb_f
+  ifb a, b
+  jsr fail_b_p
+:ifc_f
+  ifc a, 1
+  jsr fail_c_p
+:bfc_f
+  ifc x, 0x5555
+  jsr fail_c_p
+:bfe_f
+  ife a, 0x1234
+  jsr fail_e_p
+:ife_f
+  ife a, b
+  jsr fail_e_p
+:bfn_f
+  ifn 0x5001, x
+  jsr fail_n_p
+:ifn_f
+  ifn a, c
+  jsr fail_n_p
+  ifg a, 5
+  jsr fail_g_p
+:ifg_f
+  ifg b, x
+  jsr fail_g_p
+:bfg_f
+  ifg x, 0x7AAA
+  jsr fail_g_p
+  ifg a, c
+  jsr fail_g_p
+:ifa_f
+  ifa y, x
+  jsr fail_a_p
+:bfa_f
+  ifa [no11_graphics], b
+  jsr fail_a_p ; -1000 or somewhere around that number
+:ifl_f
+  ifl b, c
+  jsr fail_l_p
+:bfl_f
+  ifl 0x8000, x
+  jsr fail_l_p
+:ifu_f
+ifu b, c
+jsr fail_u_p
+:bfu_f
+  ifu y, -800
+  jsr fail_u_p
+  ; Test for false negatives
+:bfb_t
+  ifb x, 0x4000
+  set pc, bn1
+  jsr fail_b_n
+:bn1
+:ifb_t
+  ifb x, a
+  set pc, bn2
+  jsr fail_b_n
+:bn2
+:bfc_t
+  ifc x, 0xAB30
+  set pc, cn1
+  jsr fail_c_n
+:cn1
+:ifc_t
+  ifc c, 4
+  set pc, cn2
+  jsr fail_c_n
+:cn2
+:ife_t
+  ife a, c
+  set pc, en1
+  jsr fail_e_n
+:en1
+:bfe_t
+  ife -500, y
+  set pc, en2
+  jsr fail_e_n
+:en2
+:ifn_t
+  ifn x, b
+  set pc, nn1
+  jsr fail_n_n
+:nn1
+:bfn_t
+  ifn y, -800
+  set pc, nn2
+  jsr fail_n_n
+:nn2
+:ifg_t
+  ifg x, c
+  set pc, gn1
+  jsr fail_g_n
+:gn1
+:bfg_t
+  ifg x, 0x30
+  set pc, gn2
+  jsr fail_g_n
+:gn2
+:ifa_t
+  ifa x, y
+  set pc, an1
+  jsr fail_a_n
+:an1
+:bfa_t
+  ifa b, -700
+  set pc, an2
+  jsr fail_a_n
+:an2
+:ifl_t
+  ifl c, x
+  set pc, ln1
+  jsr fail_l_n
+:ln1
+:bfl_t
+  ifl x, 0xD000
+  set pc, ln2
+  jsr fail_l_n
+:ln2
+  ifu -900, -400
+  set pc, un1
+  jsr fail_u_n
+:un1
+:ifu_t
+  ifu y, c
+  set pc, un2
+  jsr fail_u_n
+:un2
+:bfu_t
+  ifu y, -300
+  set pc, un3
+  jsr fail_u_n
+:un3
+
+  ; Test conditional stacking.
+  ; Z = Condition 1 index (&7 = condition type, &8 = expect true)
+  ; I = Condition 2 index (&7 = condition type, &8 = expect true)
+  ; J = Condition 3 index (&7 = condition type, &8 = expect true)
+
+  set push,a
+  set push,b
+  set push,c
+  set push,x
+  set push,y
+
+  set [color], 0x1F00
+  jsr printpc_s
+  dat "Initializing hardware...",0
+  set x,0
+  ias x
+  jsr gotox
+  set [clock_rate],20
+  jsr inithw
+
+  jsr printpc_s
+  dat "Verifying 3-level IF stacking...",0
+  jsr hw_enable_irq
+  ias IRQ_HANDLER
+  iaq 0
+
+  set y,pop
+  set x,pop
+  set c,pop
+  set b,pop
+  set a,pop
+
+  set [opcode_buffer+3], 0xA7A1 ;SET EX,8
+  set [opcode_buffer+4], 0x7F81 ;SET PC,imm
+  set [opcode_buffer+5], if_stack_test_end
+  set [opcode_buffer+12], 0xA7A1 ;SET EX,8
+  set [opcode_buffer+13], 0x7F81 ;SET PC,imm
+  set [opcode_buffer+14], if_stack_test_end2
+
+  set z,0
+  set i,0
+  set j,0
+  set [opcode_num_failures],0
+:if_stack_loop
+  set push, a
+  ; Entry point for single-word IF test: opcode_buffer+0
+  set a, [if_tables+z]
+  set [opcode_buffer+0], [a]
+  set a, [if_tables+i]
+  set [opcode_buffer+1], [a]
+  set a, [if_tables+j]
+  set [opcode_buffer+2], [a]
+
+  ; Entry point for double-word IF test: opcode_buffer+6
+  set a, [if_tables+16+z]
+  set [opcode_buffer+6], [a]
+  set [opcode_buffer+7], [a+1]
+  set a, [if_tables+16+i]
+  set [opcode_buffer+8], [a]
+  set [opcode_buffer+9], [a+1]
+  set a, [if_tables+16+j]
+  set [opcode_buffer+10],[a]
+  set [opcode_buffer+11],[a+1]
+  set a, pop
+
+  set ex, 0
+  jsr opcode_buffer+0
+
+:if_stack_test_end
+
+  ; EX has now the result of the IF operation. Which result did we expect?
+  set push, a
+  set a, z
+  and a, i
+  and a, j
+  and a, 8
+  ifn a, ex
+  jsr fail_stack
+  set a, pop
+
+  set ex, 0
+  jsr opcode_buffer+6
+
+:if_stack_test_end2
+  ; EX has now the result of the IF operation. Which result did we expect?
+  set push, a
+  set a, z
+  and a, i
+  and a, j
+  and a, 8
+  ifn a, ex
+  jsr fail_stack
+  set a, pop
+
+  add j,1
+  ifl j,16
+  SET PC ,  if_stack_loop
+  set j,0
+  add i,1
+  ifl i,16
+  SET PC ,  if_stack_loop
+
+  set i,0
+  add z,1
+  ifl z,16
+  SET PC ,  if_stack_loop
+
+  ; All condition stacking tests done.
+
+  ifn [opcode_num_failures], 0
+  SET PC ,  failstack_did_fail
+  jsr clock_disable_irq
+  jsr print_entry
+  set x,0
+  set y,3
+  jsr gotoxy
+  jsr printpc_s
+  dat "Cascading IFs do work properly.",0
+  jsr clreol_newline
+:failstack_did_fail
+  ias x
+  set [clock_rate], 20
+
+  jsr clock_disable_irq
+  SET PC ,  instruction_tester
+
+:if_types dat "BCENGALU"
+:if_tables
+  ; Single-word IFs
+  dat ifb_f, ifc_f, ife_f, ifn_f, ifg_f, ifa_f, ifl_f, ifu_f ; false tests
+  dat ifb_t, ifc_t, ife_t, ifn_t, ifg_t, ifa_t, ifl_t, ifu_t ; true tests
+:if_tables2
+  ; Double-word IFs
+  dat bfb_f, bfc_f, bfe_f, bfn_f, bfg_f, bfa_f, bfl_f, bfu_f ; false tests
+  dat bfb_t, bfc_t, bfe_t, bfn_t, bfg_t, bfa_t, bfl_t, bfu_t ; true tests
+
+
+:fail_b_p
+  jsr if_test_fails
+  dat "IFB: False positives",0
+
+:fail_c_p
+jsr if_test_fails
+dat "IFC: False positives",0
+:fail_e_p
+jsr if_test_fails
+dat "IFE: False positives",0
+:fail_n_p
+jsr if_test_fails
+dat "IFN: False positives",0
+:fail_g_p
+jsr if_test_fails
+dat "IFG: False positives",0
+:fail_a_p
+jsr if_test_fails
+dat "IFA: False positives",0
+:fail_l_p
+jsr if_test_fails
+dat "IFL: False positives",0
+:fail_u_p
+jsr if_test_fails
+dat "IFU: False positives",0
+:fail_b_n
+jsr if_test_fails
+dat "IFB: False negatives",0
+:fail_c_n
+jsr if_test_fails
+dat "IFC: False negatives",0
+:fail_e_n
+jsr if_test_fails
+dat "IFE: False negatives",0
+:fail_n_n
+jsr if_test_fails
+dat "IFN: False negatives",0
+:fail_g_n
+jsr if_test_fails
+dat "IFG: False negatives",0
+:fail_a_n
+jsr if_test_fails
+dat "IFA: False negatives",0
+:fail_l_n
+jsr if_test_fails
+dat "IFL: False negatives",0
+:fail_u_n
+jsr if_test_fails
+dat "IFU: False negatives",0
+
+:fail_stack
+  set push, b
+  set push, c
+  set push, x
+  set push, y
+  set [failstack_z], z
+  set [failstack_i], i
+  set [failstack_j], j
+  ;set push, ex
+  iaq 1
+
+  set [color], 0x4F00
+  and [curpos], 0xFFE0
+  set a, [failstack_z]
+  jsr failstack_print_if
+  set a,"+"
+  jsr printch
+  set a, [failstack_i]
+  jsr failstack_print_if
+  set a,"+"
+  jsr printch
+  set a, [failstack_j]
+  jsr failstack_print_if
+
+  jsr printpc_s
+  dat " chain: ERROR",0
+
+  ;ifb 8, pop
+  ; SET PC , failstack_expected_true
+  ;jsr printpc_s dat "positive",0
+  ;SET PC , failstack_cleanup
+
+  ;:failstack_expected_true
+  ;jsr printpc_s dat "negative",0
+  ;:failstack_cleanup
+  jsr clreol_newline
+
+  add [opcode_num_failures], 1
+  ifg [opcode_num_failures], 2
+  SET PC ,  failstack_did_fail
+
+  iaq 0
+  set z, [failstack_z]
+  set i, [failstack_i]
+  set j, [failstack_j]
+  set y, pop
+  set x, pop
+  set c, pop
+  set b, pop
+  rts
+  :failstack_print_if
+  set push, a
+  set a, "!"
+  ifc [sp],8
+  jsr printch
+  jsr printpc_s
+  dat "IF",0
+  set a, [sp]
+  and a, 7
+  set a, [if_types + a]
+  jsr printch
+  set a,pop
+  rts
+
+:if_test_fails
+  set b, pop
+  set [b-2], 0x6381 ; SET PC, POP. Only report the same error once.
+  set a, PICK 0
+  sub a, 2
+  set push, a
+  jsr prints
+  jsr printpc_s
+  dat " at PC=",0
+  set a, pop
+  jsr printhex_word
+  set a,10
+  SET PC ,  printch
+
+; INSTRUCTION TEST
+
+.equ IFL_UNDEFINED 0x0001
+.equ IFL_CONDITIONAL 0x0002
+.equ IFL_NBI 0x0004
+.equ IFL_DANGEROUS 0x0008
+.equ  PFL_BASEREG 0x0010
+.equ  PFL_MEM 0x0020
+.equ  PFL_IMM 0x0040
+.equ  PFL_PUSHPOP 0x0080
+.equ  PFL_SP 0x0100
+.equ  PFL_PC 0x0200
+.equ  PFL_EX 0x0400
+.equ  PFL_SMALL_IMM 0x0800
+.equ  PFL_REDUNDANT 0x1000
+
+.equ  INS_TEMPLATE_SIZE 6
+.equ INS_TEMPLATE_NAME 0
+.equ INS_TEMPLATE_SETS 4
+.equ  INS_TEMPLATE_FLAGS 5
+.equ  PARM_TEMPLATE_SIZE 8
+.equ  PARM_TEMPLATE_NAME 0
+.equ  PARM_TEMPLATE_FLAGS 7
+
+.equ  B_IMM 0x001B
+.equ A_IMM 0x0026
+
+:next_instruction
+:next_instruction_o
+  add [o_value], 1
+  ifl [o_value], 32
+  SET PC ,  instruction_tester_loop
+  set [o_value], 0
+
+:next_instruction_b
+  add [b_value], 1
+  ifl [b_value], 32
+  SET PC ,  instruction_tester_loop
+  set [b_value], 0
+
+:next_instruction_a
+  add [a_value], 1
+  ifl [a_value], 64
+  SET PC ,  instruction_tester_loop
+  set [a_value], 0
+
+:congratulation
+  ; Congratulation
+  set [color], 0xF200
+  jsr printpc_s
+  dat 10
+  ; 0123456789ABCDEF0123456789ABCDEF
+  dat "Congratulation. Your emulator "
+  dat "has finished running all tests.",0
+  jsr clreol_newline
+  jsr hw_enable_irq
+  hcf 0
+  sub pc,1
+
+:why_did_we_reset
+  jsr hw_disable_irq
+  set [color], 0xE500
+  jsr printpc_s
+  dat 10
+  ; 0123456789ABCDEF0123456789ABCDEF
+  dat "Hmm... Your DCPU-16 just reset. "
+  dat "Why? That is not supposed to "
+  dat "happen.",0
+  jsr clreol_newline
+  set [clock_rate], 20
+  jsr inithw
+  jsr flush_pending_irq
+
+  set b, 5
+  set i, 10
+  :reset_flash_loop
+  xor b, 0xA
+  jsr setborder
+  set j, 3000
+  :reset_idle_loop
+  sub j, 1
+  ifn j, 0
+  SET PC ,  reset_idle_loop
+  sub i, 1
+  ifn i, 0
+  SET PC ,  reset_flash_loop
+  jsr getch
+  jsr clreol_newline
+  SET PC ,  next_instruction
+
+
+:instruction_tester
+  set i, 31
+  :error_counts_reset
+  set [num_errors_basic+i], 0
+  std [num_errors_nbi+i], 0
+  ifn i,-1
+  SET PC ,  error_counts_reset
+
+  ifg [curpos], 192
+  SET PC ,  instruction_tester_loop
+
+  set push, [curpos]
+  set x, 0
+  set y, 8
+  jsr gotoxy
+  set [color], 0x8F00
+  jsr printpc_s
+  dat "Will test all basic instructions"
+  dat "and most NBIs. Where the specs",10
+  dat "are incomplete, the testing",10
+  dat "will be somewhat lighter.",0
+  set [curpos], pop
+
+
+:instruction_tester_loop
+  ;ifl [a_value], 0x18 
+  ; SET PC , next_instruction
+  ;ifl [b_value], 0x18 
+  ; SET PC , next_instruction
+  ;ifg [a_value], 0x1B 
+  ; SET PC , next_instruction
+  ;ifg [b_value], 0x1B 
+  ;SET PC , next_instruction
+
+  set b, [o_value]
+  mul b, INS_TEMPLATE_SIZE
+  add b, ins_templates
+  set [o_settings], b
+  set c, [b+INS_TEMPLATE_FLAGS]
+  set [o_flags], c
+  ifb c, IFL_UNDEFINED + IFL_CONDITIONAL
+  SET PC ,  next_instruction
+  ifc c, IFL_NBI
+  SET PC ,  instruction_test_get_b
+  ;ifc c, IFL_NBI
+  ; SET PC , next_instruction
+
+  :instruction_test_nbi_number
+  ; By the way, have we had too many errors (2)
+  ; concerning this particular instruction already?
+  set b, [b_value]
+  ifg [num_errors_nbi+b], 1
+  SET PC ,  next_instruction
+
+  mul b, INS_TEMPLATE_SIZE
+  add b, nbi_templates
+  set [b_settings], b
+  set c, [b+INS_TEMPLATE_FLAGS]
+  ifb c, IFL_UNDEFINED + IFL_DANGEROUS
+  SET PC ,  next_instruction
+  set [b_flags], c
+  SET PC ,  instruction_test_get_a
+
+  :instruction_test_get_b
+  ; By the way, have we had too many errors (2)
+  ; concerning this particular instruction already?
+  set a, [o_value]
+  ifg [num_errors_basic+a], 1
+  SET PC ,  next_instruction
+
+  ; Retrieve the flags for both parameters.
+  set b, [b_value]
+  mul b, PARM_TEMPLATE_SIZE
+  add b, parm_templates
+  set [b_settings], b
+  set [b_flags], [b+PARM_TEMPLATE_FLAGS]
+
+  ; Do not test instructions that change PC
+  ifb [b_flags], PFL_REDUNDANT
+  SET PC ,  next_instruction
+
+:instruction_test_get_a
+  set b, [a_value]
+  mul b, PARM_TEMPLATE_SIZE
+  add b, parm_templates
+  set [a_settings], b
+  set [a_flags], [b+PARM_TEMPLATE_FLAGS]
+
+  ifb [a_flags], PFL_REDUNDANT
+  SET PC ,  next_instruction
+
+  ; Calculate the source and target operand.
+  set i, [a_value]
+  set j, [b_value]
+  ifb [o_flags], IFL_CONDITIONAL
+  set j, -1 ; No target in conditional
+  ifc [o_flags], IFL_NBI
+  SET PC ,  skip_target_nbi
+  set j, -1 ; No target in NBI (general)
+  ife [b_value], 0x09
+  set j, [a_value] ; However, IAG assigns in A
+  ife [b_value], 0x10
+  set j, [a_value] ; And, HWN assigns in A
+:skip_target_nbi
+
+  ; Do not test instructions that write into PC or immediates
+  ; Identified by target operand number being 1C or 1F-3F
+  ife j, 0x1C
+  SET PC ,  next_instruction
+  ; Do not test instructions that write into immediates
+  ifa j, 0x1E
+  SET PC ,  next_instruction
+  ifn i, 0x18
+  SET PC ,  not_a_18_skip
+  ; Do not test instructions that do PEEK & POP at the same time
+  ife j, 0x18
+  SET PC ,  next_instruction
+  ; Do not test instructions that use PICK & POP
+  ife j, 0x1A
+  SET PC ,  next_instruction
+  ; Do not test instructions that use PEEK & POP
+  ife j, 0x19
+  SET PC ,  next_instruction
+  ; If the target is POP, disallow JSR/INT
+  :not_a_18_skip
+  ifc [o_flags], IFL_NBI
+  SET PC ,  not_nbi
+  ; When the instruction is JSR/INT, disallow stack parameters
+ife [b_value], 0x01
+  SET PC ,  is_jsr_int_rfi
+  ife [b_value], 0x08
+  SET PC ,  is_jsr_int_rfi
+  ifn [b_value], 0x0B
+  SET PC ,  not_jsr_int_rfi
+:is_jsr_int_rfi
+  ; Disallow operands 18..1B
+  ifg i, 0x17 
+  ifl i, 0x1C
+  SET PC ,  next_instruction
+:not_jsr_int_rfi
+; When the instruction is HWQ/JSR/IAQ, disallow PC and small integer
+; params because we need to change them in ins_template.
+  ife [b_value], 0x01
+  SET PC ,  is_jsr_hwq_iaq
+  ife [b_value], 0x0C
+  SET PC ,  is_jsr_hwq_iaq
+  ifn [b_value], 0x11
+  SET PC ,  not_jsr_hwq_iaq
+:is_jsr_hwq_iaq
+  ife i, 0x1C
+  SET PC ,  next_instruction
+; Small integers (Allow them for IAQ though)
+  ifg i, 0x1F
+  ifn [b_value], 0x0C
+  SET PC ,  next_instruction
+  ; When the instruction is IAQ/HWQ, disallow SP, because
+  ; we need to make changes to the target operand and it just
+  ; will not work nicely. A framework problem.
+  ife [a_value], 0x1B
+  SET PC ,  next_instruction
+:not_jsr_hwq_iaq
+:not_nbi
+
+  ifb [o_flags], IFL_NBI
+  SET PC ,  nbi_so_not_stackpair
+; Don't test instructions that address PUSH, SP
+  ife [b_value], 0x18
+  ife [a_value], 0x1B
+  SET PC ,  next_instruction
+  ; Don't test instructions that combine immediates and PC
+  ; because the specification does not say what is correct for those.
+  ife [a_value], 0x1C 
+  ifb [b_flags], PFL_IMM
+  SET PC ,  next_instruction
+  :nbi_so_not_stackpair
+
+  ; Construct the opcode.
+  set i, 0
+
+  set a, [a_value]
+  set b, [b_value]
+  shl b, 5
+  shl a, 10
+  bor a, b
+  bor a, [o_value]
+  sti [opcode_buffer+i], a
+
+  ifc [a_flags], PFL_IMM
+  SET PC ,  dontmake_imm_param_a
+  set j, [a_value]
+  jsr make_safe_imm_parameter
+  sti [opcode_buffer+i], a
+:dontmake_imm_param_a
+  ifb [o_flags], IFL_NBI
+  SET PC ,  dontmake_imm_param_b
+  ifc [b_flags], PFL_IMM
+  SET PC ,  dontmake_imm_param_b
+  set j, [b_value]
+  jsr make_safe_imm_parameter
+  sti [opcode_buffer+i], a
+:dontmake_imm_param_b
+
+  ; If the instruction is IAQ, append an "INT 7"
+  ifb [o_flags], IFL_NBI
+  ife [b_value], 0xC
+  sti [opcode_buffer+i], 0xA100
+
+  sti [opcode_buffer+i], 0x7F81 ; SET PC,
+  sti [opcode_buffer+i], opcode_test_done ; imm
+
+  iaq 1
+
+  set x, 0x00
+  jsr gotox
+  set y,0
+
+  jsr print_entry
+  set a, [opcode_buffer]
+  set [color], 0x7100
+  jsr printhex_word_i
+  set a, " "
+  jsr printch_fast_i
+  set [color], 0xE100
+
+  ifb [o_flags], IFL_NBI
+  SET PC ,  print_nbi_name
+  set b, [o_settings]
+  add b, INS_TEMPLATE_NAME
+  jsr prints_i
+  set a, " "
+  jsr printch_fast_i
+  set b, [b_settings]
+  add b, PARM_TEMPLATE_NAME
+  jsr prints_i
+  set a, ","
+  jsr printch_fast_i
+  SET PC ,  print_name_continued
+
+  :print_nbi_name
+  set b, [b_settings]
+  add b, INS_TEMPLATE_NAME
+  jsr prints_i
+  set a, " "
+  jsr printch_fast_i
+
+  :print_name_continued
+  set b, [a_settings]
+  add b, PARM_TEMPLATE_NAME
+  jsr prints_i
+
+  ; If the instruction is IAQ, append an "INT 7"
+  set b, print_name_iaq
+  ifb [o_flags], IFL_NBI
+  ife [b_value], 0xC 
+  jsr prints_i
+
+  SET PC ,  print_name_not_iaq
+:print_name_iaq
+  dat " : INT 7",0
+:print_name_not_iaq
+  set [color], 0x0F00
+  set x, 19
+  jsr clreol
+  jsr print_exit
+
+  ; Record the state prior to instruction, so that the simulator
+  ; can work on the same values that the actual instruction did
+  set [source_registers+0], [default_registers+0]
+  set [source_registers+1], [default_registers+1]
+  set [source_registers+2], [default_registers+2]
+  set [source_registers+3], [default_registers+3]
+  set [source_registers+4], [default_registers+4]
+  set [source_registers+5], [default_registers+5]
+  set [source_registers+6], [default_registers+6]
+  set [source_registers+7], [default_registers+7]
+  set [source_registers+8], [default_registers+8]
+  set [source_registers+9], [default_registers+9]
+  set [source_registers+10], opcode_buffer+1
+
+  ; Retrieve the values of the operands before the instruction is executed.
+  ; We especially need the target address value, because it may get
+  ; changed when the instruction executes, and again, we need the
+  ; original value when simulating.
+  set [a_input_desired], input_modifier_a_constant
+  set [a_input_level], 1
+  set [b_input_desired], input_modifier_b_constant
+  set [b_input_level], 1
+
+  ; NBI instructions, such as JSR,
+  ; get a final say on the operand values
+  ifc [o_flags], IFL_NBI
+  SET PC ,  skip_nbi_init
+  set x, [b_settings]
+  set z, 0
+  jsr [x + INS_TEMPLATE_SETS]
+:skip_nbi_init
+
+:rerandomize_address
+  set [backup_randseed32+0], [randseed32+0]
+  set [backup_randseed32+1], [randseed32+1]
+
+  set x,0
+  jsr load_sources
+
+  ; Sanity check! Verify that our target address is not inside
+  ; our own code.
+  set i, [b_source_addr]
+  ifb [o_flags], IFL_NBI
+  set i, [a_source_addr]
+  jsr verify_target_address
+  ; Generate a hash of the current opcode.
+  ; This is used for checking whether the parameter
+  ; values have changed and need reprinting.
+
+  set a, [opcode_buffer]
+  and a, 0xFFE0
+  xor a, [a_source]
+  set b, [b_source]
+  rol (b, 5)
+  xor a, b
+  set b, [b_source_addr]
+  rol (b, 11)
+  xor a, b
+  set b, [a_source_addr]
+  rol (b, 3)
+  xor a, b
+  ife a, [reprint_params]
+  SET PC ,  SKIP_HEX_OUTPUT
+  set [reprint_params], a
+
+  set x,19
+  jsr gotox
+
+  set [color],0x5F00
+  jsr printpc_s
+  dat "a=",0
+  set a, [a_source]
+  jsr printhex_word
+  jsr printpc_s
+  dat " @ ",0
+  set [color],0x0F00
+  set a, [a_source_addr]
+  jsr printhex_word
+
+  set x,19
+  jsr gotox
+
+  set [color],0x5F00
+  jsr printpc_s 
+  dat "b=",0
+  set a, [b_source]
+  jsr printhex_word
+  jsr printpc_s 
+  dat " @ ",0
+  set [color],0x0F00
+  set a, [b_source_addr]
+  jsr printhex_word
+
+  sub [curpos],64
+  :SKIP_HEX_OUTPUT
+
+  ; Run the instruction for real!
+  set a, [source_registers+0]
+  set b, [source_registers+1]
+  set c, [source_registers+2]
+  set x, [source_registers+3]
+  set y, [source_registers+4]
+  set z, [source_registers+5]
+  set i, [source_registers+6]
+  set j, [source_registers+7]
+  set ex, [source_registers+8]
+  set sp, [source_registers+9]
+
+  ; If the instruction is INT, save A to a global first
+  ifb [o_flags], IFL_NBI
+  ife [b_value], 0x8
+  set [int_expected_a_value], a
+
+  set pc, opcode_buffer
+
+:jsr_sample
+  set [jsr_stack_value], [sp]
+  SET PC ,  opcode_test_done
+:int_sample
+  set [int_a_value], pop
+  set [int_pc_value], pop
+  set [int_key_value], 0
+  SET PC ,  opcode_test_done
+:rfi_sample
+  SET PC ,  opcode_test_done
+
+
+  ; Input modifier functions.
+  ; Input: I = Address of the value (unused)
+  ; A = The value to change
+  ; They can use J,C as temp.
+:input_modifier_a_constant
+  set j,a
+  jsr getrandom16
+  set push,b
+  set b,[a_value] ; my value
+  set c,[b_value] ; other value
+  jsr input_modifier_makesafe
+  SET PC ,  input_modifier_makesafe_exit
+:input_modifier_b_constant
+  set j,a
+  jsr getrandom16
+  set push,b
+  set b,[b_value] ; my value
+  set c,[a_value] ; other value
+  jsr input_modifier_makesafe
+  :input_modifier_makesafe_exit
+  set b,pop
+  rts
+:input_modifier_makesafe
+  ; Ensure the result is in safe range, if this operand is a reg
+  ; and the other operand is [reg] or [reg+n].
+  ;
+  ; This includes the following pairs:
+  ; N with 08+N or 10+N where N=0..7
+  ; 1B with 18..1A
+  ;
+  ; Actually, if my target is SP (1B), we can't change the
+  ; value at all, because we can't allow anything write into
+  ; our own code through stack use.
+  ;
+  ; Additionally, don't make any changes in "A, [A]" cases
+  ; because of how the tester works.
+  ;
+  ; Unsafe ranges:
+  ; 0000-1FFF
+  ; 8000-8197
+  ife b,0x1B
+  SET PC ,  makesafe_dont_change_anything ; don't change SP
+  ife b,0x1C
+  SET PC ,  makesafe_dont_change_anything ; don't change PC
+  set [makesafe_temp+1], c
+  set c, [a_value]
+  and c, 7
+  ifl [a_value], 0x18
+  ife c, [b_value]
+  SET PC ,  makesafe_dont_change_anything
+  set c, [makesafe_temp+1]
+  ;
+  ifl a,SAFE_MEMORY_BEGIN+0x40
+  SET PC ,  makesafe_must_check
+  ifg a,0xFF3F
+  SET PC ,  makesafe_must_check
+  ifl a,vram
+  rts
+  ifg a,vram+448
+  rts
+  :makesafe_must_check
+  ; Ok, verify operands.
+  ;
+  ifb b, 0x38
+  rts
+  ;ifc b, 0x38 SET PC , makesafe_check_00to07
+  ;ifn b, 0x1B rts
+  ;:makesafe_check_1B
+  ;ifl c, 0x18 rts
+  ;ifg c, 0x1A rts
+  ;SET PC , makesafe_making_safe
+  :makesafe_check_00to07
+  ifl c, 0x08
+  rts
+  ifg c, 0x17
+  rts
+  ; We need to save C here. We could use push & pop,
+  ; but the RTS in the middle of this would be a trouble.
+  ; So to solve this problem, we use self-modifying code.
+  set [makesafe_temp+1],c ; push
+  and c, 7
+  ifn c, b
+  rts
+:makesafe_temp
+  set c,0x8000 ; pop
+  ;passthru
+  :makesafe_making_safe
+  add a, 0x1000
+  SET PC ,  input_modifier_makesafe
+  :makesafe_dont_change_anything
+  set a, j
+  rts
+
+:make_safe_imm_parameter
+  ; Make an immediate parameter for use in an instruction.
+  ; Normally, our value would be a short integer, so that
+  ; [reg+n] will refer to safe memory.
+  ; However, when the parameter is [imm], we need a safe
+  ; number as is.
+  ife j, 0x1E
+  SET PC ,  make_safe_imm_parameter_mem
+  jsr getrandom16
+  and a, 0x007F
+  sub a, 0x0040
+  rts
+  :make_safe_imm_parameter_mem
+  jsr getrandom16
+  ifb a, 0x8000
+  SET PC ,  safe_lo
+  ; 8600-FE00
+  mod a, 0xFE00-0x8600
+  add a, 0x8600
+  rts
+  :safe_lo
+  ; 3500-74FF
+  and a, 0x3FFF
+  add a, 0x3500
+  rts
+
+:input_modifier_jsr_sample
+  set a, jsr_sample
+  rts
+:input_modifier_mod_num_devices
+  mod a, [num_devices]
+  rts
+:input_modifier_and6
+  and a, 6
+  rts
+
+:getrandom16
+  ; Linear congruential generator: a*1103515245+12345
+  set push,b
+  set push,c
+
+  ; 32-bit multiplication
+  set c, [randseed32+0]
+  set b, c
+  mul b, 0x4E6D ;lo of multiplier
+  set a, ex
+
+  mul c, 0x41C6 ;hi of multiplier
+  add b, c
+  add a, ex
+
+  set c, [randseed32+1]
+  mul c, 0x4E6D
+  add b, c
+  add a, ex
+
+  add b, 12345 ;lo of increment
+  add a, ex
+
+  set [randseed32+0], b
+  set [randseed32+1], a
+
+  set c,pop
+  set b,pop
+  rts
+
+:verify_target_address
+  ;ifl i, INVALID_TARGET_MEMORY_BEGIN rts
+  ifl i, INVALID_TARGET_MEMORY_END
+  SET PC ,  target_address_invalid
+  ifl i, vram
+  rts
+  ifg i, vram+448
+  rts
+  :target_address_invalid
+  set push,i
+  set [color],0xD400
+  jsr printpc_s
+  dat 10,"INTERNAL ERROR",10
+  ; 0123456789ABCDEF0123456789ABCDEF
+  dat "Would accidentally overwrite",0
+  jsr clreol_newline
+  jsr printpc_s
+  dat "some of program code at ",0
+  set a,pop
+  jsr printhex_word
+  jsr printpc_s
+  dat ".",0
+  jsr clreol_newline
+  set sp,0xEF80
+  SET PC ,  rerandomize_address
+
+:opcode_test_done
+
+  ; Save the outcome: Part 1 = registers
+  ; Save the registers also in source_registers because [b_source_addr] may point to them
+  set [source_registers+0], a
+  set [outcome_registers+0], a
+  set [source_registers+1], b
+  set [outcome_registers+1], b
+  set [source_registers+2], c
+  set [outcome_registers+2], c
+  set [source_registers+3], x
+  set [outcome_registers+3], x
+  set [source_registers+4], y
+  set [outcome_registers+4], y
+  set [source_registers+5], z
+  set [outcome_registers+5], z
+  set [source_registers+6], i
+  set [outcome_registers+6], i
+  set [source_registers+7], j
+  set [outcome_registers+7], j
+  set [source_registers+8], ex
+  set [outcome_registers+8], ex
+  set [source_registers+9], sp
+  set [outcome_registers+9], sp
+  xor a, 0xDEAD ; just in case iag is not supported
+  iag a
+  set [outcome_registers+11], a
+  set [source_registers+11], a
+
+  ; Prevent accidentally damaging the stack values
+  set sp,0xE000
+
+  ; Save the outcome: Part 2 = Value of B operand
+  ; Then restore the memory address contents for simulation.
+  ifb [o_flags], IFL_NBI
+  SET PC ,  nbi_skip_b_op
+  set b, [b_source_addr]
+  set [b_outcome], [b]
+  set [b], [b_source]
+  :nbi_skip_b_op
+
+  set b, [a_source_addr]
+  set [a_outcome], [b]
+  set [b], [a_source]
+
+  ; Just in case the instruction trampled over source_registers[],
+  ; reset it too
+  set [source_registers+0], [default_registers+0]
+  set [source_registers+1], [default_registers+1]
+  set [source_registers+2], [default_registers+2]
+  set [source_registers+3], [default_registers+3]
+  set [source_registers+4], [default_registers+4]
+  set [source_registers+5], [default_registers+5]
+  set [source_registers+6], [default_registers+6]
+  set [source_registers+7], [default_registers+7]
+  set [source_registers+8], [default_registers+8]
+  set [source_registers+9], [default_registers+9]
+  set [source_registers+10], opcode_buffer+1
+
+  ifc [o_flags], IFL_NBI
+  SET PC ,  skip_nbi_init_again
+  set x, [b_settings]
+  set z, 2
+  jsr [x + INS_TEMPLATE_SETS]
+  :skip_nbi_init_again
+
+  set [randseed32+0], [backup_randseed32+0]
+  set [randseed32+1], [backup_randseed32+1]
+
+  set x, 1
+  jsr load_sources
+
+  ; Now simulate the instruction
+  set a, [a_source_addr]
+  set b, [b_source_addr]
+
+  set [opcode_num_failures], 0
+
+  set x, [o_settings]
+  ifc [o_flags], IFL_NBI
+  SET PC ,  nbi_skip_other_template
+  set z, 1
+  set x, [b_settings]
+  :nbi_skip_other_template
+  jsr [x + INS_TEMPLATE_SETS]
+
+  ; Compare the results
+
+  set b, [a_source_addr]
+  set [a_source], [b]
+
+  ifb [o_flags], IFL_NBI
+  SET PC ,  nbi_skip_b_op_2
+  set b, [b_source_addr]
+  set [b_source], [b]
+  :nbi_skip_b_op_2
+
+  ifc [o_flags], IFL_NBI
+  SET PC ,  nbi_skip_b_op_swap
+  ; For NBI instructions, A is the target, not B.
+  ; Move A into B so we can continue comparing B.
+  set [b_source], [a_source]
+  set [b_source_addr], [a_source_addr]
+  set [b_outcome], [a_outcome]
+  :nbi_skip_b_op_swap
+
+  ife [b_source], [b_outcome]
+  SET PC ,  test_outcome_ok
+
+  ; Only report the outcome difference if it is not
+  ; one of the registers we will report anyway.
+  ifg [b_source_addr], source_registers-1
+  ifl [b_source_addr], source_registers+12-1
+  SET PC ,  test_outcome_ok
+  jsr opcode_test_failure_expect
+
+  :test_outcome_ok
+  ; Compare all registers
+  set i, 0
+  set j, 0
+  :reg_compare_loop
+  ifn [source_registers+i], [outcome_registers+i]
+  ifn i, 10 ; don't compare PC
+  jsr opcode_test_failure_reg
+  add i,1
+  ifn i,12
+  SET PC ,  reg_compare_loop
+
+  ; Done, go to next instruction
+  jsr opcode_test_failure_end
+
+  ias IRQ_HANDLER
+  iaq 0
+  SET PC ,  next_instruction
+
+:clreol_newline
+  set x, 32
+  jsr clreol
+  set a, 10
+  SET PC ,  printch
+
+:opcode_test_failure_expect
+  jsr opcode_test_failure_begin
+  jsr printpc_s
+  dat "Expected ",0
+  set a, [b_source]
+  jsr printhex_word
+  jsr printpc_s
+  dat " @ ",0
+  set a, [b_source_addr]
+  jsr printhex_word
+
+  jsr printpc_s 
+  dat ", got ",0
+  set a, [b_outcome]
+  jsr printhex_word
+
+  ; Go to beginning of next line
+  SET PC ,  clreol_newline
+  ;add [curpos], 32
+  ;and [curpos], 0xFFE0
+  ;rts
+
+:opcode_test_failure_reg
+  set push,i
+  set push,j
+  jsr opcode_test_failure_begin
+  jsr printpc_s 
+  dat "Expected ",0
+  ife 0,pop 
+  SET PC ,  opcode_not_push
+  jsr printpc_s 
+  dat "PUSH ",0
+  :opcode_not_push
+  set i,pop
+  set push,i
+  set b,i
+  mul b,3
+  add b,registers
+  jsr prints
+  jsr printpc_s 
+  dat " = ",0
+  set i,pop
+  set push,i
+  set a, [source_registers+i]
+  jsr printhex_word
+  jsr printpc_s 
+  dat " got ",0
+  set i,pop
+  set push,i
+  set a, [outcome_registers+i]
+  jsr printhex_word
+  set a, [curpos]
+  and a,0x1F
+  ifn a, 0 
+ jsr clreol_newline
+  set i,pop
+  set j,0
+  rts
+
+  :opcode_test_failure_begin
+  ifn [opcode_num_failures], 0 
+  rts
+  set [opcode_num_failures], 1
+  set [color], 0x4E00
+  jsr printpc_s 
+  dat 10," - FAIL",0
+  set [color], 0x0F00
+  set x, 19
+  jsr clreol
+  set a, 10
+  jsr printch
+  set [color], 0x4E00
+  set [reprint_params],0xFFFF
+  rts
+  :opcode_test_failure_end
+  ife [opcode_num_failures],0 
+  rts
+  set b, 0xC
+  jsr setborder
+  jsr getch
+  set b, 0xF
+  jsr setborder
+  set [color], 0x0F00
+  jsr clreol_newline
+  sub [curpos],32
+  ; Increment the error number statistics
+  ifb [o_flags], IFL_NBI 
+  SET PC ,  increment_nbi_errors
+  set a, [o_value]
+  add [num_errors_basic+a], 1
+  SET PC ,  next_instruction
+  :increment_nbi_errors
+  set a, [b_value]
+  add [num_errors_nbi+a], 1
+  SET PC ,  next_instruction
+
+  :opcode_test_failure_oneliner_message
+  jsr opcode_test_failure_begin
+  set b, pop
+  jsr prints
+  set push, b
+  SET PC ,  clreol_newline
+
+  :load_sources
+  set push,x
+  jsr load_source_a
+  set x,pop
+  set [a_source_addr], i
+  set [a_source], [i]
+
+  ifb [o_flags], IFL_NBI 
+  SET PC ,  skip_nbi_op2_init_part1
+  jsr load_source_b
+  set [b_source_addr], i
+  set [b_source], [i]
+  rts
+  :skip_nbi_op2_init_part1
+  set [b_source_addr], imm_dummy2
+  set [b_source], [imm_dummy2]
+  rts
+
+  :load_source_a
+  ; Load parameter A, store to J
+  ; Input: X=1 if we can change SP for simulation.
+  set c, [a_flags]
+  set y, imm_dummy+0
+  ifb c, PFL_PUSHPOP 
+  SET PC ,  a_pushpop
+  set a, [a_value]
+  jsr load_operand
+  SET PC ,  done_source_a
+  :a_pushpop
+  ; Simulate POP (SP++). The source value is located at [SP].
+  set i, [source_registers+9]
+  ife x,1 
+  add [source_registers+9],1
+  set x, 4 ;R/W memory variable
+  :done_source_a
+  set j, [a_input_desired]
+  set c, [a_input_level]
+  SET PC ,  make_operand_changes
+
+  :load_source_b
+  ; Load parameter B, store to J; put in I its address
+  ; Input: X=1 if we can change SP for simulation.
+  set c, [b_flags]
+  set y, imm_dummy2
+  ifb c, PFL_PUSHPOP 
+  SET PC ,  b_pushpop
+  set a, [b_value]
+  jsr load_operand
+  SET PC ,  done_source_b
+  :b_pushpop
+  ; Simulate PUSH (--SP). The target value is located at [SP-1].
+  set i, [source_registers+9]
+  sub i, 1
+  ife x,1 
+  sub [source_registers+9],1
+  set x, 4 ;R/W memory variable
+  :done_source_b
+  set j, [b_input_desired]
+  set c, [b_input_level]
+  SET PC ,  make_operand_changes
+
+  :make_operand_changes
+  ; INPUT:
+  ; I = Operand address
+  ; X = Category (see load_operand)
+  ; J = Pointer to function which changes the value (in A)
+  ; C = Level of changing
+  ; 0 = Never change, J may be invalid pointer too
+  ; 1 = Change if category 1, 2 or 4
+  ; 2 = Change if possible
+  ; USES A,C,J
+  ife c, 0 
+  rts
+  ife c, 1 
+  ifc x, 7 
+  rts
+
+  ; Load current value
+  ifn i,y 
+  jsr verify_target_address
+  set a, [i]
+  ; Change to new value
+  jsr j
+  ; See if we can fit it
+  ifb x,8 
+  SET PC ,  try_changing_imm
+  ; ok
+  set [i], a
+  rts
+
+  :try_changing_imm
+  ifn a, 0xFFFF 
+  ifg a,0x1E 
+  rts
+
+  ; Save the changed value (which is in an immediate)
+  set [i], a
+
+  ; Encode the new value in the opcode.
+  add a,1
+  set c, [opcode_buffer]
+  and c, 0x83FF
+  shl a, 10
+  bor c, a
+  set [opcode_buffer], c
+  rts
+
+  :load_operand
+  ; INPUT:
+  ; A = Parameter index from opcode (bbbbb or aaaaaa)
+  ; C = Parameter flags (such as PFL_BASEREG and so on)
+  ; Y = Pointer to temporary variable (immdummy or immdummy2)
+  ; OUTPUT:
+  ; I = Operand address
+  ; X = Category:
+  ; 0 = Expression (Read only)
+  ; 1 = Register (R/W)
+  ; 2 = Immediate operand (R/W)
+  ; 4 = Memory variable (R/W)
+  ; 8 = Small immediate (R, maybe W)
+  ; USES:
+  ; A,J
+  ;
+  set j, -1
+  and a, 7
+  set i, y
+  set x, 0
+  set [i], 0
+  ; Check for register index
+  ifb c, PFL_BASEREG 
+  set j, a
+  ifb c, PFL_EX 
+  set j, 8
+  ifb c, PFL_SP 
+  set j, 9
+  ifb c, PFL_PC
+  set j, 10
+  ; I = address of a register
+  ife j, -1 
+  SET PC ,  op_reg_skip
+  set x, 1
+  set i, source_registers
+  add i, j
+  :op_reg_skip
+  ; Check for long immediate
+  ifc c, PFL_IMM 
+  SET PC ,  op_imm_skip
+  ; Yep, got an immediate.
+  set a, [source_registers+10]
+  add [source_registers+10], 1
+  set x, 2
+  ife j, -1 
+  SET PC ,  op_imm_reg_skip
+  ; Reg+N means we must make a temporary.
+  set j, [i] ; load register value
+  add j, [a] ; add the immediate
+  set a, y
+  set [a], j ; place the result in [imm_dummy]
+  set x, 0
+  :op_imm_reg_skip
+  set i,a
+  :op_imm_skip
+  ifc c, PFL_SMALL_IMM 
+  SET PC ,  op_small_imm_skip
+  ; Got a small immediate. Make a temporary for it.
+  set x, 8
+  set j, [opcode_buffer]
+  shr j, 10
+  and j, 0x1F
+  sub j, 1
+  set i, y
+  set [i], j
+  :op_small_imm_skip
+  ifc c, PFL_MEM 
+  rts
+  set i, [i]
+  set x, 4
+  rts
+:ins_templates
+  dat "000",0, 0, IFL_NBI
+  dat "SET",0, set_template, 0
+  dat "ADD",0, add_template, 0
+  dat "SUB",0, sub_template, 0
+  dat "MUL",0, mul_template, 0
+  dat "MLI",0, mli_template, 0
+  dat "DIV",0, div_template, 0
+  dat "DVI",0, dvi_template, 0
+  dat "MOD",0, mod_template, 0
+  dat "MDI",0, mdi_template, 0
+  dat "AND",0, and_template, 0
+  dat "BOR",0, bor_template, 0
+  dat "XOR",0, xor_template, 0
+  dat "SHR",0, shr_template, 0
+  dat "ASR",0, asr_template, 0
+  dat "SHL",0, shl_template, 0
+  dat "IFB",0, 0, IFL_CONDITIONAL
+  dat "IFC",0, 0, IFL_CONDITIONAL
+  dat "IFE",0, 0, IFL_CONDITIONAL
+  dat "IFN",0, 0, IFL_CONDITIONAL
+  dat "IFG",0, 0, IFL_CONDITIONAL
+  dat "IFA",0, 0, IFL_CONDITIONAL
+  dat "IFL",0, 0, IFL_CONDITIONAL
+  dat "IFU",0, 0, IFL_CONDITIONAL
+  dat "018",0, 0, IFL_UNDEFINED
+  dat "019",0, 0, IFL_UNDEFINED
+  dat "ADX",0, adx_template, 0
+  dat "SBX",0, sbx_template, 0
+  dat "01C",0, 0, IFL_UNDEFINED
+  dat "01D",0, 0, IFL_UNDEFINED
+  dat "STI",0, sti_template, 0
+  dat "STD",0, std_template, 0
+:nbi_templates
+  dat "n00",0, 0, IFL_UNDEFINED
+  dat "JSR",0, jsr_template, 0
+  dat "n02",0, 0, IFL_UNDEFINED
+  dat "n03",0, 0, IFL_UNDEFINED
+  dat "n04",0, 0, IFL_UNDEFINED
+  dat "n05",0, 0, IFL_UNDEFINED
+  dat "n06",0, 0, IFL_UNDEFINED
+  dat "HCF",0, 0, IFL_DANGEROUS ; Keep it this way, let's not test it.
+  dat "INT",0, int_template, 0
+  dat "IAG",0, iag_template, 0
+  dat "IAS",0, ias_template, 0
+  dat "RFI",0, rfi_template, 0
+  dat "IAQ",0, iaq_template, 0
+  dat "n0D",0, 0, IFL_UNDEFINED
+  dat "n0E",0, 0, IFL_UNDEFINED
+  dat "n0F",0, 0, IFL_UNDEFINED
+  dat "HWN",0, hwn_template, 0
+  dat "HWQ",0, hwq_template, 0
+  dat "HWI",0, 0, IFL_UNDEFINED
+  dat "n13",0, 0, IFL_UNDEFINED
+  dat "n14",0, 0, IFL_UNDEFINED
+  dat "n15",0, 0, IFL_UNDEFINED
+  dat "n16",0, 0, IFL_UNDEFINED
+  dat "n17",0, 0, IFL_UNDEFINED
+  dat "n18",0, 0, IFL_UNDEFINED
+  dat "n19",0, 0, IFL_UNDEFINED
+  dat "n1A",0, 0, IFL_UNDEFINED
+  dat "n1B",0, 0, IFL_UNDEFINED
+  dat "n1C",0, 0, IFL_UNDEFINED
+  dat "n1D",0, 0, IFL_UNDEFINED
+  dat "n1E",0, 0, IFL_UNDEFINED
+  dat "n1F",0, 0, IFL_UNDEFINED
+
+
+
+:parm_templates
+  ; 0 1 2 3 4 5 6 7
+  ;00
+  dat "A", 0,0,0,0,0,0,PFL_BASEREG
+  dat "B", 0,0,0,0,0,0,PFL_BASEREG
+  dat "C", 0,0,0,0,0,0,PFL_BASEREG
+  dat "X", 0,0,0,0,0,0,PFL_BASEREG
+  dat "Y", 0,0,0,0,0,0,PFL_BASEREG
+  dat "Z", 0,0,0,0,0,0,PFL_BASEREG
+  dat "I", 0,0,0,0,0,0,PFL_BASEREG
+  dat "J", 0,0,0,0,0,0,PFL_BASEREG
+  ;08
+  dat "[A]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[B]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[C]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[X]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[Y]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[Z]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[I]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  dat "[J]", 0,0,0,0,PFL_BASEREG + PFL_MEM
+  ;10
+  dat "[A+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[B+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[C+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[X+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[Y+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[Z+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[I+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  dat "[J+n]", 0,0,PFL_BASEREG + PFL_MEM + PFL_IMM
+  ;18
+  dat "PSHPOP", 0,PFL_PUSHPOP
+  dat "[SP]", 0,0,0,PFL_SP + PFL_MEM
+  ;1A
+  dat "[SP+n]", 0,PFL_SP + PFL_MEM + PFL_IMM
+  dat "SP", 0,0,0,0,0,PFL_SP
+  ;1C
+  dat "PC", 0,0,0,0,0,PFL_PC
+  dat "EX", 0,0,0,0,0,PFL_EX
+  ;1E
+  dat "[mem]", 0,0,PFL_MEM + PFL_IMM
+  dat "imm", 0,0,0,0,PFL_IMM
+  ;20
+  dat "-1", 0,0,0,0,0,PFL_SMALL_IMM
+  dat "0", 0,0,0,0,0,0,PFL_SMALL_IMM
+  dat "1", 0,0,0,0,0,0,PFL_SMALL_IMM
+  dat "2", 0,0,0,0,0,0,PFL_SMALL_IMM
+  dat "3", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "4", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "5", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "6", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "7", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "8", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "9", 0,0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "10", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "11", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "12", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "13", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "14", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "15", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "16", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "17", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "18", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "19", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "20", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "21", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "22", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "23", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "24", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "25", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "26", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "27", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "28", 0,0,0,0,0,PFL_SMALL_IMM + PFL_REDUNDANT
+  dat "29", 0,0,0,0,0,PFL_SMALL_IMM
+  dat "30", 0,0,0,0,0,PFL_SMALL_IMM
+:registers
+  dat "A",0,0, "B",0,0, "C",0,0, "X",0,0, "Y",0,0, "Z",0,0, "I",0,0, "J",0,0
+  dat "EX",0, "SP",0, "PC",0, "IA",0
+
+:set_template
+  ; We trust SET works
+  set [b], [a]
+  rts
+:add_template
+  ; ADD: We don't trust EX is set properly, so let's simulate it.
+  ; We kind of have to trust 16-bit ADD is implemented properly though.
+  set i, [a]
+  set j, [b]
+  add j, i
+  set [b], j
+  ; If the outcome is smaller than one of the sources, set EX=1
+  ; (Don't trust the hardware EX at this point)
+  set c, 0
+  ifl j, i 
+  set c, 1
+  set [source_registers+8], c
+  rts
+:sub_template
+  ; SUB without SUB: Using ADD. Also simulate EX.
+  set i, [a]
+  neg (i)
+  set j, [b]
+  set x, j ; Save original b in x
+  add j, i
+  set [b], j
+  ; If the outcome is larger than one of the sources, set EX=0xFFFF
+  ; (Don't trust the hardware EX at this point)
+  set c, 0x0000
+  ifg j, x 
+  set c, 0xFFFF
+  set [source_registers+8], c
+  rts
+:mul_template
+  ; MUL without MUL: We require SET,BOR,IFE and 32-bit ADD & SHR & SHL.
+  ;
+  ; part1 = A Hi=X, Lo=I
+  ; part2 = B Hi=Y, Lo=J
+  ; result = 0; Hi=Z, Lo=C
+  ; while(part1)
+  ; if(part1 & 1)
+  ; result += part2
+  ; part1 >>= 1
+  ; part2 <<= 1
+  ; endwhile
+  set i, [a]
+  set j, [b]
+  :mul_template_entry
+  set c, 0
+  set x, c
+  set y, c
+  set z, c
+  :mul_loop
+  ife i, 0 
+  ife x, 0 
+  SET PC ,  exit_mul_loop
+  ; part1 >>= 1
+  shr i, 1
+  and i, 0x7FFF
+  ; if(carry), result += part2
+  ife ex, 0 
+  SET PC ,  mul_noadd
+  addd (c,z, j,y)
+  :mul_noadd
+  shr x, 1
+  and x, 0x7FFF
+  bor i, ex
+  ; part2 <<= 1
+  shld (j,y,1)
+  SET PC ,  mul_loop
+  :exit_mul_loop
+  set [b], c
+  set [source_registers+8], z
+  rts
+:mli_template
+  ; MLI without MLI: We require SET,ADD,SUB,MUL,XOR,IFC
+  set i, [a]
+  set j, [b]
+  set x, 0x8000 ; sign bit
+
+  set c, 0
+  ifc i, x 
+  SET PC ,  mli_a_not_negative
+  ; Flip sign bit and negate i
+  xor c, x
+  neg (i)
+  :mli_a_not_negative
+  ifc j, x 
+  SET PC ,  mli_b_not_negative
+  ; Flip sign bit and negate j
+  xor c, x
+  neg (j)
+  :mli_b_not_negative
+
+  set push, c
+  jsr mul_template_entry
+  set j, c
+  set ex, z
+  set x, 0x8000
+  set c, pop
+  ;mul j, i
+
+  ifc c, x 
+  SET PC ,  mli_result_not_negative
+  ; Negate result
+  set c, ex
+  negd (j, c)
+  set ex, c
+  :mli_result_not_negative
+  set [b], j
+  set [source_registers+8], ex
+  rts
+:div_template
+  ; DIV without DIV: See divmod
+  ife [a], 0 
+  SET PC ,  div_zero
+  set y, [b]
+  set j, 0
+  set i, [a]
+  jsr divmod
+  :div_result
+  set [b], z
+  set [source_registers+8], c
+  rts
+:dvi_template
+  ; DVI without DVI: See divmod and MLI
+  ife [a], 0 
+  SET PC ,  div_zero
+  ;
+  set y, [b]
+  set i, [a]
+
+  set x, 0x8000
+  set c, 0
+  ifc i, x 
+  SET PC ,  dvi_a_not_negative
+  ; Flip sign bit and negate i
+  xor c, x
+  neg (i)
+  :dvi_a_not_negative
+  ifc y, x 
+  SET PC ,  dvi_b_not_negative
+  ; Flip sign bit and negate y
+  xor c, x
+  neg (y)
+  :dvi_b_not_negative
+  set j, 0
+
+  set push, c
+  jsr divmod
+  set a, pop
+  ifc a, 0x8000
+  SET PC ,  div_result ;(not negative)
+  ; Negate result
+  negd (c, z)
+  SET PC ,  div_result
+
+:mod_template
+  ; MOD without MOD: See divmod
+  ife [a], 0 
+  SET PC ,  mod_zero
+  set y, 0
+  set j, [b]
+  set i, [a]
+  jsr divmod
+  :mod_result
+  set [b], j
+  rts
+:mdi_template
+  ; MDI without MDI: See divmod and DVI
+  ife [a], 0 
+  SET PC ,  mod_zero
+
+  set j, [b]
+  set i, [a]
+
+  set x, 0x8000
+  set c, 0
+  ifc i, x
+  SET PC ,  mdi_a_not_negative
+  ; (Don't) flip sign bit and negate i
+  ;xor c, x
+  neg (i)
+  :mdi_a_not_negative
+  ifc j, x 
+  SET PC ,  mdi_b_not_negative
+  ; Flip sign bit and negate j
+  xor c, x
+  neg (j)
+  :mdi_b_not_negative
+  set y, 0
+
+  set push, c
+  jsr divmod
+  set a, pop
+  ifc a, 0x8000 
+  SET PC ,  mod_result
+  neg (j)
+  SET PC ,  mod_result
+  :div_zero
+  set [source_registers+8], 0
+  :mod_zero
+  set [b], 0
+  rts
+  :divmod
+  ;DIVMOD:
+  ; I = divisor (16-bit)
+  ; Y:J = dividend (32-bit)
+  ;INTERNALS:
+  ; part1 = a Hi=X, Lo=I (divisor)
+  ; remain = b Hi=Y, Lo=J (what is being divided)
+  ; result = 0 Hi=Z, Lo=C
+  ; mask = 1 Hi=B, Lo=A
+  ;
+  ; while(!(part1 & 0x80000000)) // or, while(part1 < remain)
+  ; part1 <<= 1
+  ; mask <<= 1
+  ; endwhile
+  ;
+  ; do
+  ; if(remain >= part1) -- Add if(bHi > aHi || (bHi == aHi && bLo >= aLo))
+  ; -- Not if(bHi < aHi || (bHi == aHi && bLo < aLo))
+  ; remain -= part1
+  ; result += mask
+  ; endif
+  ; part1 >>= 1
+  ; mask >>= 1
+  ; while(mask)
+  ;OUTPUT:
+  ; Z:C = division result
+  ; Y:J = remainder
+  set push, b
+  ; z:c = 0 (result)
+  set c, 0
+  set z, c
+  ; y:j = b<<16 (remain)
+  ;set y, [b]
+  ;set j, c
+  ; x:i = a (part1)
+  set x, c
+  ;set i, [a]
+  ; b:a = 1 (mask)
+  set b, c
+  set a, 1
+  :divmod_loop1
+  ifb x, 0x8000 
+  SET PC ,  exit_divmod_loop1
+  ; x:i <<= 1
+  shld (i, x, 1)
+  ; b:a <<=1
+  shld (a, b, 1)
+  SET PC ,  divmod_loop1
+  :exit_divmod_loop1
+  :divmod_loop2
+  ifl y, x 
+  SET PC ,  divmod_noadd
+  ife y, x 
+  ifl j, i 
+  SET PC ,  divmod_noadd
+  :divmod_add
+  ; z:c += b:a
+  addd (c, z, a, b)
+  ; y:j -= x:i
+  subd (j, y, i, x)
+  :divmod_noadd
+  ; x:i >>= 1
+  shrd (i, x, 1)
+  ; b:a >>= 1
+  shrd (a, b, 1)
+  ; Just in case SHR is improperly implemented, strip the sign bits (done in shrd)
+  ;
+  ifn b, 0 
+  SET PC ,  divmod_loop2
+  ifn a, 0 
+  SET PC ,  divmod_loop2
+  :exit_divmod_loop2
+  set b, pop
+  rts
+
+:and_template
+  ; AND without AND! Using SET, IFB and ADD instead.
+  set i, 1
+  set j, 0
+  :and_loop
+  ifb i, [a] 
+  ifb i, [b] 
+  add j, i
+  add i, i
+  ifb i, [a] 
+  ifb i, [b] 
+  add j, i
+  add i, i
+  ifb i, [a] 
+  ifb i, [b] 
+  add j, i
+  add i, i
+  ifb i, [a] 
+  ifb i, [b] 
+  add j, i
+  add i, i
+  ifn i, 0 
+  SET PC ,  and_loop
+  set [b], j
+  rts
+:bor_template
+  ; OR without OR! Using SET, IFC, ADD and SUB instead.
+  set i, 1
+  set j, 0xFFFF
+  :or_loop
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  add i, i
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  add i, i
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  add i, i
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  add i, i
+  ifn i, 0 
+  SET PC ,  or_loop
+  set [b], j
+  rts
+:xor_template
+  ; XOR without XOR: Using SET, IFB, IFC, ADD and SUB.
+  set i, 1
+  set j, 0xFFFF
+  :xor_loop
+  ; Deduct bit if both bits are set or both bits are clear.
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  ifb i, [a] 
+  ifb i, [b] 
+  sub j, i
+  add i, i
+  ifc i, [a] 
+  ifc i, [b] 
+  sub j, i
+  ifb i, [a] 
+  ifb i, [b] 
+  sub j, i
+  add i, i
+  ifn i, 0 
+  SET PC ,  xor_loop
+  set [b], j
+  rts
+
+  ; ALTERNATIVE OPTION:
+
+  ; A xor B = (a & ~b) | (b & ~a)
+  ; ~a = 0xFFFF - a
+  ;set i, [a]
+  ;set j, [b]
+  ;set c, 0xFFFF
+  ;sub c, i ; c = ~a
+  ;set i, 0xFFFF
+  ;sub i, j ; i = ~b
+  ;and i, [a]
+  ;and c, [b]
+  ;bor c, i
+  ;set [b], c
+  ;rts
+:shr_template
+  ; SHR without SHR! Using SHL instead. (And SET, AND, XOR, IFB)
+  ;
+  ; We can do with it with SHL instead.
+  ;
+  ; Let's see.
+  ;
+  ; 10001101 >> 1
+  ; 01000110 1
+  ;
+  ; This is the same as (x << 7) >> 8
+  set j, [b]
+  set c, [a]
+  and c, 15
+  set i, 16
+  sub i, c
+  shl j, i
+  ifb [a], 16 
+  SET PC ,  shr_high
+  :shr_low
+  set [b], ex
+  set [source_registers+8], j
+  rts
+  :shr_high
+  set [b], 0
+  set [source_registers+8], ex
+  rts
+:shl_template
+  ; SHL without SHL: Using SET, ADD and IFE
+
+  set c, [b]
+  set i, [a]
+  and i, 0x1F
+  set x, 0
+  :shl_loop
+  ife i, 0 
+  SET PC ,  shl_done
+  ; x:c += x:c
+  addd (c,x, c,x)
+  add i, -1
+  SET PC ,  shl_loop
+  :shl_done
+  set [b], c
+  set [source_registers+8], x
+  rts
+:asr_template
+  ; ASR without ASR: Use SET,SHR,XOR,BOR,IFC
+  set i, [a]
+  set c, 0 ; sign-extension
+  set x, 0
+  ifc [b], 0x8000 
+  SET PC ,  asr_not_signed
+
+  set c, 0xFFFF
+  shr c, i
+  ; TODO: Workarounds in case SHR is broken and works like ASR
+  xor c, 0xFFFF
+  ifc i, 16 
+  SET PC ,  asr_not_signed
+  set x, ex
+  xor x, 0xFFFF
+
+  :asr_not_signed
+  set j, [b]
+  shr j, i
+  bor j, c
+  bor ex, x
+
+  set [b], j
+  set [source_registers+8], ex
+  rts
+
+:adx_template
+  set x, [source_registers+8]
+  set j, [b]
+  set i, [a]
+  ; If one of the operands is zero, we _can_ reliably test overflow
+  ifn x,0 
+  SET PC ,  adx_no0_x
+  set z, i
+  add z, j
+  SET PC ,  adx_got_manual_ex
+  :adx_no0_x
+  ifn i,0 
+  SET PC ,  adx_no0_i
+  set z, j
+  add z, x
+  SET PC ,  adx_got_manual_ex
+  :adx_no0_i
+  ifn j,0 
+  SET PC ,  adx_no0_j
+  set z, i
+  add z, x
+  SET PC ,  adx_got_manual_ex
+  :adx_no0_j
+  ; Otherwise, use hardware ADX because we don't know the correct way to do it.
+  set ex, x
+  adx j, i
+  :adx_got_manual_ex
+  set c, ex
+
+  ; But do the a+b+ex part by ourselves, because at least that part we know
+  add [b], [a] ; repeat [a] because adx may have erroneously clobbered i
+  add [b], x
+  set [source_registers+8], c
+  rts
+
+:sbx_template
+  set x, [source_registers+8]
+  set j, [b]
+  set i, [a]
+  ; If one of the operands is zero, we _can_ reliably test overflow
+  ifn x,0 
+  SET PC ,  sbx_no0_x
+  set z, i
+  sub z, j
+  SET PC ,  sbx_got_manual_ex
+  :sbx_no0_x
+  ifn j,0 
+  SET PC ,  sbx_no0_j
+  set z, i
+  add z, x
+  SET PC ,  sbx_got_manual_ex
+  :sbx_no0_j
+  ; Otherwise, use hardware SBX because we don't know the correct way to do it.
+  set ex, x
+  sbx j, i
+  :sbx_got_manual_ex
+  set c, ex
+
+  ; But do the a-b+ex part by ourselves, because at least that part we know
+  sub [b], [a] ; repeat [a] because sbx may have erroneously clobbered i
+  add [b], x
+  set [source_registers+8], c
+  rts
+
+
+:sti_template
+  set [b], [a]
+  add [source_registers+6], 1
+  add [source_registers+7], 1
+  rts
+:std_template
+  set [b], [a]
+  add [source_registers+6], -1
+  add [source_registers+7], -1
+  rts
+
+:jsr_template
+  ifc z, 1 
+  SET PC ,  jsr_init
+  ; These things should have happened in jsr_sample.
+  set [a], jsr_sample
+  ifn [jsr_stack_value], [source_registers+10] 
+  jsr jsr_failed_pc
+  ; SP is expected to shrink by 1
+  sub [source_registers+9], 1
+  :jsr_done_test
+  rts
+  :jsr_failed_pc
+  set i, 10 ;PC
+  set [outcome_registers+i], [jsr_stack_value]
+  set j, 1
+  SET PC ,  opcode_test_failure_reg
+  :jsr_init
+  ; We really want a = jsr_sample
+  set [a_input_desired], input_modifier_jsr_sample
+  set [a_input_level], 2
+  ; Don't reset jsr_stack_value if we already did the real opcode
+  ifb z, 2 
+  rts
+  set [jsr_stack_value], 0x5555
+  rts
+
+:int_template
+  ; Z = 0: Calling int_init for first time before real opcode
+  ; Z = 2: Calling int_init the second time, before simulation
+  ; Z = 1: Doing simulation
+  ifc z, 1 
+  SET PC ,  int_init
+  ;
+  ife [int_key_value], 0xDEAD 
+  SET PC ,  int_failed_never_happened
+  ; Load original source operand
+  set push, [a]
+  ; FIrst pop is original value of A
+  ifn [int_a_value], [int_expected_a_value] 
+  jsr int_failed_a
+  ; Second pop is value of PC
+  ifn [int_pc_value], [source_registers+10]
+   jsr int_failed_pc
+  ; A is the value of source operand
+  set [source_registers+0], pop
+  :int_done_test
+  jsr hw_enable_irq
+  rts
+  :int_failed_never_happened
+  jsr opcode_test_failure_oneliner_message 
+  dat "Interrupt never happened",0
+  SET PC ,  int_done_test
+  :int_failed_a
+  set i, 0 ;A
+  set [outcome_registers+i], [int_expected_a_value]
+  set j, 1
+  SET PC ,  opcode_test_failure_reg
+  :int_failed_pc
+  set i, 10 ;PC
+  set [outcome_registers+i], [int_pc_value]
+  set j, 1
+  SET PC ,  opcode_test_failure_reg
+  :int_init
+  ifb z, 2 
+  rts
+
+  jsr flush_pending_irq
+  jsr hw_disable_irq
+  ias int_sample
+  iaq 0
+  ; Don't reset int_a_value and int_pc_value if we already did the real opcode
+  xor a , 0xFFFF
+  set [int_a_value], a
+  xor a , 0xDEAD
+  set [int_pc_value], a
+  set [int_key_value], 0xDEAD
+  rts
+
+:iag_template
+  ifc z, 1 
+  SET PC ,  iag_init
+  set [a], [source_registers+11]
+  :iag_init
+  rts
+
+:ias_template
+  ifc z, 1 
+  SET PC ,  ias_init
+  set [source_registers+11], [a]
+  :ias_init
+  jsr flush_pending_irq
+  jsr hw_disable_irq
+  rts
+
+:rfi_template
+  ifc z, 1 
+  SET PC ,  rfi_init
+  ; Nothing will be written to [a], unless incidentally
+
+  ; A is expected to be 0xBEEF (from rfi_init)
+  set [source_registers+0], 0xBEEF
+
+  ; SP is expected to grow by 2
+  add [source_registers+9], 2
+  rts
+  :rfi_init
+  ; Must prepare stack in such manner that
+  ; execution will return right at rfi_sample.
+
+  ; Set up returning A = 0xBEEF
+  set b, [source_registers+9]
+  set [b+0], 0xBEEF
+  set [b+1], rfi_sample
+  rts
+
+:iaq_template
+  ifc z, 1 
+  SET PC ,  iaq_init
+
+  ; If interrupts were queued, we did not see
+  ; a visit to iaq_temp_handlr.
+  set [iaq_test_exit], iaq_queue_good
+
+  ; If it was not queued, then SP should have grown by 2.
+  ifn [a], 0 
+  SET PC ,  iaq_result_queue
+
+  :iaq_result_immediate
+  ; Interrupt should have occurred
+  sub [source_registers+9], 1
+  ife [iaq_int_value], 0xF00D 
+  SET PC ,  iaq_int_never_happened
+  ife [iaq_int_value], 7 
+  SET PC ,  iaq_test_done
+  jsr opcode_test_failure_oneliner_message 
+  dat "INT identity differed",0
+  SET PC ,  iaq_test_done
+  :iaq_int_never_happened
+  jsr opcode_test_failure_oneliner_message 
+  dat "Interrupt never happened",0
+  SET PC ,  iaq_test_done
+  :iaq_result_queue
+  ; Interrupt should have been queued.
+  ; If the interrupt was queued, invoke it now.
+  set [iaq_int_value], 0
+  iaq 0
+  ; Should have invoked it now!
+  :iaq_queue_deleted_it
+  jsr opcode_test_failure_oneliner_message 
+  dat "Queued software interrupt lost",0
+  SET PC ,  iaq_test_done
+  :iaq_queue_good
+  set a,pop ; Pop the return address
+  ife [iaq_int_value], 7 
+  SET PC ,  iaq_test_done
+  jsr opcode_test_failure_oneliner_message 
+  dat "Queued INT changed identity",0
+  :iaq_test_done
+  ; Set IA=0 and disable queuing to flush queue
+  jsr flush_pending_irq
+  jsr hw_enable_irq
+  rts
+
+  :iaq_init
+  set [a_input_desired], input_modifier_and6
+  set [a_input_level], 2
+
+  set [iaq_test_exit], opcode_test_done
+  ;
+  ; Don't reset iaq_int_value if we already did the real opcode
+  ifb z, 2 
+  rts
+  ;
+  jsr flush_pending_irq
+  jsr hw_disable_irq
+  ias iaq_temp_handler
+  set [iaq_int_value], 0xF00D
+  rts
+  :iaq_temp_handler
+  ; This is where we arrive using INT 7.
+  set [iaq_int_value], a
+  set a, pop
+  SET PC ,  [iaq_test_exit]
+
+
+:hwn_template
+  ifc z, 1 
+  SET PC ,  hwn_init
+  hwn [a]
+  :hwn_init
+  rts
+
+:hwq_template
+  ifc z, 1 
+  SET PC ,  hwq_init
+  ; Do actual HWQ here.
+  ifl [a], [num_devices] 
+  SET PC ,  hwq_real_test
+  rts
+  :hwq_real_test
+  hwq [a]
+  ; Set the values in the registers. The purpose of this test
+  ; is to verify that HWQ does not write to any other registers;
+  ; and that it consistently sets these five registers.
+  set [source_registers+0], a
+  set [source_registers+1], b
+  set [source_registers+2], c
+  set [source_registers+3], x
+  set [source_registers+4], y
+  rts
+  :hwq_init
+  ; Make sure the operand is not greater than num_devices
+  set [a_input_desired], input_modifier_mod_num_devices
+  set [a_input_level], 2
+  rts
+
+
+; HARDWARE
+
+:inithw
+  set i, 0xFFFF
+  set [clock], i
+  set [keyboard], i
+  set [monitor], i
+
+  set i, 0
+  hwn i
+  set [num_devices], i
+  ifn i, 0 
+  SET PC ,  inithw_loop
+
+  set i,415
+  :graphics_backup_loop
+  std [graphics_backup_area+i], [vram+i]
+  ifn i,-1 
+  SET PC ,  graphics_backup_loop
+  set [graphics_enable], 1
+  set i,1343
+  :graphics_copy_loop1
+  std [vram+i], 0x0400
+  ifn i,1343-210 
+  SET PC ,  graphics_copy_loop1
+  :graphics_copy_loop
+  std [vram+i], [nohw_graphics-126+i]
+  ifn i,126 
+  SET PC ,  graphics_copy_loop
+  :graphics_copy_loop2
+  std [vram+i], 0x0400
+  ifn i,-1 
+  SET PC ,  graphics_copy_loop2
+  set i,20000
+  :graphics_wait_loop
+  sub i,1
+  ifn i,0 
+  SET PC ,  graphics_wait_loop
+  set [graphics_enable], 0
+  :graphics_restore_loop
+  sti [vram+i], [graphics_backup_area+i]
+  ifn i,416 
+  SET PC ,  graphics_restore_loop
+
+  and [curpos], 0xFFE0
+  jsr printpc_s
+  dat "No hardware found. Will assume",10
+  dat "old-style text/graphics support.",0
+  rts
+
+  :inithw_loop
+  sub i, 1
+  hwq i
+  ife b, 0x7349
+  ife a, 0xF615
+  set [monitor], I
+  ife b, 0x30CF
+  ife a, 0x7406
+  set [keyboard], I
+  ife b, 0x12D0
+  ife a, 0xB402
+  set [clock], I
+
+  ifn i,0 
+  SET PC ,  inithw_loop
+
+  jsr hw_disable_irq
+  ; keyboard init
+  set a,0
+  hwi [keyboard]
+  ; screen init
+  set a, 0
+  set b, vram
+  hwi [monitor]
+  set b, 0xF
+  jsr setborder
+  set a,2
+  set b,dfl_palette
+  hwi [monitor]
+  ;
+  rts
+
+:hw_disable_irq
+  set a,3
+  set b, 0
+  hwi [keyboard]
+:clock_disable_irq
+  set a, 2
+  set b, 0
+  hwi [clock]
+  rts
+
+:hw_enable_irq
+  set a,3
+  set b, KEY_IRQ
+  hwi [keyboard]
+  set a, 2
+  set b, CLOCK_IRQ
+  hwi [clock]
+  ; clock init
+:clock_change_rate
+  set a, 0
+  set b, [clock_rate]
+  hwi [clock]
+  rts
+
+:IRQ_HANDLER
+  SET PC ,  a
+
+:report_clock_irq_ok
+  set [clock_irq_reported], 1
+  set a, report_clock_irq_ok_code
+  SET PC ,  irq_pushpop_call
+  :report_clock_irq_ok_code
+  set [color], 0x2F00
+  jsr printpc_s
+  dat "Good news: The clock IRQ works.",0
+  SET PC ,  clreol_newline
+:report_keyboard_irq_ok
+  set [keyboard_irq_reported], 1
+  set a, report_keyboard_irq_ok_code
+  SET PC ,  irq_pushpop_call
+  :report_keyboard_irq_ok_code
+  set [color], 0x2F00
+  and [curpos], 0xFFE0
+  jsr printpc_s
+  dat "Good news: Keyboard IRQ works.",0
+  SET PC ,  clreol_newline
+:irq_pushpop_call
+  set push, b
+  set push, i
+  set push, j
+  set push, ex
+  set push, x
+  jsr a
+  set x, pop
+  set ex, pop
+  set j, pop
+  set i, pop
+  set b, pop
+  rts
+
+; TIMER
+
+:CLOCK_IRQ
+  ife [clock_irq_reported], 0 
+  jsr report_clock_irq_ok
+  set push, ex
+  add [cursorcounter], 1
+  jsr cursor_toggle
+  set ex, pop
+  rfi 0
+; KEYBOARD
+
+:getch
+  ; Re-enable IRQ.
+  ias IRQ_HANDLER
+  iaq 0
+  jsr hw_enable_irq
+
+  set [cursorcounter], 0
+  :getchloop
+  ife [keyboard], 0xFFFF 
+  ife [clock], 0xFFFF 
+  SET PC ,  getchexit
+  ife [cursorcounter], 14 
+  SET PC ,  getchexit
+
+  set a, 1
+  hwi [keyboard]
+  ife c, 0 
+  SET PC ,  getchloop
+  ifl c, 0x20 
+  SET PC ,  getchloop
+  ifg c, 0x7F 
+  SET PC ,  getchloop
+  ;set b, c
+  ;set a, 2
+  ;hwi [keyboard]
+  ;ife c, 0
+  ;SET PC ,  getchloop
+
+  ;jsr printpc_s
+  ; dat "Read key: ",0
+  ;set a,c
+  ;jsr printhex_word
+  ;jsr printpc_s
+  ; dat 10,0
+  :getchexit
+  jsr hw_disable_irq
+  rts
+
+:KEY_IRQ
+  ife [keyboard_irq_reported], 0 
+  jsr report_keyboard_irq_ok
+  rfi 0
+
+; SCREEN
+
+; Clear screen. Uses A,I,J
+:clearscr
+  set i, 0
+  set [graphics_enable], i
+  set [curpos],i
+  set a, [color]
+  bor a, 0x20
+  :clearscr_loop
+  sti [vram+i], a
+  ifn i, 13*32 
+  SET PC ,  clearscr_loop
+  rts
+
+; Print character. A = Input. Uses A,I,J,EX
+:printch
+  jsr print_entry
+  jsr printch_i
+  :print_exit
+  ;iaq 0
+  rts
+  :printch_i
+  ;and a, 0x007F
+  ifl a, 32 
+  SET PC ,  printch_checkspecial
+  :printch_notspecial
+  set j, 1
+  :printch_put
+  bor a, [color]
+  set i, [curpos]
+  set [vram+i], a
+  add [curpos], j
+  rts
+  :printch_checkspecial
+  ife a, 10 
+  SET PC ,  printch_nl
+  ;ife a, 8 
+  SET PC ,  printch_bs
+  ifn a, 8 
+  SET PC ,  printch_notspecial
+  :printch_bs
+  sub [curpos], 1
+  set j, 0
+  set a, " "
+  SET PC ,  printch_put
+  :printch_nl
+  set a, [curpos]
+  add a, 32
+  and a, 0xFFE0
+  :printch_check_newline
+  set [curpos], a
+  ifl a, 384 
+  rts
+  sub a, 32
+  set i, 0
+  :printch_scroll_loop
+  sti [vram+i], [vram+32+i]
+  ifn i, 384 
+  SET PC ,  printch_scroll_loop
+  SET PC ,  printch_check_newline
+
+; Print zero-terminated string. B = String offset. Uses A,B,I,J,EX
+:prints
+  jsr print_entry
+  set a, [b]
+  add b, 1
+  ife a, 0 
+  SET PC ,  print_exit
+  jsr printch
+  SET PC ,  prints
+:prints_i
+  set a, [b]
+  add b, 1
+  ife a, 0 
+  rts
+  jsr printch_i
+  SET PC ,  prints_i
+
+; Print string at PC. Uses A,B,I,J,EX
+:printpc_s
+  set b, pop
+  jsr prints
+  SET PC ,  b
+
+; Go to cursor location X,Y. Uses A.
+:gotoxy
+  set a, y
+  shl a, 5
+  bor a, x
+  set [curpos], a
+  rts
+
+; Goto location X on current line. Uses: -
+:gotox
+  and [curpos], 0xFFE0
+  bor [curpos], x
+  rts
+
+; Clear line until column X. Uses A,I,J,X
+:clreol
+  set a, [color]
+  bor a, 0x20
+  jsr print_entry
+  set i, [curpos]
+  and x, 0x1F
+  ife x, 0 
+  SET PC ,  clreol_zero
+  :clreol_loop
+  set [vram+i], a
+  add i, 1
+  set j, i
+  and j, 0x1F
+  ifl j, x 
+  SET PC ,  clreol_loop
+  SET PC ,  print_exit
+  :clreol_zero
+  set [vram+i], a
+  add i, 1
+  set j, i
+  and j, 0x1F
+  ifn j, 0 
+  SET PC ,  clreol_zero
+  SET PC ,  print_exit
+
+; Prints hexadecimal digit value A. Uses A,I,J,EX
+:printhex_digit
+  set j, printhex_digit_i
+  SET PC ,  print_wrapper
+; Prints hexadecimal byte value A. Uses A,I,J,EX
+:printhex_byte
+  set j, printhex_byte_i
+  SET PC ,  print_wrapper
+; Prints hexadecimal word value A. Uses A,I,J,EX
+:printhex_word
+  set j, printhex_word_i
+  ;SET PC ,  print_wrapper
+:print_wrapper
+  jsr print_entry
+  jsr j
+  SET PC ,  print_exit
+
+:printhex_word_i
+  set push, a
+  shr a, 8
+  jsr printhex_byte_i
+  set a, pop
+  ;SET PC ,  printhex_byte_i
+:printhex_byte_i
+  set push, a
+  shr a, 4
+  jsr printhex_digit_i
+  set a, pop
+  ;SET PC ,  printhex_digit_i
+:printhex_digit_i
+  and a, 15
+  set a, [hextable+a]
+  ;SET PC ,  printch_verbatim
+:printch_fast_i
+  bor a, [color]
+  set i, [curpos]
+  sti [vram+i], a
+  set [curpos], i ; sti+set = as fast as set+add
+  rts
+
+:print_entry
+  ;iaq 1
+:cursor_hide
+  set i, [cursor_loc]
+  ifc i, 0x8000 
+  rts
+  :cursor_hide_i
+  set [i], [cursor_char]
+  set [cursor_loc], 0
+  rts
+:cursor_toggle
+  set push,i
+  set i, [cursor_loc]
+  ifc i, 0x8000 
+  SET PC ,  cursor_show
+  jsr cursor_hide_i
+  set i,pop
+  rts
+  :cursor_show
+  set i, [curpos]
+  add i, vram
+  set [cursor_loc], i
+  set a, [i]
+  set [cursor_char], a
+  ;set a, 0x0F5F
+  xor a, 0xFF00
+  set [i],a
+:cursor_toggle_end
+  set i,pop
+  rts
+
+; Sets border color B. Uses A.
+:setborder
+  set a, 3
+  hwi [monitor]
+  rts
+
+:flush_pending_irq
+  iag a
+  ias 0
+  iaq 0
+  set push, a
+  set push, ex
+  set a, 10
+  :flush_pending_irq_idle_loop
+  sub a, 1
+  ifn a, 0 
+  SET PC ,  flush_pending_irq_idle_loop
+  set ex, pop
+  set a, pop
+:flush_more_pending_irqs
+  ias flush_pending_irq_test
+  ias a
+  rts
+:flush_pending_irq_test
+  set push, b
+  set push, i
+  set push, j
+  set push, ex
+  set [color], 0x4E00
+  jsr printpc_s
+  dat 10,"Flushing pending IRQs did not work!",0
+  jsr clreol_newline
+  set ex, pop
+  set j, pop
+  set i, pop
+  set b, pop
+  set a, pop
+  set a, pop
+  ias 0
+  iaq 0
+  SET PC ,  flush_more_pending_irqs
+
+:dcpu11_detected
+  dat 0x81E1,graphics_enable ;set [graphics_enable], 1
+  dat 0x7DE1,color,0xF800 ;set [color], 0xF900
+  dat 0x8061 ;set i,0
+  :text_logo_loop1
+  dat 0x5801,AccuracyTesterLogoLines12 ;mov a, [AccuracyTesterLogoLines12+i]
+  dat 0x780A,color ;bor a, [color]
+  dat 0x0161,vram,0x8462 ;set [vram+i], a ; add i,1
+  dat 0x7C6D,64 ;ifn i, 64
+  dat 0x7DC1,text_logo_loop1 ;set pc, text_logo_loop1
+  dat 0x7DE1,color,0x4F00 ;set [color], 0x4F00
+  dat 0x8061 ;set i,0
+  :text_logo_loop2
+  dat 0x5801,AccuracyTesterLogoLine3 ;mov a, [AccuracyTesterLogoLine3+i]
+  dat 0x780A,color ;bor a, [color]
+  dat 0x0161,vram+64,0x8462 ;set [vram+64+i], a ; add i,1
+  dat 0x7C6D,32 ;ifn i, 32
+  dat 0x7DC1,text_logo_loop2 ;set pc, text_logo_loop2
+  dat 0x7DE1,color,0x5E00 ;set [color], 0x5E00
+  dat 0x8061 ;set i,0
+  :text_logo_loop3
+  dat 0x5801,no11_error ;mov a, [no11_error+i]
+  dat 0x780A,color ;bor a, [color]
+  dat 0x0161,vram+96,0x8462 ;set [vram+96+i], a ; add i,1
+  dat 0x7C6D,288 ;ifn i, 288
+  dat 0x7DC1,text_logo_loop3 ;set pc, text_logo_loop3
+  dat 0x8061 ;set i,0
+  :graphics_data_loop
+  dat 0x5961,vram+384,no11_graphics,0x8462 ;set [vram+288+i], [no11_graphics+i] ; add i,1
+  dat 0x7C6D,966 ;ifn i, 966
+  dat 0x7DC1,graphics_data_loop ;set pc, gpraphics_data_loop
+  dat 0x81C1 ;set pc, 0
+
+:no11_error
+  dat "This test module is designed and"
+  dat "written for DCPU-16 version 1.7."
+  dat "Yours, however, "
+  dat "seems to obey the instruction "
+  dat "set of DCPU-16 version 1.1, and "
+  dat "it cannot run this program, "
+  dat "because the instructions have a "
+  dat "different meaning to it. "
+  dat "Sorry about the inconvenience. "
+
+:nohw_graphics
+  DAT 0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x43F5,0x5400,0x5400,0x5400,0x5400,0x5400,0x43F5,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x43F5,0x5400,0x43F5,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400,0x5400
+  DAT 0x2300,0x3EE2,0xE31C,0xE313,0x3EFF,0xE31E,0x3EE6,0x3EF3,0xE31E,0xE31B,0x3EE2,0xE310,0xE31D,0x2300,0x2300,0x3EFA,0xE31B,0x2300,0xE30F,0xE318,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0xE304,0xE31B,0x2300,0x2300,0x3EFB,0xE302,0xE30D,0x2300,0x2300,0x2300,0x2300,0x2300
+  DAT 0x0100,0x1E90,0x0100,0xE1DB,0x1E80,0x0100,0x0100,0x1EDA,0x1E68,0xE1D8,0x1E80,0x0100,0xE14A,0x1EFE,0xE102,0x1EDB,0xE192,0x1EDA,0xE19E,0xE11B,0x0100,0x1EFB,0x1E09,0xE19A,0xE1FF,0x1E12,0x1E8B,0xE112,0xE1DB,0x1E92,0x1EDB,0xE192,0xE13B,0xE1DB,0x1E92,0xE1C0,0xE1DB,0x1ED2,0x1E1B,0x1EC9,0xE1FA,0xE1DB
+  DAT 0x1EFF,0x1E24,0x1ED8,0xE0D0,0x0E12,0x1EFC,0xE112,0x1E90,0xE102,0x5000,0x0E22,0x1EFC,0xE090,0xE060,0xE080,0x1ED0,0xE193,0x0E9B,0x1E68,0xE0D2,0x5000,0x0E93,0x0E0C,0xE010,0xE0DB,0xE06F,0x0E92,0xE082,0x1E24,0x1E80,0x1EDA,0xE0B6,0x1E6C,0xE0DB,0x0E92,0x1EFD,0xE0DB,0x0E02,0xE12F,0x0E5B,0x1E6D,0xE0DB
+  DAT 0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0xE013,0x2000,0x2000,0x2000,0x2000,0x2000,0xE013,0x2000,0x2000,0xE013,0x2000,0x2000,0x2000,0x2000,0x2000,0x0EE2,0x2000,0x2000,0x2000,0x2000,0x2000
+  DAT 0x1000,0xE03B,0xE0DB,0x0ED2,0xE0E4,0x0EFB,0xE0F2,0xE090,0xE0DB,0x0E92,0x0EDB,0xE0FA,0x0E6B,0x0E89,0xE092,0xE07B,0xE0C8,0x0E92,0xE202,0xE092,0x0EDB,0xE0F2,0x0ED2,0x0E12,0x0EEB,0xE0F3,0x0E4B,0xE0F2,0x1000,0x0EDB,0xE0F2,0x0ED2,0x0E1B,0x0EE9,0xE0F2,0xE09B,0xE0DB,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0xE024,0x0E6C,0xE0DB,0x0E02,0xE007,0x0E93,0x0E6C,0xE010,0x0E24,0x0E80,0x0EDB,0xE092,0x0E93,0x0ED8,0xE0B6,0x0E24,0xE00A,0x0EDB,0xE0B7,0x1000,0x0EDB,0xE093,0x0E02,0xE0C7,0x0ED6,0x0E10,0x0E4B,0xE093,0x1000,0x0EDB,0xE093,0x0E02,0xE02F,0x0E13,0x0E68,0x0E2F,0xE0DB,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0xE035,0xE0D0,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0x0FF2,0x0FFB,0xF012,0x0FF2,0xF012,0x0FF2,0x0FE4,0x0FFB,0x0FE1,0xF002,0xF013,0x0FF2,0x0FFF,0xF012,0x0FE0,0x1000,0x0FE0,0xF013,0x0FF2,0xF018,0x1000,0x0FF2,0x1000,0xF012,0x0FFA,0x0FE6,0xF004,0x0FE2,0xF018,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0x0F92,0x0FC3,0xF092,0xF05B,0xF09B,0x0F92,0xF06F,0x0FDB,0xF092,0xF0DB,0xF0C9,0xF07E,0x0FC9,0x0F7B,0x0F49,0xF012,0x0F24,0xF0DA,0x0F92,0xF018,0x1000,0xF069,0xF091,0xF092,0xF0DB,0x0FDB,0xF092,0x0F92,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0x0F92,0x0FDB,0x0F69,0xF0F2,0x0F32,0x0F92,0x0FB3,0x0FD9,0x0F68,0xF0D0,0x0F9B,0xF090,0xF0F9,0x0FD2,0xF0E0,0xF09B,0xF0DB,0x0F66,0x0F92,0xF003,0x1000,0xF049,0x0F9B,0xF092,0x0F33,0xF02F,0xF080,0x0F92,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x2000,0x0FF2,0xF018,0x0FFF,0x0FE1,0xF002,0x0FF2,0x0FFB,0xF012,0xF01B,0x0FFB,0x0FFB,0x0FE1,0xF002,0x2000,0x2000,0x0FF6,0x0FFB,0xF012,0xF00F,0xF01F,0x0FF2,0x2000,0x0FF2,0x2000,0x2000,0x0FFB,0xF01B,0x0FFF,0x0FE0,0x0FFF,0x0FE0,0x0FFB,0xF012,0xF01B,0x0FF2,0x2000,0x0FF2,0x0FFB,0xF01E,0x2000,0x2000
+  DAT 0x2000,0x0F92,0xF018,0x0F92,0x2000,0xF0DB,0x0F92,0x0FDB,0xF092,0xF0F6,0x0FD9,0x0FDB,0xF092,0xF0DB,0x2000,0x2000,0x0F9B,0xF02D,0xF099,0xF0D2,0xF0DB,0x0F92,0x2000,0x0F92,0x2000,0x2000,0x0FD2,0x0FB2,0xF024,0x0F64,0xF024,0x0F64,0x0FDB,0xF092,0xF0DB,0xF06D,0xF092,0x0F01,0x0FDB,0xF09E,0x2000,0x2000
+  DAT 0x2000,0x0F92,0x5000,0xF064,0x0FE8,0xF0D0,0x0F93,0x0FC0,0xF090,0xF092,0x0F12,0x0FDB,0x0F68,0xF0D0,0x0FF2,0x2000,0xF120,0xF0DA,0x0F93,0x0F7F,0x0F24,0x0F92,0x0FFC,0x0F92,0x0FFC,0x2000,0xF07B,0x0F1B,0x0FE9,0xF06F,0x0FFB,0xF06F,0xF024,0x0F60,0xF0DA,0xF049,0x0F12,0x0F5B,0x0FDB,0x0F6C,0x2000,0x2000
+  DAT 0x2100,0x1FE3,0xF11E,0x1FF2,0xF118,0x1FE6,0x1FFA,0xF11C,0xF11F,0xF110,0x1FFB,0xF112,0x1FFB,0xF112,0x1FFA,0x1FE6,0x2100,0xF11F,0xF113,0x1FFB,0xF11E,0x2100,0x1FFB,0x1FE1,0xF102,0xF11B,0x1FF2,0x1FFB,0xF11E,0x1FFB,0xF11E,0x1FFB,0xF11E,0x1FFB,0x1FE0,0xF102,0x2100,0x2100,0x2100,0x2100,0x2100,0x2100
+  DAT 0x2100,0x1FDB,0xF192,0x1F92,0xF118,0x1F9B,0xF1FB,0x2100,0xF1DB,0x1FFC,0x1FDB,0xF1D9,0xF16D,0xF192,0xF1DB,0x1FDB,0xF192,0xF1DB,0x1F92,0x1FDB,0xF19E,0x2100,0x1FDB,0x1F41,0xF182,0xF1DB,0x1F92,0x1FDB,0xF19E,0x1FDB,0xF19E,0x1FDB,0xF19E,0x1FDB,0x1F48,0xF190,0x2100,0x2100,0x2100,0x2100,0x2100,0x2100
+  DAT 0x0100,0x1FDB,0xF192,0x1F92,0xF103,0xF16F,0x1F93,0xF102,0xF1DB,0x0100,0x1FDB,0x1F9B,0xF1D2,0xF192,0x1F33,0xF12F,0xF180,0x1F24,0xF17A,0x1FDB,0x1F6C,0x0100,0x1FDB,0x1F48,0xF190,0x1F22,0xF17F,0x1FDB,0xF192,0x1FDB,0xF192,0x1FDB,0x1F6C,0x1FDB,0xF1B6,0xF113,0x0100,0x0100,0x0100,0x0100,0x0100,0x0100
+  DAT 0x0100,0x1FFB,0xF11B,0x1FE3,0xF11E,0x0100,0x1FFB,0xF11B,0x1FFB,0x1FE1,0xF102,0x1FF2,0x1FE6,0x0100,0x1FE0,0xF113,0x1FF2,0xF118,0x1FFA,0xF11B,0x1FFA,0xF11B,0x0100,0xF10F,0xF113,0x0100,0x0100,0x1FFA,0x1FE6,0x1FFA,0x1FE6,0x1FFA,0x1FE6,0x1FFA,0x1FE6,0x0100,0x0100,0x0100,0x0100,0x0100,0x0100,0x0100
+  DAT 0x0100,0x1FD2,0x1FB2,0x1FDB,0xF192,0x0100,0x1FD2,0x1FB2,0x1FDB,0xF192,0xF1DB,0x1F92,0x1FDB,0xF192,0x1F24,0xF1DA,0x1F92,0xF118,0x3F93,0xF113,0x1F93,0xF113,0x0100,0xF1DB,0xF1DB,0x1F33,0xF17A,0x1F9A,0x1F84,0x1F92,0x1F92,0x1F92,0x1F92,0x1F92,0x1F92,0x0100,0x0100,0x0100,0x0100,0x0100,0x0100,0x0100
+  DAT 0x2300,0xF37B,0x3F1B,0x3FC9,0xF392,0x2300,0xF37B,0x3F1B,0x3FC9,0x3F68,0xF3D0,0x3F92,0xF32F,0xF380,0xF3DB,0x3F66,0x3F92,0xF303,0x3FF6,0xF3DA,0x3FF6,0xF3DA,0x2300,0x3F26,0xF3DA,0xF32F,0x3F66,0x3F93,0xF36F,0x3F93,0xF36F,0x3F93,0xF36F,0x3F93,0xF36F,0x3FFB,0xF312,0x2300,0x2300,0x2300,0x2300,0x2300
+  DAT 0x0300,0xF313,0x3FF2,0x3FFF,0x3FE1,0xF31A,0xF31F,0xF313,0xF30C,0xF31F,0x3FEB,0xF312,0xF31B,0x2300,0x2300,0x3FFA,0xF312,0x3FF0,0xF313,0xF30F,0xF313,0x2300,0x3FF2,0x3FFB,0xF312,0xF31F,0xF314,0xF31F,0x3FFF,0x3FE0,0xF312,0xF31B,0x3FF2,0xF30C,0xF31F,0xF310,0x0300,0x3FFA,0x3FE6,0x3FFB,0xF31A,0x2300
+  DAT 0x0300,0xF4C9,0xF47E,0x3FC9,0x3F5B,0xF392,0xF3DB,0x3F92,0x0300,0xF3DB,0x3FDB,0xF39E,0xF3DB,0xF31C,0xF318,0x4F5B,0xF392,0x3FFF,0xF4DA,0x3F30,0xF3D3,0x0300,0x3F92,0x4FC3,0xF392,0xF3DF,0xF310,0xF3DB,0x3F92,0x3FF2,0xF312,0xF3DF,0x3F82,0x0300,0xF3DB,0xF30C,0xF31C,0x4F93,0x3F90,0x3F92,0x3FE6,0x0300
+  DAT 0x2400,0x4F9B,0xF490,0xF4F9,0x4FDA,0xF493,0x4F24,0xF47A,0x2400,0xF4DB,0x4FDB,0xF492,0xF4DB,0xF4E0,0xF4C0,0x4FDB,0xF492,0x4F80,0xF403,0x4F26,0xF4DA,0x2400,0x4F92,0x4FDB,0xF492,0x4F24,0x4FFD,0x4F24,0xF464,0x4FC8,0xF492,0xF4DB,0x4F92,0x2400,0xF4DB,0xF460,0xF4E0,0x4FFF,0xF47B,0x4F93,0xF46F,0x2400
+:no11_graphics
+  ; begins with 9 * 32 words of 0
+  ;DAT 0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,
+  dat 0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0,0xF0E0
+  DAT 0x1000,0x0E9B,0xE0F2,0x0E32,0x0EFF,0xE07A,0xE0E4,0xE030,0xE0FB,0x0E12,0x0E9B,0xE0D2,0x0E9B,0xE080,0x1000,0xE004,0xE0FF,0x1000,0xE02F,0xE0E0,0x1000,0x1000,0x0EFE,0xE003,0x0EFE,0x0EFC,0x0EFD,0xE002,0x0EFE,0x0EFF,0xE002,0xE0EF,0x1000,0x0EFC,0x0EFF,0x0E64,0x0EDA,0xE080,0x0EFC,0xE002,0x0EFC,0x0EFC
+  DAT 0x1000,0x0ED2,0xE090,0x0E90,0x0E92,0xE092,0x1000,0x0EFB,0xE0DE,0xE0F0,0x0E92,0xE090,0xE029,0x0EFB,0xE01B,0x1000,0xE0DB,0x0EFB,0xE0FB,0x0E12,0x1000,0x0EFF,0x0E24,0xE0FA,0x0E92,0x0E5B,0x0E2D,0xE0DB,0x0E92,0x0EDB,0xE092,0xE0DB,0xE06F,0x0E92,0x0EDB,0xE092,0x0E92,0x0EDA,0xE092,0xE0DB,0xE0FB,0x0E92
+  DAT 0x1000,0xE07C,0xE01C,0xE0D0,0xE024,0xE09C,0xE058,0xE02C,0xE098,0x1000,0xE064,0xE09C,0xE050,0x1000,0x1000,0xE02C,0xE0DC,0x1000,0xE0DC,0xE0D8,0x1000,0xE020,0xE0DC,0xE050,0xE06C,0xE02C,0xE0A4,0xE098,0xE06C,0xE07C,0xE094,0xE0D8,0xE0CC,0xE07C,0xE024,0xE098,0xE07C,0xE064,0xE0BC,0xE080,0xE0D8,0xE07C
+  DAT 0x1000,0x1000,0x0EFC,0x1000,0x0EFC,0xE002,0x0EFE,0xE003,0x0EFE,0x0EFF,0xE002,0x0EFC,0xE003,0x0EFF,0xE003,0x0EFF,0x0EFC,0x0EFF,0xE002,0xE201,0x1000,0x0EB0,0xE002,0x0EFC,0xE002,0x0EFE,0xE003,0x0EB0,0xE002,0x1000,0x0EB0,0xE002,0x0EFC,0xE002,0x0EFE,0xE003,0x0E9A,0xE090,0x1000,0x1000,0x1000,0x1000
+  DAT 0x1000,0xE06F,0x0E92,0x0EDA,0xE092,0x0E7F,0xE0DB,0xE040,0x0E92,0x0EDB,0xE092,0xE0FB,0x0EBF,0xE0DA,0xE0DB,0x0E90,0xE020,0xE024,0xE09B,0xE04A,0x1000,0xE0DB,0x0EDA,0x0E48,0xE0D0,0x0E20,0xE043,0xE0DB,0x1000,0x1000,0xE0DB,0x0EDA,0xE092,0x0E24,0xE0DB,0x0E92,0x0E92,0x1000,0x1000,0x1000,0x1000,0x1000
+  DAT 0x2000,0xE0CC,0xE07C,0xE064,0xE09C,0xE0A0,0xE0DC,0xE050,0xE06C,0xE07C,0xE090,0xE0D8,0xE020,0xE09C,0xE0D8,0xE0EC,0xE038,0x2000,0x0E20,0xE080,0x2000,0xE0DC,0xE064,0xE09C,0xE0A4,0xE03C,0xE0D0,0xE0DC,0x2000,0x2000,0xE0DC,0xE064,0xE0BC,0xE0A0,0xE0DC,0xE0D0,0xE07C,0x2000,0x2000,0x2000,0x2000,0x2000
+  DAT 0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0xE044,0xE0C0,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000
+  DAT 0x2000,0x2000,0x0FFF,0x5000,0x0FFF,0x2000,0x2000,0x5000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x5000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0xF002,0x2000,0x2000,0x2000,0x2000,0xF001,0x2000,0x2000,0x2000,0x0FFF,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x2000,0x0FFF
+  DAT 0xF120,0xF1E9,0x1F5B,0x1FFC,0x1FFF,0x1FFE,0xF103,0x2100,0x1FFF,0x1FFC,0x1FFF,0xF103,0x1FFE,0xF102,0x1FFE,0xF103,0x1FFC,0x1FFF,0xF103,0x1FFE,0xF103,0x1FFC,0x3102,0x2100,0x1FFD,0x1FFC,0x2100,0x2100,0x1FFE,0xF14B,0x1FFE,0xF102,0x1FFC,0x1FFD,0x1FFF,0x1FFC,0x1FFE,0xF103,0x1FFF,0xF103,0x1FFF,0x1FD8
+  DAT 0x2100,0xF149,0x1FDB,0xD180,0x1F49,0xF364,0xF119,0x2100,0x1FDB,0x1D5D,0x1F49,0x4180,0xF1D3,0xF1CB,0xF1D3,0xF1CB,0xF1D2,0xF10D,0x1FC3,0xF169,0x1FDB,0xD180,0xF192,0x2100,0xF3B2,0x1F63,0x2100,0x2100,0xF1D3,0xF1CB,0xFB9E,0xF158,0xF3CC,0x1FC9,0xF149,0x0F9A,0xF169,0x1FDB,0xF14D,0xF13C,0xF069,0x0F9A
+  DAT 0x0100,0xF14D,0xF130,0x0100,0xF1A0,0xF160,0x1F3F,0x1FFC,0x1FD9,0xF1E0,0x1FDC,0xB102,0x1F9C,0xF182,0x1F9E,0xF1DA,0xF182,0xF160,0x1F1E,0xF142,0x1FDF,0x1FFC,0xF180,0x0100,0xF1A0,0xF1E0,0x0100,0x0100,0xF160,0xF1C0,0xF168,0xF1C0,0xF1E0,0xF1A0,0x1FDF,0xF1EF,0x1FBC,0xF120,0xF120,0x1F1C,0xF123,0xF1E0
+  DAT 0x0100,0xF15D,0x1FFA,0x1FE6,0xF10D,0xF110,0x1FDB,0x0100,0xF1C9,0xF129,0x0100,0xF180,0x1F6C,0xF14A,0xF149,0x0100,0xF192,0x0100,0x0100,0xF192,0x1F96,0xF103,0x0100,0x1FF6,0x1FFA,0x1FFA,0x1FE7,0x1FF2,0x1FEB,0xF11E,0xF109,0xF10F,0xF113,0xF11F,0xF111,0x0100,0x1FDB,0x0100,0x0100,0x0100,0xF152,0x0100
+  DAT 0x0100,0xF149,0x3FB7,0xF12F,0xF149,0x0100,0x1FDB,0x1FFC,0xF15A,0xF344,0x1FFC,0xF310,0xF192,0x0100,0x1FB3,0x1FF8,0xF190,0xF3E0,0x1FFE,0x1F6C,0x3FB7,0xF327,0x0100,0xF324,0xF35A,0x1F93,0x1F1C,0xF149,0x3FFF,0x1F18,0xF149,0x3F6E,0xF15A,0xF192,0xF149,0x0100,0x1FD8,0xF103,0xF102,0xF325,0x0100,0xF102
+  DAT 0xF304,0xD312,0xF305,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0xF380,0x2300,0x2300,0xF30C,0xF312,0x2300,0xF30C,0xF312,0x2300,0x2300,0x3FE3,0xF318,0xF392,0x2300,0xF380,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300,0x2300
+  DAT 0x0300,0x3FBB,0xF380,0xF37A,0xF399,0xF392,0xF349,0xF4F2,0x4F97,0xF3C3,0x2300,0xF3B6,0x4F1C,0x2300,0x2300,0xF392,0x2300,0x2300,0xF392,0x0300,0x2300,0x3FDB,0x2300,0xF3FA,0xF389,0xF3B6,0x4F1C,0x0300,0xF369,0x3F33,0xF369,0x3F7B,0xF3F4,0x3FE9,0xF4E0,0x3F49,0xF3C0,0x3F9E,0xF38B,0xF3FA,0xF4AD,0x3F3B
+  DAT 0x0300,0xF324,0x0300,0x4F73,0xF3D1,0xF48E,0xF4D8,0xF390,0xF30C,0xF358,0x0300,0xF494,0xF43C,0x0300,0xF30C,0xF49C,0xF308,0xF30C,0xF39C,0xF308,0x0300,0xF324,0x0300,0xF390,0xF34A,0xF494,0xF43C,0x0300,0xF44D,0xF43A,0xF348,0xF420,0xF43C,0xF4A0,0x4FE3,0xF4B6,0x0300,0xF49C,0xF458,0xF390,0xF348,0xF324
+  DAT 0x2400,0xF402,0xF402,0x4FFD,0xF449,0xF492,0x2400,0x2400,0x2400,0x4FFC,0xF402,0x4FFE,0x4FFD,0x4F6C,0x2400,0x2400,0x2400,0x2400,0xF402,0xF402,0xF402,0x4FFC,0x4FFF,0xF403,0xF492,0xF403,0x2400,0x2400,0xF440,0x4FFD,0x4FFC,0x2400,0x2400,0x2400,0xF4E0,0xF402,0xF401,0x4FFE,0xF402,0xF402,0xF401,0x4FFC
+  DAT 0x0400,0x4F42,0x4F32,0x4F49,0xF449,0xF492,0x0400,0x0400,0x0400,0xF4D2,0xF449,0xF4D2,0xF4CB,0xF492,0x0400,0x0400,0x0400,0x0400,0x4F42,0x4F32,0x4F4B,0x4D5D,0x4F49,0xB480,0xBF45,0x0400,0x0400,0x0400,0x0400,0x4F49,0xD480,0xF492,0x0400,0x0400,0x0400,0xF489,0xF452,0xF4D2,0xF4CB,0xF492,0xF44B,0xF492
+  DAT 0x0400,0xF440,0xF420,0xF420,0xF440,0xF480,0x0400,0x0400,0xF409,0xF480,0xF440,0xF462,0xF480,0xF4E0,0x0400,0x0400,0x0400,0x4FFF,0x4FBC,0xF420,0x0400,0xF4E0,0xF420,0x0400,0xF480,0xF4C0,0x0400,0x0400,0x0400,0xF4A0,0x0400,0xF480,0x0400,0x0400,0x0400,0xF427,0xB480,0xF460,0xF480,0xF460,0xF4C0,0xF480
+  DAT 0x0400,0xF40E,0xF411,0xF41F,0x4FEA,0x4FE7,0xF409,0x4FFB,0xF449,0xF40C,0xF415,0xF49E,0x4FFA,0x4FE6,0xF40D,0xF410,0x0400,0x4F93,0xF423,0x4FFF,0x4FE1,0x4FF9,0xF418,0xF41E,0xF409,0x4FFB,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400
+  DAT 0x0400,0x4F0E,0xF4C3,0xF492,0xF449,0x4FDB,0x4FB7,0x4FD0,0xF449,0x4F8C,0xF4CB,0x4F6C,0x4FB7,0xF42F,0xF449,0xF401,0x0400,0x4FF6,0xF42F,0xF424,0x4FF8,0x4F4B,0x0400,0xF492,0xF424,0xF44B,0xF402,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400
+  DAT 0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0xF40C,0xF480,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400,0x0400
+
+;;;;;;;;;;;;;
+
+:hextable dat "0123456789ABCDEF"
+:dfl_palette dat 0x000,0x00A,0x0A0,0x0AA, 0xA00,0xA0A,0xAA5,0xAAA, 0x555,0x55F,0x5F5,0x5FF, 0xF55,0xF5F,0xFF5,0xFFF
+
+;;;;;; INITIALIZED RAM ;;;;;;;;;;;;;;
+
+:default_registers
+  ; All of these values are supposed to be
+  ; also addresses within safe memory regions.
+  dat 0x9503,0xAB09,0x5789,0x6205 ; A,B,C, X
+  dat 0x2A62,0xA317,0x32FD,0xBCB6 ; Y,Z, I,J
+  dat 0xCB7D,0xFF90,0,0 ; EX,SP,PC, IA
+:reprint_params dat 0xFFFF
+
+:iaq_test_exit dat iaq_queue_good
+
+:clock_rate dat 1
+:clock_irq_reported dat 0
+:keyboard_irq_reported dat 0
+
+:clock dat 0xFFFF
+:keyboard dat 0xFFFF
+:monitor dat 0xFFFF
+:cursor_loc dat 0x0000
+:color dat 0x0F00
+
+:INVALID_TARGET_MEMORY_END
+
+;;;;;; BSS (ZERO INITIALIZED RAM) ;;;;;;
+
+:cursor_char dat 0
+
+:source_registers
+  dat 0,0,0,0, 0,0,0,0, 0,0,0,0
+:outcome_registers
+  dat 0,0,0,0, 0,0,0,0, 0,0,0,0
+
+:o_settings dat 0
+:a_settings dat 0
+:b_settings dat 0
+:o_value dat 0
+:a_value dat 0
+:b_value dat 0
+:a_flags dat 0
+:b_flags dat 0
+:o_flags dat 0
+:a_source dat 0
+:b_source dat 0
+:a_source_addr dat 0
+:b_source_addr dat 0
+:b_outcome dat 0
+:a_outcome dat 0
+
+; Overriding parameter values. Levels: 0 = Not set, 1 = Optional, 2 = Mandatory
+:a_input_desired dat 0
+:a_input_level dat 0
+:b_input_desired dat 0
+:b_input_level dat 0
+
+:imm_dummy dat 0
+:imm_dummy2 dat 0
+:opcode_buffer dat 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
+
+:opcode_num_failures dat 0
+:failstack_z dat 0
+:failstack_i dat 0
+:failstack_j dat 0
+
+:num_devices dat 0
+:cursorcounter dat 0
+:curpos dat 0
+
+:randseed32 dat 0,0
+:backup_randseed32 dat 0,0
+
+:num_errors_basic 
+  reserve 32
+:num_errors_nbi 
+  reserve 32
+
+; int_template:
+  :jsr_stack_value
+  :int_a_value dat 0
+  :int_expected_a_value dat 0
+  :int_pc_value dat 0
+  :int_key_value dat 0
+; iaq_template:
+  :iaq_int_value dat 0
+
+
+:graphics_backup_area
+ reserve 416
+
+:SAFE_MEMORY_BEGIN
+  dat 0

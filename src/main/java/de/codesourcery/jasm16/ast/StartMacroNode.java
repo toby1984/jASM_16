@@ -26,7 +26,7 @@ public class StartMacroNode extends ASTNode {
 		this.macroBody = macroNode.macroBody;
 	}
 
-	public Identifier getName() {
+	public Identifier getMacroName() {
 		return name;
 	}
 	
@@ -74,7 +74,7 @@ public class StartMacroNode extends ASTNode {
 			region.merge( idRegion );
 			
 			if ( context.isParsingMacroDefinition() ) {
-				context.addCompilationError( "Already within macro definition of '"+context.getCurrentMacroDefinition().getName()+"() , nested definitions are not allowed", this );				
+				context.addCompilationError( "Already within macro definition of '"+context.getCurrentMacroDefinition().getMacroName()+"() , nested definitions are not allowed", this );				
 			}
 			
 			// update IParseContext AFTER we assigned the macro name (just in case somebody queries for the macro name )

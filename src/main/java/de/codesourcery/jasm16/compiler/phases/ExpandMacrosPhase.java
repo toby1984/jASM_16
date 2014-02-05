@@ -264,7 +264,7 @@ outer:
 
 	private AST parseExpandedBody(final InvokeMacroNode invocation,StartMacroNode macroDefinition, final ICompilationContext compContext, String expandedBody) 
 	{
-		final String id =  "macro_expansion_"+macroDefinition.getName().getRawValue()+"_"+invocation.getTextRegion().getStartingOffset();
+		final String id =  "macro_expansion_"+macroDefinition.getMacroName().getRawValue()+"_"+invocation.getTextRegion().getStartingOffset();
 		
 		// define invocation as global scope so local labels inside macros works
 		expandedBody = id+":\n"+expandedBody;
