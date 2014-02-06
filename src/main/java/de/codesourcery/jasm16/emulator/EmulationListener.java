@@ -128,4 +128,7 @@ public class EmulationListener implements IEmulationListener {
     {
     }
 
+    @Override
+    public void allBreakpointsDeleted(IEmulator emulator) {
+    }
 }

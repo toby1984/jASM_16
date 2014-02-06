@@ -16,10 +16,7 @@
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -28,37 +25,22 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
-import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.*;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
-import de.codesourcery.jasm16.ide.IApplicationConfig;
-import de.codesourcery.jasm16.ide.IAssemblyProject;
-import de.codesourcery.jasm16.ide.IWorkspace;
-import de.codesourcery.jasm16.ide.IWorkspaceListener;
-import de.codesourcery.jasm16.ide.NavigationHistory;
-import de.codesourcery.jasm16.ide.WorkspaceListener;
+import de.codesourcery.jasm16.ide.*;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
-import de.codesourcery.jasm16.ide.ui.views.BreakpointView;
-import de.codesourcery.jasm16.ide.ui.views.CPUView;
-import de.codesourcery.jasm16.ide.ui.views.DisassemblerView;
-import de.codesourcery.jasm16.ide.ui.views.HexDumpView;
-import de.codesourcery.jasm16.ide.ui.views.InMemorySourceResource;
-import de.codesourcery.jasm16.ide.ui.views.ScreenView;
-import de.codesourcery.jasm16.ide.ui.views.SourceLevelDebugView;
-import de.codesourcery.jasm16.ide.ui.views.StackView;
-import de.codesourcery.jasm16.ide.ui.views.VectorDisplayView;
+import de.codesourcery.jasm16.ide.ui.views.*;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class DebuggingPerspective extends Perspective
 {
     private static final Logger LOG = Logger.getLogger(DebuggingPerspective.class);
 
-    public static final String ID = "debugger";
+    public static final String VIEW_ID = "debugger";
 
     private final ProjectWrapper resourceResolver=new ProjectWrapper();
     private final IWorkspace workspace;
@@ -195,7 +177,7 @@ public class DebuggingPerspective extends Perspective
     public DebuggingPerspective(IWorkspace workspace , ViewContainerManager viewContainerManager,
             IApplicationConfig appConfig)
     {
-        super(ID, viewContainerManager , appConfig);
+        super(VIEW_ID, viewContainerManager , appConfig);
         if ( workspace == null ) {
             throw new IllegalArgumentException("workspace must not be null");
         }
@@ -209,14 +191,14 @@ public class DebuggingPerspective extends Perspective
         return resourceResolver;
     }
 
-    @Override
-    public void dispose() 
+    protected void disposeHook() 
     {
-        try {
+        try 
+        {
             workspace.removeWorkspaceListener( workspaceListener );
-            super.dispose();
         } 
-        finally {
+        finally 
+        {
             if ( emulator() != null ) {
                 try {
                     this.emulator().dispose();
@@ -245,7 +227,6 @@ public class DebuggingPerspective extends Perspective
         // set project & executable BEFORE loading object code
         // so any IEmulationListener that implements #afterMemoryLoad() 
         // can query the DebuggingPerspective for the current project
-
         this.project = project;
         this.executable = executable;
 
@@ -276,64 +257,70 @@ public class DebuggingPerspective extends Perspective
 
     private void setupPerspective() {
 
+    	final List<IView> createdViews = new ArrayList<>();
         // setup CPU view
         if ( getCPUView() == null ) {
             CPUView view = new CPUView( emulator() );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }
 
         // setup disassembler view
         if ( getDisassemblerView() == null ) {
             DisassemblerView view = new DisassemblerView( this, emulator() );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }
 
         // setup stack view
         if ( getStackView() == null ) {
             StackView view = new StackView( emulator() );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }        
 
         // setup hex-dump view
         if ( getHexDumpView() == null ) {
             final HexDumpView view = new HexDumpView( emulator() );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }           
 
         // setup screen view
         if ( getScreenView() == null ) {
             final ScreenView view = new ScreenView( project , emulator() );
             view.setDebugCustomFonts( false );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }     
         
         // setup SPED-3 vector display view
         if ( getVectorDisplayView() == null ) {
             final VectorDisplayView view = new VectorDisplayView( project , emulator() );
-            addView( view );
-            view.refreshDisplay();
+            createdViews.add( addView( view ) );
         }            
-        
 
         // setup source level debug view
         if ( getSourceLevelDebugView() == null ) 
         {
             final SourceLevelDebugView view = new SourceLevelDebugView( resourceResolver , workspace , this ,new NavigationHistory(), emulator() );
-            addView( view );
-            view.refreshDisplay();            
+            createdViews.add( addView( view ) );
         }
 
         // setup screen view
         if ( getBreakpointView() == null ) {
-            final BreakpointView view = new BreakpointView( getDisassemblerView() , getSourceLevelDebugView() , emulator() );
-            addView( view );
-            view.refreshDisplay();
+            final BreakpointView view = new BreakpointView( getDisassemblerView() , getSourceLevelDebugView() , emulator() ) {
+
+				@Override
+				protected IAssemblyProject getCurrentProject() {
+					return DebuggingPerspective.this.getCurrentProject();
+				}
+            };
+            createdViews.add( addView( view ) );
         }    
+        
+        // refresh views AFTER
+        // all have been created, views
+        // may have interdependencies
+        for ( IView v : createdViews ) 
+        {
+        	v.refreshDisplay();
+        }
     }
 
     private SourceLevelDebugView getSourceLevelDebugView() {
@@ -367,12 +354,6 @@ public class DebuggingPerspective extends Perspective
     private CPUView getCPUView() {
         return (CPUView) getViewByID( CPUView.VIEW_ID );
     }      
-
-    @Override
-    public String getID()
-    {
-        return ID;
-    }
 
     protected static final class EmulatorProxy implements InvocationHandler {
 
@@ -508,14 +489,36 @@ public class DebuggingPerspective extends Perspective
             }
             // alien method,invoke outside synchronized block
             boolean success = false;
-            try {
-                Object result = method.invoke( emu , args );
-                success = true;
-                return result;
+            try 
+            {
+            	if ( emu != null ) {
+            		Object result = method.invoke( emu , args );
+                	success = true;
+                	return result;
+            	} 
+            	System.err.println("Cannot invoke method "+method+" on NULL emulator");
+            	return null;
             }
-            catch(InvocationTargetException e) {
-            	if ( e.getTargetException() != null ) {
-            		throw e.getTargetException();
+            catch(Exception e) 
+            {
+            	if ( e instanceof InvocationTargetException) 
+            	{
+                	if ( ((InvocationTargetException) e).getTargetException() != null ) 
+                	{
+                		((InvocationTargetException) e).getTargetException().printStackTrace();
+                		throw ((InvocationTargetException) e).getTargetException();
+                	}
+            	} 
+            	
+            	if ( e.getCause() != null ) 
+            	{
+            		Throwable cause = e.getCause();
+            		while ( cause.getCause() != null ) {
+            			cause = cause.getCause();
+            		}
+            		cause.printStackTrace();
+            	} else {
+            		e.printStackTrace();
             	}
             	throw e;
             }

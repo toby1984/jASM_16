@@ -41,15 +41,21 @@ public class ViewContainerManager implements IViewContainerListener
     	this.applicationConfig = applicationConfig;
     }
     
-    public void disposeAllExcept(IViewContainer container) {
+    public void disposeAllExcept(IViewContainer caller) {
     	
     	List<IViewContainer> toClose;
         synchronized(containers) 
         {
         	toClose = new ArrayList<>( this.containers );
         }
-        for ( IViewContainer c : toClose ) {
-        	if ( c != container ) {
+        for ( IViewContainer c : toClose ) 
+        {
+        	if ( c != caller && ! c.getID().equals( caller.getID() )) 
+        	{
+        		synchronized(containers) 
+        		{
+        			this.containers.remove( c );
+        		}
         		c.dispose();
         	}
         }
@@ -104,9 +110,9 @@ public class ViewContainerManager implements IViewContainerListener
         removeViewContainer( container );
     }
     
-    public DebuggingPerspective getOrCreateDebuggingPerspective() {
-
-		final List<? extends IViewContainer> perspectives = getPerspectives( DebuggingPerspective.ID );
+    public DebuggingPerspective getOrCreateDebuggingPerspective() 
+    {
+		final List<? extends IViewContainer> perspectives = getPerspectives( DebuggingPerspective.VIEW_ID );
 
 		for ( IViewContainer existing : perspectives )
 		{

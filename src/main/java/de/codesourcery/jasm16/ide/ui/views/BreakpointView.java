@@ -36,10 +36,12 @@ import de.codesourcery.jasm16.emulator.EmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulationListener;
 import de.codesourcery.jasm16.emulator.IEmulator;
 import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.ide.DebuggerOptions;
+import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
-public class BreakpointView extends AbstractView {
+public abstract class BreakpointView extends AbstractView {
 
 	private static final String UNCONDITIONAL_BREAKPOINT = "<unconditional>";
 
@@ -63,12 +65,17 @@ public class BreakpointView extends AbstractView {
 	{
 		public void breakpointAdded(IEmulator emulator, final Breakpoint breakpoint) 
 		{
+        	if ( getCurrentProject() != null ) {
+        		getCurrentProject().getConfiguration().getDebuggerOptions().addBreakpoint( breakpoint );
+        	}			
             UIUtils.invokeLater( new Runnable() {
-                public void run() {		    
+                public void run() 
+                {		    
                     tableModel.addBreakpoint( breakpoint );
                 }
             });
 		}
+		
 		public void onBreakpoint(IEmulator emulator, final Breakpoint breakpoint) 
 		{
             UIUtils.invokeLater( new Runnable() {
@@ -80,14 +87,23 @@ public class BreakpointView extends AbstractView {
             });
 		};
 		
-		public void breakpointChanged(IEmulator emulator, final Breakpoint breakpoint) {
+		public void breakpointChanged(IEmulator emulator, final Breakpoint breakpoint) 
+		{
+        	if ( getCurrentProject() != null ) {
+        		getCurrentProject().getConfiguration().getDebuggerOptions().breakpointChanged(breakpoint);
+        	}			
             UIUtils.invokeLater( new Runnable() {
                 public void run() { 
                     tableModel.breakpointChanged( breakpoint );
                 }
             });
 		}
-		public void breakpointDeleted(IEmulator emulator, final Breakpoint breakpoint) {
+		
+		public void breakpointDeleted(IEmulator emulator, final Breakpoint breakpoint) 
+		{
+        	if ( getCurrentProject() != null ) {
+        		getCurrentProject().getConfiguration().getDebuggerOptions().deleteBreakpoint(breakpoint );
+        	}				
             UIUtils.invokeLater( new Runnable() {
                 public void run() { 
                     tableModel.deleteBreakpoint( breakpoint );
@@ -116,6 +132,15 @@ public class BreakpointView extends AbstractView {
 			}
 		}
 		
+		public void clear() 
+		{
+			if ( ! breakPoints.isEmpty() ) {
+				int size = breakPoints.size();
+				breakPoints.clear();
+				fireTableRowsDeleted(0, size-1 );
+			}
+		}
+		
 		public int getRow(Breakpoint breakpoint) 
 		{
 			for ( int index = 0 ; index < breakPoints.size() ; index++) {
@@ -140,6 +165,9 @@ public class BreakpointView extends AbstractView {
 			{
 				case COL_BP_ENABLED:
 					bp.setEnabled((Boolean) aValue);
+					if ( getCurrentProject() != null ) {
+						getCurrentProject().getConfiguration().getDebuggerOptions().breakpointChanged( bp );
+					}					
 					break;
 				case COL_BP_EXPRESSION:
 					if ( UNCONDITIONAL_BREAKPOINT.equals( aValue ) ) {
@@ -147,6 +175,9 @@ public class BreakpointView extends AbstractView {
 					}
 					try {
 						bp.setCondition((String) aValue);
+						if ( getCurrentProject() != null ) {
+							getCurrentProject().getConfiguration().getDebuggerOptions().breakpointChanged( bp );
+						}
 					} 
 					catch (ParseException e) 
 					{
@@ -262,6 +293,8 @@ public class BreakpointView extends AbstractView {
 		emulator.addEmulationListener( listener );
 	}
 	
+	protected abstract IAssemblyProject getCurrentProject();
+	
 	@Override
 	public void disposeHook() 
 	{
@@ -269,7 +302,18 @@ public class BreakpointView extends AbstractView {
 	}
 
 	@Override
-	public void refreshDisplay() {
+	public void refreshDisplay() 
+	{
+		if ( getCurrentProject() != null ) 
+		{
+			emulator.deleteAllBreakpoints();
+			tableModel.clear();
+			
+			for ( Breakpoint bp : getCurrentProject().getConfiguration().getDebuggerOptions().getBreakpoints() ) 
+			{
+				emulator.addBreakpoint( bp );
+			}
+		}			
 	}
 
 	@Override
@@ -321,10 +365,27 @@ public class BreakpointView extends AbstractView {
 			@Override
 			public void actionPerformed(ActionEvent e) 
 			{
-				final int viewRow = table.getSelectedRow();
-				final int modelRow = table.convertRowIndexToModel( viewRow );
-				Breakpoint bp = tableModel.getBreakpoint( modelRow );
-				emulator.deleteBreakpoint( bp );
+				final int[] viewRows = table.getSelectedRows();
+				final List<Breakpoint> toDelete = new ArrayList<>();
+				for ( int viewRow : viewRows ) {
+					final int modelRow = table.convertRowIndexToModel( viewRow );
+					Breakpoint bp = tableModel.getBreakpoint( modelRow );
+					toDelete.add( bp );
+				}
+				
+				if ( getCurrentProject() != null ) 
+				{
+					final DebuggerOptions options = getCurrentProject().getConfiguration().getDebuggerOptions();
+					for ( Breakpoint bp : toDelete ) 
+					{
+						options.deleteBreakpoint( bp );
+					}
+				}
+				
+				for ( Breakpoint bp : toDelete ) 
+				{
+					emulator.deleteBreakpoint( bp );					
+				}
 			}
 		} );
 		

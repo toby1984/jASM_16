@@ -49,7 +49,7 @@ import de.codesourcery.jasm16.utils.Misc;
 public class DefaultWorkspace implements IWorkspace
 {
 	private static final boolean DEBUG_EVENTS = false;
-	
+
 	private static final Logger LOG = Logger.getLogger(DefaultWorkspace.class);
 
 	private final List<IAssemblyProject> projects = new ArrayList<IAssemblyProject>();
@@ -58,7 +58,7 @@ public class DefaultWorkspace implements IWorkspace
 	private final AtomicBoolean opened = new AtomicBoolean(false);
 	private final IApplicationConfig appConfig;
 	private WorkspaceConfig workspaceConfig;
-	
+
 	private final IBuildManager buildManager;
 
 	public DefaultWorkspace(IApplicationConfig appConfig) throws IOException 
@@ -71,12 +71,12 @@ public class DefaultWorkspace implements IWorkspace
 		this.buildManager = tmp;
 		addResourceListener( tmp );
 	}
-	
+
 	@Override
 	public IBuildManager getBuildManager() {
 		return buildManager;
 	}
-	
+
 	private synchronized WorkspaceConfig getWorkspaceConfig() throws IOException 
 	{
 		if ( workspaceConfig == null ) {
@@ -127,16 +127,16 @@ public class DefaultWorkspace implements IWorkspace
 		{
 			final IAssemblyProject project = it.next();
 			it.remove();
-			
+
 			project.removedFromWorkspace( this );
-			
+
 			notifyListeners( new IInvoker() {
 				@Override
 				public void invoke(IResourceListener listener) 
 				{
-				    if ( listener instanceof IWorkspaceListener) {
-				        ((IWorkspaceListener) listener).projectDisposed( project );
-				    }
+					if ( listener instanceof IWorkspaceListener) {
+						((IWorkspaceListener) listener).projectDisposed( project );
+					}
 				}
 				@Override
 				public String toString() {
@@ -144,20 +144,20 @@ public class DefaultWorkspace implements IWorkspace
 				}			
 			});				
 		}
-		
+
 		// add new projects
 		for ( final IAssemblyProject p : tmp ) 
 		{
 			this.projects.add( p );
 			p.addedToWorkspace( this );
-			
+
 			notifyListeners( new IInvoker() {
 				@Override
 				public void invoke(IResourceListener listener) 
 				{
-				    if ( listener instanceof IWorkspaceListener) {
-				        ((IWorkspaceListener) listener).projectLoaded( p );
-				    }
+					if ( listener instanceof IWorkspaceListener) {
+						((IWorkspaceListener) listener).projectLoaded( p );
+					}
 				}
 				@Override
 				public String toString() {
@@ -165,7 +165,7 @@ public class DefaultWorkspace implements IWorkspace
 				}			
 			});				
 		}
-		
+
 		opened.set( true );
 	}
 
@@ -173,9 +173,9 @@ public class DefaultWorkspace implements IWorkspace
 	{
 		final ProjectConfiguration config = new ProjectConfiguration( baseDir );
 		config.load();
-		
+
 		final boolean isProjectOpen = getWorkspaceConfig().isProjectOpen( config.getProjectName() );
-		
+
 		final AssemblyProject tmp = new AssemblyProject( this , config , isProjectOpen );
 		final IProjectBuilder builder = buildManager.getProjectBuilder( tmp );			
 		tmp.setProjectBuilder( builder );
@@ -213,13 +213,13 @@ public class DefaultWorkspace implements IWorkspace
 			throw new ProjectAlreadyExistsException(name,"Cannot create project '"+name+"' , project directory "+
 					baseDir.getAbsolutePath()+" already exists ?");
 		}
-		
+
 		if ( ! baseDir.mkdirs() ) {
 			throw new IOException("Failed to create project base directory "+baseDir.getAbsolutePath());
 		}
 
 		LOG.info("createNewProject(): Creating project '"+name+"'");
-		
+
 		final ProjectConfiguration config = new ProjectConfiguration(baseDir);
 		config.setProjectName( name );
 		try {
@@ -231,14 +231,14 @@ public class DefaultWorkspace implements IWorkspace
 			throw e;
 		}
 
-		 return internalAddProject( config , true );
+		return internalAddProject( config , true );
 	}
-	
+
 	private AssemblyProject internalAddProject(ProjectConfiguration config,boolean deleteProjectFilesOnError) throws IOException 
 	{
 		final AssemblyProject result = new AssemblyProject( this , config , true );
 		projects.add( result );
-		
+
 		try {
 			getWorkspaceConfig().projectAdded( result );
 			getWorkspaceConfig().saveConfiguration();
@@ -257,20 +257,20 @@ public class DefaultWorkspace implements IWorkspace
 			}
 			throw e;
 		}
-		
+
 		// register project as resource listener
 		result.addedToWorkspace( this );
-		
+
 		final IProjectBuilder builder = buildManager.getProjectBuilder( result );			
 		result.setProjectBuilder( builder );		
-		
+
 		notifyListeners( new IInvoker() {
 			@Override
 			public void invoke(IResourceListener listener) 
 			{
-			    if ( listener instanceof IWorkspaceListener) {
-			        ((IWorkspaceListener) listener).projectCreated(result);
-			    }
+				if ( listener instanceof IWorkspaceListener) {
+					((IWorkspaceListener) listener).projectCreated(result);
+				}
 			}
 			@Override
 			public String toString() {
@@ -295,13 +295,13 @@ public class DefaultWorkspace implements IWorkspace
 			if ( existing.getName().equals( project.getName() ) ) 
 			{
 				it.remove();
-				
+
 				if ( deletePhyiscally ) {
 					internalDeleteFile( existing , existing.getConfiguration().getBaseDirectory() , true );					
 				}
-				
+
 				existing.removedFromWorkspace( this );
-				
+
 				try {
 					getWorkspaceConfig().projectDeleted( project );
 					getWorkspaceConfig().saveConfiguration();
@@ -313,13 +313,13 @@ public class DefaultWorkspace implements IWorkspace
 					}
 					throw e;
 				}
-				
+
 				notifyListeners( new IInvoker() {
 					@Override
 					public void invoke(IResourceListener listener) {
-		                if ( listener instanceof IWorkspaceListener) {
-		                    ((IWorkspaceListener) listener).projectDeleted(existing);
-		                }					    
+						if ( listener instanceof IWorkspaceListener) {
+							((IWorkspaceListener) listener).projectDeleted(existing);
+						}					    
 					}
 					@Override
 					public String toString() {
@@ -330,7 +330,7 @@ public class DefaultWorkspace implements IWorkspace
 			}
 		}
 	}
-	
+
 	@Override
 	public void deleteFile(final IAssemblyProject project, final File file) throws IOException 
 	{
@@ -342,7 +342,7 @@ public class DefaultWorkspace implements IWorkspace
 		}
 		internalDeleteFile(project,file,false);
 	}
-	
+
 	/**
 	 * 
 	 * @param project project or <code>null</code> if no resource listeners should be notified
@@ -352,21 +352,21 @@ public class DefaultWorkspace implements IWorkspace
 	protected void internalDeleteFile(final IAssemblyProject project, final File file,boolean calledByDeleteProject) throws IOException 
 	{
 		if ( project != null &&
-			 ! calledByDeleteProject && 
-			 project.getConfiguration().getBaseDirectory().equals( file ) ) 
+				! calledByDeleteProject && 
+				project.getConfiguration().getBaseDirectory().equals( file ) ) 
 		{
 			deleteProject(project,true);
 			return;
 		}
-		
+
 		if ( file.isDirectory() ) {
 			for ( File child : file.listFiles() ) {
 				internalDeleteFile( project , child , calledByDeleteProject );
 			}
 		} 
-		
+
 		file.delete();
-		
+
 		if ( project != null  ) 
 		{
 			notifyListeners( new IInvoker() {
@@ -410,24 +410,24 @@ public class DefaultWorkspace implements IWorkspace
 			public void invoke(IResourceListener listener) {
 				listener.resourceChanged( project , resource );
 			}
-			
+
 			@Override
 			public String toString() {
 				return "RESOURCE-CHANGED: "+resource;
 			}			
 		});
 	}
-	
+
 	protected interface IInvoker {
 		public void invoke(IResourceListener listener);
 	}
-	
+
 	private void notifyListeners(IInvoker invoker) 
 	{
 		if ( DEBUG_EVENTS ) {
 			System.out.println( invoker.toString() );
 		}
-		
+
 		final List<IResourceListener> copy;
 		synchronized (listeners) {
 			copy = new ArrayList<IResourceListener>( this.listeners );
@@ -442,17 +442,17 @@ public class DefaultWorkspace implements IWorkspace
 			}
 		}		
 	}
-	
+
 	@Override
 	public void addWorkspaceListener(IWorkspaceListener listener)
 	{
-	    addResourceListener( listener );
+		addResourceListener( listener );
 	}
 
 	@Override
 	public void removeWorkspaceListener(IWorkspaceListener listener)
 	{
-	    removeResourceListener( listener );
+		removeResourceListener( listener );
 	}
 
 	@Override
@@ -476,9 +476,24 @@ public class DefaultWorkspace implements IWorkspace
 	}
 
 	@Override
-	public void close() throws IOException {
-		this.opened.set( false );
-		getWorkspaceConfig().saveConfiguration();		
+	public void close() throws IOException 
+	{
+		System.out.println("Closing workspace...");
+		try 
+		{		
+			if ( this.opened.compareAndSet( true , false ) ) 
+			{
+				for ( IAssemblyProject p : projects ) 
+				{
+					if ( p.isOpen() ) 
+					{
+						p.getConfiguration().save();
+					}
+				}
+			}
+		} finally {
+			getWorkspaceConfig().saveConfiguration();
+		}
 	}
 
 	@Override
@@ -498,14 +513,14 @@ public class DefaultWorkspace implements IWorkspace
 					((IWorkspaceListener) listener).compilationFinished( project , unit );
 				}
 			}
-			
+
 			@Override
 			public String toString() {
 				return "COMPILATION-FINISHED: "+project+" - "+unit;
 			}
 		});		
 	}
-	
+
 	@Override
 	public void resourceCreated(final IAssemblyProject project, final IResource resource) {
 
@@ -515,7 +530,7 @@ public class DefaultWorkspace implements IWorkspace
 			public void invoke(IResourceListener listener) {
 				listener.resourceCreated( project , resource );
 			}
-			
+
 			@Override
 			public String toString() {
 				return "RESOURCE-CREATED: "+resource;
@@ -533,7 +548,7 @@ public class DefaultWorkspace implements IWorkspace
 			{
 				listener.resourceDeleted( project , resource );
 			}
-			
+
 			@Override
 			public String toString() {
 				return "RESOURCE-DELETED: "+resource;
@@ -541,56 +556,56 @@ public class DefaultWorkspace implements IWorkspace
 		});		
 	}
 
-    @Override
-    public void addResourceListener(IResourceListener listener)
-    {
-        if (listener == null) {
-            throw new IllegalArgumentException("listener must not be NULL.");
-        }
+	@Override
+	public void addResourceListener(IResourceListener listener)
+	{
+		if (listener == null) {
+			throw new IllegalArgumentException("listener must not be NULL.");
+		}
 
-        synchronized (listeners) 
-        {
-        	if ( listener instanceof IAssemblyProject) 
-        	{
-        		// add projects BEFORE any other listeners because
-        		// IAssemblyProject#projectOpened() and
-        		// IAssemblyProject#projectClosed() update internal state
-        		// that may be checked by other IWorkspaceListener implementations
-        		// when their projectOpened() / projectClosed() methods are invoked 
-        		listeners.add( 0 , listener );
-        		return;
-        	} 
-        	
-    	    final IOrdered.Priority prio = getPriority(listener);
-    	    if ( prio != Priority.DONT_CARE ) 
-    	    {
-    	        for (int i = 0; i < listeners.size(); i++) 
-    	        {
-                    final IResourceListener existing = listeners.get(i);
-                    if ( ! getPriority( existing ).isHigherThan( prio ) ) {
-                        listeners.add( i , listener );
-                        return;
-                    }
-    	        }
-    	    }
-            listeners.add( listener );
-        }        
-    }
+		synchronized (listeners) 
+		{
+			if ( listener instanceof IAssemblyProject) 
+			{
+				// add projects BEFORE any other listeners because
+				// IAssemblyProject#projectOpened() and
+				// IAssemblyProject#projectClosed() update internal state
+				// that may be checked by other IWorkspaceListener implementations
+				// when their projectOpened() / projectClosed() methods are invoked 
+				listeners.add( 0 , listener );
+				return;
+			} 
 
-    private static IOrdered.Priority getPriority(IResourceListener listener) {
-        return (listener instanceof IOrdered) ? ((IOrdered) listener).getPriority() : Priority.DONT_CARE;
-    }
-    
-    @Override
-    public void removeResourceListener(IResourceListener listener)
-    {
-        if (listener == null) {
-            throw new IllegalArgumentException("listener must not be NULL.");
-        }
-        synchronized (listeners) {
-            listeners.remove( listener );
-        }         
-    }
+			final IOrdered.Priority prio = getPriority(listener);
+			if ( prio != Priority.DONT_CARE ) 
+			{
+				for (int i = 0; i < listeners.size(); i++) 
+				{
+					final IResourceListener existing = listeners.get(i);
+					if ( ! getPriority( existing ).isHigherThan( prio ) ) {
+						listeners.add( i , listener );
+						return;
+					}
+				}
+			}
+			listeners.add( listener );
+		}        
+	}
+
+	private static IOrdered.Priority getPriority(IResourceListener listener) {
+		return (listener instanceof IOrdered) ? ((IOrdered) listener).getPriority() : Priority.DONT_CARE;
+	}
+
+	@Override
+	public void removeResourceListener(IResourceListener listener)
+	{
+		if (listener == null) {
+			throw new IllegalArgumentException("listener must not be NULL.");
+		}
+		synchronized (listeners) {
+			listeners.remove( listener );
+		}         
+	}
 
 	@Override
 	public void buildStarted(final IAssemblyProject assemblyProject) 
@@ -603,7 +618,7 @@ public class DefaultWorkspace implements IWorkspace
 					((IWorkspaceListener) listener).buildStarted( assemblyProject );
 				}
 			}
-			
+
 			@Override
 			public String toString() {
 				return "BUILD-STARTED: "+assemblyProject;
@@ -622,7 +637,7 @@ public class DefaultWorkspace implements IWorkspace
 					((IWorkspaceListener) listener).buildFinished( assemblyProject , buildSuccessful );
 				}
 			}
-			
+
 			@Override
 			public String toString() {
 				return "BUILD-FINISHED: "+assemblyProject+" ( success = "+buildSuccessful+" )";
@@ -630,51 +645,51 @@ public class DefaultWorkspace implements IWorkspace
 		});			
 	}
 
-    @Override
-    public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException
-    {
-        if (projects == null) {
-            throw new IllegalArgumentException("project must not be NULL.");
-        }
-        for ( final IAssemblyProject p : projects ) 
-        {
-        	if ( p.isOpen() ) 
-        	{
-        		LOG.info("refreshProjects(): Refreshing "+p);
-        		
-        		ProjectConfiguration reloaded = new ProjectConfiguration( p.getConfiguration().getBaseDirectory() );
-        		reloaded.load();
-        		p.getConfiguration().populateFrom( reloaded );
-        		p.reload();
-        		
-        		notifyListeners( new IInvoker() {
-        			@Override
-        			public void invoke(IResourceListener listener) 
-        			{
-        				if ( listener instanceof IWorkspaceListener ) {
-        					((IWorkspaceListener) listener).projectConfigurationChanged( p );
-        				}
-        			}
-        			
-        			@Override
-        			public String toString() {
-        				return "PROJECT-CONFIGURATION-CHANGED: "+p;
-        			}			
-        		});	        		
-        	}
-        }
-    }
+	@Override
+	public void refreshProjects(Collection<IAssemblyProject> projects) throws IOException
+	{
+		if (projects == null) {
+			throw new IllegalArgumentException("project must not be NULL.");
+		}
+		for ( final IAssemblyProject p : projects ) 
+		{
+			if ( p.isOpen() ) 
+			{
+				LOG.info("refreshProjects(): Refreshing "+p);
+
+				ProjectConfiguration reloaded = new ProjectConfiguration( p.getConfiguration().getBaseDirectory() );
+				reloaded.load();
+				p.getConfiguration().populateFrom( reloaded );
+				p.reload();
+
+				notifyListeners( new IInvoker() {
+					@Override
+					public void invoke(IResourceListener listener) 
+					{
+						if ( listener instanceof IWorkspaceListener ) {
+							((IWorkspaceListener) listener).projectConfigurationChanged( p );
+						}
+					}
+
+					@Override
+					public String toString() {
+						return "PROJECT-CONFIGURATION-CHANGED: "+p;
+					}			
+				});	        		
+			}
+		}
+	}
 
 	@Override
 	public void openProject(final IAssemblyProject project) {
-		
+
 		try {
 			getWorkspaceConfig().projectOpened( project );
 			getWorkspaceConfig().saveConfiguration();
 		} catch (IOException e) {
 			LOG.error("closeProject(): Failed to update workspace configuration");
 		}
-		
+
 		// nothing to do here since IAssemblyProject
 		// implements IWorkspaceListener#projectOpened() and
 		// will update it's internal state when it receives the message
@@ -686,7 +701,7 @@ public class DefaultWorkspace implements IWorkspace
 					((IWorkspaceListener) listener).projectOpened( project );
 				}
 			}
-			
+
 			@Override
 			public String toString() {
 				return "PROJECT-OPENED: "+project;
@@ -704,7 +719,7 @@ public class DefaultWorkspace implements IWorkspace
 		catch (IOException e) {
 			LOG.error("closeProject(): Failed to update workspace configuration",e);
 		}
-		
+
 		// nothing to do here since IAssemblyProject
 		// implements IWorkspaceListener#projectClosed() and
 		// will update it's internal state when it receives the message
@@ -716,7 +731,7 @@ public class DefaultWorkspace implements IWorkspace
 					((IWorkspaceListener) listener).projectClosed( project );
 				}
 			}
-			
+
 			@Override
 			public String toString() {
 				return "PROJECT-CLOSED: "+project;
@@ -730,9 +745,9 @@ public class DefaultWorkspace implements IWorkspace
 		if (baseDirectory == null) {
 			throw new IllegalArgumentException("baseDirectory must not be null");
 		}
-		
+
 		Misc.checkFileExistsAndIsDirectory( baseDirectory , false );
-		
+
 		if ( ! baseDirectory.getAbsolutePath().startsWith( getBaseDirectory().getAbsolutePath() ) ) 
 		{
 			throw new IllegalArgumentException("Folder "+baseDirectory.getAbsolutePath()+
@@ -741,24 +756,24 @@ public class DefaultWorkspace implements IWorkspace
 
 		final ProjectConfiguration config = new ProjectConfiguration(baseDirectory);
 		config.load();
-		
+
 		if ( doesProjectExist( config.getProjectName() ) ) {
-            throw new ProjectAlreadyExistsException(config.getProjectName() );
+			throw new ProjectAlreadyExistsException(config.getProjectName() );
 		}
-		
+
 		return internalAddProject( config , false );
 	}
 
-    @Override
-    public IAssemblyProject getProjectForResource(IResource resource) throws ProjectNotFoundException
-    {
-        for ( IAssemblyProject project : getAllProjects() ) 
-        {
-            if ( project.containsResource( resource ) ) {
-                return project;
-            }
-        }
-        throw new ProjectNotFoundException("Unable to find project that owns resource '"+resource.getIdentifier()+"' ("+resource+")");
-    }
+	@Override
+	public IAssemblyProject getProjectForResource(IResource resource) throws ProjectNotFoundException
+	{
+		for ( IAssemblyProject project : getAllProjects() ) 
+		{
+			if ( project.containsResource( resource ) ) {
+				return project;
+			}
+		}
+		throw new ProjectNotFoundException("Unable to find project that owns resource '"+resource.getIdentifier()+"' ("+resource+")");
+	}
 
 }

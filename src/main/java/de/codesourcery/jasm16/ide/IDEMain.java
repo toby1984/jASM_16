@@ -27,8 +27,7 @@ import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.Perspective;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.*;
 import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -70,6 +69,22 @@ public class IDEMain
 		viewContainerManager = new ViewContainerManager(workspace,appConfig);
 		
 		final Perspective desktop = new Perspective( "desktop" , viewContainerManager , appConfig );
+		
+		desktop.addViewContainerListener( new IViewContainerListener() {
+
+			@Override
+			public void viewContainerClosed(IViewContainer container) 
+			{
+				try 
+				{
+					workspace.close();
+				} 
+				catch (IOException e) 
+				{
+					e.printStackTrace();
+				}
+			}
+		});
 		
 		EditorFactory editorFactory = new EditorFactory( workspace , viewContainerManager );
 		desktop.addView( new WorkspaceExplorer( workspace , viewContainerManager , editorFactory ) );

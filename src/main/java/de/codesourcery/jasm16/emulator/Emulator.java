@@ -15,12 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,28 +23,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.*;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
-import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
-import de.codesourcery.jasm16.emulator.devices.IDevice;
-import de.codesourcery.jasm16.emulator.devices.IInterrupt;
-import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
-import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
-import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
-import de.codesourcery.jasm16.emulator.memory.MainMemory;
-import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.emulator.devices.*;
+import de.codesourcery.jasm16.emulator.exceptions.*;
+import de.codesourcery.jasm16.emulator.memory.*;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -1500,9 +1480,39 @@ public final class Emulator implements IEmulator
 			}
 		});         
 	}
+	
+	@Override
+	public void deleteAllBreakpoints() 
+	{
+		final List<Breakpoint> copy=new ArrayList<>();
+		synchronized( breakpoints ) 
+		{
+			for ( List<Breakpoint> bp : breakpoints.values() ) {
+				copy.addAll( bp );
+			}
+		}
+		for ( Breakpoint bp : copy ) 
+		{
+			deleteBreakpoint( bp , false );
+		}
+		
+		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
+
+			@Override
+			public void invoke(IEmulator emulator, IEmulationListener listener)
+			{
+				listener.allBreakpointsDeleted( emulator );
+			}
+		});  		
+	}
 
 	@Override
 	public void deleteBreakpoint(final Breakpoint bp)
+	{
+		deleteBreakpoint(bp,true);
+	}
+	
+	private void deleteBreakpoint(final Breakpoint bp,boolean notifyListeners)
 	{
 		if (bp == null) {
 			throw new IllegalArgumentException("breakpoint must not be NULL.");
@@ -1527,7 +1537,8 @@ public final class Emulator implements IEmulator
 			}
 		}      
 		// notify listeners
-		if ( existing != null && ! existing.isOneShotBreakpoint() ) {
+		if ( notifyListeners && existing != null && ! existing.isOneShotBreakpoint() ) 
+		{
 			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
 
 				@Override

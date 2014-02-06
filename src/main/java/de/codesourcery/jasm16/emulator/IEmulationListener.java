@@ -76,6 +76,8 @@ public interface IEmulationListener
     
     public void breakpointDeleted(IEmulator emulator,Breakpoint breakpoint);
     
+    public void allBreakpointsDeleted(IEmulator emulator);
+    
     public void breakpointChanged(IEmulator emulator,Breakpoint breakpoint);    
     
     public void onBreakpoint(IEmulator emulator,Breakpoint breakpoint);

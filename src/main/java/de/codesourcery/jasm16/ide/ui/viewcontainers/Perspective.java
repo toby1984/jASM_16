@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.event.WindowAdapter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -126,8 +125,10 @@ public class Perspective extends JFrame implements IViewContainer {
     }
 
     @Override
-    public void dispose() 
+    public final void dispose() 
     {
+    	disposeHook();
+    	
         final SizeAndLocation sizeAndLoc = new SizeAndLocation( getLocation() , getSize() );
         applicationConfig.storeViewCoordinates( getID() , sizeAndLoc );
 
@@ -138,6 +139,8 @@ public class Perspective extends JFrame implements IViewContainer {
 
         super.dispose();
 
+        viewContainerManager.disposeAllExcept( this );
+        
         helper.fireViewContainerClosed( this );
 
         try {
@@ -145,6 +148,10 @@ public class Perspective extends JFrame implements IViewContainer {
         } catch (IOException e) {
             LOG.error("dispose(): Failed to save view coordinates",e);
         }
+    }
+    
+    protected void disposeHook() {
+    	
     }
 
     public Perspective(String id , final ViewContainerManager viewContainerManager , IApplicationConfig appConfig) 
@@ -168,15 +175,6 @@ public class Perspective extends JFrame implements IViewContainer {
         this.applicationConfig = appConfig;
         setPreferredSize( new Dimension(400,200 ) );
         getContentPane().add( desktop );
-
-        addWindowListener( new WindowAdapter() {
-
-            public void windowClosing(java.awt.event.WindowEvent e) 
-            {
-            	viewContainerManager.disposeAllExcept( Perspective.this );
-            	dispose();
-            };
-        } );
 
         setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
 
@@ -231,7 +229,7 @@ public class Perspective extends JFrame implements IViewContainer {
     }
 
     @Override
-    public void addView(final IView view) 
+    public IView addView(final IView view) 
     {
         if (view == null) {
             throw new IllegalArgumentException("view must not be NULL");
@@ -270,7 +268,8 @@ public class Perspective extends JFrame implements IViewContainer {
         internalFrame.addInternalFrameListener( listener );
 
         views.add( frameAndView );
-        desktop.add(internalFrame);			
+        desktop.add(internalFrame);
+        return view;
     }
 
     @Override
@@ -330,7 +329,7 @@ public class Perspective extends JFrame implements IViewContainer {
     }
 
     @Override
-    public String getID()
+    public final String getID()
     {
         return id;
     }

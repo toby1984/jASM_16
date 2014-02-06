@@ -291,4 +291,10 @@ public interface IEmulator
 	public ILogger getOutput();
 	
 	public void setIgnoreAccessToUnknownDevices(boolean yesNo);
+
+	/**
+	 * Removes all breakpoints from this emulator and invokes
+	 * {@link IEmulationListener#allBreakpointsDeleted(IEmulator)} afterwards.
+	 */
+	public void deleteAllBreakpoints();
 }

@@ -56,8 +56,9 @@ public interface IViewContainer {
 	 * Adds a view to this container.
 	 * 
 	 * @param view
+	 * @return the input view (for method chaining)
 	 */
-	public void addView(IView view);
+	public IView addView(IView view);
 	
 	/**
 	 * Removes a view from this container.

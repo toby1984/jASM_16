@@ -15,11 +15,7 @@
  */
 package de.codesourcery.jasm16.ide.ui.viewcontainers;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
@@ -39,18 +35,11 @@ import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
-import de.codesourcery.jasm16.ide.EditorFactory;
-import de.codesourcery.jasm16.ide.IAssemblyProject;
-import de.codesourcery.jasm16.ide.IWorkspace;
-import de.codesourcery.jasm16.ide.NavigationHistory;
+import de.codesourcery.jasm16.ide.*;
 import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
-import de.codesourcery.jasm16.ide.ui.views.AbstractView;
-import de.codesourcery.jasm16.ide.ui.views.IEditorView;
-import de.codesourcery.jasm16.ide.ui.views.IView;
-import de.codesourcery.jasm16.ide.ui.views.IViewStateListener;
-import de.codesourcery.jasm16.ide.ui.views.SourceCodeView;
+import de.codesourcery.jasm16.ide.ui.views.*;
 
 public class EditorContainer extends AbstractView implements IViewContainer , IResourceResolver {
 
@@ -218,9 +207,10 @@ public class EditorContainer extends AbstractView implements IViewContainer , IR
     }	
 	
 	@Override
-	public void addView(IView view) 
+	public IView addView(IView view) 
 	{
 	    internalAddView(view);
+	    return view;
 	}
 	
     private ViewWithPanel internalAddView(IView view) 

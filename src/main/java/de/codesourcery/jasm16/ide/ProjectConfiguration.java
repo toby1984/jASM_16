@@ -91,6 +91,7 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	
 	private BuildOptions buildOptions = new BuildOptions();
 	private EmulationOptions emulationOptions=new EmulationOptions();
+	private final DebuggerOptions debuggerOptions = new DebuggerOptions();
 
 	public void populateFrom(ProjectConfiguration other) {
 		if ( ! this.baseDir.getAbsolutePath().equals( other.baseDir.getAbsolutePath() ) ) {
@@ -227,6 +228,12 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	    root.appendChild( buildOptions );
 	    
 	    this.buildOptions.saveBuildOptions( buildOptions , document );
+	    
+	    // debugger options
+	    final Element debugOptions = document.createElement("debuggerOptions");
+	    root.appendChild( debugOptions );
+	    
+	    this.debuggerOptions.saveDebuggerOptions(debugOptions,document);
 		
 		// emulation options
 		final Element options = document.createElement("emulationOptions");
@@ -277,8 +284,8 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 	 *   <executableName>a.out</executableName>
 	 * </project>
 	 */
-	private void parseXML(Document doc) throws XPathExpressionException {
-
+	private void parseXML(Document doc) throws XPathExpressionException 
+	{
 		final XPathFactory factory = XPathFactory.newInstance();
 		final XPath xpath = factory.newXPath();
 
@@ -290,6 +297,7 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
         final XPathExpression buildOptionsExpr = xpath.compile("/project/buildOptions");   
         final XPathExpression srcFilePatternsExpr = xpath.compile("/project/sourceFilenamePatterns/sourceFilenamePattern");           
         final XPathExpression compilationRootExpr = xpath.compile("/project/compilationRoot");
+        final XPathExpression debuggerOptionsExpr = xpath.compile("/project/debuggerOptions");
         
 		this.outputFolder = getValue( outputFolderExpr , doc );
 		this.projectName = getValue( nameExpr , doc );
@@ -327,7 +335,15 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
             this.buildOptions = new BuildOptions();
         } else {
             this.buildOptions = BuildOptions.loadBuildOptions( element );
-        }		
+        }
+        
+		// parse build options
+        element = getElement(debuggerOptionsExpr,doc);
+        if ( element == null ) {
+            this.debuggerOptions.reset();
+        } else {
+            this.debuggerOptions.loadDebuggerOptions( element );
+        }	        
 	}
 
 	private String getValue(XPathExpression expr, Document doc) throws XPathExpressionException 
@@ -523,6 +539,10 @@ public class ProjectConfiguration implements IEmulationOptionsProvider
 
 	public File getBaseDirectory() {
 		return baseDir;
+	}
+	
+	public DebuggerOptions getDebuggerOptions() {
+		return this.debuggerOptions;
 	}
 
     public BuildOptions getBuildOptions()

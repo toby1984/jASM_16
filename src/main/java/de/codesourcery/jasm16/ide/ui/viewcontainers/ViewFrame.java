@@ -112,7 +112,7 @@ public class ViewFrame extends JFrame implements IViewContainer
 	}
 	
 	@Override
-	public void addView(IView view) {
+	public IView addView(IView view) {
 		throw new UnsupportedOperationException("showView()");
 	}
 
