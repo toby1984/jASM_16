@@ -2315,29 +2315,19 @@ public final class Emulator implements IEmulator
             OperandDesc source = loadSourceOperand( instructionWord );
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
-            boolean underflow = false;
-            boolean overflow = false;
-
             final int b = target.value;
             final int a = source.value;
+            
+            int result = b-a+ex;
 
-            final int step1 = b - a;
-            if ( step1 < 0 ) {
-                underflow = true;
-            }
-            final int step2 = step1 + ex;
-            if ( step2 > 65535 ) {
-                overflow = true;
-            }
-
-            if ( underflow ) {
+            if ( result < 0 ) {
                 ex = 0xffff;
-            } else if ( overflow ) {
+            } else if ( result > 0xffff ) {
                 ex = 0x0001;
             } else {
                 ex = 0;
             }
-            return 3+storeTargetOperand( instructionWord , step2 )+source.cycleCount;       
+            return 3+storeTargetOperand( instructionWord , result & 0xffff )+source.cycleCount;       
         }
 
         private int handleADX(int instructionWord) {
@@ -2351,7 +2341,7 @@ public final class Emulator implements IEmulator
             } else {
                 ex = 0;
             }
-            return 3+storeTargetOperand( instructionWord , acc)+source.cycleCount;
+            return 3+storeTargetOperand( instructionWord , acc & 0xffff )+source.cycleCount;
         }
 
         private int handleUnknownOpCode(int instructionWord) 
@@ -2629,7 +2619,7 @@ public final class Emulator implements IEmulator
         private int signed( int value) 
         {
             if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
-                return value | 0xffff0000;
+                return  0xffff0000 | value;
             }
             return value;
         }
@@ -2895,7 +2885,7 @@ public final class Emulator implements IEmulator
                     currentInstructionPtr = value;
                     return 0;
                 case 0x1d:
-                    ex = value;
+                    ex = value & 0xffff;
                     return 0;
                 case 0x1e:
                     nextWord = readNextWordAndAdvance();
@@ -3205,7 +3195,7 @@ public final class Emulator implements IEmulator
         {
             // SET [--SP] , blubb
             sp = sp.decrementByOne();
-            memory.write( sp , value & 0xffff );
+            memory.write( sp , value );
         }           
         
         public boolean maybeProcessOneInterrupt() 
