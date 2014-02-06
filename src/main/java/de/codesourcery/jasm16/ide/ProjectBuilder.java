@@ -15,15 +15,9 @@
  */
 package de.codesourcery.jasm16.ide;
 
-import static de.codesourcery.jasm16.compiler.ICompiler.CompilerOption.GENERATE_RELOCATION_INFORMATION;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
@@ -33,36 +27,17 @@ import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
-import de.codesourcery.jasm16.compiler.CompilationListener;
-import de.codesourcery.jasm16.compiler.CompilationUnit;
-import de.codesourcery.jasm16.compiler.CompiledCode;
-import de.codesourcery.jasm16.compiler.Compiler;
-import de.codesourcery.jasm16.compiler.DebugInfo;
-import de.codesourcery.jasm16.compiler.Executable;
-import de.codesourcery.jasm16.compiler.ICompilationContext;
-import de.codesourcery.jasm16.compiler.ICompilationListener;
-import de.codesourcery.jasm16.compiler.ICompilationUnit;
-import de.codesourcery.jasm16.compiler.ICompiler;
+import de.codesourcery.jasm16.compiler.*;
 import de.codesourcery.jasm16.compiler.ICompiler.CompilerOption;
-import de.codesourcery.jasm16.compiler.IParentSymbolTable;
-import de.codesourcery.jasm16.compiler.Linker;
-import de.codesourcery.jasm16.compiler.ParentSymbolTable;
+import de.codesourcery.jasm16.compiler.Compiler;
 import de.codesourcery.jasm16.compiler.dependencyanalysis.DependencyNode;
 import de.codesourcery.jasm16.compiler.dependencyanalysis.SourceFileDependencyAnalyzer;
-import de.codesourcery.jasm16.compiler.io.DefaultResourceMatcher;
-import de.codesourcery.jasm16.compiler.io.FileObjectCodeWriter;
-import de.codesourcery.jasm16.compiler.io.FileResource;
-import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
-import de.codesourcery.jasm16.compiler.io.IObjectCodeWriter;
-import de.codesourcery.jasm16.compiler.io.IResource;
+import de.codesourcery.jasm16.compiler.io.*;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
-import de.codesourcery.jasm16.compiler.io.IResourceMatcher;
-import de.codesourcery.jasm16.compiler.io.IResourceResolver;
-import de.codesourcery.jasm16.compiler.io.NullObjectCodeWriterFactory;
-import de.codesourcery.jasm16.compiler.io.SimpleFileObjectCodeWriterFactory;
 import de.codesourcery.jasm16.exceptions.AmbigousCompilationOrderException;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
+import de.codesourcery.jasm16.utils.DebugCompilationListener;
 import de.codesourcery.jasm16.utils.IOrdered;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -288,7 +263,14 @@ public class ProjectBuilder implements IProjectBuilder , IResourceListener, IOrd
     public synchronized boolean build() throws IOException 
     {
     	assertNotDisposed();
-        return build( new CompilationListener() );
+        // return build( new CompilationListener() );
+    	long time = -System.currentTimeMillis();
+    	try {
+    		return build( new DebugCompilationListener(true) );
+    	} finally {
+    		time += System.currentTimeMillis();
+    		System.out.println("Building project "+this.project.getName()+" took "+time+" ms");
+    	}
     }
     
 	/**

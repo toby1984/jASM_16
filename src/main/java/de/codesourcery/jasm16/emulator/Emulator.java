@@ -2381,8 +2381,8 @@ public final class Emulator implements IEmulator
 
             if ( skippedInstructionIsConditional ) 
             {
-                currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
-                return 2;
+        		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+        		return 2;
             }
             return 1;
         }

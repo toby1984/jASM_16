@@ -103,7 +103,9 @@ public class SymbolReferenceNode extends ConstantValueNode
 		do {
 			ISymbol symbol = internalResolve(currentTable);
 			if ( symbol != null ) {
-				System.out.println("RESOLVED => Symbol '"+getIdentifier()+"' => "+symbol.getFullyQualifiedName());
+				if ( SymbolTable.DEBUG_SYMBOLS ) {
+					System.out.println("RESOLVED => Symbol '"+getIdentifier()+"' => "+symbol.getFullyQualifiedName());
+				}
 				return symbol;
 			}
 			if ( SymbolTable.DEBUG_SYMBOLS ) {
@@ -111,7 +113,9 @@ public class SymbolReferenceNode extends ConstantValueNode
 			}
 			currentTable = currentTable.getParent();
 		} while( currentTable != null && searchParentTables );
-		System.out.println("Failed to resolve symbol '"+getIdentifier()+"'");
+		if ( SymbolTable.DEBUG_SYMBOLS ) {
+			System.out.println("Failed to resolve symbol '"+getIdentifier()+"'");
+		}
 		return null;
 	}
 	
