@@ -2603,7 +2603,9 @@ public final class Emulator implements IEmulator
                 acc=0;
             } else {
                 acc = target.value / source.value;
-                ex = (( target.value << 16) / source.value) & 0xffff;
+                long tv = target.value;
+                long sv = source.value;
+                ex = (int) ( (( tv << 16) / sv ) & 0xffff);
             }
             return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
