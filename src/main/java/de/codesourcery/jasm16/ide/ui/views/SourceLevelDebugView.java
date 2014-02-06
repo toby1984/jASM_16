@@ -174,19 +174,15 @@ public class SourceLevelDebugView extends SourceCodeView
             if ( n != null && ( n instanceof SymbolReferenceNode || n instanceof LabelNode) ) 
             {
             	ISymbol symbol = null;
-            	final Identifier identifier;
-            	final ISymbol scope;
             	if ( n instanceof SymbolReferenceNode) {
-            		symbol = ((SymbolReferenceNode) n).resolve( currentUnit.getSymbolTable() );
-            		if ( symbol != null ) {
-            			identifier = symbol.getName();
-            			scope = symbol.getScope();
+            		symbol = ((SymbolReferenceNode) n).resolve( currentUnit.getSymbolTable() , true );
+            		if ( symbol == null ) {
+            			System.err.println("Failed to resolve symbol: "+n);
             		}
             	} 
             	else 
             	{
-                    identifier = ((LabelNode) n).getIdentifier();
-                    scope = ((LabelNode) n).getScope();
+            		symbol = ((LabelNode) n).getLabel();
             	}
             	
             	if ( symbol != null && symbol instanceof Label) 
