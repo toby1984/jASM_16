@@ -1971,6 +1971,7 @@ public final class Emulator implements IEmulator
             this.interruptAddress = other.interruptAddress;
             this.queueInterrupts = other.queueInterrupts;
             this.currentInterrupt = other.currentInterrupt;
+            this.interruptQueue.clear();
             this.interruptQueue.addAll(other.interruptQueue);
             this.currentCycle = other.currentCycle;
         }           
@@ -2481,8 +2482,9 @@ public final class Emulator implements IEmulator
             return 2+target.cycleCount+source.cycleCount+penalty;
         }
 
-        private int handleSHL(int instructionWord) {
-            // sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
+        private int handleSHL(int instructionWord) 
+        {
+        	// sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
             OperandDesc source = loadSourceOperand( instructionWord );      
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
@@ -2490,8 +2492,11 @@ public final class Emulator implements IEmulator
             ex = (( target.value << source.value)>>16 ) & 0xffff;
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
-
+        
         private int handleASR(int instructionWord) { // ASR b,a
+        	
+        	// arithmetic shift, sign extension !!!
+        	
             // sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
             OperandDesc source = loadSourceOperand( instructionWord );      
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
@@ -2882,7 +2887,7 @@ public final class Emulator implements IEmulator
                     sp = Address.wordAddress( value & 0xffff );
                     return 0;
                 case 0x1c: // PC
-                    currentInstructionPtr = value;
+                    currentInstructionPtr = value & 0xffff;
                     return 0;
                 case 0x1d:
                     ex = value & 0xffff;
