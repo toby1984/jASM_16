@@ -1508,16 +1508,22 @@ public final class Emulator implements IEmulator
 			throw new IllegalArgumentException("breakpoint must not be NULL.");
 		}
 		Breakpoint existing;
-		synchronized( breakpoints ) {
+		synchronized( breakpoints ) 
+		{
 			final List<Breakpoint> list = breakpoints.get( bp.getAddress() );
-			final int idx = list.indexOf( bp );
-			if ( idx != -1 ) {
-				existing = list.remove( idx );
+			if ( list != null ) 
+			{
+				final int idx = list.indexOf( bp );
+				if ( idx != -1 ) {
+					existing = list.remove( idx );
+				} else {
+					existing = null;
+				}
+				if ( list.isEmpty() ) {
+					breakpoints.remove( bp.getAddress() );
+				} 
 			} else {
 				existing = null;
-			}
-			if ( list.isEmpty() ) {
-				breakpoints.remove( bp.getAddress() );
 			}
 		}      
 		// notify listeners
@@ -2381,8 +2387,11 @@ public final class Emulator implements IEmulator
 
             if ( skippedInstructionIsConditional ) 
             {
-        		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
-        		return 2;
+            	if ( ! isConditionalInstruction( memory.read( currentInstructionPtr ) ) ) 
+            	{
+            		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+            		return 2;
+            	}
             }
             return 1;
         }
