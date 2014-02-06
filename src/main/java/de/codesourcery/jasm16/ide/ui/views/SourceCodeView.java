@@ -119,6 +119,7 @@ import de.codesourcery.jasm16.compiler.io.FileResourceResolver;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
+import de.codesourcery.jasm16.compiler.phases.ExpandMacrosPhase;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.ide.IWorkspace;
@@ -250,7 +251,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 	private final SimpleAttributeSet errorStyle;
 	private final SimpleAttributeSet defaultStyle;
-	
+
 	private final SimpleAttributeSet macroDefinitionStyle;
 	private final SimpleAttributeSet macroInvocationStyle;
 
@@ -947,7 +948,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 				disableNavigationHistoryUpdates();
 				System.out.println("Text length: "+( source == null ? 0 : source.length() ) );
-				
+
 				try {
 					editorPane.setText( source );
 				} finally {
@@ -1088,7 +1089,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 			{
 				onCompilationWarning( error );
 			}			
-			
+
 		} finally {
 			enableDocumentListener();
 			time += System.currentTimeMillis();
@@ -1166,7 +1167,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 		if ( highlight( node ) ) {
 			return; // don't highlight children if parent already was
 		}
-		
+
 		if ( ! (node instanceof IncludeSourceFileNode ) ) {
 			for ( ASTNode child : node.getChildren() ) {
 				doSemanticHighlighting( unit , child );
@@ -1412,15 +1413,15 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 
 		Point p1 = viewRect.getLocation();
 		int startIndex = editorPane.viewToModel(p1);
-        if ( startIndex < 0 ) {
-        	return null;
-        }
+		if ( startIndex < 0 ) {
+			return null;
+		}
 		Point p2 = new Point(p1.x + viewRect.width-10 , p1.y + viewRect.height-10 ); // -10 is some arbitrary offset to fix an issue with viewToModel() returning a position at the end of the input text 
 		int endIndex = editorPane.viewToModel(p2);
-        if ( endIndex < 0 ) {
-        	return null;
-        }
-        
+		if ( endIndex < 0 ) {
+			return null;
+		}
+
 		int len = endIndex-startIndex;
 		if ( len < 0) {
 			return null;
@@ -1429,33 +1430,33 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 		return new TextRegion( startIndex , len );
 	}
 
-//	protected final ITextRegion getVisibleTextRegion() 
-//	{
-//		final Point startPoint = editorScrollPane.getViewport().getViewPosition();
-//		final Dimension size = editorScrollPane.getViewport().getExtentSize();
-//
-//		final Point endPoint = new Point(startPoint.x + size.width, startPoint.y + size.height);
-//		try {
-//			final int start = editorPane.viewToModel( startPoint );
-//			if ( start < 0 ) {
-//				return null;
-//			}
-//			final int end = editorPane.viewToModel( endPoint );
-//			if ( end < 0 ) {
-//				return null;
-//			}
-//			final int len = end-start;
-//			if ( len < 0  ) {
-//				return null;
-//			}
-//			return new TextRegion( start , len );
-//		} 
-//		catch(NullPointerException e) 
-//		{
-//			LOG.error("getVisibleTextRegion(): Caught ",e);
-//			return null;
-//		}
-//	}
+	//	protected final ITextRegion getVisibleTextRegion() 
+	//	{
+	//		final Point startPoint = editorScrollPane.getViewport().getViewPosition();
+	//		final Dimension size = editorScrollPane.getViewport().getExtentSize();
+	//
+	//		final Point endPoint = new Point(startPoint.x + size.width, startPoint.y + size.height);
+	//		try {
+	//			final int start = editorPane.viewToModel( startPoint );
+	//			if ( start < 0 ) {
+	//				return null;
+	//			}
+	//			final int end = editorPane.viewToModel( endPoint );
+	//			if ( end < 0 ) {
+	//				return null;
+	//			}
+	//			final int len = end-start;
+	//			if ( len < 0  ) {
+	//				return null;
+	//			}
+	//			return new TextRegion( start , len );
+	//		} 
+	//		catch(NullPointerException e) 
+	//		{
+	//			LOG.error("getVisibleTextRegion(): Caught ",e);
+	//			return null;
+	//		}
+	//	}
 
 	protected final void clearCompilationErrors() 
 	{
@@ -1527,11 +1528,11 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 	protected void onCompilationWarning(ICompilationError error) {
 
 	}
-	
+
 	// ============= view creation ===================
 
-			@Override
-			public JPanel getPanel()
+	@Override
+	public JPanel getPanel()
 	{
 		if ( panel == null ) {
 			panel = createPanel();
@@ -1602,13 +1603,32 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 				@Override
 				public void mouseMoved(MouseEvent e) 
 				{
-					if ( (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) != 0 ) { // ctrl pressed
+					if ( (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) != 0 ) // ctrl pressed
+					{ 
 						final ASTNode node = getASTNodeForLocation( e.getPoint() );
-					if ( node instanceof SymbolReferenceNode) {
-						maybeUnderlineIdentifierAt( e.getPoint() );
-					} else {
-						clearUnderlineHighlight();                        
-					}
+						if ( node instanceof SymbolReferenceNode) {
+							maybeUnderlineIdentifierAt( e.getPoint() );
+						} else {
+							clearUnderlineHighlight();                        
+						}
+					} 
+					else if ( compilationUnit != null  ) 
+					{
+						String tooltipText=null;
+						if ( compilationUnit != null  ) 
+						{
+							final ASTNode node = getASTNodeForLocation( e.getPoint() );
+							if ( node instanceof InvokeMacroNode) 
+							{
+								tooltipText = ExpandMacrosPhase.expandInvocation( (InvokeMacroNode) node , compilationUnit );
+								if ( tooltipText != null ) {
+									tooltipText = "<html>"+tooltipText.replace("\n","<br>")+"</html>";
+								}
+							}
+						}
+						if ( ! StringUtils.equals( editorPane.getToolTipText() , tooltipText ) ) {
+							editorPane.setToolTipText( tooltipText );
+						}
 					}
 				}                
 			});
@@ -2263,7 +2283,7 @@ public abstract class SourceCodeView extends AbstractView implements IEditorView
 					editorPane.setCaretPosition( currentIndex );
 					highlightLocation( new TextRegion( currentIndex , pattern.length() ) );
 					// TODO: Maybe show 'match found' message ?
-							return;
+					return;
 				}
 				if ( ! advance( source , direction , pattern , currentIndex ) ) {
 					clearHighlight();

@@ -25,6 +25,7 @@ import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.jasm16.ast.*;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.compiler.Label;
 import de.codesourcery.jasm16.compiler.io.AbstractObjectCodeWriter;
 import de.codesourcery.jasm16.parser.Identifier;
@@ -41,17 +42,35 @@ public class FormattingVisitor extends ASTVisitor {
     private final int column0Width = 40;
 
     private final ICompilationContext context;
-    
+    private final boolean printOpcodesInHex;
     private final boolean printExpandedMacros;
+    private final ICompilationUnit compilationUnit;
 
     public FormattingVisitor(ICompilationContext context) {
-        this(context,false);
+        this(context,context.getCurrentCompilationUnit() , false,true);
     }
     
     public FormattingVisitor(ICompilationContext context,boolean printExpandedMacros) {
-        this.context = context;
-        this.printExpandedMacros = printExpandedMacros;
+        this(context,context.getCurrentCompilationUnit() ,printExpandedMacros,true);
     }    
+    
+    /**
+     * 
+     * @param context compilation context or <code>null</code>. It's valid for the context to be <code>NULL</code> only if
+     * <code>printOpCodesInHex</code> is set to <code>false</code> as well.
+     * @param compilationUnit
+     * @param printExpandedMacros
+     * @param printOpCodesInHex
+     */
+    public FormattingVisitor(ICompilationContext context,ICompilationUnit compilationUnit,boolean printExpandedMacros,boolean printOpCodesInHex) {
+        this.context = context;
+        if ( context == null && printOpCodesInHex ) {
+        	throw new IllegalArgumentException("When printOpCodesInHex is set to true, a compilation context needs to be given");
+        }
+        this.printOpcodesInHex = printOpCodesInHex;
+        this.printExpandedMacros = printExpandedMacros;
+        this.compilationUnit = compilationUnit;
+    }     
 
     protected void output(String s) {
         System.out.print( s );
@@ -62,7 +81,7 @@ public class FormattingVisitor extends ASTVisitor {
     {
         final String source;
         try {
-            source = this.context.getCurrentCompilationUnit().getSource( node.getValueNode().getTextRegion() ).replaceAll("\t" , " " ).trim();
+            source = compilationUnit.getSource( node.getValueNode().getTextRegion() ).replaceAll("\t" , " " ).trim();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -120,7 +139,8 @@ public class FormattingVisitor extends ASTVisitor {
     		for ( int i = 0 ; i < len ; i++ ) 
     		{
     			final ASTNode argument = arguments.get(i);
-    			ASTUtils.visitInOrder(argument, new FormattingVisitor( this.context ) {
+    			ASTUtils.visitInOrder(argument, new FormattingVisitor( this.context , this.compilationUnit , this.printExpandedMacros, this.printOpcodesInHex ) 
+    			{
     				protected void output(String s) {
     					builder.append(s);
     				}
@@ -167,7 +187,7 @@ public class FormattingVisitor extends ASTVisitor {
     		return "<no text range on node "+node.getClass().getSimpleName()+">";
     	}
     	try {
-			return context.getCurrentCompilationUnit().getSource( node.getTextRegion() ).replace("\t", " ").replace("\r","").replace("\n","").trim();
+			return compilationUnit.getSource( node.getTextRegion() ).replace("\t", " ").replace("\r","").replace("\n","").trim();
 		} catch (IOException e) {
 			return "<IO exception when reading text from node "+node.getClass().getSimpleName();
 		}
@@ -221,7 +241,7 @@ public class FormattingVisitor extends ASTVisitor {
             try {
                 final ITextRegion range = operandNode.getTextRegion();
                 if ( range != null ) {
-                    sourceCode = this.context.getCurrentCompilationUnit().getSource( range ).replaceAll("\t" , " " ).trim();
+                    sourceCode = compilationUnit.getSource( range ).replaceAll("\t" , " " ).trim();
                 } else {
                     sourceCode = "<no text range available>";
                 }
@@ -242,14 +262,17 @@ public class FormattingVisitor extends ASTVisitor {
         	output( txt );
         }
 
-        final HexStringWriter writer = new HexStringWriter(true);
-        for (ObjectCodeOutputNode out : getStatementNode(node).getObjectOutputNodes()) 
+        if ( printOpcodesInHex ) 
         {
-            try {
-                out.writeObjectCode( writer, this.context );
-            } catch (Exception e) { /* ok */ }
+	        final HexStringWriter writer = new HexStringWriter(true);
+	        for (ObjectCodeOutputNode out : getStatementNode(node).getObjectOutputNodes()) 
+	        {
+	            try {
+	                out.writeObjectCode( writer, this.context );
+	            } catch (Exception e) { /* ok */ }
+	        }
+	        output("; "+writer.toString() );
         }
-        output("; "+writer.toString() );
     }
 
     private static class HexStringWriter extends AbstractObjectCodeWriter {
