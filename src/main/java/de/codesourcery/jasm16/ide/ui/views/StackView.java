@@ -42,7 +42,6 @@ public class StackView extends AbstractView
     private final JTextArea textArea = new JTextArea();
     
     private IEmulator emulator;
-    private Address startOfStack = Address.wordAddress( 0 );
     private int numberOfWordsToDump = 16;
     private boolean printASCII = true;
     
@@ -93,13 +92,8 @@ public class StackView extends AbstractView
             return;
         }
         
-        
-        final int realStart;
-        if ( startOfStack.getValue() - numberOfWordsToDump < 0 ) { // handle case where SP is at 0x0000
-            realStart = ((int) ( WordAddress.MAX_ADDRESS+1 - numberOfWordsToDump) ) & 0xffff;            
-        } else {
-            realStart = (startOfStack.toWordAddress().getValue() - numberOfWordsToDump) & 0xffff;
-        }
+        Address startOfStack = emulator.getCPU().getSP();
+        final int realStart = (startOfStack.toWordAddress().getValue() - numberOfWordsToDump + 1 ) & 0xffff;
                 
         final byte[] data = MemUtils.getBytes( emulator.getMemory() , 
         		Address.wordAddress( realStart ) , 
@@ -114,7 +108,7 @@ public class StackView extends AbstractView
                 final List<String> lines = Misc.toHexDumpLines( Address.wordAddress( realStart ), data, data.length , 1 , printASCII , true , true );
                 Collections.reverse( lines ); // reverse lines => print stack from highest to lowest address
                 
-                Address current = Address.wordAddress( ( realStart + numberOfWordsToDump  -1 ) );
+                Address current = Address.wordAddress( ( realStart + numberOfWordsToDump  -1 ) & 0xffff );
                 
                 StringBuilder result = new StringBuilder();
                 for (Iterator<String> iterator = lines.iterator(); iterator.hasNext();) {
