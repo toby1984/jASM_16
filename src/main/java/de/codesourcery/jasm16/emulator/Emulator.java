@@ -2331,6 +2331,9 @@ public final class Emulator implements IEmulator
             } else {
                 ex = 0;
             }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 3+source.cycleCount;
+            }            
             return 3+storeTargetOperand( instructionWord , result & 0xffff )+source.cycleCount;       
         }
 
@@ -2344,6 +2347,9 @@ public final class Emulator implements IEmulator
                 ex = 0x0001;
             } else {
                 ex = 0;
+            }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 3+source.cycleCount;
             }
             return 3+storeTargetOperand( instructionWord , acc & 0xffff )+source.cycleCount;
         }
@@ -2493,6 +2499,9 @@ public final class Emulator implements IEmulator
 
             final int acc = target.value << source.value;
             ex = (( target.value << source.value)>>16 ) & 0xffff;
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 1+source.cycleCount;
+            }
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
         
@@ -2506,6 +2515,9 @@ public final class Emulator implements IEmulator
 
             final int acc = signed( target.value ) >> source.value;
             ex = (( signed( target.value ) << 16) >>> source.value ) & 0xffff;
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 1+source.cycleCount;
+            }
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
 
@@ -2516,6 +2528,10 @@ public final class Emulator implements IEmulator
 
             final int acc = target.value >>> source.value;
             ex = (( target.value << 16) >> source.value ) & 0xffff;
+            
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 1+source.cycleCount;
+            }            
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
 
@@ -2587,8 +2603,12 @@ public final class Emulator implements IEmulator
                 acc=0;
             } else {
                 acc = signed( target.value ) / signed( source.value );
+                // ((b<<16)/a)&0xffff
                 ex = (( signed( target.value ) << 16) / signed( source.value) )& 0xffff;
             }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 3+source.cycleCount;
+            }            
             return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
         }
 
@@ -2610,6 +2630,9 @@ public final class Emulator implements IEmulator
                 long sv = source.value;
                 ex = (int) ( (( tv << 16) / sv ) & 0xffff);
             }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 3+source.cycleCount;
+            }            
             return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
 
@@ -2622,7 +2645,11 @@ public final class Emulator implements IEmulator
             final int b = signed( source.value );
 
             final int acc = a * b;
-            ex = ((a * b) >> 16 ) & 0xffff;       
+            ex = ((a * b) >> 16 ) & 0xffff;     
+            
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 2+source.cycleCount;
+            }            
             return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
 
@@ -2642,6 +2669,10 @@ public final class Emulator implements IEmulator
 
             final int acc = target.value * source.value;
             ex = ((target.value * source.value) >> 16 ) & 0xffff;
+            
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 2+source.cycleCount;
+            }
             return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
         }
 
@@ -2655,6 +2686,9 @@ public final class Emulator implements IEmulator
                 ex = 0xffff;
             } else {
                 ex = 0;
+            }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 2+source.cycleCount;
             }
             return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
@@ -2671,6 +2705,9 @@ public final class Emulator implements IEmulator
             } else {
                 ex = 0;
             }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 2+source.cycleCount;
+            }            
             return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
         }
 
@@ -2952,7 +2989,6 @@ public final class Emulator implements IEmulator
                     return operandDesc( sp.getValue() );
                 case 0x1c:
                     return operandDesc( currentInstructionPtr );
-//                    return operandDesc( pc.getValue() );
                 case 0x1d:
                     return operandDesc( ex );
                 case 0x1e:
@@ -2975,6 +3011,17 @@ public final class Emulator implements IEmulator
             int realAddress =(int) ( ( address + offset ) % (WordAddress.MAX_ADDRESS +1 ) );
             memory.write( realAddress , value );
         }   
+        
+        protected final boolean isEXTargetOperand(int instructionWord) 
+        {
+            final int operandBits;
+            if ( (instructionWord & 0b11111) == 0 ) { // special instruction
+                operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
+            } else {
+                operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);           
+            }
+            return operandBits == 0x1d;
+        }
 
         /**
          * 
