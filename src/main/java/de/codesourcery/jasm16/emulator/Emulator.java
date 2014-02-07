@@ -3027,10 +3027,8 @@ public final class Emulator implements IEmulator
             }
 
             switch( operandBits ) {
-                case 0x18: // (POP / [SP++]) if in a
-                    final OperandDesc tmp = operandDesc( memory.read( sp ) , 1 );
-                    sp = sp.incrementByOne(true);
-                    return tmp;
+                case 0x18: // (PUSH / [--SP++]) if in b
+                    return operandDesc( memory.read( sp.decrementByOne() ) , 1 );
                 case 0x19:
                     return operandDesc( memory.read( sp ) , 1 );
                 case 0x1a:
