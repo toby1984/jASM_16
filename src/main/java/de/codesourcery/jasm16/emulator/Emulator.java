@@ -1362,8 +1362,11 @@ public final class Emulator implements IEmulator
 	@Override
 	public IReadOnlyCPU getCPU()
 	{
-		synchronized( CPU_LOCK ) {
-			return visibleCPU;
+		synchronized( CPU_LOCK ) 
+		{
+			final CPU result = new CPU(this.memory);
+			result.populateFrom( this.visibleCPU );
+			return result;
 		}
 	}
 
@@ -2383,18 +2386,18 @@ public final class Emulator implements IEmulator
 
         private int handleConditionFailure() 
         {
-            final boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
-
-            currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
-
-            if ( skippedInstructionIsConditional ) 
-            {
-            	if ( ! isConditionalInstruction( memory.read( currentInstructionPtr ) ) ) 
-            	{
+    		boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
+    		
+    		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+    		
+    		if ( skippedInstructionIsConditional ) 
+    		{
+    			do {
+    				skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
             		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
-            		return 2;
-            	}
-            }
+    			} while ( skippedInstructionIsConditional );
+    			return 2;
+    		}
             return 1;
         }
 
