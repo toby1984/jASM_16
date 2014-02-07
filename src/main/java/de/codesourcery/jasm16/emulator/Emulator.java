@@ -2087,10 +2087,10 @@ public final class Emulator implements IEmulator
                     commonRegisters[7] = value & 0xffff;
                     break;
                 case PC:
-                    pc = Address.wordAddress( value );
+                    pc = Address.wordAddress( value & 0xffff );
                     break;
                 case SP:
-                    sp = Address.wordAddress( value );
+                    sp = Address.wordAddress( value & 0xffff );
                     break;
                 case X:
                     commonRegisters[3] = value & 0xffff;
@@ -2512,7 +2512,7 @@ public final class Emulator implements IEmulator
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
             final int acc = target.value >>> source.value;
-            ex = (( target.value << 16)>>source.value ) & 0xffff;
+            ex = (( target.value << 16) >> source.value ) & 0xffff;
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
 
