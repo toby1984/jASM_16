@@ -61,7 +61,7 @@ public class InvokeMacroNode extends ASTNode {
 			
 			while ( ! context.eof() && ! context.peek(TokenType.PARENS_CLOSE ) ) 
 			{
-				arguments.add( new RawStringNode().parse( context ) );
+				arguments.add( new MacroArgumentNode().parse( context ) );
 				region.merge( context.skipWhitespace( false ) );
 				if ( context.eof() || context.peek(TokenType.PARENS_CLOSE ) ) {
 					break;

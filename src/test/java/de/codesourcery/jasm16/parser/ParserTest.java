@@ -15,14 +15,23 @@
  */
 package de.codesourcery.jasm16.parser;
 
-import org.apache.commons.lang.StringUtils;
-
 import de.codesourcery.jasm16.AddressingMode;
-import de.codesourcery.jasm16.ast.*;
+import de.codesourcery.jasm16.ast.AST;
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.CommentNode;
+import de.codesourcery.jasm16.ast.InitializedMemoryNode;
+import de.codesourcery.jasm16.ast.InstructionNode;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
+import de.codesourcery.jasm16.ast.LabelNode;
+import de.codesourcery.jasm16.ast.OperandNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
+import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.ast.UninitializedMemoryNode;
+import de.codesourcery.jasm16.ast.UnparsedContentNode;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class ParserTest extends TestHelper {

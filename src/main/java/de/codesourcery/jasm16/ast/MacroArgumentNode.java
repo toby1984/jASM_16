@@ -10,20 +10,20 @@ import de.codesourcery.jasm16.parser.IParseContext;
  *  
  * @author tobias.gierke@code-sourcery.de
  */
-public class RawStringNode extends ASTNode {
+public class MacroArgumentNode extends ASTNode {
 
 	private String value;
 	
-	public RawStringNode() {
+	public MacroArgumentNode() {
 	}
 	
-	private RawStringNode(RawStringNode node) {
+	private MacroArgumentNode(MacroArgumentNode node) {
 		this.value = node.value;
 	}
 	
 	@Override
-	protected RawStringNode copySingleNode() {
-		return new RawStringNode(this);
+	protected MacroArgumentNode copySingleNode() {
+		return new MacroArgumentNode(this);
 	}
 
 	@Override
@@ -36,7 +36,7 @@ public class RawStringNode extends ASTNode {
 	}
 	
 	@Override
-	protected RawStringNode parseInternal(IParseContext context) throws ParseException 
+	protected MacroArgumentNode parseInternal(IParseContext context) throws ParseException 
 	{
 		final StringBuilder buffer = new StringBuilder();
 		

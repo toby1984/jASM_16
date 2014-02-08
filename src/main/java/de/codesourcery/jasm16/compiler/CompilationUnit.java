@@ -42,6 +42,7 @@ import de.codesourcery.jasm16.compiler.io.StringResource;
 import de.codesourcery.jasm16.exceptions.CircularSourceIncludeException;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Line;
+import de.codesourcery.jasm16.utils.TextRegion;
 
 /**
  * Default {@link ICompilationUnit} implementation.
@@ -149,11 +150,49 @@ public final class CompilationUnit implements ICompilationUnit {
         if (l == null) {
             throw new IllegalArgumentException("line must not be NULL.");
         }
-        System.out.println("REGISTERED: "+l);
-        Line existing = lines.put( l.getLineNumber() , l );
-        if ( existing != null ) {
-        	throw new RuntimeException("Won't replace existing line "+existing+" with "+l);
+        Line existing = lines.get( l.getLineNumber() );
+        
+        /* 
+         * Do not update line references that have already been parsed.
+         * 
+         * The sanity check (commented-out below) is wrong during macro expansion because
+         * instructions/lines in expanded macros get mapped to the
+         * lines of the macro definition. If the macro takes parameters,
+         * the absolute line starting offsets may change because of different
+         * parameter lengths.
+         * 
+         * Example:
+         * 
+         * .macro dummy(param1) // line start offset: 0
+         *    SET A,param1 // line start offset: 21
+         *    SET B,2  // line start offset: 37 <<<<<<<<<< sanity check would break compilation 
+         * .endmacro
+         * 
+         * dummy(X)
+         * 
+         * For the marked line, parsing the source yields an absolute line start offset of 37.
+         * When the macro invocation is expanded (virtually at the same location of the original macro body)
+         * , "param1' will be replaced with 'X' , shifting the line starting offset of the marked line by -5.
+         * Since AST#parseInternal() unconditionally invokes ICompilationUnit#setLine() , this would trip
+         * our sanity check which is thus disabled.  
+         */
+        if ( existing == null )  
+        {
+        	lines.put( l.getLineNumber() , l );
         }
+//        if ( existing != null && ! existing.equals( l ) ) {
+//        	TextRegion r1= new TextRegion(existing.getLineStartingOffset() , 10 );
+//        	TextRegion r2= new TextRegion(l.getLineStartingOffset() , 10 );
+//        	String text1 = "<invalid region "+r1+">";
+//        	String text2 = "<invalid region "+r2+">";
+//        	try {
+//        		text1 = getSource(r1);
+//        	} catch(Exception e) { /* can't help it */ }
+//        	try {
+//        		text2 = getSource(r2);
+//        	} catch(Exception e) { /* can't help it */ }
+//        	throw new RuntimeException("Won't replace existing line "+existing+" with "+l);
+//        }
     }
     
     @Override

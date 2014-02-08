@@ -44,7 +44,7 @@ import de.codesourcery.jasm16.ast.ObjectCodeOutputNode;
 import de.codesourcery.jasm16.ast.OperandNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
 import de.codesourcery.jasm16.ast.OriginNode;
-import de.codesourcery.jasm16.ast.RawStringNode;
+import de.codesourcery.jasm16.ast.MacroArgumentNode;
 import de.codesourcery.jasm16.ast.RegisterReferenceNode;
 import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.ast.StatementNode;
@@ -117,7 +117,7 @@ public class FormattingVisitor extends ASTVisitor {
     }
     
     @Override
-    public void visit(RawStringNode node, IIterationContext context) 
+    public void visit(MacroArgumentNode node, IIterationContext context) 
     {
     	output( node.getValue() );
     }

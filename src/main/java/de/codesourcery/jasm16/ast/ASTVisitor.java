@@ -75,15 +75,20 @@ public class ASTVisitor implements IASTVisitor , IASTNodeVisitor<ASTNode> {
 			visit( (EndMacroNode) n , context );
 		} else if ( n instanceof MacroParametersListNode) {
 			visit( (MacroParametersListNode) n , context );
-		} else if ( n instanceof RawStringNode) {
-			visit( (RawStringNode) n , context );			
+		} else if ( n instanceof MacroArgumentNode) {
+			visit( (MacroArgumentNode) n , context );		
+		} else if ( n instanceof RawLineNode) {
+			visit( (RawLineNode) n , context );
 		} else {
 			throw new RuntimeException("Unhandled node class: "+n.getClass());
 		}
 	}
 	
+	@Override
+    public void visit(RawLineNode node,IIterationContext context) { }
+    
     @Override
-    public void visit(RawStringNode node,IIterationContext context) { }	
+    public void visit(MacroArgumentNode node,IIterationContext context) { }	
     
     @Override
     public void visit(IdentifierNode node,IIterationContext context) { }	

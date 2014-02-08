@@ -5,12 +5,12 @@ import java.util.List;
 
 import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
-import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.Lexer.ParseOffset;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
+import de.codesourcery.jasm16.utils.Line;
 import de.codesourcery.jasm16.utils.TextRegion;
 
 public class StartMacroNode extends ASTNode {
@@ -41,10 +41,14 @@ public class StartMacroNode extends ASTNode {
 	
 	public List<Identifier> getArgumentNames() 
 	{
-		if ( hasChildren() ) {
+		if ( hasArgumentList() ) {
 			return getArgumentsNode().getArgumentNames();
 		}
 		return new ArrayList<>(); 
+	}
+	
+	public boolean hasArgumentList() {
+		return hasChildren() && child(0) instanceof MacroParametersListNode;
 	}
 
 	private MacroParametersListNode getArgumentsNode() {
@@ -52,7 +56,7 @@ public class StartMacroNode extends ASTNode {
 	}
 	
 	public int getArgumentCount() {
-		if ( hasChildren() ) {
+		if ( hasArgumentList() ) {
 			return getArgumentsNode().getArgumentCount();
 		}
 		return 0;
@@ -104,50 +108,34 @@ public class StartMacroNode extends ASTNode {
 			}
 			
 			region.merge( context.skipWhitespace(false) );
-			boolean markedEOLAfterStart = false;
-			if ( ! context.eof() && context.peek(TokenType.EOL ) ) 
+			
+			this.macroBody = "";
+			if ( ! context.eof() && context.peek().isEOL() && ! isNextLineEndOfMacro( context ) ) 
 			{
-				context.mark();
+				// consume newline
 				region.merge( context.read() );
-				markedEOLAfterStart =true;
-			}			
+			}
+
+			// lexer is now at start of next line after .macro
+			this.bodyParseOffset = new ParseOffset( context.currentParseIndex() , context.getCurrentLineNumber() , context.getCurrentLineStartOffset() );
 			
 			final StringBuilder buffer = new StringBuilder();
-			
-			this.bodyParseOffset = new ParseOffset( context.currentParseIndex() , context.getCurrentLineNumber() , context.getCurrentLineStartOffset() );
-			while ( ! context.eof() && ! context.peek().hasType(TokenType.END_MACRO ) ) 
+			while ( ! context.eof() && ! isNextLineEndOfMacro( context ) ) 
 			{
-				// need some funky logic here since StatementNode()#parse() wants
-				// to parse everything (INCLUDING EOL) right after the actual instruction/whatever (implemented that way so that all comments can be handled in one place)
-				// so we must take care NOT to consume the EOL before .end_macro
-				
-				if ( context.peek().isEOL() ) {
-					if ( markedEOLAfterStart ) 
-					{
-						context.clearMark();
-						markedEOLAfterStart =false;
-					}
-					context.mark();
-				} 
-				
-				final IToken token = context.read();
-				if ( token.isEOL() ) 
-				{
-					if ( ! context.eof() && context.peek(TokenType.END_MACRO) ) {
-						context.reset();
-						context.clearMark();
-						break;
-					} 
-					context.clearMark();
+	            final int lineNumber = context.getCurrentLineNumber();
+	            final int lineOffset = context.getCurrentLineStartOffset();
+				RawLineNode line = (RawLineNode) new RawLineNode().parse( context );
+				if ( line.getContents().length() > 0 ) {
+					context.getCompilationUnit().setLine( new Line(lineNumber,lineOffset ) );
+					addChild( line , context );
+					buffer.append( line.getContents() );
 				}
-				region.merge( token );
-				buffer.append( token.getContents() );
+				if ( ! context.eof() && context.peek().isEOL() && ! isNextLineEndOfMacro( context ) ) 
+				{
+					buffer.append( context.read().getContents() ); // consume newline
+				}
 			}
 			this.macroBody = buffer.toString();
-			if ( buffer.length() == 0 && markedEOLAfterStart ) 
-			{
-				context.reset();
-			}
         } 
 		catch(Exception e) 
         {
@@ -161,6 +149,25 @@ public class StartMacroNode extends ASTNode {
 		
 		mergeWithAllTokensTextRegion( region );
 		return this;
+	}
+	
+	private boolean isNextLineEndOfMacro(IParseContext context) 
+	{
+		if ( context.eof() ) {
+			return true;
+		}
+		if ( ! context.eof() && context.peek().isEOL() ) 
+		{
+			context.mark();
+			context.read(); // advance so we can peek at next token 
+			if ( context.eof() || context.peek(TokenType.END_MACRO ) ) {
+				context.reset();
+				return true;
+			}
+			context.reset();
+			context.clearMark();
+		}
+		return false;
 	}
 	
 	public String getMacroBody() {

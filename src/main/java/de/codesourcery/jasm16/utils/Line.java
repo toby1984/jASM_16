@@ -96,7 +96,6 @@ public class Line
         return result;
     }
 
-
     @Override
     public boolean equals(Object obj)
     {

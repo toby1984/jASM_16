@@ -17,6 +17,7 @@ import de.codesourcery.jasm16.ast.InvokeMacroNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.compiler.CompilationError;
 import de.codesourcery.jasm16.compiler.CompilationWarning;
 import de.codesourcery.jasm16.compiler.CompilerPhase;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
@@ -59,7 +60,7 @@ public final class ExpandMacrosPhase extends CompilerPhase
 	}
 
 	@Override
-	protected void run(ICompilationUnit unit, final ICompilationContext compContext) throws IOException 
+	protected void run(final ICompilationUnit unit, final ICompilationContext compContext) throws IOException 
 	{
         final ASTVisitor visitor = new ASTVisitor() 
         {
@@ -82,6 +83,8 @@ public final class ExpandMacrosPhase extends CompilerPhase
         						node.internalAddChild( child2 );
         					}
         				}
+        			} else {
+        				unit.addMarker( new CompilationError("Macro expansion failed", unit , node ) );
         			}
         		}
         	}
