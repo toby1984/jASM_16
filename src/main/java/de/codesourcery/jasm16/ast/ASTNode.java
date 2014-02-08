@@ -405,14 +405,31 @@ public abstract class ASTNode
      */
     public final ASTNode insertChild(int index,ASTNode newChild,IParseContext context) 
     {
+    	return insertChild(index,newChild,context,true);
+    }
+    
+    /**
+     * Inserts a new child node at a specific position.
+     * 
+     * @param index
+     * @param newChild
+     * @param context parse context or <code>null</code>. If the context is not <code>null</code> and
+     * the node being added is <b>not</b> an instance of {@link UnparsedContentNode} , the parse
+     * contexts error recovery flag ({@link IParseContext#isRecoveringFromParseError()}) will be reset. See {@link ASTNode#parse(IParseContext)} for
+     * @param mergeTextRegion whether this node's text region should be joined with the new node
+     * a detailed explanation on parser error recovery.     
+     * @return
+     */    
+    public final ASTNode insertChild(int index,ASTNode newChild,IParseContext context,boolean mergeTextRegion) 
+    {
         try {
-            return addChild( index , newChild );
+            return addChild( index , newChild , mergeTextRegion );
         } finally {
             if ( context != null ) {
                 context.setRecoveringFromParseError( false );
             }
         }	        
-    }
+    }    
 
     /**
      * Replaces a child node at a specific position.

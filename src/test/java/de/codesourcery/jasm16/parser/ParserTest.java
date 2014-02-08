@@ -15,11 +15,14 @@
  */
 package de.codesourcery.jasm16.parser;
 
+import org.apache.commons.lang.StringUtils;
+
 import de.codesourcery.jasm16.AddressingMode;
 import de.codesourcery.jasm16.ast.*;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
 import de.codesourcery.jasm16.exceptions.ParseException;
+import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
 public class ParserTest extends TestHelper {
@@ -321,7 +324,7 @@ public class ParserTest extends TestHelper {
 		final Parser p = new Parser(this);
 		
 		final String macroBody=":loop SET PC , loop";
-		String source = ".macro brk\n"+
+		final String source = ".macro brk\n"+
 		                macroBody+"\n"+
 				        ".endmacro";
 		
@@ -339,6 +342,8 @@ public class ParserTest extends TestHelper {
 		assertTrue( n.getArgumentNames().isEmpty() );
 		assertEquals( macroBody , n.getMacroBody() );
 		assertEquals( source , toSourceCode( ast , source ) );		
+		
+		ASTUtils.debugPrintTextRegions(ast,source);
 	}
 	
 	public void testParseMacroInvocationWithoutArguments() throws ParseException 

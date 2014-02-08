@@ -61,6 +61,7 @@ import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.ast.ASTUtils;
 import de.codesourcery.jasm16.ast.ISimpleASTNodeVisitor;
+import de.codesourcery.jasm16.ast.InstructionNode;
 import de.codesourcery.jasm16.ast.LabelNode;
 import de.codesourcery.jasm16.ast.NumberNode;
 import de.codesourcery.jasm16.ast.OperatorNode;
@@ -683,6 +684,33 @@ public class SourceEditorView extends SourceCodeView {
 	{
 		astInspector = new JFrame("AST");
 
+		final MouseAdapter treeMouseListener = new MouseAdapter() 
+		{
+			@Override
+			public void mouseMoved(MouseEvent e) 
+			{
+				String text = null;
+				TreePath path= astTree.getClosestPathForLocation( e.getX() , e.getY() );
+				
+				if ( path != null ) 
+				{
+					ASTNode node = (ASTNode) path.getLastPathComponent();
+					if ( node instanceof InstructionNode) { // TODO: debug code, remove when done
+						text = null;
+					}
+					try {
+						text = getCurrentCompilationUnit().getSource( node.getTextRegion() );
+					} catch (Exception ex) {
+						text = "Node "+node.getClass().getSimpleName()+" has invalid text region "+node.getTextRegion();
+					}
+					text = "<HTML>"+text.replace("\n", "<BR>" )+"</HTML>";
+				}
+				if ( ! ObjectUtils.equals( astTree.getToolTipText() , text ) ) {
+					astTree.setToolTipText( text );
+				}
+			}
+		};
+		astTree.addMouseMotionListener( treeMouseListener );
 		astTree.setCellRenderer( new ASTTreeCellRenderer() ); 
 
 		final JScrollPane pane = new JScrollPane( astTree );
@@ -695,7 +723,7 @@ public class SourceEditorView extends SourceCodeView {
 
 		// add symbol table 
 		symbolTable.setFillsViewportHeight( true );
-		symbolTable.addMouseListener( new MouseAdapter() {
+		MouseAdapter mouseListener = new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
@@ -730,8 +758,8 @@ public class SourceEditorView extends SourceCodeView {
 					}
 				}
 			}
-		});
-
+		};
+		symbolTable.addMouseListener( mouseListener);
 
 		final JScrollPane tablePane = new JScrollPane( symbolTable );
 		setColors( tablePane );

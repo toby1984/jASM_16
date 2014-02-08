@@ -103,15 +103,17 @@ public class Parser implements IParser
         }        
         
         final ParseContext context = new ParseContext( unit , symbolTable, lexer , resolver , compilationUnitResolver, this.options , currentlyExpandingMacro );
+        parseContextCreated(context);
         
         final AST result = (AST) new AST().parse( context );
-        if ( ! context.eof() ) {
-        	throw new RuntimeException("Internal error, parsing finished although not at eof?");
-        }
-        if ( context.currentParseIndex() != source.length() ) {
+        if ( ! context.eof() || ( context.currentParseIndex() - this.parseOffset.baseOffset() ) != source.length() ) {
         	throw new RuntimeException("Internal error, parsing at EOF but not all input tokens consumed ?");
         }
         return result;
+    }
+    
+    protected void parseContextCreated(IParseContext context) {
+    	
     }
     
 	@Override

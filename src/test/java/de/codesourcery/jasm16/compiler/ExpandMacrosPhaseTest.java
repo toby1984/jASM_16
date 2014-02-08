@@ -2,9 +2,11 @@ package de.codesourcery.jasm16.compiler;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
 import de.codesourcery.jasm16.compiler.phases.ExpandMacrosPhase;
 import de.codesourcery.jasm16.parser.Parser;
 import de.codesourcery.jasm16.parser.TestHelper;
@@ -14,12 +16,13 @@ public class ExpandMacrosPhaseTest extends TestHelper
 {
     public void testExpandMacroWithNoArguments() throws IOException 
     {
+    	final String macroBody = "ADD a,1\n"+
+                              "ADD b,2";
+    	
         final String source =".macro brk\n"+
-                             "  ADD a,0\n"+
+        					   macroBody+"\n"+
                               ".endmacro\n"+
-                             "brk";
-        
-        // 4 + 15 + a + 19 = 4+15+19+A = 19+19+a = 38
+                              "brk";
         
         ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
         ICompilationContext compContext = createCompilationContext( unit ); 
@@ -42,6 +45,14 @@ public class ExpandMacrosPhaseTest extends TestHelper
 
         System.out.println("=== After expansion");
         ASTUtils.visitInOrder( ast , new FormattingVisitor( compContext , true ) );        
+        
+        List<InvokeMacroNode> startNode = ASTUtils.getNodesByType( ast , InvokeMacroNode.class , true );
+        
+        String expandedBody = ExpandMacrosPhase.expandInvocation( startNode.get(0) , unit );
+        // System.out.println("\n\nExpanded body:\n>"+expandedBody+"<");
+        assertEquals( macroBody , expandedBody );
+        System.out.println("\n\n============\nAST\n=========\n");
+        ASTUtils.debugPrintTextRegions(ast, source , unit );
     }	  
     
     public void testExpandMacroWithOneArgument() throws IOException 
@@ -50,8 +61,6 @@ public class ExpandMacrosPhaseTest extends TestHelper
                              "  ADD a,value\n"+
                               ".endmacro\n"+
                              "inc(10)";
-        
-        // 4 + 15 + a + 19 = 4+15+19+A = 19+19+a = 38
         
         ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
         ICompilationContext compContext = createCompilationContext( unit ); 
@@ -82,8 +91,6 @@ public class ExpandMacrosPhaseTest extends TestHelper
                              "  ADD value1,value2\n"+
                               ".endmacro\n"+
                              "inc(1,2)";
-        
-        // 4 + 15 + a + 19 = 4+15+19+A = 19+19+a = 38
         
         ICompilationUnit unit = CompilationUnit.createInstance("dummy",source);
         ICompilationContext compContext = createCompilationContext( unit ); 

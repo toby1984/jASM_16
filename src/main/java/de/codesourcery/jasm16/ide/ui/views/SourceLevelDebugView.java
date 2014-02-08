@@ -64,7 +64,6 @@ import de.codesourcery.jasm16.ide.ui.MenuManager;
 import de.codesourcery.jasm16.ide.ui.MenuManager.MenuEntry;
 import de.codesourcery.jasm16.ide.ui.utils.UIUtils;
 import de.codesourcery.jasm16.ide.ui.viewcontainers.DebuggingPerspective;
-import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.utils.ITextRegion;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -415,7 +414,7 @@ public class SourceLevelDebugView extends SourceCodeView
                     currentHighlight = getHighlighter().addHighlight( 
                             loc.getStartingOffset() , 
                             loc.getEndOffset() , 
-                            new DefaultHighlighter.DefaultHighlightPainter(Color.WHITE) );
+                            new DefaultHighlighter.DefaultHighlightPainter(Color.GREEN) );
                 } else {
                     getHighlighter().changeHighlight( currentHighlight ,
                             loc.getStartingOffset() ,

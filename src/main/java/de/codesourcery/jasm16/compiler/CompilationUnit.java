@@ -61,7 +61,7 @@ public final class CompilationUnit implements ICompilationUnit {
     private final ISymbolTable symbolTable;
     private final RelocationTable relocationTable;
 
-    private final Map<Integer,Line> lines = new HashMap<Integer,Line>();
+    private Map<Integer,Line> lines = new HashMap<Integer,Line>();
 
     private CompilationUnit(CompilationUnit unit, IResource resource) 
     {
@@ -73,7 +73,7 @@ public final class CompilationUnit implements ICompilationUnit {
     	this.dependencies = unit.dependencies;
     	this.symbolTable = unit.symbolTable;
     	this.relocationTable = unit.relocationTable;
-    	// this.lines = unit.lines
+    	this.lines = unit.lines;
     }
     
     protected CompilationUnit(String identifier,IResource resource) 
@@ -149,7 +149,11 @@ public final class CompilationUnit implements ICompilationUnit {
         if (l == null) {
             throw new IllegalArgumentException("line must not be NULL.");
         }
-        lines.put( l.getLineNumber() , l );
+        System.out.println("REGISTERED: "+l);
+        Line existing = lines.put( l.getLineNumber() , l );
+        if ( existing != null ) {
+        	throw new RuntimeException("Won't replace existing line "+existing+" with "+l);
+        }
     }
     
     @Override

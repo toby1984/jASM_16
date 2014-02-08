@@ -45,6 +45,9 @@ public class LabelNode extends ASTNode
     
     private Label label;
     
+    public LabelNode() {
+    }
+    
     public Identifier getIdentifier()
     {
         return identifier;

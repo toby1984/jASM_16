@@ -28,6 +28,8 @@ import org.apache.commons.lang.StringUtils;
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.SourceLocation;
+import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**
  * Provides various utility methods related to ASTs and AST nodes.
@@ -379,4 +381,47 @@ public class ASTUtils {
         visitInOrder(node , visitor );
         return result[0];        
     }
+    
+	public static void debugPrintTextRegions(ASTNode node,final String source) 
+	{
+		debugPrintTextRegions(node,source,null);
+	}
+	
+	public static void debugPrintTextRegions(ASTNode node,final String source,final ICompilationUnit unit) 
+	{
+		ASTUtils.visitInOrder( node , new ISimpleASTNodeVisitor<ASTNode>() 
+		{
+			@Override
+			public boolean visit(ASTNode node) 
+			{
+				ITextRegion region = node.getTextRegion();
+				if ( region != null ) {
+					int len = region.getEndOffset()-region.getStartingOffset()-1;
+					if ( len < 0 ) {
+						len = 0;
+					}
+					String regionString = StringUtils.repeat(" ", region.getStartingOffset() )+"^"+StringUtils.repeat(" " , len )+"^";
+					String bodyText=null;
+					try {
+						region.apply( source ).replace("\n", "|").replace("\r","|");
+						bodyText = source.replace("\n", "|").replace("\r","|");
+						bodyText += "\n"+regionString;
+					} catch(Exception e) {
+						bodyText = "<Invalid region>";					
+					}
+					String loc = "";
+					if ( unit != null ) {
+						SourceLocation sourceLocation = unit.getSourceLocation( region );
+						if ( sourceLocation != null ) {
+							loc = "[ "+sourceLocation.toString()+" ]";
+						}
+					}
+					System.out.print("\n-----\nAST Node "+node.getClass().getSimpleName()+" convers range "+region+" "+loc+"\n---\n"+bodyText);
+				} else {
+					System.err.print("\n-----\nAST Node "+node.getClass().getSimpleName()+" has no text region set");
+				}
+				return true;
+			}
+		});		
+	}    
 }

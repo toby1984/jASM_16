@@ -73,6 +73,12 @@ public final class Lexer implements ILexer {
 			this.currentLineStartOffset = offset.currentLineStartOffset;
 		}
 		
+		@Override
+		public String toString() {
+			return "ParseOffset[ base_offset="+baseOffset+", line_nr="+currentLineNumber+",lineStartingOffset="+currentLineStartOffset+"]";
+		}
+		
+		public int baseOffset() { return baseOffset; }
         public int currentLineNumber() { return currentLineNumber;}
         public int currentLineStartOffset() { return currentLineStartOffset; }		
 		
@@ -160,7 +166,7 @@ public final class Lexer implements ILexer {
         buffer.setLength(0);
 
         // skip whitespace
-        int startIndex = parseOffset.baseOffset + scanner.currentParseIndex();		
+        int startIndex = relativeParseIndex();		
         while ( ! scanner.eof() && isWhitespace( scanner.peek() ) ) 
         {
             buffer.append( scanner.read() );
@@ -174,7 +180,7 @@ public final class Lexer implements ILexer {
             return;
         }
 
-        startIndex = scanner.currentParseIndex();
+        startIndex = relativeParseIndex();
         char currentChar = scanner.peek();
         buffer.setLength( 0 );
 
@@ -190,29 +196,29 @@ public final class Lexer implements ILexer {
                     return;
                 case ';': // single-line comment
                     handleString( buffer.toString() , startIndex );
-                    startIndex = scanner.currentParseIndex();
+                    startIndex = relativeParseIndex();
                     scanner.read();
-                    currentTokens.add( new Token(TokenType.SINGLE_LINE_COMMENT, ";" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.SINGLE_LINE_COMMENT, ";" , relativeParseIndex()-1 ) );
                     return; 
                 case '\\':
                     handleString( buffer.toString() , startIndex );
-                    startIndex = scanner.currentParseIndex();
+                    startIndex = relativeParseIndex();
                     scanner.read();
-                    currentTokens.add( new Token(TokenType.STRING_ESCAPE, "\\", scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.STRING_ESCAPE, "\\", relativeParseIndex()-1 ) );
                     return;                     
                 case '\'':
                 case '"': // string delimiter
                     handleString( buffer.toString() , startIndex );
-                    startIndex = scanner.currentParseIndex();
+                    startIndex = relativeParseIndex();
                     scanner.read();
-                    currentTokens.add( new Token(TokenType.STRING_DELIMITER, Character.toString( currentChar ) , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.STRING_DELIMITER, Character.toString( currentChar ) , relativeParseIndex()-1 ) );
                     return;			    
 
                 case '\n':          // parse unix-style newline
                     handleString( buffer.toString() , startIndex );
-                    startIndex = scanner.currentParseIndex();
+                    startIndex = relativeParseIndex();
                     scanner.read();
-                    currentTokens.add( new Token(TokenType.EOL, "\n" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.EOL, "\n" , relativeParseIndex()-1 ) );
                     return;
                 case '\r': // parse DOS-style newline
                     buffer.append( scanner.read() );				
@@ -220,39 +226,39 @@ public final class Lexer implements ILexer {
                     {
                         handleString( buffer.toString() , buffer.length()-1 , startIndex );
                         scanner.read();					
-                        currentTokens.add(  new Token(TokenType.EOL, "\r\n" , scanner.currentParseIndex()-2 ) );
+                        currentTokens.add(  new Token(TokenType.EOL, "\r\n" , relativeParseIndex()-2 ) );
                         return;
                     }
                     continue;
                 case ':': 
                     handleString( buffer.toString() , startIndex );
                     scanner.read();     
-                    currentTokens.add(  new Token(TokenType.COLON , ":" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add(  new Token(TokenType.COLON , ":" , relativeParseIndex()-1 ) );
                     return;
                 case '(': 
                     handleString( buffer.toString() , startIndex );
                     scanner.read();     
-                    currentTokens.add(  new Token(TokenType.PARENS_OPEN , "(" , scanner.currentParseIndex()-1) );
+                    currentTokens.add(  new Token(TokenType.PARENS_OPEN , "(" , relativeParseIndex()-1) );
                     return;
                 case ')':
                     handleString( buffer.toString() , startIndex );             
                     scanner.read();     
-                    currentTokens.add( new Token(TokenType.PARENS_CLOSE, ")" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.PARENS_CLOSE, ")" , relativeParseIndex()-1 ) );
                     return;
                 case '[': 
                     handleString( buffer.toString() , startIndex );
                     scanner.read();     
-                    currentTokens.add(  new Token(TokenType.ANGLE_BRACKET_OPEN , "[" , scanner.currentParseIndex()-1) );
+                    currentTokens.add(  new Token(TokenType.ANGLE_BRACKET_OPEN , "[" , relativeParseIndex()-1) );
                     return;
                 case ']':
                     handleString( buffer.toString() , startIndex );             
                     scanner.read();     
-                    currentTokens.add( new Token(TokenType.ANGLE_BRACKET_CLOSE, "]" , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add( new Token(TokenType.ANGLE_BRACKET_CLOSE, "]" , relativeParseIndex()-1 ) );
                     return;
                 case ',':
                     handleString( buffer.toString() , startIndex ); 
                     scanner.read();     
-                    currentTokens.add(  new Token(TokenType.COMMA , "," , scanner.currentParseIndex()-1 ) );
+                    currentTokens.add(  new Token(TokenType.COMMA , "," , relativeParseIndex()-1 ) );
                     return;
             }			
 
@@ -268,14 +274,22 @@ public final class Lexer implements ILexer {
 
         handleString( buffer.toString() , startIndex );
     }
-
+    
+    /**
+     * Returns the scanner's current parse offset plus the parsing base offset. 
+     * @return
+     */
+    private int relativeParseIndex() {
+    	return this.parseOffset.baseOffset+scanner.currentParseIndex();
+    }
+    
     private void parseOperator(int lastStartIndex) 
     {
         handleString( buffer.toString() , lastStartIndex );
         buffer.setLength( 0 );
 
         // consume first character
-        final int startIndex = scanner.currentParseIndex();
+        final int startIndex = relativeParseIndex();
         buffer.append( scanner.read() );
 
         List<Operator> possibleOperators = Operator.getPossibleOperatorsByPrefix( buffer.toString() );
@@ -576,7 +590,7 @@ public final class Lexer implements ILexer {
     public int currentParseIndex()
     {
         final IToken tok = currentToken();
-        return tok != null ? tok.getStartingOffset() : scanner.currentParseIndex();
+        return tok != null ? tok.getStartingOffset() : relativeParseIndex();
     }
     
     @Override
