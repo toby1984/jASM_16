@@ -2534,7 +2534,10 @@ public final class Emulator implements IEmulator
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
             final int acc = signed( target.value ) >> source.value;
-            ex = (( signed( target.value ) << 16) >>> source.value ) & 0xffff;
+            
+            int step1 = signed( target.value ) << 16;            
+			int step2 = step1 >> source.value;
+			ex = step2 & 0xffff;
             if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
             	return 1+source.cycleCount;
             }
@@ -2547,14 +2550,45 @@ public final class Emulator implements IEmulator
             OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
             final int acc = target.value >>> source.value;
-            ex = (( target.value << 16) >> source.value ) & 0xffff;
+            
+            // ex = ( ( target.value << 16) >> source.value ) 
+            int step1 = target.value << 16;
+            int step2 = step1 >>> source.value;
+            ex = step2 & 0xffff;
             
             if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
             	return 1+source.cycleCount;
             }            
             return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
         }
+        
+        private int handleDVI(int instructionWord) 
+        {
+        	// ((b<<16)/a)&0xffff
+            // e DIV, but treat b, a as signed. Rounds towards 0
+        	OperandDesc source = loadSourceOperand( instructionWord );      
+            OperandDesc target = loadTargetOperand( instructionWord , false , false );
 
+            int acc;
+            if ( source.value == 0 ) {
+                ex = 0;
+                acc=0;
+            } else {
+                acc = signed( target.value ) / signed( source.value );
+                // ((b<<16)/a)&0xffff
+                int step1 = signed( target.value ) << 16;
+				int step2 = step1 / signed(source.value );
+				ex = step2 & 0xffff;
+				if ( ex == 0 && ! isSignBitSet( target.value ) && isSignBitSet( source.value ) ) {
+					ex = 0xffff;
+				}
+            }
+            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
+            	return 3+source.cycleCount;
+            }            
+            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+        }        
+        
         private int handleXOR(int instructionWord) 
         {
             //  sets b to b^a
@@ -2612,26 +2646,6 @@ public final class Emulator implements IEmulator
             return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
         }
 
-        private int handleDVI(int instructionWord) {
-            // e DIV, but treat b, a as signed. Rounds towards 0
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
-
-            final int acc;
-            if ( source.value == 0 ) {
-                ex = 0;
-                acc=0;
-            } else {
-                acc = signed( target.value ) / signed( source.value );
-                // ((b<<16)/a)&0xffff
-                ex = (( signed( target.value ) << 16) / signed( source.value) )& 0xffff;
-            }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 3+source.cycleCount;
-            }            
-            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
-        }
-
         private int handleDIV(int instructionWord) 
         {
             /* set b (TARGET) ,a (SOURCE) 
@@ -2679,6 +2693,10 @@ public final class Emulator implements IEmulator
                 return  0xffff0000 | value;
             }
             return value;
+        }
+        
+        private boolean isSignBitSet(int value) {
+        	return ( value & ( 1 << 15 ) ) != 0;
         }
 
         private int handleMUL(int instructionWord) 

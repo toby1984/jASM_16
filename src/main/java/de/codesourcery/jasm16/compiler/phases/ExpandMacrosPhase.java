@@ -343,7 +343,6 @@ outer:
         final Label newLabel = new Label( compContext.getCurrentCompilationUnit() , region , globalIdentifier , null );	
         
 		final ParseOffset bodyParseOffset = macroDefinition.getBodyParseOffset();
-		System.out.println("Body parse ofset: "+bodyParseOffset); // TODO: Remove debug code
 		final Parser parser = new Parser( compContext , bodyParseOffset ) 
 		{
 			@Override
