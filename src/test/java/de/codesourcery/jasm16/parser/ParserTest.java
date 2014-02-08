@@ -54,7 +54,7 @@ public class ParserTest extends TestHelper {
 		final Parser p = new Parser(this);
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
 		
-		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, false );
+		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, null );
 		
 		Misc.printCompilationErrors( unit , source , true );
 		
@@ -74,7 +74,7 @@ public class ParserTest extends TestHelper {
 		final String source = "        ; Try some basic stuff\n";
 		final ICompilationUnit unit = CompilationUnit.createInstance("dummy" , source );
 		
-		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, false );
+		AST ast = p.parse( unit , symbolTable , source , RESOURCE_RESOLVER, null );
 		
 		Misc.printCompilationErrors( unit , source , true );
 		
@@ -172,7 +172,7 @@ public class ParserTest extends TestHelper {
 		
         final String source = ".dat \"I'm great\"";
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER, false );
+		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER, null );
 
 	    Misc.printCompilationErrors( unit , source , true );
 	      
@@ -226,7 +226,7 @@ public class ParserTest extends TestHelper {
 		
         final String source = ".dat \"dead\"";
 		final ICompilationUnit unit = CompilationUnit.createInstance("string input" , source );
-		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER , false );
+		AST ast = p.parse(  unit , symbolTable , source , RESOURCE_RESOLVER , null );
 
 	    Misc.printCompilationErrors( unit , source , true );
 	      

@@ -17,6 +17,7 @@ package de.codesourcery.jasm16.emulator;
 
 import de.codesourcery.jasm16.Address;
 import de.codesourcery.jasm16.emulator.IEmulator.EmulationSpeed;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
 
 /**
  * Listener that gets called by the {@link IEmulator} whenever important events happen.

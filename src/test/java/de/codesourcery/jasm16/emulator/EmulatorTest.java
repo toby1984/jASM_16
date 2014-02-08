@@ -218,7 +218,7 @@ public class EmulatorTest extends AbstractEmulatorTest
                         "       HCF 0\n"; // illegal opcode
 
         execute(source);
-        assertRegA( 0x01 );
+        assertRegA( 0x02 );
     }  	
 
 	public void testMemorySetRegisterIndirectWithOffsetImmediate() throws InterruptedException, TimeoutException {
@@ -413,7 +413,7 @@ public class EmulatorTest extends AbstractEmulatorTest
     public void testAddWithPC() throws InterruptedException, TimeoutException {
 
         final String source = "       SET a,0\n"+
-                "       ADD PC ,2\n"+
+                "       ADD PC ,1\n"+
                 "       HCF 0\n"+
                 "       SET a,0x42\n"+
                 "       HCF 0";

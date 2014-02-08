@@ -342,7 +342,7 @@ public class SourceFileDependencyAnalyzer
             final ILexer lexer)
             throws ParseException
     {
-        final IParseContext context = new ParseContext(unit, new SymbolTable("SourceFileDependencyAnalyzer") , lexer , resolver , compUnitResolver, parserOptions , false );
+        final IParseContext context = new ParseContext(unit, new SymbolTable("SourceFileDependencyAnalyzer") , lexer , resolver , compUnitResolver, parserOptions , null );
         
         if ( lexer.peek().hasType( TokenType.INCLUDE_SOURCE ) ) 
         {

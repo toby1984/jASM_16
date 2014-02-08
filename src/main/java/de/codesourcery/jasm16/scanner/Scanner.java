@@ -15,9 +15,6 @@
  */
 package de.codesourcery.jasm16.scanner;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 import de.codesourcery.jasm16.exceptions.EOFException;
 
 public class Scanner implements IScanner {

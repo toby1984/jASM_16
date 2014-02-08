@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import de.codesourcery.jasm16.ast.AST;
+import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.compiler.CompilationUnit;
 import de.codesourcery.jasm16.compiler.ICompilationContext;
 import de.codesourcery.jasm16.compiler.ICompilationUnit;
@@ -33,6 +34,7 @@ import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.ILexer.LexerOption;
 import de.codesourcery.jasm16.lexer.Lexer;
+import de.codesourcery.jasm16.lexer.Lexer.ParseOffset;
 import de.codesourcery.jasm16.scanner.Scanner;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -49,19 +51,25 @@ public class Parser implements IParser
 	private final Set<ParserOption> options = new HashSet<ParserOption>(); 
     
     private final ICompilationUnitResolver compilationUnitResolver;
+    private final ParseOffset parseOffset;
     
-    public Parser(ICompilationUnitResolver compilationUnitResolver) {
+    public Parser(ICompilationUnitResolver compilationUnitResolver,ParseOffset parseOffset) {
     	if (compilationUnitResolver == null) {
 			throw new IllegalArgumentException("compilationUnitResolver must not be NULL");
 		}
     	this.compilationUnitResolver= compilationUnitResolver;
+    	this.parseOffset = parseOffset;
     }
+    
+    public Parser(ICompilationUnitResolver compilationUnitResolver) {
+    	this(compilationUnitResolver,new ParseOffset() );
+    }    
 
     @Override
     public AST parse(ICompilationContext context) throws IOException 
     {
         final String source = Misc.readSource( context.getCurrentCompilationUnit() );
-        return parse(context.getCurrentCompilationUnit(),context.getSymbolTable(),source,context,false);
+        return parse(context.getCurrentCompilationUnit(),context.getSymbolTable(),source,context,null);
     }
 
     // do not use except for unit-testing
@@ -82,19 +90,19 @@ public class Parser implements IParser
                 throw new UnsupportedOperationException("Not implemented"); 
             }
         };
-        return parse(  unit , new SymbolTable("Parser#parse()") , source , resolver , false );
+        return parse(  unit , new SymbolTable("Parser#parse()") , source , resolver , null );
     }
 
     @Override
-    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source , IResourceResolver resolver,boolean isExpandingMacro)    
+    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source , IResourceResolver resolver,StartMacroNode currentlyExpandingMacro)    
     {
         final Scanner scanner = new Scanner( source );
-        final ILexer lexer = new Lexer( scanner );
+        final ILexer lexer = new Lexer( scanner , this.parseOffset );
         if ( hasParserOption( ParserOption.RELAXED_PARSING ) ) {
             lexer.setLexerOption( LexerOption.CASE_INSENSITIVE_OPCODES , true );
         }        
         
-        final ParseContext context = new ParseContext( unit , symbolTable, lexer , resolver , compilationUnitResolver, this.options , isExpandingMacro );
+        final ParseContext context = new ParseContext( unit , symbolTable, lexer , resolver , compilationUnitResolver, this.options , currentlyExpandingMacro );
         
         final AST result = (AST) new AST().parse( context );
         if ( ! context.eof() ) {

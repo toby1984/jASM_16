@@ -45,7 +45,6 @@ import de.codesourcery.jasm16.compiler.phases.ExpandMacrosPhase;
 import de.codesourcery.jasm16.compiler.phases.ParseSourcePhase;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 import de.codesourcery.jasm16.exceptions.UnknownCompilationOrderException;
-import de.codesourcery.jasm16.utils.Misc;
 
 /**
  * Default compiler (assembler) implementation.

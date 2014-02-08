@@ -330,7 +330,7 @@ public class Breakpoint
 		};
 		
 		final Set<ParserOption> parserOptions = new HashSet<ParserOption>();
-		final IParseContext context = new ParseContext(unit,symbolTable,lexer,resourceResolver,unitResolver,parserOptions,false);
+		final IParseContext context = new ParseContext(unit,symbolTable,lexer,resourceResolver,unitResolver,parserOptions,null);
 		
 		final ASTNode node = new ExpressionNode().parse( context );
 		if ( node.hasErrors() ) 

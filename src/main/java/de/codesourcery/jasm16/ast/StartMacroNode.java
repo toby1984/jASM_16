@@ -6,6 +6,7 @@ import java.util.List;
 import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
+import de.codesourcery.jasm16.lexer.Lexer.ParseOffset;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.Identifier;
@@ -17,6 +18,8 @@ public class StartMacroNode extends ASTNode {
 	private Identifier name;
 	private String macroBody;
 	
+	private ParseOffset bodyParseOffset;
+	
 	public StartMacroNode() {
 	}
 	
@@ -24,6 +27,7 @@ public class StartMacroNode extends ASTNode {
 	{
 		this.name = macroNode.name;
 		this.macroBody = macroNode.macroBody;
+		this.bodyParseOffset = macroNode.bodyParseOffset != null ? new ParseOffset( macroNode.bodyParseOffset ) : null;
 	}
 
 	public Identifier getMacroName() {
@@ -109,6 +113,8 @@ public class StartMacroNode extends ASTNode {
 			}			
 			
 			final StringBuilder buffer = new StringBuilder();
+			
+			this.bodyParseOffset = new ParseOffset( context.currentParseIndex() , context.getCurrentLineNumber() , context.getCurrentLineStartOffset() );
 			while ( ! context.eof() && ! context.peek().hasType(TokenType.END_MACRO ) ) 
 			{
 				// need some funky logic here since StatementNode()#parse() wants
@@ -159,5 +165,9 @@ public class StartMacroNode extends ASTNode {
 	
 	public String getMacroBody() {
 		return macroBody;
+	}
+	
+	public ParseOffset getBodyParseOffset() {
+		return this.bodyParseOffset;
 	}
 }

@@ -17,7 +17,6 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import de.codesourcery.jasm16.ast.ASTNode;

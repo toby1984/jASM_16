@@ -17,8 +17,17 @@ package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
 
-import de.codesourcery.jasm16.ast.*;
-import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.ASTVisitor;
+import de.codesourcery.jasm16.ast.IIterationContext;
+import de.codesourcery.jasm16.ast.SymbolReferenceNode;
+import de.codesourcery.jasm16.compiler.CompilationError;
+import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.Equation;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.ICompilerPhase;
+import de.codesourcery.jasm16.compiler.ISymbol;
 import de.codesourcery.jasm16.parser.Identifier;
 
 /**

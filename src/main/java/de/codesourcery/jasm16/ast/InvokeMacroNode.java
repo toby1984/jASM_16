@@ -46,6 +46,9 @@ public class InvokeMacroNode extends ASTNode {
 		ITextRegion region = new TextRegion( context.currentParseIndex() , 0 );
 		this.macroName = context.parseIdentifier( region , false );
 		
+		if ( context.getCurrentlyExpandingMacro() != null ) {
+			context.addCompilationError("Sorry, invoking macros from another macro is currently not implemented",this);
+		}
 		// actual existance of invoked macro is checked by ExpandMacrosPhase
 		
 		region.merge(  context.skipWhitespace(false ) );

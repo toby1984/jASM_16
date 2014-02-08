@@ -19,6 +19,7 @@ import java.io.IOException;
 
 import de.codesourcery.jasm16.ast.AST;
 import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
 import de.codesourcery.jasm16.ast.UnparsedContentNode;
 import de.codesourcery.jasm16.compiler.*;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
@@ -64,6 +65,7 @@ public interface IParser
 	 * as a {@link UnparsedContentNode}. This may be used by a editor that embeds 
 	 * this compiler to highlight the erronous source location.</p>
 	 * @param context
+	 * @param expandingMacro the macro that is currently being expanded or <code>null</code>
 	 * @return
 	 * @see AST#hasErrors()
 	 * @see ASTNode#hasErrors()
@@ -72,5 +74,23 @@ public interface IParser
 	 */
     public AST parse(ICompilationContext context) throws IOException;
     
-    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver,boolean isExpandingMacro);
+	/**
+	 * Parse a compilation unit.
+	 * 
+	 * <p>Note that this method will not fail on parse errors , instead
+	 * the compilation unit will have {@link ICompilationError} instances
+	 * added to it that hold more information about the cause of the error.
+	 * </p>
+	 * <p>Source code that failed to parse will still become part of the AST
+	 * as a {@link UnparsedContentNode}. This may be used by a editor that embeds 
+	 * this compiler to highlight the erronous source location.</p>
+	 * @param context
+	 * @param expandingMacro the macro that is currently being expanded or <code>null</code>
+	 * @return
+	 * @see AST#hasErrors()
+	 * @see ASTNode#hasErrors()
+	 * @see ICompilationUnit#getErrors()
+	 * @throws IOException if an I/O error occured during parsing the input.
+	 */    
+    public AST parse(ICompilationUnit unit , ISymbolTable symbolTable , String source,IResourceResolver resolver,StartMacroNode expandingMacro);
 }

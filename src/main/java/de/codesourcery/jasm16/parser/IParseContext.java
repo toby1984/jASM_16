@@ -199,9 +199,9 @@ public interface IParseContext extends ILexer , IResourceResolver {
     public boolean isParsingMacroDefinition();
     
     /**
-     * Returns whether the parser is currently processing expanded macro text/a {@link InvokeMacroNode}.
+     * Returns the macro definition that is currently being expanded.
      * 
-     * @return
+     * @return Macro definition or <code>null</code> if the parser is not parsing an expanded macro body.
      */
-    public boolean isExpandingMacro();
+    public StartMacroNode getCurrentlyExpandingMacro();
 }

@@ -18,8 +18,6 @@ package de.codesourcery.jasm16;
 import java.util.ArrayList;
 import java.util.List;
 
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-
 /**
  * An (immutable) address range made up of starting address and size.
  * 

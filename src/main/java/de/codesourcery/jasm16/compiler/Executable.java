@@ -17,13 +17,9 @@ package de.codesourcery.jasm16.compiler;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.ast.AST;
-import de.codesourcery.jasm16.ast.ASTNode;
 import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.utils.ITextRegion;

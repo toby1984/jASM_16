@@ -15,7 +15,6 @@
  */
 package de.codesourcery.jasm16.compiler.io;
 
-import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.exceptions.ResourceNotFoundException;
 
 /**

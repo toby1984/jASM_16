@@ -35,30 +35,71 @@ public final class Lexer implements ILexer {
 
     private final IScanner scanner;
 
-    private final StringBuilder buffer = new StringBuilder();	
+    private final StringBuilder buffer = new StringBuilder();
+    
     private final Set<LexerOption> options = new HashSet<LexerOption>(); 
     private boolean caseSensitiveOpCodes = true;
     
     // internal state
     private final List<IToken> currentTokens=new ArrayList<IToken>();
     private final Stack<State> marks = new Stack<State>();
-    private int currentLineNumber=1;
-    private int currentLineStartOffset;
+    
+    private final ParseOffset parseOffset;
+    
+    public static final class ParseOffset 
+    {
+    	// offset relative to actual scanner offset, used
+    	// when expanding macro invocations
+    	private int baseOffset;
+        private int currentLineNumber;
+        private int currentLineStartOffset;
+        
+		public ParseOffset()
+		{
+			this(0,1,0);
+		}
+		
+		public ParseOffset(int baseOffset, int currentLineNumber,int currentLineStartOffset) 
+		{
+			this.baseOffset = baseOffset;
+			this.currentLineNumber = currentLineNumber;
+			this.currentLineStartOffset = currentLineStartOffset;
+		}    	
+
+		public ParseOffset(ParseOffset offset) 
+		{
+			this.baseOffset = offset.baseOffset;
+			this.currentLineNumber = offset.currentLineNumber;
+			this.currentLineStartOffset = offset.currentLineStartOffset;
+		}
+		
+        public int currentLineNumber() { return currentLineNumber;}
+        public int currentLineStartOffset() { return currentLineStartOffset; }		
+		
+		public void apply(ParseOffset offset) {
+			this.baseOffset = offset.baseOffset;
+			this.currentLineNumber = offset.currentLineNumber;
+			this.currentLineStartOffset = offset.currentLineStartOffset;			
+		}
+		
+		public void newLine(int newLineStartOffset) {
+            this.currentLineNumber++;
+            this.currentLineStartOffset = newLineStartOffset;			
+		}
+    }
 
     protected final class State 
     {
         private final List<IToken> markedTokens = new ArrayList<IToken>();
         private final int scannerOffset;
-        private final int lineNumber;
-        private final int lineStartOffset;
+        private final ParseOffset offset;
         private final Set<LexerOption> options;
 
         protected State() 
         {
             this.markedTokens.addAll( Lexer.this.currentTokens );
             this.scannerOffset = Lexer.this.scanner.currentParseIndex();
-            this.lineNumber = Lexer.this.currentLineNumber;
-            this.lineStartOffset = Lexer.this.currentLineStartOffset;
+            this.offset = new ParseOffset( Lexer.this.parseOffset );
             this.options = new HashSet<>( Lexer.this.options );
         }
         
@@ -69,8 +110,7 @@ public final class Lexer implements ILexer {
             Lexer.this.currentTokens.clear();
             Lexer.this.currentTokens.addAll( this.markedTokens );
             
-            Lexer.this.currentLineNumber = this.lineNumber;
-            Lexer.this.currentLineStartOffset = this.lineStartOffset;        
+            Lexer.this.parseOffset.apply( this.offset );
             
             Lexer.this.options.clear();
             Lexer.this.options.addAll( this.options );
@@ -78,9 +118,14 @@ public final class Lexer implements ILexer {
     }
 
     public Lexer(IScanner scanner) {
-        this.scanner = scanner;
+        this(scanner,new ParseOffset());
     }	
-
+    
+    public Lexer(IScanner scanner,ParseOffset offset) {
+        this.scanner = scanner;
+        this.parseOffset = offset;
+    }	    
+    
     @Override
     public void mark()
     {
@@ -115,7 +160,7 @@ public final class Lexer implements ILexer {
         buffer.setLength(0);
 
         // skip whitespace
-        int startIndex = scanner.currentParseIndex();		
+        int startIndex = parseOffset.baseOffset + scanner.currentParseIndex();		
         while ( ! scanner.eof() && isWhitespace( scanner.peek() ) ) 
         {
             buffer.append( scanner.read() );
@@ -522,8 +567,7 @@ public final class Lexer implements ILexer {
         currentTokens.remove( 0 );
 
         if ( result.isEOL() ) {
-            currentLineNumber++;
-            currentLineStartOffset = result.getStartingOffset()+1;
+        	this.parseOffset.newLine( result.getStartingOffset()+1);
         }
         return result;
     }
@@ -604,12 +648,12 @@ public final class Lexer implements ILexer {
 
     @Override
     public int getCurrentLineNumber() {
-        return currentLineNumber;
+        return parseOffset.currentLineNumber();
     }
 
     @Override
     public int getCurrentLineStartOffset() {
-        return currentLineStartOffset;
+        return parseOffset.currentLineStartOffset();
     }
 
     @Override

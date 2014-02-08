@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import de.codesourcery.jasm16.ide.IAssemblyProject;
 import de.codesourcery.jasm16.utils.ITextRegion;
 
 /**

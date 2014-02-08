@@ -62,7 +62,7 @@ public class ParseContext implements IParseContext
 	private final IResourceResolver resourceResolver;
 	private final ICompilationUnitResolver compilationUnitResolver;
 	private final Set<ParserOption> options = new HashSet<ParserOption>();
-	private final boolean isExpandingMacro;
+	private final StartMacroNode currentlyExpandingMacro;
 	
 	// values are IResource#getIdentifier() values
 	private final LinkedHashSet<String> includedSourceFiles;
@@ -79,10 +79,10 @@ public class ParseContext implements IParseContext
 			IResourceResolver resourceResolver,
 			ICompilationUnitResolver compilationUnitResolver,
 			Set<ParserOption> options,
-			boolean isExpandingMacro) 
+			StartMacroNode currentlyExpandingMacro) 
 	{
 		this( unit , symbolTable , lexer ,resourceResolver , compilationUnitResolver , options ,
-				new LinkedHashSet<String>() , isExpandingMacro );
+				new LinkedHashSet<String>() , currentlyExpandingMacro );
 	}
 	
 	protected ParseContext(ICompilationUnit unit , 
@@ -92,7 +92,7 @@ public class ParseContext implements IParseContext
 			ICompilationUnitResolver compilationUnitResolver,			
 			Set<ParserOption> options,
 			LinkedHashSet<String> includedSourceFiles,
-			boolean isExpandingMacro) 
+			StartMacroNode currentlyExpandingMacro) 
 	{
 		if (lexer == null) {
 			throw new IllegalArgumentException("lexer must not be NULL");
@@ -119,7 +119,7 @@ public class ParseContext implements IParseContext
 		this.unit = unit;
 		this.lexer = lexer;
 		this.compilationUnitResolver = compilationUnitResolver;
-		this.isExpandingMacro = isExpandingMacro;
+		this.currentlyExpandingMacro = currentlyExpandingMacro;
 	}
 	
 	@Override
@@ -372,7 +372,7 @@ public class ParseContext implements IParseContext
 		getCompilationUnit().addDependency( unit );
 		
 		final ILexer lexer = new Lexer( new Scanner( source ) );
-		IParseContext result = new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles , this.isExpandingMacro );
+		IParseContext result = new ParseContext(unit, symbolTable, lexer, resourceResolver,compilationUnitResolver ,  options , this.includedSourceFiles , this.currentlyExpandingMacro);
 		return result;
 	}
 
@@ -459,8 +459,8 @@ public class ParseContext implements IParseContext
 	}
 	
 	@Override
-	public boolean isExpandingMacro() {
-		return isExpandingMacro;
+    public StartMacroNode getCurrentlyExpandingMacro() {
+		return this.currentlyExpandingMacro;
 	}
 	
 	@Override

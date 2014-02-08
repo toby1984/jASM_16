@@ -32,7 +32,6 @@ import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.IToken;
 import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParseContext;
-import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.parser.Operator;
 
 /**

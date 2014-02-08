@@ -1,14 +1,37 @@
 package de.codesourcery.jasm16.compiler.phases;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import de.codesourcery.jasm16.ast.*;
-import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.ast.AST;
+import de.codesourcery.jasm16.ast.ASTNode;
+import de.codesourcery.jasm16.ast.ASTUtils;
+import de.codesourcery.jasm16.ast.ASTVisitor;
+import de.codesourcery.jasm16.ast.EndMacroNode;
+import de.codesourcery.jasm16.ast.IIterationContext;
+import de.codesourcery.jasm16.ast.InvokeMacroNode;
+import de.codesourcery.jasm16.ast.StartMacroNode;
+import de.codesourcery.jasm16.ast.StatementNode;
+import de.codesourcery.jasm16.compiler.CompilationWarning;
+import de.codesourcery.jasm16.compiler.CompilerPhase;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ICompilationError;
+import de.codesourcery.jasm16.compiler.ICompilationUnit;
+import de.codesourcery.jasm16.compiler.IMarker;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.MacroNameSymbol;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.StringResource;
-import de.codesourcery.jasm16.lexer.*;
+import de.codesourcery.jasm16.lexer.ILexer;
+import de.codesourcery.jasm16.lexer.IToken;
+import de.codesourcery.jasm16.lexer.Lexer;
+import de.codesourcery.jasm16.lexer.TokenType;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
 import de.codesourcery.jasm16.parser.Identifier;
 import de.codesourcery.jasm16.parser.Parser;
@@ -301,12 +324,12 @@ outer:
 		final IResource expandedBodyResource = new StringResource( id , expandedBody , ResourceType.SOURCE_CODE );
 		final ICompilationUnit unit = compContext.getCurrentCompilationUnit().withResource( expandedBodyResource );
 		
-		final Parser parser = new Parser( compContext );
+		final Parser parser = new Parser( compContext , macroDefinition.getBodyParseOffset() );
 		
 		// TODO: Copy parser options ?
 		parser.setParserOption( ParserOption.LOCAL_LABELS_SUPPORTED, true );
 		
-		final AST ast = parser.parse( unit , compContext.getSymbolTable()  , expandedBody , compContext, true);
+		final AST ast = parser.parse( unit , compContext.getSymbolTable()  , expandedBody , compContext, macroDefinition );
 		if ( unit.hasErrors() ) 
 		{
 			for ( ICompilationError i : unit.getErrors() ) 

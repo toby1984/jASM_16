@@ -27,7 +27,10 @@ import de.codesourcery.jasm16.compiler.io.FileResource;
 import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.ide.exceptions.ProjectAlreadyExistsException;
-import de.codesourcery.jasm16.ide.ui.viewcontainers.*;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainer;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.IViewContainerListener;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.Perspective;
+import de.codesourcery.jasm16.ide.ui.viewcontainers.ViewContainerManager;
 import de.codesourcery.jasm16.ide.ui.views.WorkspaceExplorer;
 import de.codesourcery.jasm16.utils.Misc;
 

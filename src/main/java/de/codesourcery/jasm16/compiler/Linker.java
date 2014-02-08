@@ -27,7 +27,6 @@ import java.util.List;
 import org.apache.commons.io.IOUtils;
 
 import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.Size.SizeInBytes;
 import de.codesourcery.jasm16.ast.ASTNode;

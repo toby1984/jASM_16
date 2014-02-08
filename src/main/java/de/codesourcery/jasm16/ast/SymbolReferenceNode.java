@@ -17,7 +17,13 @@ package de.codesourcery.jasm16.ast;
 
 import org.apache.commons.lang.ObjectUtils;
 
-import de.codesourcery.jasm16.compiler.*;
+import de.codesourcery.jasm16.compiler.Equation;
+import de.codesourcery.jasm16.compiler.ICompilationContext;
+import de.codesourcery.jasm16.compiler.ISymbol;
+import de.codesourcery.jasm16.compiler.ISymbolTable;
+import de.codesourcery.jasm16.compiler.IValueSymbol;
+import de.codesourcery.jasm16.compiler.Label;
+import de.codesourcery.jasm16.compiler.SymbolTable;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.parser.IParseContext;
 import de.codesourcery.jasm16.parser.IParser.ParserOption;
