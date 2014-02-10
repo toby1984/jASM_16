@@ -15,12 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,28 +23,13 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.*;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
-import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
-import de.codesourcery.jasm16.emulator.devices.IDevice;
-import de.codesourcery.jasm16.emulator.devices.IInterrupt;
-import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
-import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
-import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
-import de.codesourcery.jasm16.emulator.memory.MainMemory;
-import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.emulator.devices.*;
+import de.codesourcery.jasm16.emulator.exceptions.*;
+import de.codesourcery.jasm16.emulator.memory.*;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -375,24 +355,24 @@ public final class Emulator implements IEmulator
 	// ============ BreakPoints =======
 
 	// @GuardedBy( breakpoints )
-	private final Map<Address,List<Breakpoint>> breakpoints = new HashMap<Address,List<Breakpoint>>(); 
+	protected final Map<Address,List<Breakpoint>> breakpoints = new HashMap<Address,List<Breakpoint>>(); 
 
 	// ============ Memory ============
 
 	// memory needs to be thread-safe since the emulation runs in a separate thread
 	// and UI threads may access the registers concurrently    
-	private final MainMemory memory = new MainMemory( 65536 , checkMemoryWrites );
+	protected final MainMemory memory = new MainMemory( 65536 , checkMemoryWrites );
 
 	// ========= devices ===========
 
 	// @GuardedBy( devices )
-	private final List<IDevice> devices = new ArrayList<IDevice>();
+	protected final List<IDevice> devices = new ArrayList<IDevice>();
 
 	// ============ CPU =============== 
 
-	private final Object CPU_LOCK = new Object();
+	protected final Object CPU_LOCK = new Object();
 
-	private Address lastValidInstruction = null;
+	protected Address lastValidInstruction = null;
 	
 	// @GuardedBy( CPU_LOCK )
 	private final CPU cpu = new CPU(memory);
@@ -934,8 +914,10 @@ public final class Emulator implements IEmulator
 			{
 				try 
 				{
-					execDurationInCycles = cpu.executeInstruction();
-	
+					final int oldCycleCount = cpu.currentCycle;
+					cpu.executeInstruction();
+					execDurationInCycles = cpu.currentCycle - oldCycleCount;
+					
 					lastValidInstruction = visibleCPU.pc;
 					
 					if ( checkMemoryWrites ) {
@@ -946,7 +928,6 @@ public final class Emulator implements IEmulator
 						memory.writeProtect( new AddressRange( visibleCPU.pc , Size.words( sizeInWords )) );
 					}
 					
-					cpu.currentCycle+=execDurationInCycles;
 					cpu.pc = Address.wordAddress( cpu.currentInstructionPtr );
 					
 					cpu.maybeProcessOneInterrupt();  // might push A on stack and set PC to IA 
@@ -1066,12 +1047,6 @@ public final class Emulator implements IEmulator
 				});         
 			} 
 		}
-	}
-
-	private boolean isConditionalInstruction(int instructionWord) {
-
-		final int opCode = (instructionWord & 0x1f);
-		return ( opCode >= 0x10 && opCode <= 0x17);
 	}
 
    @Override
@@ -1265,30 +1240,6 @@ public final class Emulator implements IEmulator
 			}
 		}
 		return null;
-	}
-
-	protected static final class OperandDesc 
-	{
-		public final int value;
-		public final int cycleCount; // how long it takes to perform the operation
-
-		public OperandDesc(int value) {
-			this.value = value & 0xffff;
-			this.cycleCount = 0;
-		}
-
-		public OperandDesc(int value,int cycleCount) {
-			this.value = value & 0xffff;
-			this.cycleCount = cycleCount;
-		}
-	}
-
-	protected static OperandDesc operandDesc(int value) {
-		return new OperandDesc( value );
-	}
-
-	protected static OperandDesc operandDesc(int value,int cycleCount) {
-		return new OperandDesc( value , cycleCount );
 	}
 
 	/* (non-Javadoc)
@@ -1948,6 +1899,16 @@ public final class Emulator implements IEmulator
 		this.ignoreAccessToUnknownDevices = yesNo;
 	}
 	
+	@Override
+	public boolean isCrashOnStoreWithImmediate() {
+		return haltOnStoreToImmediateValue;
+	}
+
+	@Override
+	public void setCrashOnStoreWithImmediate(boolean doCrashOnImmediate) {
+		this.haltOnStoreToImmediateValue = doCrashOnImmediate;
+	}	
+	
     protected final class CPU implements ICPU {
 
         // transient, only used inside of executeOneInstruction() code path
@@ -1975,7 +1936,7 @@ public final class Emulator implements IEmulator
         public boolean queueInterrupts;
 
         public IInterrupt currentInterrupt;
-        public final List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
+        public List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
 
         public int currentCycle;
 
@@ -1991,12 +1952,13 @@ public final class Emulator implements IEmulator
             this.ex = other.ex;
             this.pc = other.pc;
             this.sp = other.sp;
+            this.currentCycle = other.currentCycle;
+            
+            // interrupt handling
             this.interruptAddress = other.interruptAddress;
             this.queueInterrupts = other.queueInterrupts;
             this.currentInterrupt = other.currentInterrupt;
-            this.interruptQueue.clear();
-            this.interruptQueue.addAll(other.interruptQueue);
-            this.currentCycle = other.currentCycle;
+            this.interruptQueue = new ArrayList<>( other.interruptQueue );
         }           
 
         public boolean triggerInterrupt(IInterrupt interrupt) 
@@ -2182,7 +2144,7 @@ public final class Emulator implements IEmulator
 
         // ==============
         
-        public int executeInstruction() 
+        public void executeInstruction() 
         {
             currentInstructionPtr = pc.getValue();
             
@@ -2232,77 +2194,108 @@ public final class Emulator implements IEmulator
 
             switch( opCode ) {
                 case 0x00:
-                    return handleSpecialOpCode( instructionWord );
+                    handleSpecialOpCode( instructionWord );
+                    return;
                 case 0x01:
-                    return handleSET( instructionWord );
+                    handleSET( instructionWord );
+                    return;
                 case 0x02:
-                    return handleADD( instructionWord );
+                    handleADD( instructionWord );
+                    return;
                 case 0x03:
-                    return handleSUB( instructionWord );
+                    handleSUB( instructionWord );
+                    return;
                 case 0x04:
-                    return handleMUL( instructionWord );
+                    handleMUL( instructionWord );
+                    return;
                 case 0x05:
-                    return handleMLI( instructionWord );
+                     handleMLI( instructionWord );
+                     return;
                 case 0x06:
-                    return handleDIV( instructionWord );
+                    handleDIV( instructionWord );
+                    return;
                 case 0x07:
-                    return handleDVI( instructionWord );
+                    handleDVI( instructionWord );
+                    return;
                 case 0x08:
-                    return handleMOD( instructionWord );
+                    handleMOD( instructionWord );
+                    return;
                 case 0x09:
-                    return handleMDI( instructionWord );
+                    handleMDI( instructionWord );
+                    return;
                 case 0x0a:
-                    return handleAND( instructionWord );
+                    handleAND( instructionWord );
+                    return;
                 case 0x0b:
-                    return handleBOR( instructionWord );
+                    handleBOR( instructionWord );
+                    return;
                 case 0x0c:
-                    return handleXOR( instructionWord );
+                    handleXOR( instructionWord );
+                    return;
                 case 0x0d:
-                    return handleSHR( instructionWord );
+                    handleSHR( instructionWord );
+                    return;
                 case 0x0e:
-                    return handleASR( instructionWord );
+                    handleASR( instructionWord );
+                    return;
                 case 0x0f:
-                    return handleSHL( instructionWord );
+                    handleSHL( instructionWord );
+                    return;
                 case 0x10:
-                    return handleIFB( instructionWord );
+                    handleIFB( instructionWord );
+                    return;
                 case 0x11:
-                    return handleIFC( instructionWord );
+                    handleIFC( instructionWord );
+                    return;
                 case 0x12:
-                    return handleIFE( instructionWord );
+                    handleIFE( instructionWord );
+                    return;
                 case 0x13:
-                    return handleIFN( instructionWord );
+                    handleIFN( instructionWord );
+                    return;
                 case 0x14:
-                    return handleIFG( instructionWord );
+                    handleIFG( instructionWord );
+                    return;
                 case 0x15:
-                    return handleIFA( instructionWord );
+                    handleIFA( instructionWord );
+                    return;
                 case 0x16:
-                    return handleIFL( instructionWord );
+                    handleIFL( instructionWord );
+                    return;
                 case 0x17:
-                    return handleIFU( instructionWord );
+                    handleIFU( instructionWord );
+                    return;
                 case 0x18:
                 case 0x19:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x1a:
-                    return handleADX( instructionWord );
+                    handleADX( instructionWord );
+                    return;
                 case 0x1b:
-                    return handleSBX( instructionWord );
+                    handleSBX( instructionWord );
+                    return;
                 case 0x1c:
                 case 0x1d:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x1e:
-                    return handleSTI( instructionWord );
+                    handleSTI( instructionWord );
+                    return;
                 case 0x1f:
-                    return handleSTD( instructionWord );
+                    handleSTD( instructionWord );
+                    return;
                 default:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
             }
         }
 
-        private int handleSTD(int instructionWord) {
+        private void handleSTD(int instructionWord) {
             // sets b to a, then decreases I and J by 1
             // a,b,c,x,y,z,i,j
-            final OperandDesc source = loadSourceOperand( instructionWord );
-            final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
+            final int source = loadSourceOperand( instructionWord );
+            storeTargetOperand( instructionWord , source );
+            
             int address = --commonRegisters[6]; // registers[6]-=1; <<< I
             if ( address < 0 ) {
                 commonRegisters[6] = (int) WordAddress.MAX_ADDRESS;
@@ -2311,15 +2304,15 @@ public final class Emulator implements IEmulator
             if ( address < 0 ) {
                 commonRegisters[7]= (int) WordAddress.MAX_ADDRESS;
             }        
-            return cycles;
+            currentCycle += 2;
         }
 
-        private int handleSTI(int instructionWord) {
+        private void handleSTI(int instructionWord) {
             // sets b to a, then increases I and J by 1
             // a,b,c,x,y,z,i,j
-            final OperandDesc source = loadSourceOperand( instructionWord );
+            final int source = loadSourceOperand( instructionWord );
 
-            final int cycles = 2+storeTargetOperand( instructionWord , source.value )+source.cycleCount;
+            storeTargetOperand( instructionWord , source );
 
             int newWordAddress = ++commonRegisters[6]; // registers[6]+=1; <<< I
             if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
@@ -2329,52 +2322,54 @@ public final class Emulator implements IEmulator
             if ( newWordAddress > WordAddress.MAX_ADDRESS ) {
                 commonRegisters[7] = 0;
             }        
-            return cycles;
+            currentCycle += 2;
         }
 
-        private int handleSBX(int instructionWord) 
+        private void handleSBX(int instructionWord) 
         {
             // sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0001 if there's an overflow, 0x0 otherwise
 
-            OperandDesc source = loadSourceOperand( instructionWord );
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int b = target.value;
-            final int a = source.value;
+            final int b = target;
+            final int a = source;
             
             int result = b-a+ex;
 
+            final int tmpEx;
             if ( result < 0 ) {
-                ex = 0xffff;
+            	tmpEx = 0xffff;
             } else if ( result > 0xffff ) {
-                ex = 0x0001;
+            	tmpEx = 0x0001;
             } else {
-                ex = 0;
+            	tmpEx = 0;
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 3+source.cycleCount;
-            }            
-            return 3+storeTargetOperand( instructionWord , result & 0xffff )+source.cycleCount;       
+            storeTargetOperand( instructionWord , result & 0xffff );
+           	currentCycle += 3;
+            ex = tmpEx;
         }
 
-        private int handleADX(int instructionWord) {
+        private void handleADX(int instructionWord) {
             // sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value + source.value + ex;
+            final int acc = target + source + ex;
+            
+            final int tmpEx;
             if ( acc > 0xffff) {
-                ex = 0x0001;
+                tmpEx = 0x0001;
             } else {
-                ex = 0;
+                tmpEx = 0;
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 3+source.cycleCount;
-            }
-            return 3+storeTargetOperand( instructionWord , acc & 0xffff )+source.cycleCount;
+            
+            storeTargetOperand( instructionWord , acc & 0xffff );
+           	currentCycle += 3;
+            ex = tmpEx;
         }
 
-        private int handleUnknownOpCode(int instructionWord) 
+        private void handleUnknownOpCode(int instructionWord) 
         {
             final Disassembler dis = new Disassembler();
 
@@ -2395,19 +2390,25 @@ public final class Emulator implements IEmulator
             out.warn(msg );
             throw new UnknownOpcodeException( msg , instructionWord & 0xffff );
         }
+        
+    	private boolean isConditionalInstruction(int instructionWord) {
 
-        private int handleIFU(int instructionWord) {
+    		final int opCode = (instructionWord & 0x1f);
+    		return ( opCode >= 0x10 && opCode <= 0x17);
+    	}        
+
+        private void handleIFU(int instructionWord) {
             // performs next instruction only if b<a (signed)
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty = 0;
-            if ( signed( target.value ) >= signed( source.value ) ) 
+            if ( signed( target ) >= signed( source ) ) 
             {
                 penalty = handleConditionFailure();
 
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;           
+            currentCycle +=  2+penalty;           
         }
 
         private int handleConditionFailure() 
@@ -2427,264 +2428,265 @@ public final class Emulator implements IEmulator
             return 1;
         }
 
-        private int handleIFL(int instructionWord) {
+        private void handleIFL(int instructionWord) {
             // performs next instruction only if b<a
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty = 0;
-            if ( target.value >= source.value ) {
+            if ( target >= source ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;       
+            currentCycle +=  2+penalty;       
         }
 
-        private int handleIFA(int instructionWord) {
+        private void handleIFA(int instructionWord) {
             // performs next instruction only if b>a (signed)
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty = 0;
-            if ( signed( target.value ) <= signed( source.value ) ) {
+            if ( signed( target ) <= signed( source ) ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;       
+            currentCycle += 2+penalty;       
         }
 
-        private int handleIFG(int instructionWord) {
+        private void handleIFG(int instructionWord) {
             // performs next instruction only if b>a
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty=0;
-            if ( target.value <= source.value ) {
+            if ( target <= source ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;           
+            currentCycle +=  2+penalty;           
         }
 
-        private int handleIFN(int instructionWord) {
+        private void handleIFN(int instructionWord) {
             // performs next instruction only if b!=a
-            OperandDesc source = loadSourceOperand( instructionWord );
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty = 0;
-            if ( target.value == source.value ) {
+            if ( target == source ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;           
+            currentCycle +=  2+penalty;           
         }
 
-        private int handleIFE(int instructionWord) {
+        private void handleIFE(int instructionWord) {
             // performs next instruction only if b==a
-            OperandDesc source = loadSourceOperand( instructionWord );
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty=0;
-            if ( target.value != source.value ) {
+            if ( target != source ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;       
+            currentCycle +=  2+penalty;       
         }
 
-        private int handleIFC(int instructionWord) {
+        private void handleIFC(int instructionWord) {
             // performs next instruction only if (b&a)==0
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty = 0;
-            if ( (target.value & source.value) != 0 ) {
+            if ( (target & source ) != 0 ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;
+            currentCycle +=  2+penalty;
         }
 
-        private int handleIFB(int instructionWord) {
+        private void handleIFB(int instructionWord) {
             // performs next instruction only if (b&a)!=0
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , true );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , true );
 
             int penalty=0;
-            if ( (target.value & source.value) == 0 ) {
+            if ( (target & source) == 0 ) {
                 penalty = handleConditionFailure();
             }
-            return 2+target.cycleCount+source.cycleCount+penalty;
+            currentCycle += 2+penalty;
         }
 
-        private int handleSHL(int instructionWord) 
+        private void handleSHL(int instructionWord) 
         {
         	// sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value << source.value;
-            ex = (( target.value << source.value)>>16 ) & 0xffff;
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 1+source.cycleCount;
-            }
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            final int acc = target << source;
+            final int tmpEx = (( target << source)>>16 ) & 0xffff;
+            storeTargetOperand( instructionWord , acc );            
+           	currentCycle +=  1;
+           	ex = tmpEx;
         }
         
-        private int handleASR(int instructionWord) { // ASR b,a
+        private void handleASR(int instructionWord) { // ASR b,a
         	
         	// arithmetic shift, sign extension !!!
         	
             // sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = signed( target.value ) >> source.value;
+            final int acc = signed( target ) >> source;
             
-            int step1 = signed( target.value ) << 16;            
-			int step2 = step1 >> source.value;
-			ex = step2 & 0xffff;
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 1+source.cycleCount;
-            }
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            int step1 = signed( target ) << 16;            
+			int step2 = step1 >> source;
+			final int tmpEx = step2 & 0xffff;
+			storeTargetOperand( instructionWord , acc );
+           	currentCycle += 1;
+           	ex = tmpEx;
         }
 
-        private int handleSHR(int instructionWord) {
+        private void handleSHR(int instructionWord) {
             //  sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value >>> source.value;
+            final int acc = target >>> source;
             
-            // ex = ( ( target.value << 16) >> source.value ) 
-            int step1 = target.value << 16;
-            int step2 = step1 >>> source.value;
-            ex = step2 & 0xffff;
+            // ex = ( ( target << 16) >> source ) 
+            int step1 = target << 16;
+            int step2 = step1 >>> source;
+            final int tmpEx = step2 & 0xffff;
             
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 1+source.cycleCount;
-            }            
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            storeTargetOperand( instructionWord , acc );            
+           	currentCycle +=  1;
+           	ex = tmpEx;
         }
         
-        private int handleDVI(int instructionWord) 
+        private void handleDVI(int instructionWord) 
         {
         	// ((b<<16)/a)&0xffff
             // e DIV, but treat b, a as signed. Rounds towards 0
-        	OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+        	int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
             int acc;
-            if ( source.value == 0 ) {
-                ex = 0;
+            int tmpEx;
+            if ( source == 0 ) {
+                tmpEx = 0;
                 acc=0;
             } else {
-                acc = signed( target.value ) / signed( source.value );
+                acc = signed( target ) / signed( source );
                 // ((b<<16)/a)&0xffff
-                int step1 = signed( target.value ) << 16;
-				int step2 = step1 / signed(source.value );
-				ex = step2 & 0xffff;
-				if ( ex == 0 && ! isSignBitSet( target.value ) && isSignBitSet( source.value ) ) {
-					ex = 0xffff;
+                int step1 = signed( target ) << 16;
+				int step2 = step1 / signed(source );
+				tmpEx = step2 & 0xffff;
+				if ( tmpEx == 0 && ! isSignBitSet( target ) && isSignBitSet( source ) ) {
+					tmpEx = 0xffff;
 				}
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 3+source.cycleCount;
-            }            
-            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+            storeTargetOperand( instructionWord , acc );
+           	currentCycle += 3;
+           	ex = tmpEx;
         }        
         
-        private int handleXOR(int instructionWord) 
+        private void handleXOR(int instructionWord) 
         {
             //  sets b to b^a
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value ^ source.value;
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            final int acc = target ^ source;
+            storeTargetOperand( instructionWord , acc );
+            currentCycle +=  1;         
         }
 
-        private int handleBOR(int instructionWord) 
+        private void handleBOR(int instructionWord) 
         {
             //  sets b to b|a
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value | source.value;
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+            final int acc = target | source;
+            storeTargetOperand( instructionWord , acc );            
+            currentCycle +=  1;     
         }
 
-        private int handleAND(int instructionWord) {
+        private void handleAND(int instructionWord) {
             // sets b to b&a
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value & source.value;
-            return 1+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            final int acc = target & source;
+            storeTargetOperand( instructionWord , acc );            
+            currentCycle += 1;         
         }
 
-        private int handleMDI(int instructionWord) {
+        private void handleMDI(int instructionWord) {
             // like MOD, but treat b, a as signed. Rounds towards 0
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
             final int acc;
-            if ( source.value == 0 ) {
+            if ( source == 0 ) {
                 acc=0;
             } else {
-                acc = signed( target.value ) % signed( source.value );
+                acc = signed( target ) % signed( source );
             }
-            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+            storeTargetOperand( instructionWord , acc );            
+            currentCycle += 3;     
         }
 
-        private int handleMOD(int instructionWord) {
+        private void handleMOD(int instructionWord) {
             // sets b to b%a. if a==0, sets b to 0 instead.
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
             final int acc;
-            if ( source.value == 0 ) {
+            if ( source == 0 ) {
                 acc=0;
             } else {
-                acc = target.value % source.value;
+                acc = target % source;
             }
-            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;     
+            storeTargetOperand( instructionWord , acc );            
+            currentCycle += 3;     
         }
 
-        private int handleDIV(int instructionWord) 
+        private void handleDIV(int instructionWord) 
         {
             /* set b (TARGET) ,a (SOURCE) 
              * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
              */
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
             final int acc;
-            if ( source.value == 0 ) {
-                ex = 0;
+            final int tmpEx;
+            if ( source == 0 ) {
+                tmpEx = 0;
                 acc=0;
             } else {
-                acc = target.value / source.value;
-                long tv = target.value;
-                long sv = source.value;
-                ex = (int) ( (( tv << 16) / sv ) & 0xffff);
+                acc = target / source;
+                long tv = target;
+                long sv = source;
+                tmpEx = (int) ( (( tv << 16) / sv ) & 0xffff);
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 3+source.cycleCount;
-            }            
-            return 3+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            storeTargetOperand( instructionWord , acc );            
+           	currentCycle += 3;
+           	ex = tmpEx;
         }
 
-        private int handleMLI(int instructionWord) {
+        private void handleMLI(int instructionWord) {
             //  like MUL, but treat b, a as signed
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int a = signed( target.value );
-            final int b = signed( source.value );
+            final int a = signed( target );
+            final int b = signed( source );
 
             final int acc = a * b;
-            ex = ((a * b) >> 16 ) & 0xffff;     
+            final int tmpEx = ((a * b) >> 16 ) & 0xffff;     
             
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 2+source.cycleCount;
-            }            
-            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            storeTargetOperand( instructionWord , acc );            
+           	currentCycle += 2;
+           	ex = tmpEx;
         }
 
         private int signed( int value) 
@@ -2699,63 +2701,63 @@ public final class Emulator implements IEmulator
         	return ( value & ( 1 << 15 ) ) != 0;
         }
 
-        private int handleMUL(int instructionWord) 
+        private void handleMUL(int instructionWord) 
         {
             // sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value * source.value;
-            ex = ((target.value * source.value) >> 16 ) & 0xffff;
+            final int acc = target * source;
+            final int tmpEx = ((target * source) >> 16 ) & 0xffff;
             
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 2+source.cycleCount;
-            }
-            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
+            storeTargetOperand( instructionWord , acc );
+           	currentCycle += 2;
+           	ex = tmpEx;
         }
 
-        private int handleSUB(int instructionWord) {
+        private void handleSUB(int instructionWord) {
             // sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
-            OperandDesc source = loadSourceOperand( instructionWord );      
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );      
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value - source.value;
+            final int acc = target - source;
+            final int tmpEx;
             if ( acc < 0 ) {
-                ex = 0xffff;
+                tmpEx = 0xffff;
             } else {
-                ex = 0;
+                tmpEx = 0;
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 2+source.cycleCount;
-            }
-            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount;         
+            storeTargetOperand( instructionWord , acc );
+           	currentCycle += 2;
+           	ex = tmpEx;
         }
 
-        private int handleADD(int instructionWord) 
+        private void handleADD(int instructionWord) 
         {
             // sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
-            OperandDesc source = loadSourceOperand( instructionWord );
-            OperandDesc target = loadTargetOperand( instructionWord , false , false );
+            int source = loadSourceOperand( instructionWord );
+            int target = loadTargetOperand( instructionWord , false , false );
 
-            final int acc = target.value + source.value;
+            final int acc = target + source;
+            final int tmpEx;
             if ( acc > 0xffff) {
-                ex = 0x0001;
+                tmpEx = 0x0001;
             } else {
-                ex = 0;
+                tmpEx = 0;
             }
-            if ( isEXTargetOperand( instructionWord ) ) { // Do not overwrite EX with result
-            	return 2+source.cycleCount;
-            }            
-            return 2+storeTargetOperand( instructionWord , acc )+source.cycleCount; 
+            storeTargetOperand( instructionWord , acc );
+           	currentCycle += 2;
+           	ex = tmpEx;
         }
 
-        private int handleSET(int instructionWord) 
+        private void handleSET(int instructionWord) 
         {
-            final OperandDesc desc = loadSourceOperand( instructionWord );
-            return 1+storeTargetOperand( instructionWord , desc.value ) + desc.cycleCount;
+            final int desc = loadSourceOperand( instructionWord );
+            storeTargetOperand( instructionWord , desc );
+            currentCycle += 1;
         }
         
-        private int handleSpecialOpCode(int instructionWord) {
+        private void handleSpecialOpCode(int instructionWord) {
 
             final int opCode = ( instructionWord >>> 5 ) &0x1f;
 
@@ -2806,39 +2808,52 @@ public final class Emulator implements IEmulator
 
             switch( opCode ) {
                 case 0x00:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x01:
-                    return handleJSR( instructionWord );
+                    handleJSR( instructionWord );
+                    return;
                 case 0x02:
                 case 0x03:
                 case 0x04:
                 case 0x05:
                 case 0x06:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x07:
                     // HCF was removed in spec 1.7
-                    //          return handleHCF( instructionWord ); 
-                    return handleUnknownOpCode( instructionWord );
+                    // return handleHCF( instructionWord ); 
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x08:
-                    return handleINT( instructionWord );
+                    handleINT( instructionWord );
+                    return;
                 case 0x09:
-                    return handleIAG( instructionWord );
+                    handleIAG( instructionWord );
+                    return;
                 case 0x0a:
-                    return handleIAS( instructionWord );
+                    handleIAS( instructionWord );
+                    return;
                 case 0x0b:
-                    return handleRFI( instructionWord );
+                    handleRFI( instructionWord );
+                    return;
                 case 0x0c:
-                    return handleIAQ( instructionWord );
+                    handleIAQ( instructionWord );
+                    return;
                 case 0x0d:
                 case 0x0e:
                 case 0x0f:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
                 case 0x10:
-                    return handleHWN( instructionWord );
+                    handleHWN( instructionWord );
+                    return;
                 case 0x11:
-                    return handleHWQ( instructionWord );
+                    handleHWQ( instructionWord );
+                    return;
                 case 0x12:
-                    return handleHWI( instructionWord );
+                    handleHWI( instructionWord );
+                    return;
                 case 0x14:
                 case 0x15:
                 case 0x16:
@@ -2852,14 +2867,15 @@ public final class Emulator implements IEmulator
                 case 0x1e:
                 case 0x1f:
                 default:
-                    return handleUnknownOpCode( instructionWord );
+                    handleUnknownOpCode( instructionWord );
+                    return;
             }
         }
 
-        private int handleHWI(int instructionWord) 
+        private void handleHWI(int instructionWord) 
         {
-            final OperandDesc operand = loadSourceOperand(instructionWord);
-            final int hardwareSlot = operand.value;
+            final int operand = loadSourceOperand(instructionWord);
+            final int hardwareSlot = operand;
 
             final IDevice device = getDeviceForSlot( hardwareSlot );
 
@@ -2886,7 +2902,7 @@ public final class Emulator implements IEmulator
                     throw new DeviceErrorException("Device "+device+" failed in handleInterrupt(): "+e.getMessage() , device , e );
                 }
             }
-            return 4+operand.cycleCount+cyclesConsumed;
+            currentCycle +=  4+cyclesConsumed;
         }
         
         /*
@@ -2919,11 +2935,7 @@ public final class Emulator implements IEmulator
          * | 0 | 0x20-0x3f | literal value 0xffff-0x1e (-1..30) (literal) (only for SOURCE)
          * +---+-----------+----------------------------------------------------------------     
          */
-        private int storeTargetOperand(int instructionWord,int value) 
-        {
-            return storeTargetOperand( instructionWord , value , false );
-        }
-        private int storeTargetOperand(int instructionWord,int value,boolean isSpecialOpcode) 
+        private void storeTargetOperand(int instructionWord,int value) 
         {
             final int operandBits;
             /*
@@ -2932,7 +2944,7 @@ public final class Emulator implements IEmulator
              * 
              * In binary, they have the format:    aaaaaaooooo00000
              */
-            if ( isSpecialOpcode ) {
+            if ( ( instructionWord & 0b11111) == 0 ) { // special instruction
                 operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32);
             } else {
                 operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);          
@@ -2940,42 +2952,47 @@ public final class Emulator implements IEmulator
 
             if ( operandBits <= 07 ) {
                 commonRegisters[ operandBits ] = value & 0xffff;
-                return 0;
+                return;
             }
             if ( operandBits <= 0x0f ) {
                 memory.write( commonRegisters[ operandBits - 0x08 ] , value);
-                return 1;
+                currentCycle += 1;
+                return;
             }
+            
             if ( operandBits <= 0x17 ) {
                 final int nextWord = readNextWordAndAdvance();
                 writeMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord , value);
-                return 1;
+                currentCycle += 1;
+                return;
             }
             switch( operandBits ) {
                 case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
                     push( value );
-                    return 0;
+                    return;
                 case 0x19: // PEEK/[SP]
                     memory.write( sp , value );
-                    return 0;
+                    return;
                 case 0x1a:
                     int nextWord = readNextWordAndAdvance();
                     Address dst = sp.plus( Address.wordAddress( nextWord ) , true);
                     memory.write( dst , value );
-                    return 1;
+                    currentCycle += 1;
+                    return;
                 case 0x1b:
                     sp = Address.wordAddress( value & 0xffff );
-                    return 0;
+                    return;
                 case 0x1c: // PC
                     currentInstructionPtr = value & 0xffff;
-                    return 0;
+                    return;
                 case 0x1d:
                     ex = value & 0xffff;
-                    return 0;
+                    return;
                 case 0x1e:
                     nextWord = readNextWordAndAdvance();
                     memory.write( nextWord , value);
-                    return 1;
+                    currentCycle += 1;
+                    return;
                 default:
                 	// store to immediate value like 'SET 0x1000 , A'
                 	if ( haltOnStoreToImmediateValue ) 
@@ -2986,7 +3003,7 @@ public final class Emulator implements IEmulator
                         out.warn( msg);
                         throw new InvalidTargetOperandException( msg );                		
                 	}
-                	return 0;
+                	return;
             }
         }
         
@@ -2996,7 +3013,7 @@ public final class Emulator implements IEmulator
             return word;
         }        
 
-        private OperandDesc loadSourceOperand(int instructionWord) {
+        private int loadSourceOperand(int instructionWord) {
 
             /* SET b,a
              * 
@@ -3010,43 +3027,43 @@ public final class Emulator implements IEmulator
 
             final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
             if ( operandBits <= 0x07 ) {
-                return operandDesc( commonRegisters[ operandBits ] );
+                return commonRegisters[ operandBits ] & 0xffff;
             }
             if ( operandBits <= 0x0f ) {
-                return operandDesc( memory.read( commonRegisters[ operandBits - 0x08 ] ) , 1 );
+                return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
             }
             if ( operandBits <= 0x17 ) {
                 final int nextWord = readNextWordAndAdvance();
-                return operandDesc( 
+                return consumeOneCycle( 
                         readMemoryWithOffsetAndWrapAround( 
-                                commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
+                                commonRegisters[ operandBits - 0x10 ] , nextWord ) );
             }
             switch( operandBits ) {
                 case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
-                    final OperandDesc tmp = operandDesc( memory.read( sp ) );
+                    final int tmp = memory.read( sp ) & 0xffff;
                     sp = sp.incrementByOne(true);                
                     return tmp;
                 case 0x19:
-                    return operandDesc( memory.read( sp ) , 1 );
+                    return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
                     int nextWord = readNextWordAndAdvance();
                     final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
-                    return operandDesc( memory.read( dst ) , 1 );
+                    return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
-                    return operandDesc( sp.getValue() );
+				return sp.getValue() & 0xffff;
                 case 0x1c:
-                    return operandDesc( currentInstructionPtr );
+				return currentInstructionPtr & 0xffff;
                 case 0x1d:
-                    return operandDesc( ex );
+				return ex & 0xffff;
                 case 0x1e:
                     nextWord = readNextWordAndAdvance();
-                    return operandDesc( memory.read( nextWord ) ,1 );
+                    return consumeOneCycle( memory.read( nextWord ) );
                 case 0x1f:
-                    return operandDesc( readNextWordAndAdvance() , 1 );
+                    return consumeOneCycle( readNextWordAndAdvance() );
             }
 
             // literal value: -1...30 ( 0x20 - 0x3f )
-            return operandDesc( ( operandBits - 0x21 ) , 0 ); 
+            return ( operandBits - 0x21 ) & 0xffff; 
         }   
 
         private int readMemoryWithOffsetAndWrapAround(int address,int offset) {
@@ -3059,16 +3076,10 @@ public final class Emulator implements IEmulator
             memory.write( realAddress , value );
         }   
         
-        protected final boolean isEXTargetOperand(int instructionWord) 
-        {
-            final int operandBits;
-            if ( (instructionWord & 0b11111) == 0 ) { // special instruction
-                operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
-            } else {
-                operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);           
-            }
-            return operandBits == 0x1d;
-        }
+    	private int consumeOneCycle(int value) {
+    		currentCycle += 1;
+    		return value & 0xffff;
+    	}        
 
         /**
          * 
@@ -3078,7 +3089,7 @@ public final class Emulator implements IEmulator
          * whether this is handled by the caller (because a subsequent STORE will be performed )
          * @return
          */
-        protected OperandDesc loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
+        protected int loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
             /* 
              * SET b,a
              * 
@@ -3107,10 +3118,10 @@ public final class Emulator implements IEmulator
             }
 
             if ( operandBits <= 0x07 ) {
-                return operandDesc( commonRegisters[ operandBits ] );
+                return commonRegisters[ operandBits ] & 0xffff;
             }
             if ( operandBits <= 0x0f ) {
-                return operandDesc( memory.read( commonRegisters[ operandBits - 0x08 ] ) , 1 );
+                return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
             }
             if ( operandBits <= 0x17 ) 
             {
@@ -3120,14 +3131,14 @@ public final class Emulator implements IEmulator
                 } else {
                     nextWord = memory.read( currentInstructionPtr );                
                 }
-                return operandDesc( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) ,1 );
+                return consumeOneCycle( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) );
             }
 
             switch( operandBits ) {
                 case 0x18: // (PUSH / [--SP++]) if in b
-                    return operandDesc( memory.read( sp.decrementByOne() ) , 1 );
+                    return consumeOneCycle( memory.read( sp.decrementByOne() ) );
                 case 0x19:
-                    return operandDesc( memory.read( sp ) , 1 );
+                    return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
                     int nextWord = 0;
                     if ( performIncrementDecrement ) {
@@ -3136,39 +3147,39 @@ public final class Emulator implements IEmulator
                         nextWord = memory.read( currentInstructionPtr );                    
                     }
                     final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
-                    return operandDesc( memory.read( dst ) , 1 );
+                    return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
-                    return operandDesc( sp.getValue() );
+                	return sp.getValue() & 0xffff;
                 case 0x1c:
-                    return operandDesc( currentInstructionPtr );
+                	return currentInstructionPtr & 0xffff;
                 case 0x1d:
-                    return operandDesc( ex );
+                	return ex & 0xffff;
                 case 0x1e:
                     if ( performIncrementDecrement ) {
                         nextWord = readNextWordAndAdvance();
                     } else {
                         nextWord = memory.read( currentInstructionPtr );
                     }
-                    return operandDesc( memory.read( nextWord ) ,1 );
+                    return consumeOneCycle( memory.read( nextWord ) );
                 case 0x1f:
                     if ( performIncrementDecrement ) {
                         nextWord = readNextWordAndAdvance();
                     } else {
                         nextWord = memory.read( currentInstructionPtr );                    
                     }
-                    return operandDesc( nextWord , 1 );
+                    return consumeOneCycle( nextWord );
             }
 
             // literal value: -1...30 ( 0x20 - 0x3f )
-            return operandDesc( operandBits - 0x21 , 0 ); 
+            return ( operandBits - 0x21 ) & 0xffff; 
         }
         
-        private int handleHWQ(int instructionWord) {
+        private void handleHWQ(int instructionWord) {
 
             // Sets A, B, C, X, Y registers to information about hardware a.
 
-            final OperandDesc operand = loadSourceOperand(instructionWord);
-            final int hardwareSlot = operand.value;
+            final int operand = loadSourceOperand(instructionWord);
+            final int hardwareSlot = operand;
 
             final IDevice device = getDeviceForSlot( hardwareSlot );
             if ( device == null ) 
@@ -3210,32 +3221,32 @@ public final class Emulator implements IEmulator
                 commonRegisters[3] = (int) descriptor.getManufacturer() & 0xffff;
                 commonRegisters[4] = (int) ( ( descriptor.getManufacturer() >>> 16 ) & 0xffff );  
             }
-
-            return 4+operand.cycleCount;
+            currentCycle +=  4;
         }
 
-        private int handleHWN(int instructionWord) 
+        private void handleHWN(int instructionWord) 
         {
             // sets a to number of connected hardware devices
             final int deviceCount;
             synchronized( devices ) {
                 deviceCount=devices.size();
             }
-            return 2 + storeTargetOperand( instructionWord , deviceCount , true );
+            storeTargetOperand( instructionWord , deviceCount );
+            currentCycle +=  2;
         }
 
-        private int handleIAQ(int instructionWord) {
+        private void handleIAQ(int instructionWord) {
 
             /* if a is nonzero, interrupts will be added to the queue
              * instead of triggered. if a is zero, interrupts will be
              * triggered as normal again
              */
-            final OperandDesc operand = loadSourceOperand( instructionWord );
-            setQueueInterrupts( operand.value != 0 );
-            return 2+operand.cycleCount;
+            final int operand = loadSourceOperand( instructionWord );
+            setQueueInterrupts( operand != 0 );
+            currentCycle +=  2;
         }
 
-        private int handleRFI(int instructionWord) 
+        private void handleRFI(int instructionWord) 
         {
             /*
              *  3 | 0x0b | RFI a | disables interrupt queueing, pops A from the stack, then 
@@ -3244,36 +3255,37 @@ public final class Emulator implements IEmulator
             setQueueInterrupts( false );
             commonRegisters[0] = pop(); // pop A from stack
             currentInstructionPtr = pop(); // pop PC from stack
-            return 3;
+            currentCycle += 3;
         }   
         
-        private int handleIAS(int instructionWord) 
+        private void handleIAS(int instructionWord) 
         {
             // IAS a => sets IA to a
-            final OperandDesc operand = loadSourceOperand( instructionWord );
-            interruptAddress = Address.wordAddress( operand.value );
-            return 1+operand.cycleCount;
+            final int operand = loadSourceOperand( instructionWord );
+            interruptAddress = Address.wordAddress( operand );
+            currentCycle += 1;
         }
 
-        private int handleIAG(int instructionWord) {
+        private void handleIAG(int instructionWord) {
             // IAG a => sets A to IA
-            return 1+storeTargetOperand( instructionWord , interruptAddress.getValue() , true );
+        	storeTargetOperand( instructionWord , interruptAddress.getValue() );        	
+        	currentCycle += 1;
         }
 
-        private int handleINT(int instructionWord) 
+        private void handleINT(int instructionWord) 
         {
-            final OperandDesc operand = loadSourceOperand( instructionWord );
-            triggerInterrupt(new SoftwareInterrupt( operand.value ));
-            return 4+operand.cycleCount;
+            final int operand = loadSourceOperand( instructionWord );
+            triggerInterrupt(new SoftwareInterrupt( operand ));
+            currentCycle += 4;
         }
 
-        private int handleJSR(int instructionWord) 
+        private void handleJSR(int instructionWord) 
         {
             // pushes the address of the next instruction to the stack, then sets PC to a
-            OperandDesc source= loadSourceOperand( instructionWord );
+            int source= loadSourceOperand( instructionWord );
             push( currentInstructionPtr );
-            currentInstructionPtr = source.value;
-            return 3+source.cycleCount;
+            currentInstructionPtr = source;
+            currentCycle += 3;
         }        
  
         private int pop() 
@@ -3313,15 +3325,4 @@ public final class Emulator implements IEmulator
             return false;
         }        
     } // end of class: CPU	
-
-
-	@Override
-	public boolean isCrashOnStoreWithImmediate() {
-		return haltOnStoreToImmediateValue;
-	}
-
-	@Override
-	public void setCrashOnStoreWithImmediate(boolean doCrashOnImmediate) {
-		this.haltOnStoreToImmediateValue = doCrashOnImmediate;
-	}
 }
