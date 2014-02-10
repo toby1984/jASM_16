@@ -15,7 +15,8 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,13 +24,28 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.*;
+import de.codesourcery.jasm16.Address;
+import de.codesourcery.jasm16.AddressRange;
+import de.codesourcery.jasm16.Register;
+import de.codesourcery.jasm16.Size;
+import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
 import de.codesourcery.jasm16.disassembler.DisassembledLine;
 import de.codesourcery.jasm16.disassembler.Disassembler;
-import de.codesourcery.jasm16.emulator.devices.*;
-import de.codesourcery.jasm16.emulator.exceptions.*;
-import de.codesourcery.jasm16.emulator.memory.*;
+import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
+import de.codesourcery.jasm16.emulator.devices.IDevice;
+import de.codesourcery.jasm16.emulator.devices.IInterrupt;
+import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
+import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
+import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
+import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
+import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
+import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
+import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
+import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
+import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
+import de.codesourcery.jasm16.emulator.memory.MainMemory;
+import de.codesourcery.jasm16.emulator.memory.MemUtils;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -46,11 +62,9 @@ public final class Emulator implements IEmulator
 	 */
 	public static final int INTERRUPT_QUEUE_SIZE = 256;
 
-	private final IdentityHashMap<IEmulationListener,Long> listenerPerformance =  new IdentityHashMap<IEmulationListener,Long>();
-
 	private final ClockThread clockThread;
 
-	private final ListenerHelper listenerHelper = new ListenerHelper();
+	private final ListenerHelper listenerHelper = new ListenerHelper(this);
 
 	private static final AtomicLong cmdId = new AtomicLong(0);
 
@@ -146,186 +160,6 @@ public final class Emulator implements IEmulator
 		} 
 	}
 
-	/**
-	 * Helper to manage IEmulationListeners. 
-	 * This class manages multiple internal lists , each for a specific listener type.
-	 * That way we avoid having to look-up listeners with a specific type each
-	 * time a notification needs to be send.
-	 * 
-	 * @author tobias.gierke@code-sourcery.de
-	 */
-	protected final class ListenerHelper 
-	{
-
-		// @GuardedBy( emuListeners )
-		private final List<IEmulationListener> emuListeners = new ArrayList<IEmulationListener>();
-
-		// @GuardedBy( emuListeners )
-		private final List<IEmulationListener> beforeCommandExecListeners = new ArrayList<IEmulationListener>();
-
-		// @GuardedBy( emuListeners )
-		private final List<IEmulationListener> continuousModeBeforeCommandExecListeners = new ArrayList<IEmulationListener>();
-
-
-		// @GuardedBy( emuListeners )
-		private final List<IEmulationListener> afterCommandExecListeners = new ArrayList<IEmulationListener>();    
-
-		// @GuardedBy( emuListeners )
-		private final List<IEmulationListener> continuousModeAfterCommandExecListeners = new ArrayList<IEmulationListener>();    
-
-		private final IEmulationListenerInvoker BEFORE_COMMAND_INVOKER = new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.beforeCommandExecution( emulator );
-			}
-		}; 
-		
-		private final IEmulationListenerInvoker AFTER_COMMAND_INVOKER = new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.afterCommandExecution( emulator );
-			}
-		}; 		
-
-		public void addEmulationListener(IEmulationListener listener)
-		{
-			if (listener == null) {
-				throw new IllegalArgumentException("listener must not be NULL.");
-			}
-			synchronized (emuListeners) 
-			{
-				emuListeners.add( listener );
-				if ( listener.isInvokeBeforeCommandExecution() ) {
-					beforeCommandExecListeners.add( listener );
-					if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
-						continuousModeBeforeCommandExecListeners.add( listener );
-					}
-				}
-				if ( listener.isInvokeAfterCommandExecution() ) 
-				{
-					afterCommandExecListeners.add( listener );
-					if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
-						continuousModeAfterCommandExecListeners.add( listener );
-					}
-				}
-			}
-		}        
-
-		public void removeAllEmulationListeners() 
-		{
-			synchronized (emuListeners) 
-			{
-				removeAllNonHardwareListeners( emuListeners );
-				removeAllNonHardwareListeners( beforeCommandExecListeners );
-				removeAllNonHardwareListeners( continuousModeBeforeCommandExecListeners );
-				removeAllNonHardwareListeners( continuousModeAfterCommandExecListeners );
-				removeAllNonHardwareListeners( afterCommandExecListeners );
-			} 		    
-		}
-
-		private void removeAllNonHardwareListeners(List<IEmulationListener> list) {
-
-			for ( Iterator<IEmulationListener> it = list.iterator() ; it.hasNext() ; ) {
-				if ( ! it.next().belongsToHardwareDevice() ) {
-					it.remove();
-				}
-			}
-		}
-
-		public void removeEmulationListener(IEmulationListener listener)
-		{
-			if (listener == null) {
-				throw new IllegalArgumentException("listener must not be NULL.");
-			}
-			synchronized (emuListeners) {
-				emuListeners.remove( listener );
-				beforeCommandExecListeners.remove( listener );
-				continuousModeBeforeCommandExecListeners.remove( listener );
-				continuousModeAfterCommandExecListeners.remove( listener );
-				afterCommandExecListeners.remove( listener );
-			}        
-		}
-
-		public void notifyListeners(IEmulationListenerInvoker invoker) 
-		{
-			notifyListeners( invoker , emuListeners );
-		}
-
-		public void invokeAfterCommandExecutionListeners(boolean continousMode) 
-		{
-			final List<IEmulationListener> toCall;
-			if ( continousMode ) 
-			{
-				toCall = continuousModeAfterCommandExecListeners;
-			} 
-			else 
-			{
-				toCall = afterCommandExecListeners;
-			}
-			notifyListeners( AFTER_COMMAND_INVOKER , toCall );
-		}
-
-		public void invokeBeforeCommandExecutionListeners(boolean continousMode) 
-		{
-			final List<IEmulationListener> toCall;
-			if ( continousMode ) {
-				toCall = continuousModeBeforeCommandExecListeners;
-			} else {        	
-				toCall = beforeCommandExecListeners;
-			}
-			notifyListeners( BEFORE_COMMAND_INVOKER , toCall );
-		}   
-		
-		public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
-		{
-			final List<IEmulationListener> copy;
-			synchronized( emuListeners )
-			{
-				if ( listeners.isEmpty() ) {
-					return;
-				}
-				// create safe copy so we don't need to hold the lock while invoking the an alien method
-				copy = new ArrayList<IEmulationListener>( listeners );
-			}    	
-			final int len = copy.size(); 
-			for ( int i = 0 ; i < len ; i++) 
-			{
-				final IEmulationListener l = copy.get(i);
-				try {
-					invoker.invoke( Emulator.this , l );
-				}
-				catch(Exception e) {
-					LOG.error("notifyListeners(): Listener "+l+" failed",e);					    
-				}
-			}       
-		}
-
-		public void emulatorDisposed()
-		{
-			notifyListeners( new IEmulationListenerInvoker() {
-
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
-				{
-					listener.beforeEmulatorIsDisposed( emulator );
-				}
-			}); 
-
-			final List<IEmulationListener> copy;
-			synchronized( emuListeners ) 
-			{
-				copy = new ArrayList<IEmulationListener>( emuListeners );
-			}              
-			for ( IEmulationListener l : copy ) {
-				removeEmulationListener( l );
-			}
-		}
-	}
-
 	private volatile boolean ignoreAccessToUnknownDevices=false;    
 	private volatile boolean checkMemoryWrites = false;
 	private volatile boolean haltOnStoreToImmediateValue = true;
@@ -336,7 +170,7 @@ public final class Emulator implements IEmulator
 	// ============ BreakPoints =======
 
 	// @GuardedBy( breakpoints )
-	protected final Map<Address,List<Breakpoint>> breakpoints = new HashMap<Address,List<Breakpoint>>(); 
+	protected final BreakpointHelper breakpoints = new BreakpointHelper(this,listenerHelper); 
 
 	// ============ Memory ============
 
@@ -500,20 +334,8 @@ public final class Emulator implements IEmulator
 			});  
 		}
 
-		// remove all internal breakpoints
-		final List<Breakpoint> internalBPs = new ArrayList<Breakpoint>();
-		synchronized( breakpoints ) {
-			for ( List<Breakpoint> bps : breakpoints.values() ) {
-				for ( Breakpoint bp : bps ) {
-					if ( bp.isOneShotBreakpoint() ) {
-						internalBPs.add( bp );
-					}
-				}
-			}
-		}
-		for ( Breakpoint bp : internalBPs ) {
-			deleteBreakpoint( bp );
-		}
+		breakpoints.removeAllInternalBreakpoints();
+		
 		return emulationWasRunning;
 	}
 
@@ -960,70 +782,7 @@ public final class Emulator implements IEmulator
 		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable.get() );
 
 		// check whether we reached a breakpoint
-		maybeHandleBreakpoint(hiddenCPU);
-	}
-
-	private void maybeHandleBreakpoint(CPU hiddenCPU) 
-	{
-		/*
-		 * We can have at most 2 breakpoints at any address,
-		 * one regular (user-defined) breakpoint and
-		 * one internal breakpoint used by stepReturn() 
-		 */
-		Breakpoint regularBP = null;
-		Breakpoint oneShotBP = null;
-		
-		synchronized( breakpoints ) 
-		{
-			if ( breakpoints.isEmpty() ) {
-				return;
-			}
-			final List<Breakpoint> candidates = breakpoints.get( Address.wordAddress( hiddenCPU.pc ) ); 
-
-			if ( candidates == null || candidates.isEmpty() ) 
-			{
-				return;
-			}		
-
-			for ( Breakpoint bp : candidates ) 
-			{
-				if ( bp.matches( this ) ) 
-				{
-					if ( bp.isOneShotBreakpoint() ) {
-						if ( oneShotBP == null ) {
-							oneShotBP = bp;
-						} else {
-							throw new RuntimeException("Internal error, more than one internal breakpoint at "+bp.getAddress());
-						}
-					} else {
-						if ( regularBP == null ) {
-							regularBP = bp;
-						} else {
-							throw new RuntimeException("Internal error, more than one regular breakpoint at "+bp.getAddress());
-						}
-					}
-				}
-			}
-		}
-
-		if ( regularBP != null || oneShotBP != null ) 
-		{
-			// stop() will also remove ANY one-shot breakpoints from the list
-			stop(null);
-
-			if ( regularBP != null ) // only notify client code about the regular BP, internal BP is invisible to the user
-			{
-				final Breakpoint finalRegularBP = regularBP; // Closures can only access stuff declared final...
-				listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-					@Override
-					public void invoke(IEmulator emulator, IEmulationListener listener)
-					{
-						listener.onBreakpoint( emulator , finalRegularBP );
-					}
-				});         
-			} 
-		}
+		breakpoints.maybeHandleBreakpoint(hiddenCPU);
 	}
 
    @Override
@@ -1338,196 +1097,40 @@ public final class Emulator implements IEmulator
 		listenerHelper.removeEmulationListener( listener );
 	}
 
-	private Breakpoint extractRegularBreakpoint(List<Breakpoint> bps) 
-	{
-		Breakpoint result = null;
-		for ( Breakpoint bp : bps ) 
-		{
-			if ( ! bp.isOneShotBreakpoint() ) 
-			{
-				if ( result != null ) {
-					throw new IllegalStateException("More than one " +
-							" regular breakpoint at address "+bp.getAddress());
-				}
-				result = bp;
-			}
-		}
-		return result;
-	}	
-
 	@Override
 	public void addBreakpoint(final Breakpoint bp)
 	{
-		if (bp == null) {
-			throw new IllegalArgumentException("breakpoint must not be NULL.");
-		}
-
-		Breakpoint replacedBreakpoint;
-		synchronized( breakpoints ) 
-		{
-			List<Breakpoint> list = breakpoints.get( bp.getAddress() );
-			if ( list == null ) {
-				list = new ArrayList<Breakpoint>();
-				breakpoints.put( bp.getAddress() , list );
-			} 
-			replacedBreakpoint = extractRegularBreakpoint( list );
-			if ( replacedBreakpoint != null ) {
-				list.remove( replacedBreakpoint );
-			}
-			list.add( bp );
-		}  
-
-		// notify listeners
-		if ( replacedBreakpoint != null && ! replacedBreakpoint.isOneShotBreakpoint() ) {
-			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
-				{
-					listener.breakpointDeleted( emulator , bp );
-				}
-			});         	
-		}
-
-		if ( ! bp.isOneShotBreakpoint() ) 
-		{
-			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
-				{
-					listener.breakpointAdded( emulator , bp );
-				}
-			});        
-		}
+		breakpoints.addBreakpoint( bp );
 	}
 
 	@Override
 	public void breakpointChanged(final Breakpoint bp) {
 
-		Breakpoint existing;
-		synchronized( breakpoints ) {
-			final List<Breakpoint> list = breakpoints.get( bp.getAddress() );
-			if ( list != null ) {
-				existing = extractRegularBreakpoint( list );
-			} else {
-				existing = null;
-			}
-		}     	
-
-		if ( existing == null ) {
-			LOG.warn("breakpointChanged(): Unknown breakpoint "+bp);
-			return;
-		}
-
-		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.breakpointChanged( emulator , bp );
-			}
-		});         
+		breakpoints.breakpointChanged( bp );
 	}
 	
 	@Override
 	public void deleteAllBreakpoints() 
 	{
-		final List<Breakpoint> copy=new ArrayList<>();
-		synchronized( breakpoints ) 
-		{
-			for ( List<Breakpoint> bp : breakpoints.values() ) {
-				copy.addAll( bp );
-			}
-		}
-		for ( Breakpoint bp : copy ) 
-		{
-			deleteBreakpoint( bp , false );
-		}
-		
-		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-			@Override
-			public void invoke(IEmulator emulator, IEmulationListener listener)
-			{
-				listener.allBreakpointsDeleted( emulator );
-			}
-		});  		
+		breakpoints.deleteAllBreakpoints();
 	}
 
 	@Override
 	public void deleteBreakpoint(final Breakpoint bp)
 	{
-		deleteBreakpoint(bp,true);
+		breakpoints.deleteBreakpoint( bp , true );		
 	}
 	
-	private void deleteBreakpoint(final Breakpoint bp,boolean notifyListeners)
-	{
-		if (bp == null) {
-			throw new IllegalArgumentException("breakpoint must not be NULL.");
-		}
-		Breakpoint existing;
-		synchronized( breakpoints ) 
-		{
-			final List<Breakpoint> list = breakpoints.get( bp.getAddress() );
-			if ( list != null ) 
-			{
-				final int idx = list.indexOf( bp );
-				if ( idx != -1 ) {
-					existing = list.remove( idx );
-				} else {
-					existing = null;
-				}
-				if ( list.isEmpty() ) {
-					breakpoints.remove( bp.getAddress() );
-				} 
-			} else {
-				existing = null;
-			}
-		}      
-		// notify listeners
-		if ( notifyListeners && existing != null && ! existing.isOneShotBreakpoint() ) 
-		{
-			listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
-				{
-					listener.breakpointDeleted( emulator , bp );
-				}
-			});         
-		}
-	}
-
 	@Override
 	public List<Breakpoint> getBreakPoints()
 	{
-		final List<Breakpoint> result = new ArrayList<Breakpoint>();
-		synchronized( breakpoints ) {
-			for ( List<Breakpoint> subList : breakpoints.values() ) {
-				for ( Breakpoint bp : subList ) {
-					if ( ! bp.isOneShotBreakpoint() ) {
-						result.add( bp );
-					}
-				}
-			}
-		}
-		return result;
+		return breakpoints.getBreakPoints();
 	}
 
 	@Override
 	public Breakpoint getBreakPoint(Address address)
 	{
-		if (address == null) {
-			throw new IllegalArgumentException("address must not be NULL.");
-		}
-		synchronized( breakpoints ) {
-			final List<Breakpoint>  list = breakpoints.get( address );
-			if ( list == null ) {
-				return null;
-			}			
-			return extractRegularBreakpoint( list );
-		}
+		return breakpoints.getBreakPoint( address );
 	}
 
 	@Override
@@ -2284,7 +1887,8 @@ public final class Emulator implements IEmulator
             currentCycle += 2;
         }
 
-        private void handleSTI(int instructionWord) {
+        private void handleSTI(int instructionWord) 
+        {
             // sets b to a, then increases I and J by 1
             // a,b,c,x,y,z,i,j
             final int source = loadSourceOperand( instructionWord );
@@ -2307,7 +1911,7 @@ public final class Emulator implements IEmulator
             // sets b to b-a+EX, sets EX to 0xFFFF if there is an under-flow, 0x0001 if there's an overflow, 0x0 otherwise
 
             int source = loadSourceOperand( instructionWord );
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int b = target;
             final int a = source;
@@ -2330,7 +1934,7 @@ public final class Emulator implements IEmulator
         private void handleADX(int instructionWord) {
             // sets b to b+a+EX, sets EX to 0x0001 if there is an over-flow, 0x0 otherwise
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target + source + ex;
             
@@ -2374,7 +1978,7 @@ public final class Emulator implements IEmulator
         private void handleIFU(int instructionWord) {
             // performs next instruction only if b<a (signed)
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty = 0;
             if ( signed( target ) >= signed( source ) ) 
@@ -2405,7 +2009,7 @@ public final class Emulator implements IEmulator
         private void handleIFL(int instructionWord) {
             // performs next instruction only if b<a
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty = 0;
             if ( target >= source ) {
@@ -2417,7 +2021,7 @@ public final class Emulator implements IEmulator
         private void handleIFA(int instructionWord) {
             // performs next instruction only if b>a (signed)
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty = 0;
             if ( signed( target ) <= signed( source ) ) {
@@ -2429,7 +2033,7 @@ public final class Emulator implements IEmulator
         private void handleIFG(int instructionWord) {
             // performs next instruction only if b>a
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty=0;
             if ( target <= source ) {
@@ -2441,7 +2045,7 @@ public final class Emulator implements IEmulator
         private void handleIFN(int instructionWord) {
             // performs next instruction only if b!=a
             int source = loadSourceOperand( instructionWord );
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty = 0;
             if ( target == source ) {
@@ -2453,7 +2057,7 @@ public final class Emulator implements IEmulator
         private void handleIFE(int instructionWord) {
             // performs next instruction only if b==a
             int source = loadSourceOperand( instructionWord );
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty=0;
             if ( target != source ) {
@@ -2465,7 +2069,7 @@ public final class Emulator implements IEmulator
         private void handleIFC(int instructionWord) {
             // performs next instruction only if (b&a)==0
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty = 0;
             if ( (target & source ) != 0 ) {
@@ -2477,7 +2081,7 @@ public final class Emulator implements IEmulator
         private void handleIFB(int instructionWord) {
             // performs next instruction only if (b&a)!=0
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , true );
+            int target = loadTargetOperand( instructionWord , true );
 
             int penalty=0;
             if ( (target & source) == 0 ) {
@@ -2490,7 +2094,7 @@ public final class Emulator implements IEmulator
         {
         	// sets b to b<<a, sets EX to ((b<<a)>>16)&0xffff
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target << source;
             final int tmpEx = (( target << source)>>16 ) & 0xffff;
@@ -2505,7 +2109,7 @@ public final class Emulator implements IEmulator
         	
             // sets b to b>>a, sets EX to ((b<<16)>>>a)&0xffff (arithmetic shift) (treats b as signed)
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = signed( target ) >> source;
             
@@ -2520,7 +2124,7 @@ public final class Emulator implements IEmulator
         private void handleSHR(int instructionWord) {
             //  sets b to b>>>a, sets EX to ((b<<16)>>a)&0xffff  (logical shift)
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target >>> source;
             
@@ -2539,7 +2143,7 @@ public final class Emulator implements IEmulator
         	// ((b<<16)/a)&0xffff
             // e DIV, but treat b, a as signed. Rounds towards 0
         	int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             int acc;
             int tmpEx;
@@ -2565,7 +2169,7 @@ public final class Emulator implements IEmulator
         {
             //  sets b to b^a
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target ^ source;
             storeTargetOperand( instructionWord , acc );
@@ -2576,7 +2180,7 @@ public final class Emulator implements IEmulator
         {
             //  sets b to b|a
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target | source;
             storeTargetOperand( instructionWord , acc );            
@@ -2586,7 +2190,7 @@ public final class Emulator implements IEmulator
         private void handleAND(int instructionWord) {
             // sets b to b&a
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target & source;
             storeTargetOperand( instructionWord , acc );            
@@ -2596,7 +2200,7 @@ public final class Emulator implements IEmulator
         private void handleMDI(int instructionWord) {
             // like MOD, but treat b, a as signed. Rounds towards 0
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc;
             if ( source == 0 ) {
@@ -2611,7 +2215,7 @@ public final class Emulator implements IEmulator
         private void handleMOD(int instructionWord) {
             // sets b to b%a. if a==0, sets b to 0 instead.
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc;
             if ( source == 0 ) {
@@ -2629,7 +2233,7 @@ public final class Emulator implements IEmulator
              * sets b to b/a, sets EX to ((b<<16)/a)&0xffff. if a==0, sets b and EX to 0 instead. (treats b, a as unsigned)
              */
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc;
             final int tmpEx;
@@ -2650,7 +2254,7 @@ public final class Emulator implements IEmulator
         private void handleMLI(int instructionWord) {
             //  like MUL, but treat b, a as signed
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int a = signed( target );
             final int b = signed( source );
@@ -2679,7 +2283,7 @@ public final class Emulator implements IEmulator
         {
             // sets b to b*a, sets EX to ((b*a)>>16)&0xffff (treats b, a as unsigned)
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target * source;
             final int tmpEx = ((target * source) >> 16 ) & 0xffff;
@@ -2692,7 +2296,7 @@ public final class Emulator implements IEmulator
         private void handleSUB(int instructionWord) {
             // sets b to b-a, sets EX to 0xffff if there's an underflow, 0x0 otherwise
             int source = loadSourceOperand( instructionWord );      
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target - source;
             final int tmpEx;
@@ -2710,7 +2314,7 @@ public final class Emulator implements IEmulator
         {
             // sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
             int source = loadSourceOperand( instructionWord );
-            int target = loadTargetOperand( instructionWord , false , false );
+            int target = loadTargetOperand( instructionWord , false );
 
             final int acc = target + source;
             final int tmpEx;
@@ -3092,12 +2696,11 @@ public final class Emulator implements IEmulator
         /**
          * 
          * @param instructionWord
-         * @param specialInstruction
          * @param performIncrementDecrement Whether this invocation should also increment/decrement registers as necessary or 
          * whether this is handled by the caller (because a subsequent STORE will be performed )
          * @return
          */
-        protected int loadTargetOperand(int instructionWord,boolean specialInstruction,boolean performIncrementDecrement) {
+        protected int loadTargetOperand(int instructionWord,boolean performIncrementDecrement) {
             /* 
              * SET b,a
              * 
@@ -3118,7 +2721,7 @@ public final class Emulator implements IEmulator
              */
 
             final int operandBits;
-            if ( specialInstruction ) {
+            if ( (instructionWord & 0b11111) == 0  ) {
                 operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
             } else {
                 operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);           
