@@ -109,7 +109,7 @@ public class SourceLevelDebugView extends SourceCodeView
         }
         
         @Override
-        public void afterCommandExecution(IEmulator emulator, int commandDuration) {
+        public void afterCommandExecution(IEmulator emulator) {
             refreshDisplayHook();
         }
         

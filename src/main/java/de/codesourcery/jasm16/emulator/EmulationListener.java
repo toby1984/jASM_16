@@ -92,7 +92,7 @@ public class EmulationListener implements IEmulationListener {
 	}
 
 	@Override
-	public void afterCommandExecution(IEmulator emulator, int commandDuration) 
+	public void afterCommandExecution(IEmulator emulator) 
 	{
 	}
 

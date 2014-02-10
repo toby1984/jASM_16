@@ -34,11 +34,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.*;
 import de.codesourcery.jasm16.compiler.io.ClassPathResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.emulator.ICPU;
@@ -588,9 +584,9 @@ public final class DefaultScreen implements IDevice {
             }
 
             final boolean fontRAMChanged = fontRAM.hasChanged();
-            final boolean updateRequired = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
+            final boolean ramChanged = fontRAMChanged || paletteRAM.hasChanged() || videoRAM.hasChanged();		
 
-            if ( updateRequired || (blinkingCharactersOnScreen && lastBlinkState != blinkState) ) 
+            if ( ramChanged || (blinkingCharactersOnScreen && lastBlinkState != blinkState) ) 
             { 
                 if ( fontRAMChanged ) 
                 {
@@ -605,7 +601,6 @@ public final class DefaultScreen implements IDevice {
                     blinkingChars |= renderMemoryValue( i , videoRAM.read( i ) , blink );
                 }        
                 blinkingCharactersOnScreen = blinkingChars;
-
                 repaintPeer();
             }
         }

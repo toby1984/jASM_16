@@ -46,8 +46,6 @@ public final class Emulator implements IEmulator
 	 */
 	public static final int INTERRUPT_QUEUE_SIZE = 256;
 
-	private static final boolean DEBUG_LISTENER_PERFORMANCE = false;
-
 	private final IdentityHashMap<IEmulationListener,Long> listenerPerformance =  new IdentityHashMap<IEmulationListener,Long>();
 
 	private final ClockThread clockThread;
@@ -156,7 +154,8 @@ public final class Emulator implements IEmulator
 	 * 
 	 * @author tobias.gierke@code-sourcery.de
 	 */
-	protected final class ListenerHelper {
+	protected final class ListenerHelper 
+	{
 
 		// @GuardedBy( emuListeners )
 		private final List<IEmulationListener> emuListeners = new ArrayList<IEmulationListener>();
@@ -182,6 +181,15 @@ public final class Emulator implements IEmulator
 				listener.beforeCommandExecution( emulator );
 			}
 		}; 
+		
+		private final IEmulationListenerInvoker AFTER_COMMAND_INVOKER = new IEmulationListenerInvoker() {
+
+			@Override
+			public void invoke(IEmulator emulator, IEmulationListener listener)
+			{
+				listener.afterCommandExecution( emulator );
+			}
+		}; 		
 
 		public void addEmulationListener(IEmulationListener listener)
 		{
@@ -247,78 +255,53 @@ public final class Emulator implements IEmulator
 			notifyListeners( invoker , emuListeners );
 		}
 
-		public void invokeAfterCommandExecutionListeners(boolean continousMode,final int executedCommandDuration) 
+		public void invokeAfterCommandExecutionListeners(boolean continousMode) 
 		{
-			final IEmulationListenerInvoker invoker = new IEmulationListenerInvoker() {
-
-				@Override
-				public void invoke(IEmulator emulator, IEmulationListener listener)
-				{
-					listener.afterCommandExecution( emulator , executedCommandDuration );
-				}
-			};
-
-			if ( continousMode ) {
-				notifyListeners( invoker , continuousModeAfterCommandExecListeners );
-			} else {
-				notifyListeners( invoker , afterCommandExecListeners );
+			final List<IEmulationListener> toCall;
+			if ( continousMode ) 
+			{
+				toCall = continuousModeAfterCommandExecListeners;
+			} 
+			else 
+			{
+				toCall = afterCommandExecListeners;
 			}
+			notifyListeners( AFTER_COMMAND_INVOKER , toCall );
 		}
 
 		public void invokeBeforeCommandExecutionListeners(boolean continousMode) 
 		{
+			final List<IEmulationListener> toCall;
 			if ( continousMode ) {
-				notifyListeners( BEFORE_COMMAND_INVOKER , continuousModeBeforeCommandExecListeners );
+				toCall = continuousModeBeforeCommandExecListeners;
 			} else {        	
-				notifyListeners( BEFORE_COMMAND_INVOKER , beforeCommandExecListeners );
+				toCall = beforeCommandExecListeners;
 			}
-		}        
-
+			notifyListeners( BEFORE_COMMAND_INVOKER , toCall );
+		}   
+		
 		public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
 		{
 			final List<IEmulationListener> copy;
-			synchronized( emuListeners ) 
+			synchronized( emuListeners )
 			{
 				if ( listeners.isEmpty() ) {
 					return;
 				}
+				// create safe copy so we don't need to hold the lock while invoking the an alien method
 				copy = new ArrayList<IEmulationListener>( listeners );
 			}    	
-			if ( DEBUG_LISTENER_PERFORMANCE ) 
+			final int len = copy.size(); 
+			for ( int i = 0 ; i < len ; i++) 
 			{
-				for ( IEmulationListener l : copy) 
-				{
-					long execTime = -System.currentTimeMillis();
-					try {
-						invoker.invoke( Emulator.this , l );
-					}
-					catch(Exception e) {
-						LOG.error("notifyListeners(): Listener "+l+" failed",e);
-					} finally {
-						execTime += System.currentTimeMillis();
-					}
-					final Long existing = listenerPerformance.get( l );
-					if ( existing == null ) {
-						listenerPerformance.put( l , execTime );
-					} else {
-						listenerPerformance.put( l , existing.longValue() + execTime );
-					}
-				}         	
-			} 
-			else 
-			{
-				final int len = copy.size(); 
-				for ( int i = 0 ; i < len ; i++) 
-				{
-					final IEmulationListener l = copy.get(i);
-					try {
-						invoker.invoke( Emulator.this , l );
-					}
-					catch(Exception e) {
-						LOG.error("notifyListeners(): Listener "+l+" failed",e);					    
-					}
-				}       
-			}
+				final IEmulationListener l = copy.get(i);
+				try {
+					invoker.invoke( Emulator.this , l );
+				}
+				catch(Exception e) {
+					LOG.error("notifyListeners(): Listener "+l+" failed",e);					    
+				}
+			}       
 		}
 
 		public void emulatorDisposed()
@@ -370,7 +353,7 @@ public final class Emulator implements IEmulator
 
 	protected final Object CPU_LOCK = new Object();
 
-	protected Address lastValidInstruction = null;
+	protected int lastValidInstruction = 0;
 	
 	// @GuardedBy( CPU_LOCK )
 	private final CPU cpu = new CPU(memory);
@@ -510,7 +493,7 @@ public final class Emulator implements IEmulator
 				{
 					final Address pc;
 					synchronized( CPU_LOCK ) {
-						pc = visibleCPU.pc;
+						pc = Address.wordAddress( visibleCPU.pc );
 					}
 					listener.onStop( emulator , pc , cause );
 				}
@@ -617,13 +600,6 @@ public final class Emulator implements IEmulator
 				    //  halt execution
 					lastStop = System.currentTimeMillis();
 					cycleCountAtLastStop = cpu.currentCycle;
-
-					if ( DEBUG_LISTENER_PERFORMANCE ) 
-					{
-						for ( Map.Entry<IEmulationListener,Long> entry : listenerPerformance.entrySet() ) {
-							out.debug( entry.getKey()+" = "+entry.getValue()+" millis" );	
-						}
-					}
 
 					out.info("Emulator stopped.");
 					out.info("Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
@@ -922,11 +898,11 @@ public final class Emulator implements IEmulator
 						// note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
 						// the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
 						// a jump into an interrupt handler that skipped over non-instruction memory
-						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc.getWordAddressValue() , memory );
-						memory.writeProtect( new AddressRange( visibleCPU.pc , Size.words( sizeInWords )) );
+						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc , memory );
+						memory.writeProtect( new AddressRange( Address.wordAddress( visibleCPU.pc ) , Size.words( sizeInWords )) );
 					}
 					
-					cpu.pc = Address.wordAddress( cpu.currentInstructionPtr );
+					cpu.pc = cpu.currentInstructionPtr;
 					
 					cpu.maybeProcessOneInterrupt();  // might push A on stack and set PC to IA 
 					
@@ -957,7 +933,7 @@ public final class Emulator implements IEmulator
 		} 
 		finally 
 		{
-			afterCommandExecution( execDurationInCycles , cpu );
+			afterCommandExecution( cpu );
 		}
 		return execDurationInCycles;
 	}
@@ -978,10 +954,10 @@ public final class Emulator implements IEmulator
 	 * 
 	 * @param executedCommandDuration duration (in cycles) of last command or -1 if execution failed with an internal emulator error
 	 */
-	protected void afterCommandExecution(final int executedCommandDuration,CPU hiddenCPU) 
+	private void afterCommandExecution(CPU hiddenCPU) 
 	{
 		// invoke listeners
-		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable.get() , executedCommandDuration );
+		listenerHelper.invokeAfterCommandExecutionListeners( clockThread.isRunnable.get() );
 
 		// check whether we reached a breakpoint
 		maybeHandleBreakpoint(hiddenCPU);
@@ -999,7 +975,10 @@ public final class Emulator implements IEmulator
 		
 		synchronized( breakpoints ) 
 		{
-			final List<Breakpoint> candidates = breakpoints.get( hiddenCPU.pc ); 
+			if ( breakpoints.isEmpty() ) {
+				return;
+			}
+			final List<Breakpoint> candidates = breakpoints.get( Address.wordAddress( hiddenCPU.pc ) ); 
 
 			if ( candidates == null || candidates.isEmpty() ) 
 			{
@@ -1052,12 +1031,10 @@ public final class Emulator implements IEmulator
     {
        synchronized(CPU_LOCK) 
        {
-           int adr = cpu.pc.getWordAddressValue();
-           adr += calculateInstructionSizeInWords( adr , memory );
-           cpu.pc = Address.wordAddress( adr );
+           cpu.pc += calculateInstructionSizeInWords( cpu.pc , memory );
            visibleCPU.populateFrom( cpu );
        }
-       afterCommandExecution( 0 , visibleCPU );
+       afterCommandExecution( visibleCPU );
     }
    
     public static int calculateInstructionSizeInWords(Address address,IReadOnlyMemory memory) {
@@ -1214,8 +1191,8 @@ public final class Emulator implements IEmulator
 			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
 		}
 
-		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( cpu.pc.getWordAddressValue() , memory );
-		final Address nextInstruction = cpu.pc.plus( Size.words( currentInstructionSizeInWords ) , true );
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( cpu.pc , memory );
+		final Address nextInstruction = Address.wordAddress( cpu.pc ).plus( Size.words( currentInstructionSizeInWords ) , true );
 		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
 		start();
 	}
@@ -1927,7 +1904,7 @@ public final class Emulator implements IEmulator
 
         public int ex;
 
-        public Address pc;
+        public int pc;
         public Address sp;
         public Address interruptAddress;
 
@@ -1940,7 +1917,8 @@ public final class Emulator implements IEmulator
 
         public CPU(MainMemory memory) 
         {
-            pc = sp = interruptAddress = WordAddress.ZERO;
+        	pc = 0;
+            sp = interruptAddress = WordAddress.ZERO;
             this.memory = memory;
         }
 
@@ -2014,7 +1992,8 @@ public final class Emulator implements IEmulator
             currentCycle = 0;
             queueInterrupts = false;
             interruptQueue.clear();
-            sp = pc = interruptAddress = WordAddress.ZERO;
+            pc = 0;
+            sp = interruptAddress = WordAddress.ZERO;
             ex = 0;
             for ( int i = 0 ; i < commonRegisters.length ; i++ ) {
                 commonRegisters[i]=0;
@@ -2023,7 +2002,7 @@ public final class Emulator implements IEmulator
 
         @Override
         public Address getPC() {
-            return pc;
+            return Address.wordAddress( pc );
         }
 
         @Override
@@ -2070,7 +2049,7 @@ public final class Emulator implements IEmulator
                     commonRegisters[7] = value & 0xffff;
                     break;
                 case PC:
-                    pc = Address.wordAddress( value & 0xffff );
+                    pc = value & 0xffff;
                     break;
                 case SP:
                     sp = Address.wordAddress( value & 0xffff );
@@ -2106,7 +2085,7 @@ public final class Emulator implements IEmulator
                 case J:
                     return commonRegisters[7];
                 case PC:
-                    return pc.getWordAddressValue();
+                    return pc;
                 case SP:
                     return sp.getWordAddressValue();
                 case X:
@@ -2144,7 +2123,7 @@ public final class Emulator implements IEmulator
         
         public void executeInstruction() 
         {
-            currentInstructionPtr = pc.getValue();
+            currentInstructionPtr = pc;
             
             final int instructionWord = readNextWordAndAdvance();
             
@@ -2372,16 +2351,13 @@ public final class Emulator implements IEmulator
             final Disassembler dis = new Disassembler();
 
             // assume worst-case , each instruction only is one word
-            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , pc ).toSizeInWords().getValue();
+            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , Address.wordAddress( pc ) ).toSizeInWords().getValue();
             List<DisassembledLine> lines = dis.disassemble( memory , Address.wordAddress( 0 ) , instructionCount , true );
             for (DisassembledLine line : lines) {
                 out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
             }
             
-            Address lastValid = lastValidInstruction;
-            if ( lastValid == null ) {
-                lastValid = pc;
-            }
+            Address lastValid = Address.wordAddress( lastValidInstruction );
             final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+
                     " at address "+"0x"+Misc.toHexString( pc )+
                     " (last valid PC: "+Misc.toHexString( lastValid )+")";
@@ -3361,12 +3337,12 @@ public final class Emulator implements IEmulator
                 {
                     // push PC to stack
 					// SET [ --SP ] , PC
-					push( pc.getValue() );
+					push( pc );
 					
 					// push A to stack
 					push( commonRegisters[0] );
 					
-					pc = interruptAddress;
+					pc = interruptAddress.getWordAddressValue();
 					commonRegisters[0] = irq.getMessage() & 0xffff;
                     return true;
                 }

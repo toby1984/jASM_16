@@ -90,7 +90,7 @@ public class DisassemblerView extends AbstractView
         }
         
         @Override
-        public void afterCommandExecution(IEmulator emulator, int commandDuration)
+        public void afterCommandExecution(IEmulator emulator)
         {
         	if ( ! isFullSpeedMode() ) {
         		refreshDisplay();

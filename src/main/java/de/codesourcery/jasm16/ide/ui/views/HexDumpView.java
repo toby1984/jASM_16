@@ -54,7 +54,7 @@ public class HexDumpView extends AbstractView
     private final IEmulationListener listener = new EmulationListener() {
 
         @Override
-        public void afterCommandExecution(IEmulator emulator, int commandDuration)
+        public void afterCommandExecution(IEmulator emulator)
         {
         	if ( ! isFullSpeedMode() ) {
         		refreshDisplay();

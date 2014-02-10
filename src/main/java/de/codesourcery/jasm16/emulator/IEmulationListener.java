@@ -123,7 +123,7 @@ public interface IEmulationListener
     
     /**
      * Check whether this listener's {@link #beforeCommandExecution(IEmulator)} and
-     * {@link #afterCommandExecution(IEmulator, int)} methods should be invoked
+     * {@link #afterCommandExecution(IEmulator)} methods should be invoked
      * when the emulator is running in continuous (non-single-step) mode.
      * 
      * @return
@@ -137,8 +137,7 @@ public interface IEmulationListener
      * <code>true</code> from {@link #isInvokeAfterCommandExecution()}.</p>
      * 
      * @param emulator
-     * @param commandDuration duration (in cycles) of the last command or -1 on internal errors during command execution.
      * @see #isInvokeAfterCommandExecution()
      */
-    public void afterCommandExecution(IEmulator emulator,int commandDuration);
+    public void afterCommandExecution(IEmulator emulator);
 }
