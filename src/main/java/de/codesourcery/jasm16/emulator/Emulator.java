@@ -30,8 +30,6 @@ import de.codesourcery.jasm16.Register;
 import de.codesourcery.jasm16.Size;
 import de.codesourcery.jasm16.WordAddress;
 import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
-import de.codesourcery.jasm16.disassembler.DisassembledLine;
-import de.codesourcery.jasm16.disassembler.Disassembler;
 import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
 import de.codesourcery.jasm16.emulator.devices.IDevice;
 import de.codesourcery.jasm16.emulator.devices.IInterrupt;
@@ -1952,14 +1950,13 @@ public final class Emulator implements IEmulator
 
         private void handleUnknownOpCode(int instructionWord) 
         {
-            final Disassembler dis = new Disassembler();
-
+            // final Disassembler dis = new Disassembler();
             // assume worst-case , each instruction only is one word
-            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , Address.wordAddress( pc ) ).toSizeInWords().getValue();
-            List<DisassembledLine> lines = dis.disassemble( memory , Address.wordAddress( 0 ) , instructionCount , true );
-            for (DisassembledLine line : lines) {
-                out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
-            }
+//            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , Address.wordAddress( pc ) ).toSizeInWords().getValue();
+//            List<DisassembledLine> lines = dis.disassemble( memory , Address.wordAddress( 0 ) , instructionCount , true );
+//            for (DisassembledLine line : lines) {
+//                out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
+//            }
             
             Address lastValid = Address.wordAddress( lastValidInstruction );
             final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+

@@ -21,7 +21,7 @@ public class PrintStreamLogger implements ILogger {
 
 	private final PrintStream stream;
 	
-	private volatile LogLevel logLevel=LogLevel.INFO;
+	private volatile LogLevel logLevel=LogLevel.DEBUG;
 
 	public PrintStreamLogger(PrintStream stream) {
 		if (stream == null) {
