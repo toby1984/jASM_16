@@ -41,8 +41,6 @@ public final class Emulator implements IEmulator
 {
 	private static final Logger LOG = Logger.getLogger(Emulator.class);
 	
-	private static final boolean DEBUG = false;
-	
 	/**
 	 * Maximum number of interrupts the emulator's interrupt queue may hold.
 	 */
@@ -2949,24 +2947,41 @@ public final class Emulator implements IEmulator
             } else {
                 operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16);          
             }
-
-            if ( operandBits <= 07 ) {
-                commonRegisters[ operandBits ] = value & 0xffff;
-                return;
-            }
-            if ( operandBits <= 0x0f ) {
-                memory.write( commonRegisters[ operandBits - 0x08 ] , value);
-                currentCycle += 1;
-                return;
-            }
-            
-            if ( operandBits <= 0x17 ) {
-                final int nextWord = readNextWordAndAdvance();
-                writeMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord , value);
-                currentCycle += 1;
-                return;
-            }
-            switch( operandBits ) {
+            switch( operandBits ) 
+            {
+	            case 0x00:
+	            case 0x01:
+	            case 0x02:
+	            case 0x03:
+	            case 0x04:
+	            case 0x05:
+	            case 0x06:
+	            case 0x07:
+	                commonRegisters[ operandBits ] = value & 0xffff;
+	                return;
+	            case 0x08:
+	            case 0x09:
+	            case 0x0a:
+	            case 0x0b:
+	            case 0x0c:
+	            case 0x0d:
+	            case 0x0e:
+	            case 0x0f:
+	                memory.write( commonRegisters[ operandBits - 0x08 ] , value);
+	                currentCycle += 1;
+	                return;
+	            case 0x10:
+	            case 0x11:
+	            case 0x12:
+	            case 0x13:
+	            case 0x14:
+	            case 0x15:
+	            case 0x16:
+	            case 0x17:      
+	                final int nextWord = readNextWordAndAdvance();
+	                writeMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord , value);
+	                currentCycle += 1;
+	                return;	            	
                 case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
                     push( value );
                     return;
@@ -2974,8 +2989,8 @@ public final class Emulator implements IEmulator
                     memory.write( sp , value );
                     return;
                 case 0x1a:
-                    int nextWord = readNextWordAndAdvance();
-                    Address dst = sp.plus( Address.wordAddress( nextWord ) , true);
+                    final int nextWord2 = readNextWordAndAdvance();
+                    Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true);
                     memory.write( dst , value );
                     currentCycle += 1;
                     return;
@@ -2989,8 +3004,8 @@ public final class Emulator implements IEmulator
                     ex = value & 0xffff;
                     return;
                 case 0x1e:
-                    nextWord = readNextWordAndAdvance();
-                    memory.write( nextWord , value);
+                    final int nextWord3 = readNextWordAndAdvance();
+                    memory.write( nextWord3 , value);
                     currentCycle += 1;
                     return;
                 default:
@@ -3026,19 +3041,36 @@ public final class Emulator implements IEmulator
              */
 
             final int operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
-            if ( operandBits <= 0x07 ) {
-                return commonRegisters[ operandBits ] & 0xffff;
-            }
-            if ( operandBits <= 0x0f ) {
-                return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
-            }
-            if ( operandBits <= 0x17 ) {
-                final int nextWord = readNextWordAndAdvance();
-                return consumeOneCycle( 
-                        readMemoryWithOffsetAndWrapAround( 
-                                commonRegisters[ operandBits - 0x10 ] , nextWord ) );
-            }
-            switch( operandBits ) {
+            switch( operandBits ) 
+            {
+                case 0x00:
+                case 0x01:
+                case 0x02:
+                case 0x03:
+                case 0x04:
+                case 0x05:
+                case 0x06:
+                case 0x07:
+                	return commonRegisters[ operandBits ] & 0xffff;
+                case 0x08:
+                case 0x09:
+                case 0x0a:
+                case 0x0b:
+                case 0x0c:
+                case 0x0d:
+                case 0x0e:
+                case 0x0f:
+                    return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
+                case 0x10:
+                case 0x11:
+                case 0x12:
+                case 0x13:
+                case 0x14:
+                case 0x15:
+                case 0x16:
+                case 0x17:
+                    final int nextWord = readNextWordAndAdvance();                	
+                    return consumeOneCycle(  readMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord ) );
                 case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
                     final int tmp = memory.read( sp ) & 0xffff;
                     sp = sp.incrementByOne(true);                
@@ -3046,8 +3078,8 @@ public final class Emulator implements IEmulator
                 case 0x19:
                     return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
-                    int nextWord = readNextWordAndAdvance();
-                    final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
+                    final int nextWord2 = readNextWordAndAdvance();
+                    final Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true );
                     return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
 				return sp.getValue() & 0xffff;
@@ -3056,8 +3088,8 @@ public final class Emulator implements IEmulator
                 case 0x1d:
 				return ex & 0xffff;
                 case 0x1e:
-                    nextWord = readNextWordAndAdvance();
-                    return consumeOneCycle( memory.read( nextWord ) );
+                    final int nextWord3 = readNextWordAndAdvance();
+                    return consumeOneCycle( memory.read( nextWord3 ) );
                 case 0x1f:
                     return consumeOneCycle( readNextWordAndAdvance() );
             }
@@ -3110,43 +3142,58 @@ public final class Emulator implements IEmulator
              */
 
             final int operandBits;
-
             if ( specialInstruction ) {
                 operandBits= (instructionWord >>> 10) & ( 1+2+4+8+16+32);
             } else {
                 operandBits= (instructionWord >>> 5) & ( 1+2+4+8+16);           
             }
-
-            if ( operandBits <= 0x07 ) {
-                return commonRegisters[ operandBits ] & 0xffff;
-            }
-            if ( operandBits <= 0x0f ) {
-                return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
-            }
-            if ( operandBits <= 0x17 ) 
+            switch( operandBits ) 
             {
-                final int nextWord;
-                if ( performIncrementDecrement ) {
-                    nextWord = readNextWordAndAdvance();
-                } else {
-                    nextWord = memory.read( currentInstructionPtr );                
-                }
-                return consumeOneCycle( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) );
-            }
-
-            switch( operandBits ) {
+	            case 0x00:
+	            case 0x01:
+	            case 0x02:
+	            case 0x03:
+	            case 0x04:
+	            case 0x05:
+	            case 0x06:
+	            case 0x07:
+	                return commonRegisters[ operandBits ] & 0xffff;
+	            case 0x08:
+	            case 0x09:
+	            case 0x0a:
+	            case 0x0b:
+	            case 0x0c:
+	            case 0x0d:
+	            case 0x0e:
+	            case 0x0f:
+	                return consumeOneCycle( memory.read( commonRegisters[ operandBits - 0x08 ] ) );
+	            case 0x10:
+	            case 0x11:
+	            case 0x12:
+	            case 0x13:
+	            case 0x14:
+	            case 0x15:
+	            case 0x16:
+	            case 0x17:
+	                final int nextWord;
+	                if ( performIncrementDecrement ) {
+	                    nextWord = readNextWordAndAdvance();
+	                } else {
+	                    nextWord = memory.read( currentInstructionPtr );                
+	                }
+	                return consumeOneCycle( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) );            	
                 case 0x18: // (PUSH / [--SP++]) if in b
                     return consumeOneCycle( memory.read( sp.decrementByOne() ) );
                 case 0x19:
                     return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
-                    int nextWord = 0;
+                    final int nextWord2;
                     if ( performIncrementDecrement ) {
-                        nextWord = readNextWordAndAdvance();
+                        nextWord2 = readNextWordAndAdvance();
                     } else {
-                        nextWord = memory.read( currentInstructionPtr );                    
+                        nextWord2 = memory.read( currentInstructionPtr );                    
                     }
-                    final Address dst = sp.plus( Address.wordAddress( nextWord ) , true );
+                    final Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true );
                     return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
                 	return sp.getValue() & 0xffff;
@@ -3155,19 +3202,21 @@ public final class Emulator implements IEmulator
                 case 0x1d:
                 	return ex & 0xffff;
                 case 0x1e:
+                	final int nextWord3;
                     if ( performIncrementDecrement ) {
-                        nextWord = readNextWordAndAdvance();
+                        nextWord3 = readNextWordAndAdvance();
                     } else {
-                        nextWord = memory.read( currentInstructionPtr );
+                        nextWord3 = memory.read( currentInstructionPtr );
                     }
-                    return consumeOneCycle( memory.read( nextWord ) );
+                    return consumeOneCycle( memory.read( nextWord3 ) );
                 case 0x1f:
+                	final int nextWord4;
                     if ( performIncrementDecrement ) {
-                        nextWord = readNextWordAndAdvance();
+                    	nextWord4 = readNextWordAndAdvance();
                     } else {
-                        nextWord = memory.read( currentInstructionPtr );                    
+                    	nextWord4 = memory.read( currentInstructionPtr );                    
                     }
-                    return consumeOneCycle( nextWord );
+                    return consumeOneCycle( nextWord4 );
             }
 
             // literal value: -1...30 ( 0x20 - 0x3f )
