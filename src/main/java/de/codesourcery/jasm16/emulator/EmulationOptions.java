@@ -47,7 +47,7 @@ public final class EmulationOptions {
      * Adjust the following locations when
      * adding/removing configuration options:
      * 
-     * - copy constructor !!
+     * - COPY constructor !!
      * - loadEmulationOptions()
      * - saveEmulationOptions()
      * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -60,6 +60,7 @@ public final class EmulationOptions {
     private boolean mapFontRamUponAddDevice = false;
     private boolean runFloppyAtFullSpeed = false;
     private EmulationSpeed emulationSpeed = DEFAULT_EMULATION_SPEED;
+    private boolean crashOnStoreWithImmediate = true;
 
     private InsertedDisk insertedDisk;
 
@@ -94,6 +95,27 @@ public final class EmulationOptions {
 		return emulationSpeed;
 	}
     
+    /**
+     * Returns whether the emulation should stop when an 
+     * instruction like <code>SET 0x1000 ,A</code> is encountered.
+     *  
+     * @return <code>true</code> if emulation should stop, <code>false</code> if emulation
+     * should silently continue
+     */
+    public boolean isCrashOnStoreWithImmediate() {
+    	return crashOnStoreWithImmediate;
+    }
+    
+    /**
+     * Sets whether the emulation should when an 
+     * instruction like <code>SET 0x1000 ,A</code> is encountered.
+     * 
+     * @param doCrashOnImmediate
+     */
+    public void setCrashOnStoreWithImmediate(boolean doCrashOnImmediate) {
+    	this.crashOnStoreWithImmediate = doCrashOnImmediate;
+    }    
+    
     public void setEmulationSpeed(EmulationSpeed emulationSpeed) {
     	if (emulationSpeed == null) {
 			throw new IllegalArgumentException("emulationSpeed must not be null");
@@ -119,11 +141,12 @@ public final class EmulationOptions {
         this.ignoreAccessToUnknownDevices = other.ignoreAccessToUnknownDevices;
         this.useLegacyKeyboardBuffer      = other.useLegacyKeyboardBuffer;
         this.mapFontRamUponAddDevice      = other.mapFontRamUponAddDevice;
-        this.mapVideoRamUponAddDevice      = other.mapVideoRamUponAddDevice;
+        this.mapVideoRamUponAddDevice     = other.mapVideoRamUponAddDevice;
         this.runFloppyAtFullSpeed         = other.runFloppyAtFullSpeed;
         this.newEmulatorInstanceRequired  = other.newEmulatorInstanceRequired;
         this.insertedDisk                 = other.insertedDisk;
         this.emulationSpeed               = other.emulationSpeed;
+        this.crashOnStoreWithImmediate    = other.crashOnStoreWithImmediate;
     }
 
     public InsertedDisk getInsertedDisk()
@@ -202,6 +225,7 @@ public final class EmulationOptions {
         emulator.setMemoryProtectionEnabled( memoryProtectionEnabled );
         emulator.setIgnoreAccessToUnknownDevices( ignoreAccessToUnknownDevices );
         emulator.setEmulationSpeed( emulationSpeed );
+        emulator.setCrashOnStoreWithImmediate( crashOnStoreWithImmediate );
         
         try {
             final DefaultFloppyDrive drive = getFloppyDrive( emulator );
@@ -236,6 +260,9 @@ public final class EmulationOptions {
         if ( isRunFloppyAtFullSpeed() ) {
             element.setAttribute("runFloppyAtFullSpeed" , "true" );
         }	
+        if ( isCrashOnStoreWithImmediate() ) {
+            element.setAttribute("crashOnStoreWithImmediate" , "true" );
+        }
 
         element.setAttribute( "emulationSpeed" , emulationSpeedToString( this.emulationSpeed ) );
 
@@ -263,6 +290,7 @@ public final class EmulationOptions {
         result.setUseLegacyKeyboardBuffer( isSet(element,"useLegacyKeyboardBuffer" ) );
         result.setRunFloppyAtFullSpeed( isSet(element,"runFloppyAtFullSpeed" ) );	
         result.setEmulationSpeed( emulationSpeedFromString( element.getAttribute("emulationSpeed") ) );
+        result.setCrashOnStoreWithImmediate( isSet(element,"crashOnStoreWithImmediate" ) );
 
         Element disks = getChildElement( element , "disks");
         if ( disks != null )

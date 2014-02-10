@@ -49,6 +49,7 @@ public abstract class EmulationOptionsView extends AbstractView {
 	private final JCheckBox box1 = new JCheckBox("Write-protected memory of executed instructions (slow) ?");
 	private final JCheckBox box2 = new JCheckBox("Enable debug output ?");
 	private final JCheckBox box3 = new JCheckBox("Ignore access to unused device slots ?");
+	private final JCheckBox box8 = new JCheckBox("Halt on store to immediate value ?");	
 	
 	// keyboard emulation
 	private final JCheckBox box4 = new JCheckBox("Use legacy key buffer ?");
@@ -153,6 +154,7 @@ public abstract class EmulationOptionsView extends AbstractView {
 		box2.setSelected( options.isEnableDebugOutput() );
 		box3.setSelected( options.isIgnoreAccessToUnknownDevices() );
 		box4.setSelected( options.isUseLegacyKeyboardBuffer() );
+		box8.setSelected( options.isCrashOnStoreWithImmediate() );
 		
 		// video emulation
 		box5.setSelected( options.isMapVideoRamUponAddDevice() );
@@ -192,6 +194,7 @@ public abstract class EmulationOptionsView extends AbstractView {
 		options.setMemoryProtectionEnabled( box1.isSelected() );
 		options.setEnableDebugOutput( box2.isSelected() );
 		options.setIgnoreAccessToUnknownDevices( box3.isSelected() );
+		options.setCrashOnStoreWithImmediate( box8.isSelected() );
 		options.setUseLegacyKeyboardBuffer( box4.isSelected() );
 		options.setMapVideoRamUponAddDevice( box5.isSelected() );
 		options.setMapFontRamUponAddDevice( box6.isSelected() );
@@ -242,6 +245,10 @@ public abstract class EmulationOptionsView extends AbstractView {
 		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth=2;
 		result.add( box3 , cnstrs );
+		
+		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
+		cnstrs.gridwidth=2;
+		result.add( box8 , cnstrs );		
 		
 		cnstrs = constraints( 0 , y++ , true , false , GridBagConstraints.HORIZONTAL );
 		cnstrs.gridwidth=2;

@@ -367,7 +367,7 @@ public final class Emulator implements IEmulator
 
 	private volatile boolean ignoreAccessToUnknownDevices=false;    
 	private volatile boolean checkMemoryWrites = false;
-
+	private volatile boolean haltOnStoreToImmediateValue = true;
 	private volatile Throwable lastEmulationError = null;
 	
 	private volatile EmulationSpeed emulationSpeed = EmulationSpeed.MAX_SPEED;
@@ -2977,7 +2977,16 @@ public final class Emulator implements IEmulator
                     memory.write( nextWord , value);
                     return 1;
                 default:
-                    return handleIllegalTargetOperand(instructionWord); // assignment to literal value
+                	// store to immediate value like 'SET 0x1000 , A'
+                	if ( haltOnStoreToImmediateValue ) 
+                	{
+                        final String msg = "(store to immediate value) Illegal target operand in instruction word 0x"+
+                                Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc );
+                        LOG.error("handleIllegalTargetOperand(): "+msg);
+                        out.warn( msg);
+                        throw new InvalidTargetOperandException( msg );                		
+                	}
+                	return 0;
             }
         }
         
@@ -3238,15 +3247,6 @@ public final class Emulator implements IEmulator
             return 3;
         }   
         
-        private int handleIllegalTargetOperand(int instructionWord) 
-        {
-            final String msg = "Illegal target operand in instruction word 0x"+
-                    Misc.toHexString( instructionWord )+" at address 0x"+Misc.toHexString( pc );
-            LOG.error("handleIllegalTargetOperand(): "+msg);
-            out.warn( msg);
-            throw new InvalidTargetOperandException( msg );
-        }    
-
         private int handleIAS(int instructionWord) 
         {
             // IAS a => sets IA to a
@@ -3313,4 +3313,15 @@ public final class Emulator implements IEmulator
             return false;
         }        
     } // end of class: CPU	
+
+
+	@Override
+	public boolean isCrashOnStoreWithImmediate() {
+		return haltOnStoreToImmediateValue;
+	}
+
+	@Override
+	public void setCrashOnStoreWithImmediate(boolean doCrashOnImmediate) {
+		this.haltOnStoreToImmediateValue = doCrashOnImmediate;
+	}
 }

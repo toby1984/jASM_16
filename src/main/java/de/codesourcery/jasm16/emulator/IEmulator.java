@@ -127,6 +127,23 @@ public interface IEmulator
     public boolean isMemoryProtectionEnabled();
     
     /**
+     * Returns whether the emulation should stop when an 
+     * instruction like <code>SET 0x1000 ,A</code> is encountered.
+     *  
+     * @return <code>true</code> if emulation should stop, <code>false</code> if emulation
+     * should silently continue
+     */
+    public boolean isCrashOnStoreWithImmediate();
+    
+    /**
+     * Sets whether the emulation should when an 
+     * instruction like <code>SET 0x1000 ,A</code> is encountered.
+     * 
+     * @param doCrashOnImmediate
+     */
+    public void setCrashOnStoreWithImmediate(boolean doCrashOnImmediate);
+    
+    /**
      * Disposes this emulator.
      * 
      * <p>This method terminates the emulator and releases all associated allocated resources. After this method returns,
