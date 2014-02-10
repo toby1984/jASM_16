@@ -373,6 +373,7 @@ public final class Emulator implements IEmulator
 		private int cycleCountAtLastStart=0;
 		private long lastStop = 0;
 		private int cycleCountAtLastStop=0;
+		private long executedCyclesCount=0; 
 		
 		private final AtomicBoolean isRunnable = new AtomicBoolean(false);
 
@@ -442,6 +443,7 @@ public final class Emulator implements IEmulator
 
 					lastEmulationError = null;					
 					cycleCountAtLastStart = cpu.currentCycle;
+					executedCyclesCount = 0;
 					
 					lastStart = System.currentTimeMillis();  
 					acknowledgeCommand(cmd);
@@ -455,14 +457,17 @@ public final class Emulator implements IEmulator
 				
 				if ( currentSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
+					executedCyclesCount += durationInCycles;
+					
 					// adjust execution speed every 10000 cycles
 					// to account for CPU load changes / JIT / different instruction profiles
-					if ( ( cpu.currentCycle % 10000 ) == 0 ) {
+					if ( executedCyclesCount >= 10000 ) {
 						final double deltaSeconds = ( System.currentTimeMillis() - lastStart) / 1000d;
 						final double cyclesPerSecond = (cpu.currentCycle-cycleCountAtLastStart) / deltaSeconds;
 						if ( ! Double.isInfinite( cyclesPerSecond ) ) {
 							adjustmentFactor = ( cyclesPerSecond / 100000.0d );
 						}
+						executedCyclesCount = 0;
 					}
 					
 					// delay execution, this code is exactly the same code as the one timed in
