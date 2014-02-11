@@ -67,6 +67,11 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
         this.addressRange = range;
         this.regionName = regionName;    	
     }
+
+    @Override
+    public boolean contains(int wordAddress) {
+    	return addressRange.contains( wordAddress );
+    }
     
     @Override
     public long getTypeId() {

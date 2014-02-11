@@ -54,7 +54,16 @@ public interface IMemoryRegion extends IMemory
 	 * @return
 	 */
 	public long getTypeId();    
-    	
+
+	/**
+	 * Check whether this address range contains a certain address.
+	 * 
+	 * @param wordAddress
+	 * @return
+	 * @see #getAddressRange()
+	 * @see AddressRange#contains(int)
+	 */
+	public boolean contains(int wordAddress);
     
     /**
      * The address range covered by this memory region.

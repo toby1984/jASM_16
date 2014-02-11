@@ -15,7 +15,10 @@
  */
 package de.codesourcery.jasm16.emulator;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;

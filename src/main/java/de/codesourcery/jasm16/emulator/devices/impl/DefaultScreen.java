@@ -55,6 +55,8 @@ public final class DefaultScreen implements IDevice {
 
     private static final Logger LOG = Logger.getLogger(DefaultScreen.class);
 
+    private static final boolean ENABLE_SCREEN_REDRAW = true;
+    
     public static final int STANDARD_SCREEN_ROWS = 12;
     public static final int STANDARD_SCREEN_COLUMNS = 32;
 
@@ -150,7 +152,9 @@ public final class DefaultScreen implements IDevice {
                 {
                     LockSupport.parkNanos( (1000 / 30) * 1000000 );
 
-                    renderScreen();
+                    if ( ENABLE_SCREEN_REDRAW ) {
+                    	renderScreen();
+                    }
 
                     int counter = fpsCounter++;
                     if ( (counter % 30) == 0 ) { // let characters blink every 30 frames
@@ -276,7 +280,7 @@ public final class DefaultScreen implements IDevice {
             blinkState=false;         
         }
     }
-
+    
     protected class StatefulMemoryRegion extends MemoryRegion {
 
         private boolean isMapped = false;
