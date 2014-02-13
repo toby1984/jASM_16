@@ -803,19 +803,17 @@ public final class Emulator implements IEmulator
         return calculateInstructionSizeInWords(address.getWordAddressValue() , memory );
     }
     
-	public static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) {
-
+	public static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) 
+	{
 		@SuppressWarnings("deprecation")
         final int instructionWord = memory.read( address );
 
 		final int opCode = (instructionWord & 0x1f);
 
-		int instructionSizeInWords=1; // +1 word for instruction itself
 		switch( opCode ) 
 		{
 			case 0x00: // skip special opcode
-				instructionSizeInWords += getOperandsSizeInWordsForSpecialInstruction( instructionWord );
-				break;
+				return 1 + getOperandsSizeInWordsForSpecialInstruction( instructionWord );
 			case 0x01: // SET
 			case 0x02: // ADD
 			case 0x03: // SUB
@@ -839,35 +837,28 @@ public final class Emulator implements IEmulator
 			case 0x15: // IFA
 			case 0x16: // IFL
 			case 0x17: // IFU
-				instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction(instructionWord);
-				break;
+				return 1+getOperandsSizeInWordsForBasicInstruction(instructionWord);
 			case 0x18: // UNKNOWN
 			case 0x19: // UNKNOWN;
-				instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
-				break;
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 			case 0x1a: // ADX
 			case 0x1b: // SBX
-				instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction(instructionWord);
-				break;                
+				return 1+getOperandsSizeInWordsForBasicInstruction(instructionWord);
 			case 0x1c: // UNKNOWN
 			case 0x1d: // UNKNOWN
-				instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
-				break;
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 			case 0x1e: // STI
 			case 0x1f: // STD
-				instructionSizeInWords += getOperandsSizeInWordsForBasicInstruction( instructionWord );
-				break;
+				return 1+getOperandsSizeInWordsForBasicInstruction( instructionWord );
 			default:
-				instructionSizeInWords += getOperandsSizeInWordsForUnknownInstruction( instructionWord );
-				break;
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
 		}
-		return instructionSizeInWords;
 	}
 
 	private static int getOperandsSizeInWordsForBasicInstruction(int instructionWord)
 	{
 		// PC is already pointing at word AFTER current instruction here !
-		return getOperandSizeInWords(OperandPosition.SOURCE_OPERAND,instructionWord,false)+getOperandSizeInWords(OperandPosition.TARGET_OPERAND,instructionWord,false) ;
+		return getSourceOperandSize( instructionWord ) + getTargetOperandSize( instructionWord );
 	}
 
 	private static int getOperandsSizeInWordsForUnknownInstruction(int instructionWord)
@@ -879,45 +870,65 @@ public final class Emulator implements IEmulator
 	private static int getOperandsSizeInWordsForSpecialInstruction(int instructionWord)
 	{
 		// PC is already pointing at word AFTER current instruction here !        
-		return  getOperandSizeInWords(OperandPosition.SOURCE_OPERAND,instructionWord,true);
+		// return  getOperandSizeInWords(OperandPosition.SOURCE_OPERAND,instructionWord,true);
+		return getSourceOperandSize( instructionWord );
 	}
 
-	private static int getOperandSizeInWords(OperandPosition position, int instructionWord,boolean isSpecialOpCode) {
-
-		/* SET b,a
-		 * 
-		 * b is always handled by the processor after a, and is the lower five bits.
-		 * In bits (in LSB-0 format), a basic instruction has the format: 
-		 * 
-		 *    aaaaaabbbbbooooo
-		 * 
-		 * b = TARGET operand
-		 * a = SOURCE operand
-		 * 
-		 * Special opcodes always have their lower five bits unset, have one value and a
-		 * five bit opcode. In binary, they have the format: 
-		 * 
-		 * aaaaaaooooo00000
-		 * 
-		 * The value (a) is in the same six bit format as defined earlier.
-		 */
-		final int operandBits;
-		if ( position == OperandPosition.SOURCE_OPERAND || isSpecialOpCode ) { // SET b , a ==> a
-			operandBits = (instructionWord >>> 10) & ( 1+2+4+8+16+32); // SET b,a ==> b            
-		} else { 
-			operandBits = (instructionWord >>> 5) & ( 1+2+4+8+16); // SET b,a ==> b
-		}
-		if ( operandBits <= 0x07 ) {
-			return 0; // operandDesc( registers[ operandBits ] );
-		}
-		if ( operandBits <= 0x0f ) {
-			return 0; // operandDesc( memory[ registers[ operandBits - 0x08 ] ] , 1 );
-		}
-		if ( operandBits <= 0x17 ) {
-			return 1; // operandDesc( memory[ registers[ operandBits - 0x10 ]+nextWord ] ,1 );
-		}
-
+	/* SET b,a
+	 * 
+	 * b is always handled by the processor after a, and is the lower five bits.
+	 * In bits (in LSB-0 format), a basic instruction has the format: 
+	 * 
+	 *    aaaaaabbbbbooooo
+	 * 
+	 * b = TARGET operand
+	 * a = SOURCE operand
+	 * 
+	 * Special opcodes always have their lower five bits unset, have one value and a
+	 * five bit opcode. In binary, they have the format: 
+	 * 
+	 * aaaaaaooooo00000
+	 * 
+	 * The value (a) is in the same six bit format as defined earlier.
+	 */
+	
+	private static int getSourceOperandSize(int instructionWord) {
+		return getOperandSize( (instructionWord >>> 10) & ( 1+2+4+8+16+32) );
+	}
+	
+	private static int getTargetOperandSize(int instructionWord) {
+		return getOperandSize( (instructionWord >>> 5) & ( 1+2+4+8+16) );
+	}	
+	
+	private static int getOperandSize(int operandBits) 
+	{
 		switch( operandBits ) {
+			case 0x00:
+			case 0x01:
+			case 0x02:
+			case 0x03:
+			case 0x04:
+			case 0x05:
+			case 0x06:
+			case 0x07:
+			case 0x08:
+			case 0x09:
+			case 0x0a:
+			case 0x0b:
+			case 0x0c:
+			case 0x0d:
+			case 0x0e:
+			case 0x0f:
+				return 0;
+			case 0x10:
+			case 0x11:
+			case 0x12:
+			case 0x13:
+			case 0x14:
+			case 0x15:
+			case 0x16:
+			case 0x17:
+				return 1;
 			case 0x18:
 				// POP / [SP++]
 				return 0 ; // operandDesc( memory[ sp ] , 1 );
@@ -936,11 +947,9 @@ public final class Emulator implements IEmulator
 			case 0x1f:
 				return 1; // operandDesc( memory[ pc++ ] , 1 );
 		}
-
 		// literal value: -1...30 ( 0x20 - 0x3f )
 		return 0; // operandDesc( operandBits - 0x21 , 0 ); 
 	}
-
 	@Override
 	public boolean canStepReturn() {
 		return isJSR( memory.read( cpu.pc ) );
@@ -1736,9 +1745,9 @@ public final class Emulator implements IEmulator
             final int opCode = (instructionWord & 0x1f);
 
             /*
-             *   |--- Basic opcodes (5 bits) ----------------------------------------------------
+             *   |--- Basic opcodes (5 bits) ---------------------------------------------------
              *   |C | VAL  | NAME     | DESCRIPTION
-             *   +---+------+----------+---------------------------------------------------------
+             *   +--+------+----------+---------------------------------------------------------
              *   |- | 0x00 | n/a      | special instruction - see below
              *   |1 | 0x01 | SET b, a | sets b to a
              *   |2 | 0x02 | ADD b, a | sets b to b+a, sets EX to 0x0001 if there's an overflow, 0x0 otherwise
