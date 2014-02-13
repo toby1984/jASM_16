@@ -100,8 +100,6 @@ public interface IEmulator
 
     public void breakpointChanged(Breakpoint breakpoint);
 
-    public void calibrate();
-    
     /**
      * Enable/disable instruction memory write protection.
      * 
@@ -301,8 +299,6 @@ public interface IEmulator
      */
     public void unmapRegion(IMemoryRegion region);
 
-	public boolean isCalibrated();    
-	
 	public void setOutput(ILogger logger);
 	
 	public ILogger getOutput();

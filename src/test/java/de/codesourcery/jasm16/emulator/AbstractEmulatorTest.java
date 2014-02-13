@@ -51,7 +51,6 @@ public abstract class AbstractEmulatorTest extends TestCase
 
     static {
         emulator = new Emulator();     
-        emulator.calibrate();
     }
     
     @Override

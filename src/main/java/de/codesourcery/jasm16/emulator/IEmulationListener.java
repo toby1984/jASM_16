@@ -28,10 +28,6 @@ public interface IEmulationListener
 {
     public void beforeEmulatorIsDisposed(IEmulator emulator);
     
-    public void beforeCalibration(IEmulator emulator);
-    
-    public void afterCalibration(IEmulator emulator);
-    
     public void onEmulationSpeedChange(EmulationSpeed oldSpeed, EmulationSpeed newSpeed);
     
     /**

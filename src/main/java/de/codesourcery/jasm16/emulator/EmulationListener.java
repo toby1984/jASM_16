@@ -40,14 +40,6 @@ public class EmulationListener implements IEmulationListener {
 	}
 	
 	@Override
-    public void beforeCalibration(IEmulator emulator) {
-    }
-    
-    @Override
-    public void afterCalibration(IEmulator emulator) {
-    }
-    	
-	@Override
 	public boolean belongsToHardwareDevice()
 	{
 	    return false;

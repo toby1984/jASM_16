@@ -358,23 +358,94 @@ public final class Emulator implements IEmulator
 		private int cycleCountAtLastStart=0;
 		private long lastStop = 0;
 		private int cycleCountAtLastStop=0;
-		private long executedCyclesCount=0; 
 		
-		private final AtomicBoolean isRunnable = new AtomicBoolean(false);
+		protected final AtomicBoolean isRunnable = new AtomicBoolean(false);
 
 		private final BlockingQueue<Command> cmdQueue = new ArrayBlockingQueue<Command>(1);
 		private final BlockingQueue<Long> ackQueue = new ArrayBlockingQueue<Long>(300);
 
-		// execution delay loop parameters determined by calibrate() method
-		private volatile double adjustmentFactor = 1.0d;
-		private volatile int oneCycleDelay = -1;
-
-		// just a dummy value used in our delay loop 
-		private int dummy;		
-		
 		// the current emulation speed
 		private EmulationSpeed currentSpeed = emulationSpeed;
-
+		
+		protected final AtomicLong cyclesLeft = new AtomicLong(0);
+		
+		private final TickThread tickThread = new TickThread();
+		
+		protected final class TickThread extends Thread {
+			
+			private final int TICK_TIME_MILLIS = 20;
+			private final float CYCLES_PER_SECOND = 100000;
+			private final long CYCLES_PER_TICK = (long) ( CYCLES_PER_SECOND * (TICK_TIME_MILLIS/1000.0f) ); 
+			
+			private volatile boolean run = false;
+			private volatile boolean terminate = false;
+			
+			private final Object SLEEP_LOCK = new Object();
+			
+			public TickThread() 
+			{
+				super("tick-thread");
+				setDaemon(true);
+				start();
+			}
+			
+			@Override
+			public void run() 
+			{
+				cyclesLeft.set(0);
+				while ( ! terminate ) 
+				{
+					while ( ! run ) 
+					{
+						synchronized(SLEEP_LOCK) {
+							try {
+								SLEEP_LOCK.wait();
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+						}
+						cyclesLeft.set(0);
+						if ( terminate ) {
+							break;
+						}
+					}					
+					cyclesLeft.addAndGet(CYCLES_PER_TICK);
+					try {
+						Thread.sleep( TICK_TIME_MILLIS );
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				out.info("Tick-thread terminated");
+			}
+			
+			public void dispose() 
+			{
+				synchronized(SLEEP_LOCK) 
+				{
+					terminate = true;					
+					SLEEP_LOCK.notifyAll();
+				}
+			}
+			
+			public void startTicking() 
+			{
+				synchronized(SLEEP_LOCK) 
+				{
+					run = true;
+					SLEEP_LOCK.notifyAll();
+				}
+			}
+			
+			public void stopTicking() 
+			{
+				synchronized(SLEEP_LOCK) 
+				{
+					run = false;
+				}
+			}
+		}
+		
 		public ClockThread() 
 		{
 			setName("emulation-clock-thread");
@@ -390,6 +461,7 @@ public final class Emulator implements IEmulator
 
 			if ( cmd.isTerminateCommand() ) {
 				out.info("Emulator thread terminated.");
+				tickThread.dispose();
 				acknowledgeCommand( cmd );
 				return;
 			}		   
@@ -397,8 +469,10 @@ public final class Emulator implements IEmulator
 			lastStart = System.currentTimeMillis();
 			cycleCountAtLastStart=cpu.currentCycle;
 
-			acknowledgeCommand( cmd );			
-
+			acknowledgeCommand( cmd );		
+			
+			tickThread.startTicking();
+			
 			while ( true ) 
 			{
 				if ( isRunnable.get() == false ) 
@@ -406,6 +480,8 @@ public final class Emulator implements IEmulator
 				    //  halt execution
 					lastStop = System.currentTimeMillis();
 					cycleCountAtLastStop = cpu.currentCycle;
+					
+					tickThread.stopTicking();
 
 					out.info("Emulator stopped.");
 					out.info("Executed cycles: "+(cycleCountAtLastStop-cycleCountAtLastStart) +" ( in "+getRuntimeInSeconds()+" seconds )");
@@ -413,57 +489,40 @@ public final class Emulator implements IEmulator
 
 					cmd = waitForStopCommand();
 					
-					if ( cmd.isTerminateCommand() ) {
+					if ( cmd.isTerminateCommand() ) 
+					{
+						tickThread.dispose();
 						acknowledgeCommand( cmd );                        
 						break;
 					}
+					
 					acknowledgeCommand( cmd );
 
 					cmd = waitForStartCommand();
 					
-					if ( cmd.isTerminateCommand() ) {
+					if ( cmd.isTerminateCommand() ) 
+					{
+						tickThread.dispose();
 						acknowledgeCommand( cmd );                        
 						break;
 					}   					
 
+					tickThread.startTicking();
+					
 					lastEmulationError = null;					
 					cycleCountAtLastStart = cpu.currentCycle;
-					executedCyclesCount = 0;
 					
 					lastStart = System.currentTimeMillis();  
 					acknowledgeCommand(cmd);
 				}
 
-				/* ================
-				 * Execute ONE instruction
-				 * ================
-				 */
 				final int durationInCycles = internalExecuteOneInstruction();
-				
 				if ( currentSpeed == EmulationSpeed.REAL_SPEED ) 
 				{
-					executedCyclesCount += durationInCycles;
-					
-					// adjust execution speed every 10000 cycles
-					// to account for CPU load changes / JIT / different instruction profiles
-					if ( executedCyclesCount >= 10000 ) {
-						final double deltaSeconds = ( System.currentTimeMillis() - lastStart) / 1000d;
-						final double cyclesPerSecond = (cpu.currentCycle-cycleCountAtLastStart) / deltaSeconds;
-						if ( ! Double.isInfinite( cyclesPerSecond ) ) {
-							adjustmentFactor = ( cyclesPerSecond / 100000.0d );
-						}
-						executedCyclesCount = 0;
-					}
-					
-					// delay execution, this code is exactly the same code as the one timed in
-					// measureDelayLoop()
-					int j = (int) (oneCycleDelay*durationInCycles*adjustmentFactor);
-					for (  ; j > 0 ; j-- ) {
-						dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
-					}					
+					cyclesLeft.addAndGet( -durationInCycles );
+					while( cyclesLeft.get() <= 0 ) { /* spin-wait */ }
 				}
 			}
-
 			out.info("Emulator thread terminated.");
 		}
 
@@ -562,38 +621,6 @@ public final class Emulator implements IEmulator
 			LOG.error("getRuntimeInSeconds(): Unreachable code reached");
 			throw new RuntimeException("Unreachable code reached");
 		}     		
-
-		protected final double measureDelayLoopInNanos() 
-		{
-			double averages = 0.0d;
-			int count = 0;
-			for ( int i = 0 ; i < 10 ; i++ ) {
-				averages += measureDelayLoop();
-				count++;
-			}
-			return (averages / count);
-		}
-
-		protected final double measureDelayLoop() 
-		{
-			final int oldValue = clockThread.oneCycleDelay;
-
-			final int LOOP_COUNT = 1000000;
-			oneCycleDelay = LOOP_COUNT;
-
-			final long nanoStart = System.nanoTime();
-
-			for ( int j = oneCycleDelay ; j > 0 ; j-- ) {
-				dummy = ((dummy*2+j*2)/3)/(dummy*7+j);
-			}
-
-			long durationNanos = ( System.nanoTime() - nanoStart );
-			if ( durationNanos < 0) {
-				durationNanos = -durationNanos;
-			}
-			oneCycleDelay = oldValue;
-			return ( (double) durationNanos / (double) LOOP_COUNT);
-		}	    
 
 		public String getEstimatedClockSpeed() 
 		{
@@ -1053,65 +1080,6 @@ public final class Emulator implements IEmulator
 		public void invoke(IEmulator emulator, IEmulationListener listener);
 	}
 
-	/* (non-Javadoc)
-	 * @see de.codesourcery.jasm16.emulator.IEmulator#calibrate()
-	 */
-	@Override
-	public synchronized void calibrate() 
-	{
-        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-            @Override
-            public void invoke(IEmulator emulator, IEmulationListener listener)
-            {
-                listener.beforeCalibration( emulator );
-            }
-        }); 
-        
-		final double EXPECTED_CYCLES_PER_SECOND = 100000; // 100 kHz       
-		final double expectedNanosPerCycle = (1000.0d * 1000000.0d) / EXPECTED_CYCLES_PER_SECOND;       
-
-		out.info("Measuring delay loop...");
-		/*
-		 * Warm-up JVM / JIT.
-		 */
-		double sum =0.0d;
-		for ( int i = 0 ; i < 5 ; i++ ) {
-			final double tmp = clockThread.measureDelayLoopInNanos();
-			sum+= tmp;
-		}
-
-		/*
-		 * Repeatedly measure the execution time
-		 * for a single delay-loop iteration.
-		 */
-		final int LOOP_COUNT=5;
-		sum =0.0d;
-
-		for ( int i = 0 ; i < LOOP_COUNT ; i++ ) {
-			final double tmp = clockThread.measureDelayLoopInNanos();
-			sum+= tmp;
-		}
-
-		final double nanosPerDelayLoopExecution = sum / LOOP_COUNT;
-		out.info("one delay-loop iteration = "+nanosPerDelayLoopExecution+" nanoseconds.");
-		final double loopIterationsPerCycle = expectedNanosPerCycle / nanosPerDelayLoopExecution;
-
-		clockThread.adjustmentFactor = 1.0d;
-		clockThread.oneCycleDelay = (int) Math.round( loopIterationsPerCycle );
-
-		out.info("one CPU cycle = "+clockThread.oneCycleDelay+" delay-loop iterations.");
-		
-        listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
-
-            @Override
-            public void invoke(IEmulator emulator, IEmulationListener listener)
-            {
-                listener.afterCalibration( emulator );
-            }
-        }); 		
-	}
-
 	@Override
 	public IReadOnlyCPU getCPU()
 	{
@@ -1420,15 +1388,12 @@ public final class Emulator implements IEmulator
 			return;
 		}
 
-		if ( newSpeed == EmulationSpeed.REAL_SPEED && ! isCalibrated() ) {
-			calibrate();
-		}
-
 		final EmulationSpeed oldSpeed = this.emulationSpeed;
 		
 		final boolean wasRunning = stop();
 		
 		clockThread.changeSpeed( newSpeed );
+		
 		this.emulationSpeed = newSpeed;  		
 
 		listenerHelper.notifyListeners( new IEmulationListenerInvoker() {
@@ -1443,11 +1408,6 @@ public final class Emulator implements IEmulator
 		if ( wasRunning ) {
 			start();
 		}
-	}
-
-	@Override
-	public boolean isCalibrated() {
-		return clockThread.oneCycleDelay != -1;
 	}
 
 	@Override
