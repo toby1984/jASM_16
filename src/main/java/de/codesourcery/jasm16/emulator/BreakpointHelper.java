@@ -51,7 +51,6 @@ final class BreakpointHelper {
 		if ( enabledBreakpointsCount == 0 ) {
 			return;
 		}
-		System.out.println("Checking breakpoints...");
 		
 		/*
 		 * We can have at most 2 breakpoints at any address,
