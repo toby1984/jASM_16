@@ -19,8 +19,7 @@ final class BreakpointHelper {
 	// @GuardedBy( breakpoints )
 	protected final Map<Address,List<Breakpoint>> breakpoints = new HashMap<Address,List<Breakpoint>>(); 
 	
-	// @GuardedBy( breakpoints )	
-	private int enabledBreakpointsCount = 0;
+	private volatile int enabledBreakpointsCount = 0;
 	
 	private final IEmulator emulator;
 	private final ListenerHelper listenerHelper;
@@ -49,6 +48,11 @@ final class BreakpointHelper {
 	
 	public void maybeHandleBreakpoint(CPU hiddenCPU) 
 	{
+		if ( enabledBreakpointsCount == 0 ) {
+			return;
+		}
+		System.out.println("Checking breakpoints...");
+		
 		/*
 		 * We can have at most 2 breakpoints at any address,
 		 * one regular (user-defined) breakpoint and
@@ -59,10 +63,6 @@ final class BreakpointHelper {
 		
 		synchronized( breakpoints ) 
 		{
-			if ( enabledBreakpointsCount == 0 ) {
-				return;
-			}
-			
 			final List<Breakpoint> candidates = breakpoints.get( Address.wordAddress( hiddenCPU.pc ) ); 
 
 			if ( candidates == null || candidates.isEmpty() ) 

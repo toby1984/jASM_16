@@ -40,6 +40,7 @@ import de.codesourcery.jasm16.compiler.io.IResource;
 import de.codesourcery.jasm16.compiler.io.IResource.ResourceType;
 import de.codesourcery.jasm16.compiler.io.IResourceResolver;
 import de.codesourcery.jasm16.compiler.io.StringResource;
+import de.codesourcery.jasm16.emulator.ILogger.LogLevel;
 import de.codesourcery.jasm16.exceptions.ParseException;
 import de.codesourcery.jasm16.lexer.ILexer;
 import de.codesourcery.jasm16.lexer.Lexer;
@@ -122,12 +123,16 @@ public class Breakpoint
     		this.condition = newCondition;
     		
     		boolean success = false;
+    		final Emulator emu = new Emulator();
+    		emu.setOutput( ILogger.NOP_LOGGER );
     		try 
     		{
-        		calculateConditionValue( new Emulator() );   
+        		calculateConditionValue( emu );   
         		success = true;
     		} 
-    		finally {
+    		finally 
+    		{
+    			emu.dispose();
     			if ( ! success ) {
     				this.condition = oldValue;
     			}

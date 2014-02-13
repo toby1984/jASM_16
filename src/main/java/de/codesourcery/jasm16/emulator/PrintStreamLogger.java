@@ -31,7 +31,7 @@ public class PrintStreamLogger implements ILogger {
 	}
 	
 	@Override
-	public void setLogLevel(LogLevel logLevel)
+	public PrintStreamLogger setLogLevel(LogLevel logLevel)
 	{
 	    if (logLevel == null) {
             throw new IllegalArgumentException("logLevel must not be NULL.");
@@ -39,7 +39,8 @@ public class PrintStreamLogger implements ILogger {
 	    this.logLevel=logLevel;
         synchronized ( stream ) {
             stream.println( "Loglevel changed to "+logLevel);
-        }   	    
+        }   	  
+        return this;
 	}
 
 	@Override

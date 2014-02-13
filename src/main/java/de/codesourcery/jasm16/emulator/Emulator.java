@@ -186,8 +186,9 @@ public final class Emulator implements IEmulator
 	private final ILogger out = new ILogger() {
 
 	    @Override
-	    public void setLogLevel(de.codesourcery.jasm16.emulator.ILogger.LogLevel logLevel) {
+	    public ILogger setLogLevel(de.codesourcery.jasm16.emulator.ILogger.LogLevel logLevel) {
 	        loggerDelegate.setLogLevel( logLevel );
+	        return this;
 	    }
 
 	    @Override
@@ -1534,6 +1535,8 @@ public final class Emulator implements IEmulator
 		this.haltOnStoreToImmediateValue = doCrashOnImmediate;
 	}	
 	
+	protected final Object IRQ_QUEUE_LOCK = new Object();
+	
     protected final class CPU implements ICPU {
 
         // transient, only used inside of executeOneInstruction() code path
@@ -1556,19 +1559,22 @@ public final class Emulator implements IEmulator
 
         public int pc;
         public int sp;
-        public Address interruptAddress;
+        public int interruptAddress;
 
         public boolean queueInterrupts;
 
+        // @GuardedBy( IRQ_QUEUE_LOCK )        
         public IInterrupt currentInterrupt;
-        public CopyOnWriteList<IInterrupt> interruptQueue= new CopyOnWriteList<IInterrupt>();
+        
+        // @GuardedBy( IRQ_QUEUE_LOCK )
+        public CopyOnWriteList<IInterrupt> irqQueue= new CopyOnWriteList<IInterrupt>();
 
         public int currentCycle;
 
         public CPU(MainMemory memory) 
         {
         	sp = pc = 0;
-            interruptAddress = WordAddress.ZERO;
+            interruptAddress = 0;
             this.memory = memory;
         }
 
@@ -1592,7 +1598,7 @@ public final class Emulator implements IEmulator
             this.interruptAddress = other.interruptAddress;
             this.queueInterrupts = other.queueInterrupts;
             this.currentInterrupt = other.currentInterrupt;
-            this.interruptQueue = other.interruptQueue.createCopy();
+            this.irqQueue = other.irqQueue.createCopy();
         }           
 
         public boolean triggerInterrupt(IInterrupt interrupt) 
@@ -1601,45 +1607,38 @@ public final class Emulator implements IEmulator
                 return false;
             }
 
-            synchronized ( interruptQueue ) 
+            synchronized ( IRQ_QUEUE_LOCK ) 
             {
                 if ( currentInterrupt == null && ! isQueueInterrupts() ) {
                     currentInterrupt  = interrupt;
                 } 
                 else 
                 { // there's either already an IRQ waiting to be processed or the CPU is currently told to queue interrupts
-                    if ( interruptQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
+                    if ( irqQueue.size() >= INTERRUPT_QUEUE_SIZE ) 
                     {
-                        throw new InterruptQueueFullException("Interrupt queue full ("+interruptQueue.size()+" entries already) , can't store "+interrupt);
+                        throw new InterruptQueueFullException("Interrupt queue full ("+irqQueue.size()+" entries already) , can't store "+interrupt);
                     }
                     setQueueInterrupts( true );
-                    interruptQueue.add( interrupt );
+                    irqQueue.add( interrupt );
                 } 
             }
             return true;
         }        
 
-        public IInterrupt getNextProcessableInterrupt(boolean removeFromQueue) 
+        public IInterrupt getNextProcessableInterrupt() 
         {
-            synchronized( interruptQueue ) 
+            synchronized( IRQ_QUEUE_LOCK ) 
             {
                 if ( currentInterrupt != null ) 
                 {
-                    if ( ! removeFromQueue ) {
-                        return currentInterrupt;
-                    }
-
                     final IInterrupt irq = currentInterrupt;
                     currentInterrupt = null;
                     return irq;
                 } 
 
-                if ( ! interruptQueue.isEmpty() && ! isQueueInterrupts() ) 
+                if ( ! irqQueue.isEmpty() && ! isQueueInterrupts() ) 
                 {
-                    if ( removeFromQueue ) {
-                        return interruptQueue.remove(0);
-                    } 
-                    return interruptQueue.get(0);
+                   return irqQueue.remove(0);
                 }
             }
             return null;
@@ -1647,15 +1646,25 @@ public final class Emulator implements IEmulator
 
         public void reset()
         {
-            currentCycle = 0;
-            queueInterrupts = false;
-            interruptQueue.clear();
-            sp = pc = 0;
-            interruptAddress = WordAddress.ZERO;
-            ex = 0;
-            for ( int i = 0 ; i < commonRegisters.length ; i++ ) {
-                commonRegisters[i]=0;
+            synchronized( IRQ_QUEUE_LOCK ) 
+            {
+                currentCycle = 0;
+                queueInterrupts = false;            	
+            	irqQueue.clear();
             }
+            
+            sp = pc = 0;
+            interruptAddress = 0;
+            ex = 0;
+            
+            commonRegisters[0]=0;
+            commonRegisters[1]=0;
+            commonRegisters[2]=0;
+            commonRegisters[3]=0;
+            commonRegisters[4]=0;
+            commonRegisters[5]=0;
+            commonRegisters[6]=0;
+            commonRegisters[7]=0;
         }        
 
         @Override
@@ -1675,7 +1684,7 @@ public final class Emulator implements IEmulator
 
         @Override
         public Address getInterruptAddress() {
-            return interruptAddress;
+            return Address.wordAddress( interruptAddress );
         }
 
         @Override
@@ -1769,12 +1778,15 @@ public final class Emulator implements IEmulator
 
         @Override
         public boolean interruptsEnabled() {
-            return interruptAddress != null && interruptAddress.getValue() != 0;
+            return interruptAddress != 0;
         }
 
         @Override
-        public List<IInterrupt> getInterruptQueue() {
-            return interruptQueue;
+        public List<IInterrupt> getInterruptQueue() 
+        {
+        	synchronized(IRQ_QUEUE_LOCK) {
+        		return new ArrayList<>( irqQueue );
+        	}
         }
 
         // ==============
@@ -2007,14 +2019,6 @@ public final class Emulator implements IEmulator
 
         private void handleUnknownOpCode(int instructionWord) 
         {
-            // final Disassembler dis = new Disassembler();
-            // assume worst-case , each instruction only is one word
-//            final int instructionCount = Address.calcDistanceInBytes( Address.wordAddress( 0 ) , Address.wordAddress( pc ) ).toSizeInWords().getValue();
-//            List<DisassembledLine> lines = dis.disassemble( memory , Address.wordAddress( 0 ) , instructionCount , true );
-//            for (DisassembledLine line : lines) {
-//                out.info( Misc.toHexString( line.getAddress() )+": "+line.getContents());
-//            }
-            
             Address lastValid = Address.wordAddress( lastValidInstruction );
             final String msg = "Unknown opcode 0x"+Misc.toHexString( instructionWord )+
                     " at address "+"0x"+Misc.toHexString( pc )+
@@ -2319,18 +2323,6 @@ public final class Emulator implements IEmulator
             storeTargetOperand( instructionWord , acc );            
            	currentCycle += 2;
            	ex = tmpEx;
-        }
-
-        private int signed( int value) 
-        {
-            if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
-                return  0xffff0000 | value;
-            }
-            return value;
-        }
-        
-        private boolean isSignBitSet(int value) {
-        	return ( value & ( 1 << 15 ) ) != 0;
         }
 
         private void handleMUL(int instructionWord) 
@@ -2947,13 +2939,13 @@ public final class Emulator implements IEmulator
         {
             // IAS a => sets IA to a
             final int operand = loadSourceOperand( instructionWord );
-            interruptAddress = Address.wordAddress( operand );
+            interruptAddress = operand & 0xffff;
             currentCycle += 1;
         }
 
         private void handleIAG(int instructionWord) {
             // IAG a => sets A to IA
-        	storeTargetOperand( instructionWord , interruptAddress.getValue() );        	
+        	storeTargetOperand( instructionWord , interruptAddress );        	
         	currentCycle += 1;
         }
 
@@ -2988,26 +2980,36 @@ public final class Emulator implements IEmulator
             memory.write( sp , value );
         }           
         
-        public boolean maybeProcessOneInterrupt() 
+        public void maybeProcessOneInterrupt() 
         {
             if ( interruptsEnabled() ) 
             { 
-                final IInterrupt irq = getNextProcessableInterrupt( true );
+                final IInterrupt irq = getNextProcessableInterrupt();
                 if ( irq != null ) 
                 {
                     // push PC to stack
-					// SET [ --SP ] , PC
 					push( pc );
 					
 					// push A to stack
 					push( commonRegisters[0] );
 					
-					pc = interruptAddress.getWordAddressValue();
+					pc = interruptAddress;
 					commonRegisters[0] = irq.getMessage() & 0xffff;
-                    return true;
                 }
             }
-            return false;
         }        
-    } // end of class: CPU	
+        
+    } // end of class: CPU
+    
+    protected static int signed( int value) 
+    {
+        if ( ( value & ( 1 << 15 ) ) != 0 ) { // MSB set => negative value
+            return  0xffff0000 | value;
+        }
+        return value;
+    }
+    
+    protected static boolean isSignBitSet(int value) {
+    	return ( value & ( 1 << 15 ) ) != 0;
+    }    
 }

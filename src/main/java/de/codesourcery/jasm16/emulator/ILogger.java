@@ -37,7 +37,7 @@ public interface ILogger {
     public static final ILogger NOP_LOGGER = new ILogger() {
 
         @Override
-        public void setLogLevel(LogLevel lovLevel) {}
+        public ILogger setLogLevel(LogLevel lovLevel) { return this; }
 
         @Override
         public boolean isDebugEnabled() {return false;}
@@ -67,7 +67,7 @@ public interface ILogger {
         public void debug(String message, Throwable cause) {}
     };
     
-	public void setLogLevel(LogLevel logLevel);
+	public ILogger setLogLevel(LogLevel logLevel);
 	
 	public boolean isDebugEnabled();
 
