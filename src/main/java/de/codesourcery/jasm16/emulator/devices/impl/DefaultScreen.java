@@ -53,6 +53,8 @@ public final class DefaultScreen implements IDevice {
 
     private static final boolean ENABLE_SCREEN_REDRAW = true;
     
+    private static final float FPS = 25.0f;
+    
     public static final int STANDARD_SCREEN_ROWS = 12;
     public static final int STANDARD_SCREEN_COLUMNS = 32;
 
@@ -146,7 +148,7 @@ public final class DefaultScreen implements IDevice {
             try {
                 while(!terminate) 
                 {
-                    LockSupport.parkNanos( (1000 / 30) * 1000000 );
+                    LockSupport.parkNanos( (long) ( (1000 / FPS) * 1000000 ) );
 
                     if ( ENABLE_SCREEN_REDRAW ) {
                     	renderScreen();

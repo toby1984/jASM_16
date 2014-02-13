@@ -24,26 +24,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Register;
-import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
-import de.codesourcery.jasm16.ast.OperandNode.OperandPosition;
-import de.codesourcery.jasm16.emulator.devices.DeviceDescriptor;
-import de.codesourcery.jasm16.emulator.devices.IDevice;
-import de.codesourcery.jasm16.emulator.devices.IInterrupt;
-import de.codesourcery.jasm16.emulator.devices.SoftwareInterrupt;
-import de.codesourcery.jasm16.emulator.exceptions.DeviceErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.EmulationErrorException;
-import de.codesourcery.jasm16.emulator.exceptions.InterruptQueueFullException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidDeviceSlotNumberException;
-import de.codesourcery.jasm16.emulator.exceptions.InvalidTargetOperandException;
-import de.codesourcery.jasm16.emulator.exceptions.UnknownOpcodeException;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion;
-import de.codesourcery.jasm16.emulator.memory.IReadOnlyMemory;
-import de.codesourcery.jasm16.emulator.memory.MainMemory;
-import de.codesourcery.jasm16.emulator.memory.MemUtils;
+import de.codesourcery.jasm16.*;
+import de.codesourcery.jasm16.emulator.devices.*;
+import de.codesourcery.jasm16.emulator.exceptions.*;
+import de.codesourcery.jasm16.emulator.memory.*;
 import de.codesourcery.jasm16.utils.Misc;
 
 /**
@@ -723,7 +707,7 @@ public final class Emulator implements IEmulator
 						// note-to-self: I cannot simply do ( currentPC - previousPC ) here because 
 						// the instruction might've been a JSR or ADD PC, X / SUB PC,Y or
 						// a jump into an interrupt handler that skipped over non-instruction memory
-						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc , memory );
+						final int sizeInWords = calculateInstructionSizeInWords( visibleCPU.pc );
 						memory.writeProtect( new AddressRange( Address.wordAddress( visibleCPU.pc ) , Size.words( sizeInWords )) );
 					}
 					
@@ -793,7 +777,7 @@ public final class Emulator implements IEmulator
     {
        synchronized(CPU_LOCK) 
        {
-           cpu.pc += calculateInstructionSizeInWords( cpu.pc , memory );
+           cpu.pc += calculateInstructionSizeInWords( cpu.pc );
            visibleCPU.populateFrom( cpu );
        }
        afterCommandExecution( visibleCPU );
@@ -803,7 +787,58 @@ public final class Emulator implements IEmulator
         return calculateInstructionSizeInWords(address.getWordAddressValue() , memory );
     }
     
-	public static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) 
+	private int calculateInstructionSizeInWords(int address) 
+	{
+        final int instructionWord = memory.read( address );
+
+		final int opCode = (instructionWord & 0x1f);
+
+		switch( opCode ) 
+		{
+			case 0x00: // skip special opcode
+				return 1 + getOperandsSizeInWordsForSpecialInstruction( instructionWord );
+			case 0x01: // SET
+			case 0x02: // ADD
+			case 0x03: // SUB
+			case 0x04: // MUL
+			case 0x05: // MLI
+			case 0x06: // DIV
+			case 0x07: // DVI
+			case 0x08: // MOD
+			case 0x09: // MDI
+			case 0x0a: // AND
+			case 0x0b: // BOR
+			case 0x0c: // XOR
+			case 0x0d: // SHR
+			case 0x0e: // ASR
+			case 0x0f: // SHL
+			case 0x10: // IFB
+			case 0x11: // IFC
+			case 0x12: // IFE
+			case 0x13: // IFN
+			case 0x14: // IFG
+			case 0x15: // IFA
+			case 0x16: // IFL
+			case 0x17: // IFU
+				return 1+getOperandsSizeInWordsForBasicInstruction(instructionWord);
+			case 0x18: // UNKNOWN
+			case 0x19: // UNKNOWN;
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+			case 0x1a: // ADX
+			case 0x1b: // SBX
+				return 1+getOperandsSizeInWordsForBasicInstruction(instructionWord);
+			case 0x1c: // UNKNOWN
+			case 0x1d: // UNKNOWN
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+			case 0x1e: // STI
+			case 0x1f: // STD
+				return 1+getOperandsSizeInWordsForBasicInstruction( instructionWord );
+			default:
+				return 1+getOperandsSizeInWordsForUnknownInstruction( instructionWord );
+		}
+	}    
+    
+	private static int calculateInstructionSizeInWords(int address,IReadOnlyMemory memory) 
 	{
 		@SuppressWarnings("deprecation")
         final int instructionWord = memory.read( address );
@@ -962,7 +997,7 @@ public final class Emulator implements IEmulator
 			throw new IllegalStateException("PC is not at a JSR instruction, cannot skip return");
 		}
 
-		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( cpu.pc , memory );
+		final int currentInstructionSizeInWords = calculateInstructionSizeInWords( cpu.pc );
 		final Address nextInstruction = Address.wordAddress( cpu.pc ).plus( Size.words( currentInstructionSizeInWords ) , true );
 		addBreakpoint( new OneShotBreakpoint( nextInstruction ) );
 		start();
@@ -2004,13 +2039,13 @@ public final class Emulator implements IEmulator
         {
     		boolean skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
     		
-    		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+    		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr );
     		
     		if ( skippedInstructionIsConditional ) 
     		{
     			do {
     				skippedInstructionIsConditional = isConditionalInstruction( memory.read( currentInstructionPtr ) );
-            		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr , memory );
+            		currentInstructionPtr += calculateInstructionSizeInWords( currentInstructionPtr );
     			} while ( skippedInstructionIsConditional );
     			return 2;
     		}
@@ -2070,11 +2105,11 @@ public final class Emulator implements IEmulator
             int source = loadSourceOperand( instructionWord );
             int target = loadTargetOperand( instructionWord , true );
 
-            int penalty=0;
             if ( target != source ) {
-                penalty = handleConditionFailure();
+            	currentCycle +=  2 + handleConditionFailure();
+            } else {
+            	currentCycle +=  2;
             }
-            currentCycle +=  2+penalty;       
         }
 
         private void handleIFC(int instructionWord) {

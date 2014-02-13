@@ -69,20 +69,30 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     }
 
     @Override
-    public boolean contains(int wordAddress) {
+    public final boolean contains(int wordAddress) {
     	return addressRange.contains( wordAddress );
     }
     
     @Override
-    public long getTypeId() {
+    public final boolean equals(Object o) {
+    	return this == o;
+    }
+    
+    @Override
+    public final int hashCode() {
+    	return super.hashCode();
+    }
+    
+    @Override
+    public final long getTypeId() {
     	return typeId;
     }
     
-    public Set<Flag> getFlags() {
+    public final Set<Flag> getFlags() {
 		return new HashSet<Flag>( this.flags );
 	}
     
-    public boolean hasFlag(Flag flag) {
+    public final boolean hasFlag(Flag flag) {
     	if (flag == null) {
 			throw new IllegalArgumentException("flag must not be null");
 		}
@@ -90,7 +100,7 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     }
     
     @Override
-    public boolean supportsMerging()
+    public final boolean supportsMerging()
     {
         return supportsMerging;
     }
@@ -121,13 +131,13 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     }
 
     @Override
-    public Size getSize()
+    public final Size getSize()
     {
         return addressRange.getSize();
     }
 
     @Override
-    public String getRegionName()
+    public final String getRegionName()
     {
         return regionName;
     }
@@ -159,7 +169,7 @@ public class MemoryRegion implements IMemoryRegion , IMemoryTypes {
     }
 
     @Override
-    public AddressRange getAddressRange()
+    public final AddressRange getAddressRange()
     {
         return addressRange;
     }

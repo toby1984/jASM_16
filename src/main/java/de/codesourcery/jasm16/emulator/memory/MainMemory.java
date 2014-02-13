@@ -16,20 +16,13 @@
 package de.codesourcery.jasm16.emulator.memory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 
-import de.codesourcery.jasm16.Address;
-import de.codesourcery.jasm16.AddressRange;
-import de.codesourcery.jasm16.Size;
-import de.codesourcery.jasm16.WordAddress;
+import de.codesourcery.jasm16.*;
 import de.codesourcery.jasm16.emulator.ILogger;
 import de.codesourcery.jasm16.emulator.exceptions.MemoryProtectionFaultException;
-import de.codesourcery.jasm16.emulator.memory.IMemoryRegion.Flag;
 import de.codesourcery.jasm16.utils.Bitfield;
 import de.codesourcery.jasm16.utils.Misc;
 
@@ -44,91 +37,138 @@ import de.codesourcery.jasm16.utils.Misc;
 public final class MainMemory implements IMemory, IMemoryTypes
 {
 	private static final Logger LOG = Logger.getLogger(MainMemory.class);
-	
-	private final IMemoryRegion NOP_RANGE = new IMemoryRegion() {
 
-		@Override
-		public void clear() {
-			throw new UnsupportedOperationException("Not implemented");
-		}
+	private static final int ADR_CACHE_BIT_COUNT = 4;
+	private static final int ADR_CACHE_MASK = ( (1<<ADR_CACHE_BIT_COUNT)-1 ) << (16-ADR_CACHE_BIT_COUNT);
 
-		@Override
-		public void write(int wordAddress, int value) {
-			throw new UnsupportedOperationException("Not implemented");
-		}
-
-		@Override
-		public void write(Address address, int value) {
-			throw new UnsupportedOperationException("Not implemented");
-		}
-
-		@Override
-		public Size getSize() {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public int read(int wordAddress) {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public int read(Address address) {
-			throw new UnsupportedOperationException("Not implemented");
-		}
-
-		@Override
-		public Set<Flag> getFlags() {
-			return Collections.emptySet();
-		}
-
-		@Override
-		public boolean hasFlag(Flag flag) {
-			return false;
-		}
-
-		@Override
-		public long getTypeId() {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public AddressRange getAddressRange() {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public String getRegionName() {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public boolean supportsMerging() {
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public List<IMemoryRegion> split(AddressRange gap) throws IllegalArgumentException 
-		{
-			throw new UnsupportedOperationException("Not implemented");			
-		}
-
-		@Override
-		public boolean contains(int wordAddress) {
-			return false;
-		}		
-	};
-	
-	private IMemoryRegion lastReadLookup = NOP_RANGE;
-	private IMemoryRegion lastWriteLookup = NOP_RANGE;	
-	
 	// GuardedBy( regions )
-	private final List<IMemoryRegion> regions = new ArrayList<IMemoryRegion>(); 
-	private volatile boolean checkWriteAccess;
+	private final FastList regions;
+
+	protected final class FastList 
+	{
+		public final List<IMemoryRegion> regionList = new ArrayList<>();
+
+		public final ArrayList<IMemoryRegion>[] regionCache = new ArrayList[1<<ADR_CACHE_BIT_COUNT];	
+
+		public FastList(IMemoryRegion mainMemory) 
+		{
+			regionList.add( mainMemory );
+			for ( int i = 0 ; i < regionCache.length ; i++) 
+			{
+				final ArrayList<IMemoryRegion> list = new ArrayList<IMemoryRegion>();
+				list.add( mainMemory );
+				regionCache[i] = list;
+			}
+		}    
+
+		public IMemoryRegion getRegion(final int wordAddress) 
+		{
+			final int slotIdx = wordAddressToSlotIndex( wordAddress );
+			final List<IMemoryRegion> list = regionCache[slotIdx];
+			final int len = list.size();
+			for ( int i = 0 ; i < len ; i++ ) 
+			{
+				final IMemoryRegion current = list.get(i);
+				if ( current.contains( wordAddress ) ) {
+					return current;
+				}
+			}	
+			
+			// address not mapped...
+			LOG.error("getRegion(): Access to unmapped address 0x"+Misc.toHexString( wordAddress ) );
+			LOG.error("getRegion(): Memory layout:\n\n");
+			for ( IMemoryRegion r : regionList ) 
+			{
+				LOG.error("getRegion(): " + r );
+			}
+			
+			final int slotCount = 1 << ADR_CACHE_BIT_COUNT;
+			final Size sizePerSlot = Size.words( 65536 / slotCount );
+			for ( int i =0 ; i < regionCache.length ; i++ ) 
+			{
+				final Address start = Address.wordAddress( i*sizePerSlot.getSizeInWords() );
+				final AddressRange range = new AddressRange(start,sizePerSlot);
+				LOG.error("getRegion(): Slot #"+i+" ("+range+") : "+regionCache[i]);
+			}
+			throw new RuntimeException("Internal error, address not mapped: 0x"+Misc.toHexString( wordAddress ));				
+		}
+
+		public void replace(IMemoryRegion oldRegion,IMemoryRegion newRegion,int idx) 
+		{
+			regionList.set(idx , newRegion);
+			
+			int startIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getStartAddress().getWordAddressValue() );
+			int endIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
+			for ( int i = startIndex ; i <= endIndex ; i++ ) 
+			{
+				regionCache[i].remove(oldRegion);
+			}			
+
+			startIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getStartAddress().getWordAddressValue() );
+			endIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
+			for ( int i = startIndex ; i <= endIndex ; i++ ) 
+			{
+				regionCache[i].add( newRegion );
+			}			
+		}	
+
+		public void replace(IMemoryRegion oldRegion,List<IMemoryRegion> newRegions,int idx) 
+		{
+			regionList.remove(idx);
+			
+			int startIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getStartAddress().getWordAddressValue() );
+			int endIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
+			for ( int i = startIndex ; i <= endIndex ; i++ ) 
+			{
+				regionCache[i].remove(oldRegion);
+			}	
+			
+			final int len2 = newRegions.size();
+			for (int i = 0; i < len2; i++) 
+			{
+				final IMemoryRegion newRegion = newRegions.get(i);
+				regionList.add( newRegion );
+				
+				startIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getStartAddress().getWordAddressValue() );
+				endIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
+				for ( int j = startIndex ; j <= endIndex ; j++ ) {
+					regionCache[j].add( newRegion );
+				}		
+			}
+		}			
+
+		public void add(IMemoryRegion r) 
+		{
+			regionList.add( r );
+			
+			final int startIndex = wordAddressToSlotIndex( r.getAddressRange().getStartAddress().getWordAddressValue() );
+			final int endIndex = wordAddressToSlotIndex( r.getAddressRange().getEndAddress().getWordAddressValue()-1 );
+			for ( int j = startIndex ; j <= endIndex ; j++ ) {
+				regionCache[j].add( r );
+			}				
+		}			
+	}
+
+	protected static final int createAdressCacheMask() 
+	{
+		int mask=0;
+		for ( int i = 0 ; i < ADR_CACHE_BIT_COUNT ; i++ ) 
+		{
+			mask = mask << 1;
+			mask |= 1;
+		}
+		return mask << ( 15 - ADR_CACHE_BIT_COUNT );
+	}
+
+	protected static final int wordAddressToSlotIndex(int wordAddress) {
+		return (wordAddress & ADR_CACHE_MASK) >> (16-ADR_CACHE_BIT_COUNT);
+	}
+
+	protected volatile boolean checkWriteAccess;
 
 	// list of AddressRange instances that will trigger an exception 
 	// when being written to
-	private final Bitfield writeProtectedMemoryRanges;
+	protected final Bitfield writeProtectedMemoryRanges;
 
 	public MainMemory(int sizeInWords) 
 	{
@@ -138,7 +178,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	public MainMemory(int sizeInWords,boolean checkWriteAccess) 
 	{
 		final IMemoryRegion mainMemory = createMainMemory( new AddressRange( WordAddress.ZERO , Size.words( 65536 ) ) );
-		regions.add( mainMemory );
+		this.regions = new FastList(mainMemory);
 		this.writeProtectedMemoryRanges = new Bitfield( sizeInWords );
 		this.checkWriteAccess = checkWriteAccess;
 	}    
@@ -154,8 +194,9 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	public void dumpMemoryLayout(ILogger logger) 
 	{
 		logger.debug("Memory layout");
-		synchronized( regions ) {
-			for ( IMemoryRegion region : regions ) {
+		synchronized( regions ) 
+		{
+			for ( IMemoryRegion region : regions.regionList ) {
 				logger.debug( region.toString() );
 			}
 		}
@@ -165,8 +206,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	public void clear()
 	{
 		synchronized(regions) {
-			lastReadLookup = lastWriteLookup = NOP_RANGE;
-			for ( IMemory r : regions ) {
+			for ( IMemory r : regions.regionList ) {
 				r.clear();
 			}
 		}
@@ -219,83 +259,21 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
+		final int slotIdx = wordAddressToSlotIndex( region.getAddressRange().getStartAddress().getWordAddressValue() );		
 		synchronized(regions) 
 		{
-			lastReadLookup = lastWriteLookup = NOP_RANGE;			
-			
-		    boolean found = false;
-			for (Iterator<IMemoryRegion> it = regions.iterator(); it.hasNext();) {
-				final IMemoryRegion existing = it.next();
-				if ( existing == region ) 
+			final List<IMemoryRegion> list = regions.regionCache[slotIdx];
+			for ( int i = 0 ; i < list.size() ; i++ ) {
+				if ( list.get(i) == region ) 
 				{
-					mapRegion( createMainMemory( existing.getAddressRange() ) , true );
-					found = true;
-					return; // *RETURNS* from method , do not try merging adjacent memory regions because of performance hit on double-buffering
+					mapRegion( createMainMemory( region.getAddressRange() ) , true );		    		
+					return;
 				}
 			}
-			
-			if ( ! found ) {
-		        throw new IllegalArgumentException("Cannot unmap unknown region "+region);			    
-			}
-			
-			// TODO: this code is currently never executed because
-			// TODO: it incurs a HEAVY performance hit on 
-			// TODO: emulation performance for applications that
-			// TODO: do double-buffering (=remapping VRAM constantly)
-			
-            // merge adjactant memory regions that support it
-            for ( int index = 1 ; index < regions.size() ; index++ )
-            {
-                final IMemoryRegion previous = regions.get(index-1);
-                final IMemoryRegion current = regions.get(index);
-                
-                if ( supportMerging( previous,current ) && 
-                     previous.getAddressRange().getEndAddress().equals( current.getAddressRange().getStartAddress() ) ) 
-                {
-                    final AddressRange mergedRange = new AddressRange( previous.getAddressRange().getStartAddress() , current.getAddressRange().getEndAddress() );
-                    final IMemoryRegion combined = createMainMemory( mergedRange );
-                    MemUtils.memCopy( this , combined , mergedRange.getStartAddress() , mergedRange.getSize() );
-                    regions.remove( index );
-                    regions.set( index -1 , combined );
-                    index--;
-                }
-            }   	
+			throw new IllegalArgumentException("Cannot unmap unknown region "+region);			    
 		}
-	}
-	
-	private boolean supportMerging(IMemoryRegion r1,IMemoryRegion r2) 
-	{
-		if ( ! r1.supportsMerging() || ! r2.supportsMerging() ) {
-			return false;
-		}
-		if ( r1.hasFlag(Flag.MEMORY_MAPPED_HW) || r2.hasFlag( Flag.MEMORY_MAPPED_HW ) ) {
-			return false;
-		}
-		return true;
 	}
 
-	/**
-	 * Returns all memory regions that are mapped
-	 * to a specific address range.
-	 * 
-	 * @param range
-	 * @return
-	 */
-	public List<IMemoryRegion> getRegions(AddressRange range) {
-		
-		List<IMemoryRegion> result = new ArrayList<>();
-		synchronized( regions ) 
-		{
-			for ( IMemoryRegion existing : regions ) 
-			{
-				if ( existing.getAddressRange().intersectsWith( range ) ) {
-					result.add( existing );
-				}
-			}
-		}
-		return result;
-	}
-	
 	/**
 	 * Maps main memory to a specific region.
 	 * 
@@ -306,74 +284,60 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	{
 		mapRegion(newRegion,false);
 	}
-	
-	private void mapRegion(IMemoryRegion newRegion,boolean calledByUnmap) 
+
+	private void mapRegion(final IMemoryRegion newRegion,final boolean calledByUnmap) 
 	{
 		if (newRegion == null) {
 			throw new IllegalArgumentException("region must not be NULL.");
 		}
 
-		// refuse mapping if address holds regions of different types
-		if ( ! calledByUnmap ) 
-		{
-			final long newTypeId = newRegion.getTypeId();
-			for ( IMemoryRegion existing : getRegions( newRegion.getAddressRange() ) ) 
-			{
-				if ( existing.getTypeId() != TYPE_RAM && existing.getTypeId() != newTypeId ) 
-				{
-					LOG.error("Cannot map region "+newRegion+" , address range already holds region "+existing);
-					throw new IllegalStateException("Cannot map region "+newRegion+" , address range already holds region "+existing);
-				}
-			}
-		}
-		
 		synchronized( regions ) 
 		{
-			lastReadLookup = lastWriteLookup = NOP_RANGE;
-			
 			// copy existing memory contents into new region
 			MemUtils.memCopy( this , newRegion , newRegion.getAddressRange().getStartAddress() , newRegion.getSize() );
 			
-			boolean intersects = false;
-			do 
+			final List<IMemoryRegion> regions = MainMemory.this.regions.regionList;
+
+			final long newTypeId = newRegion.getTypeId();
+
+			boolean added = false;
+			int len = regions.size();
+			for ( int i = 0 ; i < len ; i++ ) 
 			{
-				intersects = false;
-				int index = 0;
-				
-				final int len = regions.size();
-				for ( int i = 0 ; i < len ; i++ ) 
+				final IMemoryRegion existing = regions.get(i);
+				if ( existing.getAddressRange().intersectsWith( newRegion.getAddressRange() ) ) 
 				{
-					final IMemoryRegion existing = regions.get(i);
-					if ( existing.getAddressRange().intersectsWith( newRegion.getAddressRange() ) ) 
-					{
-						regions.remove( index ); // remove existing region
-
-						if ( existing.getAddressRange().equals( newRegion.getAddressRange() ) ) {
-							// simple case, just replacing an existing region
-							regions.add( index , newRegion );
-							return;
-						}
-
-						regions.addAll( index , existing.split( newRegion.getAddressRange() ) );
-						intersects = true;
-						break;
+					if ( existing == newRegion ) {
+						LOG.error("Region "+newRegion+" is already mapped.");
+						throw new IllegalStateException("Region "+newRegion+" is already mapped.");
 					}
-					index++;
+					
+					if ( ! calledByUnmap && existing.getTypeId() != TYPE_RAM && existing.getTypeId() != newTypeId ) 
+					{
+						LOG.error("Cannot map region "+newRegion+" , address range already holds region "+existing);
+						throw new IllegalStateException("Cannot map region "+newRegion+" , address range already holds region "+existing);							
+					}
+					
+					if ( existing.getAddressRange().equals( newRegion.getAddressRange() ) ) {
+						// simple case, just replacing an existing region
+						MainMemory.this.regions.replace( existing , newRegion , i );
+						return;
+					}
+					
+					final List<IMemoryRegion> split = existing.split( newRegion.getAddressRange() );
+					MainMemory.this.regions.replace( existing , split , i );
+					len = regions.size();
+					added = true;
+					i = i+split.size()-1; // skip newly inserted regions
 				}
-			} while ( intersects );
-
-			// no intersection, just insert into the list
-			final int len = regions.size();
-			for ( int index = 0 ; index < len ; index++) 
-			{
-				IMemoryRegion existing = regions.get(index);
-				if ( newRegion.getAddressRange().getStartAddress().isLessThan( existing.getAddressRange().getStartAddress() ) ) {
-					regions.add( index , newRegion );
-					return;
-				}
-				index++;
 			}
-			regions.add( newRegion );
+			// should never happen because every address needs to be mapped to SOME memory all the time			
+			if ( ! added ) 
+			{
+				LOG.error("Internal error, failed to map region "+newRegion);
+				throw new IllegalStateException("Internal error, failed to map region "+newRegion);
+			}
+			MainMemory.this.regions.add( newRegion );
 		}
 	}
 
@@ -381,82 +345,30 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	{
 		synchronized( regions ) 
 		{
-			// TODO: performance - Maybe replace with binary search ??
-			if ( lastReadLookup.contains( wordAddress ) ) {
-				return lastReadLookup;
-			}
-			final int len = regions.size();
-			for ( int i = 0 ; i < len ; i++ )
-			{
-				final IMemoryRegion r = regions.get(i);
-				if ( r.contains( wordAddress ) ) {
-					lastReadLookup = r;
-					return r;
-				}
-			}
+			return regions.getRegion( wordAddress );
 		}
-
-		// address not mapped...
-		LOG.error("getRegion(): Access to unmapped address 0x"+Misc.toHexString( wordAddress ) );
-		LOG.error("getRegion(): Memory layout:\n\n");
-		synchronized( regions ) 
-		{
-			for ( IMemoryRegion r : regions ) 
-			{
-				LOG.error("getRegion(): " + r );
-			}
-		}
-		throw new RuntimeException("Address not mapped: 0x"+Misc.toHexString( wordAddress ));		
 	}
-	
+
 	private IMemoryRegion getWriteRegion(int wordAddress) 
 	{
 		synchronized( regions ) 
 		{
-			// TODO: performance - Maybe replace with binary search ??
-			if ( lastWriteLookup.contains( wordAddress ) ) {
-				return lastWriteLookup;
-			}
-			final int len = regions.size();
-			for ( int i = 0 ; i < len ; i++ )
-			{
-				final IMemoryRegion r = regions.get(i);
-				if ( r.contains( wordAddress ) ) {
-					lastWriteLookup = r;
-					return r;
-				}
-			}
+			return regions.getRegion( wordAddress );
 		}
-
-		// address not mapped...
-		LOG.error("getRegion(): Access to unmapped address 0x"+Misc.toHexString( wordAddress ) );
-		LOG.error("getRegion(): Memory layout:\n\n");
-		synchronized( regions ) 
-		{
-			for ( IMemoryRegion r : regions ) 
-			{
-				LOG.error("getRegion(): " + r );
-			}
-		}
-		throw new RuntimeException("Address not mapped: 0x"+Misc.toHexString( wordAddress ));		
 	}	
-	
+
 	@Override
 	public int read(Address adr)
 	{
 		return read( adr.getWordAddressValue() );
 	}
-	
+
 	@SuppressWarnings("deprecation")
 	@Override
 	public int read(int address)
 	{
 		final IMemoryRegion region = getReadRegion( address );
-        int newValue = address - region.getAddressRange().getStartAddress().getWordAddressValue();
-        if ( newValue < 0 ) {
-            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
-        }		
-		return region.read( newValue );
+		return region.read( (address - region.getAddressRange().getStartAddress().getWordAddressValue() ));
 	}	
 
 	private void checkWritePermitted(int wordAddress, int value ) throws MemoryProtectionFaultException
@@ -473,19 +385,13 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	@Override
 	public void write(int wordAddress, int value) throws MemoryProtectionFaultException
 	{
-        final IMemoryRegion region = getWriteRegion( wordAddress );
-        
+		final IMemoryRegion region = getWriteRegion( wordAddress );
 		if ( checkWriteAccess ) {
 			checkWritePermitted(wordAddress,value);
 		}
-
-        int newValue = wordAddress - region.getAddressRange().getStartAddress().getWordAddressValue();
-        if ( newValue < 0 ) {
-            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
-        }			
-		region.write( newValue , value );
+		region.write( ( wordAddress - region.getAddressRange().getStartAddress().getWordAddressValue() ) , value );
 	}
-	
+
 	@Override
 	public void write(Address adr, int value) throws MemoryProtectionFaultException
 	{
@@ -497,11 +403,10 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	{
 		Size result = Size.bytes( 0 );
 		synchronized( regions ) {
-			for ( IMemory r : regions ) {
+			for ( IMemory r : regions.regionList ) {
 				result = result.plus( r.getSize() );
 			}        
 		}
 		return result;
 	}
-
 }

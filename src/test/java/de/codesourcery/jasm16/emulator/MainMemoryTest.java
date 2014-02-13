@@ -15,10 +15,7 @@
  */
 package de.codesourcery.jasm16.emulator;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import junit.framework.TestCase;
 import de.codesourcery.jasm16.Address;
@@ -45,13 +42,66 @@ public class MainMemoryTest extends TestCase implements IMemoryTypes {
 		test.testRemappingSpeed();
 	}
 	
-	public void testMemoryAccessSpeed() {
+	protected static final class Timing 
+	{
+		private long min=Integer.MAX_VALUE;
+		private long max=Integer.MIN_VALUE;
+		private long sum = 0;
+		private long updateCount = 0;
 		
-		final int regionCount = 10;
+		public void update(long delta) {
+			min = Math.min(delta, min );
+			max = Math.max(delta, max );
+			sum += delta;
+			updateCount++;
+		}
+		
+		public void update(Timing other) {
+			min = Math.min( other.min  , min );
+			max = Math.max( other.max , max );
+			sum += other.sum;
+			updateCount += other.updateCount;
+		}		
+		
+		public long min() { return min; }
+		public long max() { return max; }
+		public long avg() 
+		{
+			if ( updateCount == 0 ) {
+				return 0;
+			}
+			return (long) ( sum / (float) updateCount ); 
+		}
+		
+		@Override
+		public String toString() {
+			 return "Time: "+min()+" / "+avg()+" / "+max()+" ms";
+		}
+	}
+	
+	public void testRandomReadSpeed() 
+	{
+		final Random rnd = new Random(0xdeadbeef);
+		Timing total = new Timing();
+		for ( int i = 0 ; i < 5 ; i++ ) {
+			total.update( internalTestRandomReadSpeed(rnd) );
+		}
+		// Time: 342 / 346 / 357 ms
+		// Time: 333 / 337 / 347 ms
+		// Time: 246 / 248 / 256 ms
+		System.out.println("===> RESULT: "+total);
+	}
+	
+	private Timing internalTestRandomReadSpeed(Random rnd) {
+		
+		System.out.println("--- random read ---");
+		final int regionCount = 6;
 		final int wordsPerRegion = 65536 / regionCount;
 		
 		int wordsLeft = 65536;
 		int currentWord = 0;
+		
+		final List<MemoryRegion> toMap = new ArrayList<>();
 		for ( int i = 0 ; i < regionCount ; i++ ) 
 		{
 			int sizeInWords;
@@ -62,29 +112,35 @@ public class MainMemoryTest extends TestCase implements IMemoryTypes {
 			}
 			final AddressRange range = new AddressRange( Address.wordAddress( currentWord ) , Size.words( sizeInWords ) );
 			final MemoryRegion region = new MemoryRegion( "region #"+i, TYPE_RAM, range );
-			memory.mapRegion( region );
+			toMap.add(region);
 			
 			wordsLeft -= sizeInWords;
 			currentWord += sizeInWords;
 		}
 		
-		/*
-		 * Base value: 480 ms 
-		 */
-		final Random rnd = new Random(0xdeadbeef);
-		for ( int i = 0 ; i < 25 ; i++) 
+		Collections.shuffle( toMap , rnd );
+		for ( MemoryRegion region : toMap ) {
+			memory.mapRegion( region );
+		}
+		
+		final int loopCount = 25;
+		final Random rnd2 = new Random(0xdeadbeef);
+		final Timing timing = new Timing();
+		for ( int i = 0 ; i < loopCount ; i++) 
 		{
-			int sum = 0;
+			int dummy=0;
 			rnd.setSeed( 0xdeadbeef );
-			long time = -System.currentTimeMillis();
+			long delta = -System.currentTimeMillis();
 			for ( int j = 0 ; j < 10000000 ; j++ ) 
 			{
-				final int adr = rnd.nextInt( 65536 );
-				sum += memory.read( adr );
+				final int adr = rnd2.nextInt( 65536 );
+				dummy += memory.read( adr );
 			}
-			time += System.currentTimeMillis();
-			System.out.println("Time: "+time+" ms (sum: "+sum+")");
+			delta += System.currentTimeMillis();
+			timing.update( delta );
+			System.out.println( timing+" (dummy: "+dummy+")" );
 		}
+		return timing;
 	}
 	
 	public void testRemappingSpeed() {
@@ -137,8 +193,7 @@ DEBUG: keyboard buffer (legacy) - 0x9000 - 0x9001 ( 1 words / 2 bytes )
 DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )		 
 		 */
 		
-		AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) , 
-				Address.wordAddress( 0x8000 ) );
+		AddressRange range1 = new AddressRange( Address.wordAddress( 0 ) ,  Address.wordAddress( 0x8000 ) );
 		MemoryRegion region1 = new MemoryRegion("region #1" , TYPE_RAM , range1 );
 		memory.mapRegion( region1 );
 		
@@ -199,8 +254,9 @@ DEBUG: main memory - 0x9001 - 0x010000 ( 28671 words / 57342 bytes )
 	    Address current = start;
 		int words = size.getSizeInWords();
 		for ( int i = 0 ; i < words ; i++ ) {
-			if ( region.read( current ) != value ) {
-				fail("Memory region "+region+" did not contain "+Misc.toHexString( value )+" at address "+Misc.toHexString( current ) );
+			int actualValue = region.read( current );
+			if ( actualValue != value ) {
+				fail("Memory region "+region+" did not contain expected value "+Misc.toHexString( value )+" (got: "+Misc.toHexString(actualValue)+") at address "+Misc.toHexString( current ) );
 			}
 			current = current.incrementByOne( false );
 		}

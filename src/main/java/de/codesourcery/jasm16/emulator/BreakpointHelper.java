@@ -165,6 +165,10 @@ final class BreakpointHelper {
 	
 	public void breakpointChanged(final Breakpoint changedBP) {
 
+		if ( changedBP.isOneShotBreakpoint() ) {
+			throw new UnsupportedOperationException("One-shot breakpoints may not be changed");
+		}
+		
 		Breakpoint existingBP;
 		synchronized( breakpoints ) {
 			final List<Breakpoint> list = breakpoints.get( changedBP.getAddress() );
@@ -297,7 +301,7 @@ final class BreakpointHelper {
 		}
 	}
 	
-	private Breakpoint extractRegularBreakpoint(List<Breakpoint> bps) 
+	private static Breakpoint extractRegularBreakpoint(List<Breakpoint> bps) 
 	{
 		Breakpoint result = null;
 		for ( Breakpoint bp : bps ) 
