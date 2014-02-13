@@ -1,8 +1,6 @@
 package de.codesourcery.jasm16.emulator;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 import org.apache.log4j.Logger;
 
@@ -20,20 +18,22 @@ final class ListenerHelper
 {
 	private static final Logger LOG = Logger.getLogger( BreakpointHelper.class );
 	
-	// @GuardedBy( emuListeners )
-	private final List<IEmulationListener> emuListeners = new ArrayList<IEmulationListener>();
+	private static final Object LOCK = new Object();
+	
+	// @GuardedBy( LOCK )
+	private IEmulationListener[] allListeners = new IEmulationListener[0];
 
-	// @GuardedBy( emuListeners )
-	private final List<IEmulationListener> beforeCommandExecListeners = new ArrayList<IEmulationListener>();
+	// @GuardedBy( LOCK )
+	private IEmulationListener[] beforeCommandExecListeners = new IEmulationListener[0];
 
-	// @GuardedBy( emuListeners )
-	private final List<IEmulationListener> continuousModeBeforeCommandExecListeners = new ArrayList<IEmulationListener>();
+	// @GuardedBy( LOCK )
+	private IEmulationListener[] continuousModeBeforeCommandExecListeners = new IEmulationListener[0];
 
-	// @GuardedBy( emuListeners )
-	private final List<IEmulationListener> afterCommandExecListeners = new ArrayList<IEmulationListener>();    
+	// @GuardedBy( LOCK )
+	private IEmulationListener[] afterCommandExecListeners = new IEmulationListener[0];
 
-	// @GuardedBy( emuListeners )
-	private final List<IEmulationListener> continuousModeAfterCommandExecListeners = new ArrayList<IEmulationListener>();    
+	// @GuardedBy( LOCK )
+	private IEmulationListener[] continuousModeAfterCommandExecListeners = new IEmulationListener[0];
 
 	private final IEmulationListenerInvoker BEFORE_COMMAND_INVOKER = new IEmulationListenerInvoker() {
 
@@ -58,26 +58,34 @@ final class ListenerHelper
 	public ListenerHelper(IEmulator emulator) {
 		this.emulator = emulator;
 	}
+	
+	private static IEmulationListener[] append(IEmulationListener[] data,IEmulationListener listener) 
+	{
+		IEmulationListener[] result = new IEmulationListener[data.length+1];
+		System.arraycopy( data , 0 , result , 0 , data.length );
+		result[data.length]=listener;
+		return result;
+	}
 
 	public void addEmulationListener(IEmulationListener listener)
 	{
 		if (listener == null) {
 			throw new IllegalArgumentException("listener must not be NULL.");
 		}
-		synchronized (emuListeners) 
+		synchronized (LOCK) 
 		{
-			emuListeners.add( listener );
+			allListeners = append(allListeners, listener );
 			if ( listener.isInvokeBeforeCommandExecution() ) {
-				beforeCommandExecListeners.add( listener );
+				beforeCommandExecListeners = append( beforeCommandExecListeners , listener );
 				if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
-					continuousModeBeforeCommandExecListeners.add( listener );
+					continuousModeBeforeCommandExecListeners = append( continuousModeBeforeCommandExecListeners , listener );
 				}
 			}
 			if ( listener.isInvokeAfterCommandExecution() ) 
 			{
-				afterCommandExecListeners.add( listener );
+				afterCommandExecListeners = append( afterCommandExecListeners , listener );
 				if ( listener.isInvokeAfterAndBeforeCommandExecutionInContinuousMode() ) {
-					continuousModeAfterCommandExecListeners.add( listener );
+					continuousModeAfterCommandExecListeners = append( continuousModeAfterCommandExecListeners , listener );
 				}
 			}
 		}
@@ -85,23 +93,27 @@ final class ListenerHelper
 
 	public void removeAllEmulationListeners() 
 	{
-		synchronized (emuListeners) 
+		synchronized (LOCK) 
 		{
-			removeAllNonHardwareListeners( emuListeners );
-			removeAllNonHardwareListeners( beforeCommandExecListeners );
-			removeAllNonHardwareListeners( continuousModeBeforeCommandExecListeners );
-			removeAllNonHardwareListeners( continuousModeAfterCommandExecListeners );
-			removeAllNonHardwareListeners( afterCommandExecListeners );
+			allListeners = removeAllNonHardwareListeners( allListeners );
+			beforeCommandExecListeners = removeAllNonHardwareListeners( beforeCommandExecListeners );
+			continuousModeBeforeCommandExecListeners = removeAllNonHardwareListeners( continuousModeBeforeCommandExecListeners );
+			continuousModeAfterCommandExecListeners = removeAllNonHardwareListeners( continuousModeAfterCommandExecListeners );
+			afterCommandExecListeners = removeAllNonHardwareListeners( afterCommandExecListeners );
 		} 		    
 	}
 
-	private void removeAllNonHardwareListeners(List<IEmulationListener> list) {
-
-		for ( Iterator<IEmulationListener> it = list.iterator() ; it.hasNext() ; ) {
-			if ( ! it.next().belongsToHardwareDevice() ) {
-				it.remove();
+	private IEmulationListener[] removeAllNonHardwareListeners(final IEmulationListener[] list) 
+	{
+		final ArrayList<IEmulationListener> toKeep = new ArrayList<>();
+		for ( int i = 0 ; i < list.length ; i++ ) 
+		{
+			IEmulationListener l = list[i];
+			if ( l.belongsToHardwareDevice() ) {
+				toKeep.add( l );
 			}
 		}
+		return toKeep.toArray( new IEmulationListener[ toKeep.size() ] );
 	}
 
 	public void removeEmulationListener(IEmulationListener listener)
@@ -109,60 +121,85 @@ final class ListenerHelper
 		if (listener == null) {
 			throw new IllegalArgumentException("listener must not be NULL.");
 		}
-		synchronized (emuListeners) {
-			emuListeners.remove( listener );
-			beforeCommandExecListeners.remove( listener );
-			continuousModeBeforeCommandExecListeners.remove( listener );
-			continuousModeAfterCommandExecListeners.remove( listener );
-			afterCommandExecListeners.remove( listener );
+		synchronized (LOCK) 
+		{
+			allListeners = remove( allListeners , listener );
+			beforeCommandExecListeners = remove( beforeCommandExecListeners , listener );
+			continuousModeBeforeCommandExecListeners = remove( continuousModeBeforeCommandExecListeners , listener );
+			continuousModeAfterCommandExecListeners = remove( continuousModeAfterCommandExecListeners , listener );
+			afterCommandExecListeners = remove( afterCommandExecListeners , listener );
 		}        
+	}
+	
+	private static IEmulationListener[] remove(final IEmulationListener[] data,IEmulationListener l) 
+	{
+		for ( int i = 0 ; i < data.length ; i++ ) {
+			if ( data[i].equals( l ) ) 
+			{
+				if ( data.length == 1 ) {
+					return new IEmulationListener[0];
+				}
+				final IEmulationListener[] result = new IEmulationListener[ data.length-1 ];				
+				if ( i == 0 ) {
+					System.arraycopy( data , 1 , result , 0 , data.length-1 );
+				} else if ( i == (data.length-1 ) ) {
+					System.arraycopy( data , 0 , result , 0 , data.length-1 );
+				} else {
+					System.arraycopy( data , 0 , result , 0 , i );
+					System.arraycopy( data , i , result , 0 , data.length-i );
+				}
+			}
+		}
+		return data;
 	}
 
 	public void notifyListeners(IEmulationListenerInvoker invoker) 
 	{
-		notifyListeners( invoker , emuListeners );
+		final IEmulationListener[] copy;
+		synchronized(LOCK) 
+		{
+			copy = allListeners;
+		}
+		notifyListeners( invoker , copy );
 	}
 
 	public void invokeAfterCommandExecutionListeners(boolean continousMode) 
 	{
-		final List<IEmulationListener> toCall;
-		if ( continousMode ) 
+		final IEmulationListener[] toCall;
+		synchronized(LOCK) 
 		{
-			toCall = continuousModeAfterCommandExecListeners;
-		} 
-		else 
-		{
-			toCall = afterCommandExecListeners;
+			if ( continousMode ) 
+			{
+				toCall = continuousModeAfterCommandExecListeners;
+			} 
+			else 
+			{
+				toCall = afterCommandExecListeners;
+			}
 		}
 		notifyListeners( AFTER_COMMAND_INVOKER , toCall );
 	}
 
 	public void invokeBeforeCommandExecutionListeners(boolean continousMode) 
 	{
-		final List<IEmulationListener> toCall;
-		if ( continousMode ) {
-			toCall = continuousModeBeforeCommandExecListeners;
-		} else {        	
-			toCall = beforeCommandExecListeners;
+		final IEmulationListener[] toCall;
+		synchronized(LOCK) 
+		{
+			if ( continousMode ) {
+				toCall = continuousModeBeforeCommandExecListeners;
+			} else {        	
+				toCall = beforeCommandExecListeners;
+			}
 		}
 		notifyListeners( BEFORE_COMMAND_INVOKER , toCall );
 	}   
 	
-	public void notifyListeners(IEmulationListenerInvoker invoker,List<IEmulationListener> listeners) 
+	private void notifyListeners(IEmulationListenerInvoker invoker,IEmulationListener[] listeners) 
 	{
-		final List<IEmulationListener> copy;
-		synchronized( emuListeners )
-		{
-			if ( listeners.isEmpty() ) {
-				return;
-			}
-			// create safe copy so we don't need to hold the lock while invoking the an alien method
-			copy = new ArrayList<IEmulationListener>( listeners );
-		}    	
-		final int len = copy.size(); 
+		final int len = listeners.length;
 		for ( int i = 0 ; i < len ; i++) 
 		{
-			final IEmulationListener l = copy.get(i);
+			final IEmulationListener l = listeners[i];
 			try {
 				invoker.invoke( emulator , l );
 			}
@@ -183,10 +220,10 @@ final class ListenerHelper
 			}
 		}); 
 
-		final List<IEmulationListener> copy;
-		synchronized( emuListeners ) 
+		final IEmulationListener[] copy;
+		synchronized( LOCK ) 
 		{
-			copy = new ArrayList<IEmulationListener>( emuListeners );
+			copy = allListeners;
 		}              
 		for ( IEmulationListener l : copy ) {
 			removeEmulationListener( l );
