@@ -30,7 +30,9 @@ public class WordAddress extends Address
 	/**
 	 * Highest possible DCPU-16 Address (in 16-bit WORDS).
 	 */
-    public static final long MAX_ADDRESS = 65536-1; // -1 because memory starts at offset 0
+    public static final long MAX_ADDRESS = 0xffff;
+    
+    public static final int MAX_ADDRESS_INT = 0xffff;    
     
     public static final WordAddress ZERO = new WordAddress(0);
     
@@ -116,30 +118,21 @@ public class WordAddress extends Address
     @Override
     public Address decrementByOne()
     {
-        int newValue = getValue() - 1;
-        if ( newValue < 0 ) {
-            newValue = (int) ( (WordAddress.MAX_ADDRESS+1) + newValue );
-        }
+        final int newValue = (getValue() - 1) & WordAddress.MAX_ADDRESS_INT;
         return new WordAddress( newValue );
     }
 
     @Override
     public Address minus(Address other)
     {
-        int newValue = getValue() - other.getWordAddressValue();
-        if ( newValue < 0 ) {
-            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
-        }
+        final int newValue = ( getValue() - other.getWordAddressValue() ) & MAX_ADDRESS_INT;
         return new WordAddress( newValue );
     }
 
     @Override
     public Address minus(Size size)
     {
-        int newValue = getValue() - size.getSizeInWords();
-        if ( newValue < 0 ) {
-            newValue = (int) ( (WordAddress.MAX_ADDRESS+1)+newValue );
-        }
+        final int newValue = ( getValue() - size.getSizeInWords() ) & MAX_ADDRESS_INT;
         return new WordAddress( newValue );
     }
 

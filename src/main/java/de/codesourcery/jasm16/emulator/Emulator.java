@@ -1555,26 +1555,34 @@ public final class Emulator implements IEmulator
         public int ex;
 
         public int pc;
-        public Address sp;
+        public int sp;
         public Address interruptAddress;
 
         public boolean queueInterrupts;
 
         public IInterrupt currentInterrupt;
-        public List<IInterrupt> interruptQueue= new ArrayList<IInterrupt>();
+        public CopyOnWriteList<IInterrupt> interruptQueue= new CopyOnWriteList<IInterrupt>();
 
         public int currentCycle;
 
         public CPU(MainMemory memory) 
         {
-        	pc = 0;
-            sp = interruptAddress = WordAddress.ZERO;
+        	sp = pc = 0;
+            interruptAddress = WordAddress.ZERO;
             this.memory = memory;
         }
 
         public void populateFrom(CPU other) 
         {
-            System.arraycopy( other.commonRegisters , 0 , this.commonRegisters , 0 , 8 );
+        	this.commonRegisters[0] = other.commonRegisters[0];
+        	this.commonRegisters[1] = other.commonRegisters[1];
+        	this.commonRegisters[2] = other.commonRegisters[2];
+        	this.commonRegisters[3] = other.commonRegisters[3];
+        	this.commonRegisters[4] = other.commonRegisters[4];
+        	this.commonRegisters[5] = other.commonRegisters[5];
+        	this.commonRegisters[6] = other.commonRegisters[6];
+        	this.commonRegisters[7] = other.commonRegisters[7];
+        	
             this.ex = other.ex;
             this.pc = other.pc;
             this.sp = other.sp;
@@ -1584,7 +1592,7 @@ public final class Emulator implements IEmulator
             this.interruptAddress = other.interruptAddress;
             this.queueInterrupts = other.queueInterrupts;
             this.currentInterrupt = other.currentInterrupt;
-            this.interruptQueue = new ArrayList<>( other.interruptQueue );
+            this.interruptQueue = other.interruptQueue.createCopy();
         }           
 
         public boolean triggerInterrupt(IInterrupt interrupt) 
@@ -1642,8 +1650,8 @@ public final class Emulator implements IEmulator
             currentCycle = 0;
             queueInterrupts = false;
             interruptQueue.clear();
-            pc = 0;
-            sp = interruptAddress = WordAddress.ZERO;
+            sp = pc = 0;
+            interruptAddress = WordAddress.ZERO;
             ex = 0;
             for ( int i = 0 ; i < commonRegisters.length ; i++ ) {
                 commonRegisters[i]=0;
@@ -1657,7 +1665,7 @@ public final class Emulator implements IEmulator
 
         @Override
         public Address getSP() {
-            return sp;
+            return Address.wordAddress( sp );
         }
 
         @Override
@@ -1702,7 +1710,7 @@ public final class Emulator implements IEmulator
                     pc = value & 0xffff;
                     break;
                 case SP:
-                    sp = Address.wordAddress( value & 0xffff );
+                    sp = value & 0xffff;
                     break;
                 case X:
                     commonRegisters[3] = value & 0xffff;
@@ -1737,7 +1745,7 @@ public final class Emulator implements IEmulator
                 case PC:
                     return pc;
                 case SP:
-                    return sp.getWordAddressValue();
+                    return sp;
                 case X:
                     return commonRegisters[3];
                 case Y:
@@ -2616,12 +2624,13 @@ public final class Emulator implements IEmulator
                     return;
                 case 0x1a:
                     final int nextWord2 = readNextWordAndAdvance();
-                    Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true);
+                    int dst = (int) ( ( sp + nextWord2 ) % (WordAddress.MAX_ADDRESS+1) );
+                    // Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true);
                     memory.write( dst , value );
                     currentCycle += 1;
                     return;
                 case 0x1b:
-                    sp = Address.wordAddress( value & 0xffff );
+                    sp = value & 0xffff;
                     return;
                 case 0x1c: // PC
                     currentInstructionPtr = value & 0xffff;
@@ -2699,16 +2708,17 @@ public final class Emulator implements IEmulator
                     return consumeOneCycle(  readMemoryWithOffsetAndWrapAround( commonRegisters[ operandBits - 0x10 ] , nextWord ) );
                 case 0x18: // (PUSH / [--SP]) if in b, or (POP / [SP++]) if in a
                     final int tmp = memory.read( sp ) & 0xffff;
-                    sp = sp.incrementByOne(true);                
+                    sp = (sp+1) & 0xffff; // sp.incrementByOne(true);                
                     return tmp;
                 case 0x19:
                     return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
                     final int nextWord2 = readNextWordAndAdvance();
-                    final Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true );
+                    final int dst = (int) ( ( sp +nextWord2 ) % (WordAddress.MAX_ADDRESS+1) );
+                    // final Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true );
                     return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
-				return sp.getValue() & 0xffff;
+				return sp & 0xffff;
                 case 0x1c:
 				return currentInstructionPtr & 0xffff;
                 case 0x1d:
@@ -2808,7 +2818,7 @@ public final class Emulator implements IEmulator
 	                }
 	                return consumeOneCycle( readMemoryWithOffsetAndWrapAround(  commonRegisters[ operandBits - 0x10 ] , nextWord ) );            	
                 case 0x18: // (PUSH / [--SP++]) if in b
-                    return consumeOneCycle( memory.read( sp.decrementByOne() ) );
+                    return consumeOneCycle( memory.read( (sp-1) & WordAddress.MAX_ADDRESS_INT ) );
                 case 0x19:
                     return consumeOneCycle( memory.read( sp ) );
                 case 0x1a:
@@ -2818,10 +2828,11 @@ public final class Emulator implements IEmulator
                     } else {
                         nextWord2 = memory.read( currentInstructionPtr );                    
                     }
-                    final Address dst = sp.plus( Address.wordAddress( nextWord2 ) , true );
+                    // final Address dst = ( sp.plus( Address.wordAddress( nextWord2 ) , true );
+                    final int dst = ( sp + nextWord2 ) & WordAddress.MAX_ADDRESS_INT;
                     return consumeOneCycle( memory.read( dst ) );
                 case 0x1b:
-                	return sp.getValue() & 0xffff;
+                	return sp & 0xffff;
                 case 0x1c:
                 	return currentInstructionPtr & 0xffff;
                 case 0x1d:
@@ -2966,14 +2977,14 @@ public final class Emulator implements IEmulator
         {
             // SET a, [SP++]
             final int result = memory.read( sp );
-            sp= sp.incrementByOne(true);
+            sp = (sp+1) & 0xffff;
             return result;
         }
 
         private void push(int value) 
         {
             // SET [--SP] , blubb
-            sp = sp.decrementByOne();
+            sp = (sp-1) & 0xffff;
             memory.write( sp , value );
         }           
         
