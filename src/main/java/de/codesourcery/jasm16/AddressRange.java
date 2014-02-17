@@ -139,8 +139,7 @@ public final class AddressRange
     
     public boolean contains(int wordAddress) 
     {
-    	return wordAddress >= this.start.getWordAddressValue() &&
-    		   wordAddress < this.end.getWordAddressValue();
+    	return wordAddress >= this.start.getWordAddressValue() && wordAddress < this.end.getWordAddressValue();
     }    
 
     public boolean contains(Address address) 

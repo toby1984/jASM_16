@@ -48,6 +48,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 	{
 		public final List<IMemoryRegion> regionList = new ArrayList<>();
 
+		@SuppressWarnings("unchecked")
 		public final ArrayList<IMemoryRegion>[] regionCache = new ArrayList[1<<ADR_CACHE_BIT_COUNT];	
 
 		public FastList(IMemoryRegion mainMemory) 

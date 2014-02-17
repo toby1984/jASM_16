@@ -1497,12 +1497,10 @@ public final class Emulator implements IEmulator
 	
 	protected final Object IRQ_QUEUE_LOCK = new Object();
 	
-    protected final class CPU implements ICPU {
-
-        // transient, only used inside of executeOneInstruction() code path
-        public int currentInstructionPtr;
-        
-        public final MainMemory memory;
+    protected final class CPU implements ICPU
+    {
+        public int currentInstructionPtr; // transient use, only used inside of executeOneInstruction() code path   
+        public int currentCycle;        
         
         /* Register A = Index 0
          * Register B = Index 1
@@ -1513,12 +1511,14 @@ public final class Emulator implements IEmulator
          * Register I = Index 6
          * Register J = Index 7      
          */
-        public final int[] commonRegisters = new int[ 8 ];
+        public final int[] commonRegisters = new int[ 8 ];        
+        
+        public final MainMemory memory;
+        
+        public int sp;    
 
         public int ex;
-
-        public int pc;
-        public int sp;
+        
         public int interruptAddress;
 
         public boolean queueInterrupts;
@@ -1529,7 +1529,7 @@ public final class Emulator implements IEmulator
         // @GuardedBy( IRQ_QUEUE_LOCK )
         public CopyOnWriteList<IInterrupt> irqQueue= new CopyOnWriteList<IInterrupt>();
 
-        public int currentCycle;
+        public int pc;     
 
         public CPU(MainMemory memory) 
         {
