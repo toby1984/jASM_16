@@ -86,9 +86,7 @@ public class MainMemoryTest extends TestCase implements IMemoryTypes {
 		for ( int i = 0 ; i < 5 ; i++ ) {
 			total.update( internalTestRandomReadSpeed(rnd) );
 		}
-		// Time: 342 / 346 / 357 ms
-		// Time: 333 / 337 / 347 ms
-		// Time: 246 / 248 / 256 ms
+		// ===> RESULT: Time: 244 / 251 / 266 ms
 		System.out.println("===> RESULT: "+total);
 	}
 	

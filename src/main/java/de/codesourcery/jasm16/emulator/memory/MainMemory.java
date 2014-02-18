@@ -38,42 +38,109 @@ public final class MainMemory implements IMemory, IMemoryTypes
 {
 	private static final Logger LOG = Logger.getLogger(MainMemory.class);
 
-	private static final int ADR_CACHE_BIT_COUNT = 4;
+	private static final int ADR_CACHE_BIT_COUNT = 5;
 	private static final int ADR_CACHE_MASK = ( (1<<ADR_CACHE_BIT_COUNT)-1 ) << (16-ADR_CACHE_BIT_COUNT);
 
 	// GuardedBy( regions )
 	private final FastList regions;
-
-	protected final class FastList 
+	
+	public static final class RegionNode 
+	{
+		public RegionNode next;
+		public final IMemoryRegion region;
+		
+		public RegionNode(IMemoryRegion r) {
+			this.region =r;
+		}
+		
+		public boolean containsAddress(int wordAddress) {
+			return region.contains( wordAddress );
+		}
+	}
+	
+	// INFO: Estimated clock rate: 21.579728932910317 MHz ( +21479.728932910315 % )
+	public static final class RegionList 
+	{
+		public RegionNode first;
+		public RegionNode last;
+		
+		public void add(IMemoryRegion r) 
+		{
+			if ( first == null ) {
+				first=last=new RegionNode(r);
+				return;
+			}
+			RegionNode node =new RegionNode(r);
+			last.next=node;
+			last=node;
+		}
+	}
+	
+	public static final class FastList 
 	{
 		public final List<IMemoryRegion> regionList = new ArrayList<>();
-
-		@SuppressWarnings("unchecked")
-		public final ArrayList<IMemoryRegion>[] regionCache = new ArrayList[1<<ADR_CACHE_BIT_COUNT];	
+		
+		public final RegionNode[] regionCache = new RegionNode[1<<ADR_CACHE_BIT_COUNT];	
 
 		public FastList(IMemoryRegion mainMemory) 
 		{
 			regionList.add( mainMemory );
 			for ( int i = 0 ; i < regionCache.length ; i++) 
 			{
-				final ArrayList<IMemoryRegion> list = new ArrayList<IMemoryRegion>();
-				list.add( mainMemory );
-				regionCache[i] = list;
+				regionCache[i] = new RegionNode( mainMemory );
 			}
 		}    
+		
+		public void add(int slotIndex,IMemoryRegion r) 
+		{
+			RegionNode current = regionCache[slotIndex];
+			if ( current == null ) {
+				regionCache[slotIndex] = new RegionNode(r);
+				return;
+			}
+			while ( current.next != null ) {
+				current = current.next;
+			}
+			current.next = new RegionNode( r );
+		}
+		
+		public void remove(int slotIndex,IMemoryRegion r) 
+		{
+			RegionNode current = regionCache[slotIndex];
+			if ( current.region == r ) 
+			{
+				regionCache[slotIndex] = current.next;
+				return;
+			}
+			RegionNode previous=current;
+			current = current.next;
+			while( current != null ) 
+			{
+				if ( current.region == r ) {
+					previous.next = current.next;
+					return;
+				}
+				previous=current;
+				current = current.next;				
+			}
+			throw new RuntimeException("Internal error, unreachable code reached while removing "+r);
+		}
 
 		public IMemoryRegion getRegion(final int wordAddress) 
 		{
 			final int slotIdx = wordAddressToSlotIndex( wordAddress );
-			final List<IMemoryRegion> list = regionCache[slotIdx];
-			final int len = list.size();
-			for ( int i = 0 ; i < len ; i++ ) 
+			RegionNode current = regionCache[slotIdx];
+			if ( current.containsAddress( wordAddress ) ) {
+				return current.region;
+			}
+			current = current.next;
+			while ( current != null )
 			{
-				final IMemoryRegion current = list.get(i);
-				if ( current.contains( wordAddress ) ) {
-					return current;
-				}
-			}	
+				if ( current.containsAddress( wordAddress ) ) {
+					return current.region;
+				}			
+				current = current.next;
+			}
 			
 			// address not mapped...
 			LOG.error("getRegion(): Access to unmapped address 0x"+Misc.toHexString( wordAddress ) );
@@ -102,14 +169,14 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			int endIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
 			for ( int i = startIndex ; i <= endIndex ; i++ ) 
 			{
-				regionCache[i].remove(oldRegion);
+				remove( i , oldRegion );
 			}			
 
 			startIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getStartAddress().getWordAddressValue() );
 			endIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
 			for ( int i = startIndex ; i <= endIndex ; i++ ) 
 			{
-				regionCache[i].add( newRegion );
+				add( i , newRegion );
 			}			
 		}	
 
@@ -121,7 +188,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			int endIndex = wordAddressToSlotIndex( oldRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
 			for ( int i = startIndex ; i <= endIndex ; i++ ) 
 			{
-				regionCache[i].remove(oldRegion);
+				remove( i ,  oldRegion );
 			}	
 			
 			final int len2 = newRegions.size();
@@ -133,7 +200,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 				startIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getStartAddress().getWordAddressValue() );
 				endIndex = wordAddressToSlotIndex( newRegion.getAddressRange().getEndAddress().getWordAddressValue()-1 );
 				for ( int j = startIndex ; j <= endIndex ; j++ ) {
-					regionCache[j].add( newRegion );
+					add( j , newRegion );
 				}		
 			}
 		}			
@@ -145,7 +212,7 @@ public final class MainMemory implements IMemory, IMemoryTypes
 			final int startIndex = wordAddressToSlotIndex( r.getAddressRange().getStartAddress().getWordAddressValue() );
 			final int endIndex = wordAddressToSlotIndex( r.getAddressRange().getEndAddress().getWordAddressValue()-1 );
 			for ( int j = startIndex ; j <= endIndex ; j++ ) {
-				regionCache[j].add( r );
+				add( j , r );
 			}				
 		}			
 	}
@@ -263,13 +330,13 @@ public final class MainMemory implements IMemory, IMemoryTypes
 		final int slotIdx = wordAddressToSlotIndex( region.getAddressRange().getStartAddress().getWordAddressValue() );		
 		synchronized(regions) 
 		{
-			final List<IMemoryRegion> list = regions.regionCache[slotIdx];
-			for ( int i = 0 ; i < list.size() ; i++ ) {
-				if ( list.get(i) == region ) 
-				{
+			RegionNode current = regions.regionCache[slotIdx];
+			while( current != null ) {
+				if ( current.region == region ) {
 					mapRegion( createMainMemory( region.getAddressRange() ) , true );		    		
 					return;
 				}
+				current = current.next;
 			}
 			throw new IllegalArgumentException("Cannot unmap unknown region "+region);			    
 		}
