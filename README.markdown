@@ -6,6 +6,7 @@ Embeddable DCPU-16 assembler written in Java
 
 Everyone and his dog is writing assemblers for the upcoming game 0x10c game by Mojang, so I thought I'd give it a shot too...
 
+![screenshot](https://github.com/toby1984/jASM_16/blob/master/screenshot.png?raw=true)
 Features
 --------
 
